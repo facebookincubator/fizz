@@ -1,0 +1,156 @@
+/*
+ *  Copyright (c) 2018-present, Facebook, Inc.
+ *  All rights reserved.
+ *
+ *  This source code is licensed under the BSD-style license found in the
+ *  LICENSE file in the root directory of this source tree.
+ */
+
+#include <fizz/crypto/aead/AESGCM128.h>
+#include <fizz/crypto/aead/OpenSSLEVPCipher.h>
+#include <fizz/protocol/DefaultCertificateVerifier.h>
+#include <fizz/protocol/test/Utilities.h>
+#include <fizz/server/AsyncFizzServer.h>
+#include <fizz/server/TicketTypes.h>
+#include <folly/io/async/AsyncServerSocket.h>
+
+namespace fizz {
+namespace server {
+namespace test {
+
+// TODO: Use a factory for the callbacks to support multiple connections.
+class FizzTestServer : public folly::AsyncServerSocket::AcceptCallback {
+ public:
+  FizzTestServer(
+      folly::EventBase& evb,
+      AsyncFizzServer::HandshakeCallback* cb,
+      int port = 0)
+      : cb_(cb), evb_(evb) {
+    auto certData =
+        fizz::test::createCert("fizz-test-selfsign", false, nullptr);
+    std::vector<folly::ssl::X509UniquePtr> certChain;
+    certChain.push_back(std::move(certData.cert));
+    auto fizzCert = std::make_unique<SelfCertImpl<KeyType::P256>>(
+        std::move(certData.key), std::move(certChain));
+    auto certManager = std::make_unique<CertManager>();
+    certManager->addCert(std::move(fizzCert), true);
+    ctx_ = std::make_shared<FizzServerContext>();
+    ctx_->setCertManager(std::move(certManager));
+    socket_ = folly::AsyncServerSocket::UniquePtr(
+        new folly::AsyncServerSocket(&evb_));
+    socket_->bind(port);
+    socket_->listen(100);
+    socket_->addAcceptCallback(this, &evb_);
+    socket_->startAccepting();
+  }
+
+  void setFizzContext(std::shared_ptr<FizzServerContext> ctx) {
+    ctx_ = ctx;
+  }
+
+  void acceptError(const std::exception& ex) noexcept override {
+    LOG(ERROR) << "Accept error: " << ex.what();
+  }
+
+  void connectionAccepted(
+      int fd,
+      const folly::SocketAddress& /* clientAddr */) noexcept override {
+    auto sock = new folly::AsyncSocket(&evb_, fd);
+    transport_ = AsyncFizzServer::UniquePtr(
+        new AsyncFizzServer(folly::AsyncSocket::UniquePtr(sock), ctx_));
+    transport_->accept(cb_);
+  }
+
+  void setResumption(bool enable) {
+    if (enable) {
+      auto ticketCipher = std::make_shared<AeadTicketCipher<
+          OpenSSLEVPCipher<AESGCM128>,
+          TicketCodec<CertificateStorage::X509>,
+          HkdfImpl<Sha256>>>();
+      auto ticketSeed = RandomGenerator<32>().generateRandom();
+      ticketCipher->setTicketSecrets({{folly::range(ticketSeed)}});
+      ctx_->setTicketCipher(ticketCipher);
+    } else {
+      ctx_->setTicketCipher(nullptr);
+    }
+  }
+
+  void setCertificate(std::unique_ptr<SelfCert> cert) {
+    auto certManager = std::make_unique<CertManager>();
+    certManager->addCert(std::move(cert), true);
+    ctx_->setCertManager(std::move(certManager));
+  }
+
+  void enableClientAuthWithChain(
+      std::string path,
+      ClientAuthMode mode = ClientAuthMode::Optional) {
+    ctx_->setClientAuthMode(mode);
+    std::string certData;
+    CHECK(folly::readFile(path.c_str(), certData));
+    auto certRange = folly::ByteRange(folly::StringPiece(certData));
+
+    auto clientAuthCerts =
+        folly::ssl::OpenSSLCertUtils::readCertsFromBuffer(certRange);
+    ERR_clear_error();
+    folly::ssl::X509StoreUniquePtr store(X509_STORE_new());
+    for (auto& caCert : clientAuthCerts) {
+      if (X509_STORE_add_cert(store.get(), caCert.get()) != 1) {
+        auto err = ERR_get_error();
+        CHECK(
+            ERR_GET_LIB(err) == ERR_LIB_X509 &&
+            ERR_GET_REASON(err) == X509_R_CERT_ALREADY_IN_HASH_TABLE)
+            << "Could not insert CA certificate into store: "
+            << std::string(ERR_error_string(err, nullptr));
+      }
+    }
+
+    auto verifier = std::make_shared<DefaultCertificateVerifier>(
+        VerificationContext::Server, std::move(store));
+    ctx_->setClientCertVerifier(std::move(verifier));
+  }
+
+  void disableClientAuth() {
+    ctx_->setClientAuthMode(ClientAuthMode::None);
+    ctx_->setClientCertVerifier(nullptr);
+  }
+
+  void setAcceptEarlyData(bool enable) {
+    if (enable) {
+      ctx_->setEarlyDataSettings(
+          true,
+          {std::chrono::seconds(-10), std::chrono::seconds(10)},
+          std::make_shared<AllowAllReplayReplayCache>());
+    } else {
+      ctx_->setEarlyDataSettings(false, ClockSkewTolerance(), nullptr);
+    }
+  }
+
+  void stopAccepting() {
+    socket_.reset();
+  }
+
+  folly::SocketAddress getAddress() {
+    folly::SocketAddress addr;
+    socket_->getAddress(&addr);
+    return addr;
+  }
+
+  AsyncFizzServer::UniquePtr& getTransport() {
+    return transport_;
+  }
+
+  std::shared_ptr<FizzServerContext> getFizzContext() {
+    return ctx_;
+  }
+
+ private:
+  AsyncFizzServer::UniquePtr transport_;
+  folly::AsyncServerSocket::UniquePtr socket_;
+  AsyncFizzServer::HandshakeCallback* cb_;
+  std::shared_ptr<FizzServerContext> ctx_;
+  folly::EventBase& evb_;
+};
+
+} // namespace test
+} // namespace server
+} // namespace fizz

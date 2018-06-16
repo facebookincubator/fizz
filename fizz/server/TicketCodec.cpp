@@ -1,0 +1,69 @@
+/*
+ *  Copyright (c) 2018-present, Facebook, Inc.
+ *  All rights reserved.
+ *
+ *  This source code is licensed under the BSD-style license found in the
+ *  LICENSE file in the root directory of this source tree.
+ */
+
+#include <fizz/server/TicketCodec.h>
+
+namespace fizz {
+std::string toString(fizz::server::CertificateStorage storage) {
+  using fizz::server::CertificateStorage;
+  switch (storage) {
+    case CertificateStorage::None:
+      return "None";
+    case CertificateStorage::X509:
+      return "X509";
+    case CertificateStorage::IdentityOnly:
+      return "IdentityOnly";
+    default:
+      return "Unknown storage";
+  }
+}
+namespace server {
+void appendClientCertificate(
+    CertificateStorage storage,
+    const std::shared_ptr<const Cert>& cert,
+    folly::io::Appender& appender) {
+  Buf clientCertBuf = folly::IOBuf::create(0);
+  CertificateStorage selectedStorage;
+  if (!cert || storage == CertificateStorage::None) {
+    selectedStorage = CertificateStorage::None;
+  } else if (storage == CertificateStorage::X509 && cert->getX509()) {
+    selectedStorage = CertificateStorage::X509;
+    clientCertBuf = folly::ssl::OpenSSLCertUtils::derEncode(*cert->getX509());
+  } else {
+    selectedStorage = CertificateStorage::IdentityOnly;
+    clientCertBuf = folly::IOBuf::copyBuffer(cert->getIdentity());
+  }
+  fizz::detail::write(selectedStorage, appender);
+  if (selectedStorage != CertificateStorage::None) {
+    fizz::detail::writeBuf<uint16_t>(clientCertBuf, appender);
+  }
+}
+
+std::shared_ptr<const Cert> readClientCertificate(folly::io::Cursor& cursor) {
+  CertificateStorage storage;
+  fizz::detail::read(storage, cursor);
+  switch (storage) {
+    case CertificateStorage::None:
+      return nullptr;
+    case CertificateStorage::X509: {
+      Buf clientCertBuf;
+      fizz::detail::readBuf<uint16_t>(clientCertBuf, cursor);
+      return CertUtils::makePeerCert(std::move(clientCertBuf));
+    }
+    case CertificateStorage::IdentityOnly: {
+      Buf ident;
+      fizz::detail::readBuf<uint16_t>(ident, cursor);
+      return std::make_shared<const IdentityCert>(
+          ident->moveToFbString().toStdString());
+    }
+  }
+
+  return nullptr;
+}
+} // namespace server
+} // namespace fizz
