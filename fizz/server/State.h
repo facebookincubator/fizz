@@ -54,7 +54,7 @@ class State {
   /**
    * The current state of the connection.
    */
-  const StateEnum state() const {
+  StateEnum state() const {
     return state_;
   }
 
