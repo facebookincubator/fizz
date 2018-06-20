@@ -1,5 +1,5 @@
 <p align="center">
-  <img width="500" height="216" alt="Fizz" src="https://raw.github.com/facebookincubator/fizz/master/logo2x.png">
+  <img width="500" height="216" alt="Fizz" src="logo2x.png">
 </p>
 Fizz is a TLS 1.3 implementation.
 
