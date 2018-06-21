@@ -14,8 +14,8 @@
 #include <folly/ssl/Init.h>
 
 DEFINE_int32(port, 8443, "port to listen on");
-DEFINE_string(cert, "/etc/pki/tls/certs/sandbox.crt", "certificate to use");
-DEFINE_string(key, "/etc/pki/tls/certs/sandbox.key", "certificate key to use");
+DEFINE_string(cert, "", "certificate to use");
+DEFINE_string(key, "", "certificate key to use");
 DEFINE_string(cabundle, "", "CA certificate bundle to use for client auth");
 DEFINE_bool(clientauth, false, "require client authentication");
 DEFINE_bool(fallback, false, "enabled AsyncSSLSocket fallback");
@@ -114,6 +114,11 @@ int main(int argc, char** argv) {
   google::InitGoogleLogging(argv[0]);
   folly::ssl::init();
 
+  if (FLAGS_cert.empty() ^ FLAGS_key.empty()) {
+    LOG(ERROR) << "Both -cert and -key required when either is provided.";
+    return 1;
+  }
+
   // Create SSL context for fallback if necessary
   std::shared_ptr<SSLContext> sslContext;
   if (FLAGS_fallback) {
@@ -128,13 +133,27 @@ int main(int argc, char** argv) {
   EventBase evb;
   Callback cb(&evb, sslContext);
   fizz::server::test::FizzTestServer serv(evb, &cb, FLAGS_port);
+
+  if (!FLAGS_cert.empty()) {
+    std::string certBuf, keyBuf;
+
+    if (!folly::readFile(FLAGS_cert.c_str(), certBuf)) {
+      LOG(ERROR) << "Failed to read cert.";
+      return 1;
+    }
+
+    if (!folly::readFile(FLAGS_key.c_str(), keyBuf)) {
+      LOG(ERROR) << "Failed to read key.";
+      return 1;
+    }
+
+    auto cert = CertUtils::makeSelfCert(certBuf, keyBuf);
+    serv.setCertificate(std::move(cert));
+  } else {
+    LOG(INFO) << "No certificate/key specified, using a self-signed cert.";
+  }
+
   cb.setServerRef(&serv);
-  std::string certBuf, keyBuf;
-  CHECK(
-      folly::readFile(FLAGS_cert.c_str(), certBuf) &&
-      folly::readFile(FLAGS_key.c_str(), keyBuf));
-  auto cert = CertUtils::makeSelfCert(certBuf, keyBuf);
-  serv.setCertificate(std::move(cert));
   serv.setResumption(true);
   if (FLAGS_clientauth && !FLAGS_cabundle.empty()) {
     serv.enableClientAuthWithChain(FLAGS_cabundle);
