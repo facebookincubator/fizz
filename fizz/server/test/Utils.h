@@ -18,14 +18,17 @@ namespace fizz {
 namespace server {
 namespace test {
 
-// TODO: Use a factory for the callbacks to support multiple connections.
 class FizzTestServer : public folly::AsyncServerSocket::AcceptCallback {
  public:
-  FizzTestServer(
-      folly::EventBase& evb,
-      AsyncFizzServer::HandshakeCallback* cb,
-      int port = 0)
-      : cb_(cb), evb_(evb) {
+  class CallbackFactory {
+   public:
+    virtual ~CallbackFactory() = default;
+    virtual AsyncFizzServer::HandshakeCallback* getCallback(
+        std::shared_ptr<AsyncFizzServer> server) = 0;
+  };
+
+  FizzTestServer(folly::EventBase& evb, CallbackFactory* factory, int port = 0)
+      : factory_(factory), evb_(evb) {
     auto certData =
         fizz::test::createCert("fizz-test-selfsign", false, nullptr);
     std::vector<folly::ssl::X509UniquePtr> certChain;
@@ -56,9 +59,10 @@ class FizzTestServer : public folly::AsyncServerSocket::AcceptCallback {
       int fd,
       const folly::SocketAddress& /* clientAddr */) noexcept override {
     auto sock = new folly::AsyncSocket(&evb_, fd);
-    transport_ = AsyncFizzServer::UniquePtr(
+    std::shared_ptr<AsyncFizzServer> transport = AsyncFizzServer::UniquePtr(
         new AsyncFizzServer(folly::AsyncSocket::UniquePtr(sock), ctx_));
-    transport_->accept(cb_);
+    auto callback = factory_->getCallback(transport);
+    transport->accept(callback);
   }
 
   void setResumption(bool enable) {
@@ -135,19 +139,14 @@ class FizzTestServer : public folly::AsyncServerSocket::AcceptCallback {
     return addr;
   }
 
-  AsyncFizzServer::UniquePtr& getTransport() {
-    return transport_;
-  }
-
   std::shared_ptr<FizzServerContext> getFizzContext() {
     return ctx_;
   }
 
  private:
-  AsyncFizzServer::UniquePtr transport_;
   folly::AsyncServerSocket::UniquePtr socket_;
-  AsyncFizzServer::HandshakeCallback* cb_;
   std::shared_ptr<FizzServerContext> ctx_;
+  CallbackFactory* factory_;
   folly::EventBase& evb_;
 };
 

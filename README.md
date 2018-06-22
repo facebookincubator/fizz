@@ -41,5 +41,5 @@ over a TCP connection.
 
 For example, to start ServerSocket on port 443 with a specified cert:
 `ServerSocket -port 443 -cert foo.pem -key foo.key`. Then, on the same host,
-you can connect with `ClientSocket -host localhost -port 443`. Both will dump
-the data they get and will remain running until interrupted via CTRL+C.
+you can connect with `ClientSocket -host localhost -port 443`. ClientSocket will
+dump the data it gets and both will remain running until interrupted via CTRL+C.
