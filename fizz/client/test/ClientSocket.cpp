@@ -20,6 +20,7 @@ DEFINE_bool(
     "make two connections using the session ticket from the first connection "
     "for the second one");
 DEFINE_bool(early, false, "send early data");
+DEFINE_bool(verify, false, "enable verification of server certificate chain");
 
 using namespace fizz;
 using namespace fizz::client;
@@ -33,8 +34,12 @@ class Connection : public AsyncSocket::ConnectCallback,
   Connection(
       EventBase* evb,
       std::shared_ptr<FizzClientContext> clientContext,
-      Optional<std::string> sni)
-      : evb_(evb), clientContext_(clientContext), sni_(sni) {}
+      Optional<std::string> sni,
+      std::shared_ptr<const CertificateVerifier> verifier)
+      : evb_(evb),
+        clientContext_(clientContext),
+        sni_(sni),
+        verifier_(std::move(verifier)) {}
 
   void connect(const SocketAddress& addr) {
     sock_ = AsyncSocket::UniquePtr(new AsyncSocket(evb_));
@@ -57,7 +62,7 @@ class Connection : public AsyncSocket::ConnectCallback,
     LOG(INFO) << "Connected";
     transport_ = AsyncFizzClient::UniquePtr(
         new AsyncFizzClient(std::move(sock_), clientContext_));
-    transport_->connect(this, nullptr, sni_, sni_);
+    transport_->connect(this, verifier_, sni_, sni_);
   }
 
   void fizzHandshakeSuccess(AsyncFizzClient* /*client*/) noexcept override {
@@ -120,6 +125,7 @@ class Connection : public AsyncSocket::ConnectCallback,
   EventBase* evb_;
   std::shared_ptr<FizzClientContext> clientContext_;
   Optional<std::string> sni_;
+  std::shared_ptr<const CertificateVerifier> verifier_;
   AsyncSocket::UniquePtr sock_;
   AsyncFizzClient::UniquePtr transport_;
 };
@@ -152,16 +158,23 @@ int main(int argc, char** argv) {
 
   auto clientContext = std::make_shared<FizzClientContext>();
   clientContext->setSupportedAlpns({"http/1.1"});
-  clientContext->setSupportedVersions(
-      {ProtocolVersion::tls_1_3_26, ProtocolVersion::tls_1_3_23});
+  clientContext->setSupportedVersions({ProtocolVersion::tls_1_3,
+                                       ProtocolVersion::tls_1_3_26,
+                                       ProtocolVersion::tls_1_3_23});
   clientContext->setSendEarlyData(FLAGS_early);
 
   SocketAddress addr(FLAGS_host, FLAGS_port, true);
 
   EventBase evb;
   auto sni = FLAGS_sni.empty() ? FLAGS_host : FLAGS_sni;
-  Connection conn(&evb, clientContext, sni);
-  Connection resumptionConn(&evb, clientContext, sni);
+
+  std::shared_ptr<const CertificateVerifier> verifier;
+  if (FLAGS_verify) {
+    verifier = std::make_shared<const DefaultCertificateVerifier>(
+        VerificationContext::Client);
+  }
+  Connection conn(&evb, clientContext, sni, verifier);
+  Connection resumptionConn(&evb, clientContext, sni, verifier);
 
   if (FLAGS_resume) {
     auto pskCache = std::make_shared<ResumptionPskCache>(
