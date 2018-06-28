@@ -3,10 +3,9 @@
 </p>
 Fizz is a TLS 1.3 implementation.
 
-Fizz currently supports TLS 1.3 drafts 18-28. HelloRetryRequest, early data,
-and client authentication are only supported on draft 19 and above. Each draft
-also has a corresponding "fb" version. These match the draft versions except
-for some minor record layer differences.
+Fizz currently supports TLS 1.3 drafts 23-28.  Each draft also has a
+corresponding "fb" version. These match the draft versions except for some
+minor record layer differences.
 
 ## Dependencies
 Fizz largely depends on three libraries: [folly](https://www.github.com/facebook/folly),
@@ -43,3 +42,6 @@ For example, to start ServerSocket on port 443 with a specified cert:
 `ServerSocket -port 443 -cert foo.pem -key foo.key`. Then, on the same host,
 you can connect with `ClientSocket -host localhost -port 443`. ClientSocket will
 dump the data it gets and both will remain running until interrupted via CTRL+C.
+
+## License
+Fizz is BSD licensed, as found in the LICENSE file.
