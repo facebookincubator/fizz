@@ -14,18 +14,20 @@
 namespace fizz {
 
 struct ChaCha20Poly1305 {
-#if FOLLY_OPENSSL_IS_110
-  static constexpr auto Cipher = EVP_chacha20_poly1305;
-#else
   static const EVP_CIPHER* Cipher() {
+#if FOLLY_OPENSSL_IS_110
+    return EVP_chacha20_poly1305();
+#else
     throw std::runtime_error(
         "chacha20-poly1305 support requires OpenSSL 1.1.0");
-  }
 #endif // FOLLY_OPENSSL_IS_110
+  }
 
   static const size_t kKeyLength{32};
   static const size_t kIVLength{12};
   static const size_t kTagLength{16};
+  static const bool kOperatesInBlocks{false};
+  static const bool kRequiresPresetTagLen{false};
 };
 
 } // namespace fizz

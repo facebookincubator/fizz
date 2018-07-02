@@ -147,7 +147,9 @@ std::string toString(AlertDescription);
 enum class CipherSuite : uint16_t {
   TLS_AES_128_GCM_SHA256 = 0x1301,
   TLS_AES_256_GCM_SHA384 = 0x1302,
-  TLS_CHACHA20_POLY1305_SHA256 = 0x1303
+  TLS_CHACHA20_POLY1305_SHA256 = 0x1303,
+  // experimental cipher suites
+  TLS_AES_128_OCB_SHA256_EXPERIMENTAL = 0xFF01
 };
 
 std::string toString(CipherSuite);

@@ -8,21 +8,21 @@
 
 namespace fizz {
 namespace detail {
+folly::Optional<std::unique_ptr<folly::IOBuf>> evpDecrypt(
+    std::unique_ptr<folly::IOBuf>&& ciphertext,
+    const folly::IOBuf* associatedData,
+    folly::ByteRange iv,
+    size_t tagLen,
+    bool useBlockOps,
+    EVP_CIPHER_CTX* decryptCtx);
 
 std::unique_ptr<folly::IOBuf> evpEncrypt(
     std::unique_ptr<folly::IOBuf>&& plaintext,
     const folly::IOBuf* associatedData,
     folly::ByteRange iv,
     size_t tagLen,
+    bool useBlockOps,
     EVP_CIPHER_CTX* encryptCtx);
-
-folly::Optional<std::unique_ptr<folly::IOBuf>> evpDecrypt(
-    std::unique_ptr<folly::IOBuf>&& ciphertext,
-    const folly::IOBuf* associatedData,
-    folly::ByteRange iv,
-    size_t tagLen,
-    EVP_CIPHER_CTX* decryptCtx);
-
 } // namespace detail
 
 template <typename EVPImpl>
@@ -58,6 +58,24 @@ OpenSSLEVPCipher<EVPImpl>::OpenSSLEVPCipher() {
           EVPImpl::kIVLength,
           nullptr) != 1) {
     throw std::runtime_error("Error setting iv length");
+  }
+
+  if (EVPImpl::kRequiresPresetTagLen) {
+    if (EVP_CIPHER_CTX_ctrl(
+            encryptCtx_.get(),
+            EVP_CTRL_GCM_SET_TAG,
+            EVPImpl::kTagLength,
+            nullptr) != 1) {
+      throw std::runtime_error("Error setting enc tag length");
+    }
+
+    if (EVP_CIPHER_CTX_ctrl(
+            decryptCtx_.get(),
+            EVP_CTRL_GCM_SET_TAG,
+            EVPImpl::kTagLength,
+            nullptr) != 1) {
+      throw std::runtime_error("Error setting dec tag length");
+    }
   }
 }
 
@@ -101,6 +119,7 @@ std::unique_ptr<folly::IOBuf> OpenSSLEVPCipher<EVPImpl>::encrypt(
       associatedData,
       iv,
       EVPImpl::kTagLength,
+      EVPImpl::kOperatesInBlocks,
       encryptCtx_.get());
 }
 
@@ -116,6 +135,7 @@ OpenSSLEVPCipher<EVPImpl>::tryDecrypt(
       associatedData,
       iv,
       EVPImpl::kTagLength,
+      EVPImpl::kOperatesInBlocks,
       decryptCtx_.get());
 }
 

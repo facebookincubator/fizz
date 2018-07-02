@@ -10,6 +10,7 @@
 
 #include <fizz/crypto/aead/AESGCM128.h>
 #include <fizz/crypto/aead/AESGCM256.h>
+#include <fizz/crypto/aead/AESOCB128.h>
 #include <fizz/crypto/aead/ChaCha20Poly1305.h>
 #include <fizz/crypto/aead/IOBufUtil.h>
 #include <fizz/crypto/aead/OpenSSLEVPCipher.h>
@@ -47,6 +48,9 @@ std::unique_ptr<Aead> getCipher(const CipherParams& params) {
       break;
     case CipherSuite::TLS_CHACHA20_POLY1305_SHA256:
       cipher = std::make_unique<OpenSSLEVPCipher<ChaCha20Poly1305>>();
+      break;
+    case CipherSuite::TLS_AES_128_OCB_SHA256_EXPERIMENTAL:
+      cipher = std::make_unique<OpenSSLEVPCipher<AESOCB128>>();
       break;
     default:
       throw std::runtime_error("Invalid cipher");
@@ -406,6 +410,74 @@ INSTANTIATE_TEST_CASE_P(
                 "d31a8d34648e60db7b86afbc53ef7ec2a4aded51296e08fea9e2b5a736ee62d63dbea45e8ca9671282fafb69da92728b1a71de0a9e060b2905d6a5b67ecd3b3692ddbd7f2d778b8c9803aee328091b58fab324e4fad675945585808b4831d7bc3ff4def08e4b7a9de576d26586cec64b61161ae10b594f09e26a7e902ecbd0600691",
                 false,
                 CipherSuite::TLS_CHACHA20_POLY1305_SHA256}));
+#endif
+#if FOLLY_OPENSSL_IS_110 && !defined(OPENSSL_NO_OCB)
+// Adapted from openssl's evptests.txt AES OCB Test vectors
+INSTANTIATE_TEST_CASE_P(
+    OCBTestVectors,
+    OpenSSLEVPCipherTest,
+    ::testing::Values(
+        (CipherParams){"000102030405060708090A0B0C0D0E0F",
+                       "000102030405060708090A0B",
+                       0,
+                       "0001020304050607",
+                       "0001020304050607",
+                       "92B657130A74B85A16DC76A46D47E1EAD537209E8A96D14E",
+                       true,
+                       CipherSuite::TLS_AES_128_OCB_SHA256_EXPERIMENTAL},
+        (CipherParams){"000102030405060708090A0B0C0D0E0F",
+                       "000102030405060708090A0B",
+                       0,
+                       "0001020304050607",
+                       "0001020304050607",
+                       "82B657130A74B85A16DC76A46D47E1EAD537209E8A96D14E",
+                       false,
+                       CipherSuite::TLS_AES_128_OCB_SHA256_EXPERIMENTAL},
+        (CipherParams){
+            "000102030405060708090A0B0C0D0E0F",
+            "000102030405060708090A0B",
+            0,
+            "000102030405060708090A0B0C0D0E0F",
+            "000102030405060708090A0B0C0D0E0F",
+            "BEA5E8798DBE7110031C144DA0B26122776C9924D6723A1FC4524532AC3E5BEB",
+            true,
+            CipherSuite::TLS_AES_128_OCB_SHA256_EXPERIMENTAL},
+        (CipherParams){
+            "000102030405060708090A0B0C0D0E0F",
+            "000102030405060708090A0B",
+            0,
+            "000102030405060708090A0B0C0D0E0F",
+            "000102030405060708090A0B0C0D0E0F",
+            "CEA5E8798DBE7110031C144DA0B26122776C9924D6723A1FC4524532AC3E5BEB",
+            false,
+            CipherSuite::TLS_AES_128_OCB_SHA256_EXPERIMENTAL},
+        (CipherParams){
+            "000102030405060708090A0B0C0D0E0F",
+            "000102030405060708090A0B",
+            0,
+            "000102030405060708090A0B0C0D0E0F1011121314151617",
+            "000102030405060708090A0B0C0D0E0F1011121314151617",
+            "BEA5E8798DBE7110031C144DA0B26122FCFCEE7A2A8D4D485FA94FC3F38820F1DC3F3D1FD4E55E1C",
+            true,
+            CipherSuite::TLS_AES_128_OCB_SHA256_EXPERIMENTAL},
+        (CipherParams){
+            "000102030405060708090A0B0C0D0E0F",
+            "000102030405060708090A0B",
+            0,
+            "000102030405060708090A0B0C0D0E0F1011121314151617",
+            "000102030405060708090A0B0C0D0E0F1011121314151617",
+            "BFA5E8798DBE7110031C144DA0B26122FCFCEE7A2A8D4D485FA94FC3F38820F1DC3F3D1FD4E55E1C",
+            false,
+            CipherSuite::TLS_AES_128_OCB_SHA256_EXPERIMENTAL},
+        (CipherParams){
+            "000102030405060708090A0B0C0D0E0F",
+            "000102030405060708090A0B",
+            0,
+            "000102030405060708090A0B0C0D0E0F101112131415161718191A1B1C1D1E1F2021222324252627",
+            "000102030405060708090A0B0C0D0E0F101112131415161718191A1B1C1D1E1F2021222324252627",
+            "BEA5E8798DBE7110031C144DA0B26122CEAAB9B05DF771A657149D53773463CB68C65778B058A635659C623211DEEA0DE30D2C381879F4C8",
+            true,
+            CipherSuite::TLS_AES_128_OCB_SHA256_EXPERIMENTAL}));
 #endif
 } // namespace test
 } // namespace fizz

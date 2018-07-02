@@ -29,6 +29,10 @@ namespace fizz {
  *   - kKeyLength: length of key required
  *   - kIvLength: length of iv required
  *   - kTagLength: authentication tag length
+ *   - kOperatesInBlocks: if the cipher outputs data in chunks vs. streaming 1:1
+ *         with the input
+ *   - kRequiresPresetTagLen: if the cipher requires setting the tag length
+ *         explicitly
  */
 template <typename EVPImpl>
 class OpenSSLEVPCipher : public Aead {

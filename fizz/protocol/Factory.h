@@ -11,6 +11,7 @@
 #include <fizz/crypto/RandomGenerator.h>
 #include <fizz/crypto/aead/AESGCM128.h>
 #include <fizz/crypto/aead/AESGCM256.h>
+#include <fizz/crypto/aead/AESOCB128.h>
 #include <fizz/crypto/aead/ChaCha20Poly1305.h>
 #include <fizz/crypto/aead/OpenSSLEVPCipher.h>
 #include <fizz/crypto/exchange/KeyExchange.h>
@@ -62,6 +63,7 @@ class Factory {
     switch (cipher) {
       case CipherSuite::TLS_CHACHA20_POLY1305_SHA256:
       case CipherSuite::TLS_AES_128_GCM_SHA256:
+      case CipherSuite::TLS_AES_128_OCB_SHA256_EXPERIMENTAL:
         return std::make_unique<KeyDerivationImpl<Sha256>>();
       case CipherSuite::TLS_AES_256_GCM_SHA384:
         return std::make_unique<KeyDerivationImpl<Sha384>>();
@@ -75,6 +77,7 @@ class Factory {
     switch (cipher) {
       case CipherSuite::TLS_CHACHA20_POLY1305_SHA256:
       case CipherSuite::TLS_AES_128_GCM_SHA256:
+      case CipherSuite::TLS_AES_128_OCB_SHA256_EXPERIMENTAL:
         return std::make_unique<HandshakeContextImpl<Sha256>>();
       case CipherSuite::TLS_AES_256_GCM_SHA384:
         return std::make_unique<HandshakeContextImpl<Sha384>>();
@@ -102,6 +105,8 @@ class Factory {
         return std::make_unique<OpenSSLEVPCipher<AESGCM128>>();
       case CipherSuite::TLS_AES_256_GCM_SHA384:
         return std::make_unique<OpenSSLEVPCipher<AESGCM256>>();
+      case CipherSuite::TLS_AES_128_OCB_SHA256_EXPERIMENTAL:
+        return std::make_unique<OpenSSLEVPCipher<AESOCB128>>();
       default:
         throw std::runtime_error("aead: not implemented");
     }

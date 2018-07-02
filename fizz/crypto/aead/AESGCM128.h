@@ -18,6 +18,8 @@ struct AESGCM128 {
   static const size_t kKeyLength{16};
   static const size_t kIVLength{12};
   static const size_t kTagLength{16};
+  static const bool kOperatesInBlocks{false};
+  static const bool kRequiresPresetTagLen{false};
 };
 
 } // namespace fizz
