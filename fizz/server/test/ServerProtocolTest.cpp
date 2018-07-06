@@ -2544,6 +2544,7 @@ TEST_F(ServerProtocolTest, TestClientHelloHandshakeLogging) {
       std::vector<SignatureScheme>({SignatureScheme::ecdsa_secp256r1_sha256,
                                     SignatureScheme::rsa_pss_sha256}));
   EXPECT_EQ(*state_.handshakeLogging()->clientSessionIdSent, false);
+  EXPECT_TRUE(state_.handshakeLogging()->clientRandom.hasValue());
 }
 
 TEST_F(ServerProtocolTest, TestClientHelloHandshakeLoggingError) {

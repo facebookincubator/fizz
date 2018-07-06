@@ -338,6 +338,7 @@ static void addHandshakeLogging(const State& state, const ClientHello& chlo) {
 
     state.handshakeLogging()->clientSessionIdSent =
         chlo.legacy_session_id && !chlo.legacy_session_id->empty();
+    state.handshakeLogging()->clientRandom = chlo.random;
   }
 }
 

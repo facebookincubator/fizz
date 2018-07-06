@@ -47,6 +47,7 @@ struct HandshakeLogging {
   std::vector<PskKeyExchangeMode> clientKeyExchangeModes;
   std::vector<SignatureScheme> clientSignatureAlgorithms;
   folly::Optional<bool> clientSessionIdSent;
+  folly::Optional<Random> clientRandom;
 };
 
 class State {
