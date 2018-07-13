@@ -10,6 +10,7 @@
 
 #include <fizz/client/AsyncFizzClient.h>
 #include <fizz/client/ClientExtensions.h>
+#include <fizz/client/PskCache.h>
 #include <folly/io/async/test/MockAsyncTransport.h>
 
 namespace fizz {
@@ -25,17 +26,17 @@ class MockClientStateMachine : public ClientStateMachine {
           std::shared_ptr<const FizzClientContext> context,
           std::shared_ptr<const CertificateVerifier>,
           folly::Optional<std::string> host,
-          folly::Optional<std::string> pskIdentity,
+          folly::Optional<CachedPsk> cachedPsk,
           const std::shared_ptr<ClientExtensions>& extensions));
   Actions processConnect(
       const State& state,
       std::shared_ptr<const FizzClientContext> context,
       std::shared_ptr<const CertificateVerifier> verifier,
       folly::Optional<std::string> host,
-      folly::Optional<std::string> pskIdentity,
+      folly::Optional<CachedPsk> cachedPsk,
       const std::shared_ptr<ClientExtensions>& extensions) override {
     return *_processConnect(
-        state, context, verifier, host, pskIdentity, extensions);
+        state, context, verifier, host, cachedPsk, extensions);
   }
 
   MOCK_METHOD2(

@@ -8,6 +8,7 @@
 
 #include <fizz/client/ClientProtocol.h>
 
+#include <fizz/client/PskCache.h>
 #include <fizz/crypto/Utils.h>
 #include <fizz/protocol/CertificateVerifier.h>
 #include <fizz/protocol/Protocol.h>
@@ -139,14 +140,14 @@ Actions ClientStateMachine::processConnect(
     std::shared_ptr<const FizzClientContext> context,
     std::shared_ptr<const CertificateVerifier> verifier,
     Optional<std::string> sni,
-    Optional<std::string> pskIdentity,
+    Optional<CachedPsk> cachedPsk,
     const std::shared_ptr<ClientExtensions>& extensions) {
   Connect connect;
   connect.context = std::move(context);
   connect.sni = std::move(sni);
   connect.verifier = std::move(verifier);
   connect.extensions = extensions;
-  connect.pskIdentity = std::move(pskIdentity);
+  connect.cachedPsk = std::move(cachedPsk);
   return detail::processEvent(state, std::move(connect));
 }
 
@@ -265,11 +266,9 @@ Actions handleInvalidEvent(const State& state, Event event, Param param) {
 
 namespace sm {
 
-static folly::Optional<CachedPsk> getPsk(
+static folly::Optional<CachedPsk> validatePsk(
     const FizzClientContext& context,
-    const std::string& host) {
-  auto psk = context.getPsk(host);
-
+    folly::Optional<CachedPsk> psk) {
   if (!psk) {
     return folly::none;
   }
@@ -506,12 +505,8 @@ EventHandler<ClientTypes, StateEnum::Uninitialized, Event::Connect>::handle(
 
   auto context = std::move(connect.context);
 
-  auto pskIdentity = std::move(connect.pskIdentity);
-
-  folly::Optional<CachedPsk> psk;
-  if (pskIdentity) {
-    psk = getPsk(*context, *pskIdentity);
-  }
+  folly::Optional<CachedPsk> psk =
+      validatePsk(*context, std::move(connect.cachedPsk));
 
   auto random = context->getFactory()->makeRandom();
 
@@ -622,7 +617,6 @@ EventHandler<ClientTypes, StateEnum::Uninitialized, Event::Connect>::handle(
                     writeRecordLayer = std::move(writeRecordLayer),
                     keyExchangers = std::move(keyExchangers),
                     sni = std::move(connect.sni),
-                    pskIdentity = std::move(pskIdentity),
                     random = std::move(random),
                     legacySessionId = std::move(legacySessionId),
                     psk = std::move(psk),
@@ -636,7 +630,6 @@ EventHandler<ClientTypes, StateEnum::Uninitialized, Event::Connect>::handle(
     newState.writeRecordLayer() = std::move(writeRecordLayer);
     newState.keyExchangers() = std::move(keyExchangers);
     newState.sni() = std::move(sni);
-    newState.pskIdentity() = std::move(pskIdentity);
     newState.clientRandom() = std::move(random);
     newState.legacySessionId() = std::move(legacySessionId);
     newState.attemptedPsk() = std::move(psk);
@@ -1595,33 +1588,26 @@ EventHandler<ClientTypes, StateEnum::Established, Event::NewSessionTicket>::
   auto derivedResumptionSecret = state.keyScheduler()->getResumptionSecret(
       state.resumptionSecret()->coalesce(), nst.ticket_nonce->coalesce());
 
-  if (!state.pskIdentity()) {
-    VLOG(5) << "Ignoring NewSessionTicket due to no identity";
-    return actions();
-  }
-
   auto pskRange = nst.ticket->coalesce();
   auto secretRange = derivedResumptionSecret->coalesce();
 
-  CachedPsk psk;
-  psk.psk = std::string(pskRange.begin(), pskRange.end());
-  psk.secret = std::string(secretRange.begin(), secretRange.end());
-  psk.type = PskType::Resumption;
-  psk.version = *state.version();
-  psk.cipher = *state.cipher();
-  psk.group = state.group();
-  psk.serverCert = state.serverCert();
-  psk.clientCert = state.clientCert();
-  psk.alpn = state.alpn();
-  psk.ticketAgeAdd = nst.ticket_age_add;
-  psk.ticketIssueTime = std::chrono::system_clock::now();
-  psk.ticketExpirationTime = std::chrono::system_clock::now() +
+  NewCachedPsk newCachedPsk;
+  newCachedPsk.psk.psk = std::string(pskRange.begin(), pskRange.end());
+  newCachedPsk.psk.secret = std::string(secretRange.begin(), secretRange.end());
+  newCachedPsk.psk.type = PskType::Resumption;
+  newCachedPsk.psk.version = *state.version();
+  newCachedPsk.psk.cipher = *state.cipher();
+  newCachedPsk.psk.group = state.group();
+  newCachedPsk.psk.serverCert = state.serverCert();
+  newCachedPsk.psk.clientCert = state.clientCert();
+  newCachedPsk.psk.alpn = state.alpn();
+  newCachedPsk.psk.ticketAgeAdd = nst.ticket_age_add;
+  newCachedPsk.psk.ticketIssueTime = std::chrono::system_clock::now();
+  newCachedPsk.psk.ticketExpirationTime = std::chrono::system_clock::now() +
       std::chrono::seconds(nst.ticket_lifetime);
-  psk.maxEarlyDataSize = getMaxEarlyDataSize(nst);
+  newCachedPsk.psk.maxEarlyDataSize = getMaxEarlyDataSize(nst);
 
-  state.context()->putPsk(*state.pskIdentity(), std::move(psk));
-
-  return actions();
+  return actions(std::move(newCachedPsk));
 }
 
 Actions

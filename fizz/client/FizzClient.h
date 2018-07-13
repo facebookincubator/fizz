@@ -10,6 +10,7 @@
 
 #include <fizz/client/ClientProtocol.h>
 #include <fizz/client/FizzClientContext.h>
+#include <fizz/client/PskCache.h>
 #include <fizz/protocol/DefaultCertificateVerifier.h>
 #include <fizz/protocol/FizzBase.h>
 
@@ -29,7 +30,7 @@ class FizzClient : public FizzBase<
       std::shared_ptr<const FizzClientContext> context,
       std::shared_ptr<const CertificateVerifier> verifier,
       folly::Optional<std::string> sni,
-      folly::Optional<std::string> pskIdentity,
+      folly::Optional<CachedPsk> cachedPsk,
       const std::shared_ptr<ClientExtensions>& extensions = nullptr);
 
   /**

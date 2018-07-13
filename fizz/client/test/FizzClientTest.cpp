@@ -10,6 +10,7 @@
 #include <gtest/gtest.h>
 
 #include <fizz/client/FizzClient.h>
+#include <fizz/client/PskCache.h>
 #include <fizz/client/test/Mocks.h>
 
 using namespace folly;
@@ -63,26 +64,32 @@ TEST_F(FizzClientTest, TestConnect) {
       _processConnect(_, _, _, _, _, _))
       .WillOnce(InvokeWithoutArgs([] { return Actions(); }));
   const auto sni = std::string("www.example.com");
-  fizzClient_->fizzClient_.connect(context_, nullptr, sni, sni);
+  fizzClient_->fizzClient_.connect(context_, nullptr, sni, folly::none);
 }
 
 TEST_F(FizzClientTest, TestConnectPskIdentity) {
+  std::string psk("psk");
   EXPECT_CALL(
       *MockClientStateMachineInstance::instance,
       _processConnect(_, _, _, _, _, _))
-      .WillOnce(Invoke([](const State&,
-                          std::shared_ptr<const FizzClientContext> context,
-                          std::shared_ptr<const CertificateVerifier> verifier,
-                          folly::Optional<std::string> sni,
-                          folly::Optional<std::string> pskIdentity,
-                          const std::shared_ptr<ClientExtensions>& extensions) {
-        EXPECT_EQ(pskIdentity, "meta");
-        EXPECT_EQ(sni, "www.example.com");
-        return Actions();
-      }));
+      .WillOnce(
+          Invoke([psk](
+                     const State&,
+                     std::shared_ptr<const FizzClientContext> context,
+                     std::shared_ptr<const CertificateVerifier> verifier,
+                     folly::Optional<std::string> sni,
+                     folly::Optional<CachedPsk> cachedPsk,
+                     const std::shared_ptr<ClientExtensions>& extensions) {
+            EXPECT_TRUE(cachedPsk);
+            EXPECT_EQ(cachedPsk->psk, psk);
+            EXPECT_EQ(sni, "www.example.com");
+            return Actions();
+          }));
   const auto sni = std::string("www.example.com");
-  const auto pskid = std::string("meta");
-  fizzClient_->fizzClient_.connect(context_, nullptr, sni, pskid);
+  CachedPsk cachedPsk;
+  cachedPsk.psk = psk;
+  fizzClient_->fizzClient_.connect(
+      context_, nullptr, sni, std::move(cachedPsk));
 }
 } // namespace test
 } // namespace client

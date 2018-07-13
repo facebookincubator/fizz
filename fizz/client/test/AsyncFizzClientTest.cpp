@@ -54,7 +54,8 @@ class AsyncFizzClientTest : public Test {
   void SetUp() override {
     context_ = std::make_shared<FizzClientContext>();
     context_->setSendEarlyData(true);
-    context_->setPskCache(std::make_shared<BasicPskCache>());
+    mockPskCache_ = std::make_shared<MockPskCache>();
+    context_->setPskCache(mockPskCache_);
     socket_ = new MockAsyncTransport();
     auto transport = AsyncTransportWrapper::UniquePtr(socket_);
     client_.reset(new AsyncFizzClientT<MockClientStateMachineInstance>(
@@ -86,7 +87,7 @@ class AsyncFizzClientTest : public Test {
     EXPECT_CALL(*machine_, _processConnect(_, _, _, _, _, _))
         .WillOnce(InvokeWithoutArgs([]() { return Actions(); }));
     const auto sni = std::string("www.example.com");
-    client_->connect(&handshakeCallback_, nullptr, sni, sni);
+    client_->connect(&handshakeCallback_, nullptr, sni, pskIdentity_);
   }
 
   void fullHandshakeSuccess(
@@ -159,6 +160,7 @@ class AsyncFizzClientTest : public Test {
 
   AsyncFizzClientT<MockClientStateMachineInstance>::UniquePtr client_;
   std::shared_ptr<FizzClientContext> context_;
+  std::shared_ptr<MockPskCache> mockPskCache_;
   MockAsyncTransport* socket_;
   MockClientStateMachineInstance* machine_;
   AsyncTransportWrapper::ReadCallback* socketReadCallback_;
@@ -167,6 +169,7 @@ class AsyncFizzClientTest : public Test {
   MockWriteCallback writeCallback_;
   EventBase evb_;
   MockReplaySafetyCallback mockReplayCallback_;
+  folly::Optional<std::string> pskIdentity_{"pskIdentity"};
 };
 
 MATCHER_P(BufMatches, expected, "") {
@@ -361,7 +364,7 @@ TEST_F(AsyncFizzClientTest, TestSocketConnect) {
       &cb,
       nullptr,
       std::string("www.example.com"),
-      std::string("pskid"));
+      pskIdentity_);
 
   evb.loop();
 }
@@ -378,7 +381,7 @@ TEST_F(AsyncFizzClientTest, TestSocketConnectWithUnsupportedTransport) {
       &cb,
       nullptr,
       std::string("www.example.com"),
-      std::string("pskid"));
+      pskIdentity_);
 }
 
 TEST_F(AsyncFizzClientTest, TestHandshakeConnectWithUnopenedSocket) {
@@ -398,7 +401,7 @@ TEST_F(AsyncFizzClientTest, TestHandshakeConnectWithUnopenedSocket) {
       &handshakeCallback_,
       nullptr,
       std::string("www.example.com"),
-      std::string("pskid"));
+      pskIdentity_);
   EXPECT_FALSE(evbClient->good());
 }
 
@@ -426,7 +429,7 @@ TEST_F(AsyncFizzClientTest, TestSocketConnectWithOpenSocket) {
       &cb,
       nullptr,
       std::string("www.example.com"),
-      std::string("pskid"));
+      pskIdentity_);
 }
 
 TEST_F(AsyncFizzClientTest, TestApplicationProtocol) {
@@ -903,11 +906,9 @@ TEST_F(AsyncFizzClientTest, TestEarlyRejectSameClientIdentity) {
 }
 
 TEST_F(AsyncFizzClientTest, TestEarlyRejectRemovePsk) {
-  context_->putPsk("www.example.com", CachedPsk());
-  EXPECT_TRUE(context_->getPsk("www.example.com").hasValue());
+  EXPECT_CALL(*mockPskCache_, removePsk(*pskIdentity_));
   completeEarlyHandshake();
   fullHandshakeSuccess(false);
-  EXPECT_FALSE(context_->getPsk("www.example.com").hasValue());
 }
 
 TEST_F(AsyncFizzClientTest, TestEarlyWriteRejected) {
@@ -943,6 +944,30 @@ TEST_F(AsyncFizzClientTest, TestErrorStopsActions) {
   socketReadCallback_->readBufferAvailable(IOBuf::copyBuffer("Data"));
   EXPECT_TRUE(client_->error());
 }
+
+TEST_F(AsyncFizzClientTest, TestNewCachedPskActions) {
+  completeHandshake();
+  client_->setReadCB(&readCallback_);
+  EXPECT_CALL(*machine_, _processSocketData(_, _))
+      .WillOnce(InvokeWithoutArgs(
+          []() { return detail::actions(NewCachedPsk(), WaitForData()); }));
+  EXPECT_CALL(*mockPskCache_, putPsk(*pskIdentity_, _));
+  socketReadCallback_->readBufferAvailable(
+      IOBuf::copyBuffer("NewSessionTicket"));
+}
+
+TEST_F(AsyncFizzClientTest, TestNewCachedPskActionsWithEmptyPskIdentity) {
+  pskIdentity_ = folly::none;
+  completeHandshake();
+  client_->setReadCB(&readCallback_);
+  EXPECT_CALL(*machine_, _processSocketData(_, _))
+      .WillOnce(InvokeWithoutArgs(
+          []() { return detail::actions(NewCachedPsk(), WaitForData()); }));
+  EXPECT_CALL(*mockPskCache_, putPsk(_, _)).Times(0);
+  socketReadCallback_->readBufferAvailable(
+      IOBuf::copyBuffer("NewSessionTicket"));
+}
+
 } // namespace test
 } // namespace client
 } // namespace fizz

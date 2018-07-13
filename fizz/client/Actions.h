@@ -9,6 +9,7 @@
 #pragma once
 
 #include <boost/variant.hpp>
+#include <fizz/client/PskCache.h>
 #include <fizz/protocol/Actions.h>
 #include <fizz/protocol/Params.h>
 
@@ -57,6 +58,15 @@ struct ReportEarlyWriteFailed {
   EarlyAppWrite write;
 };
 
+/**
+ * Reports that there is a new psk sent by the server to cache on the client.
+ *
+ * The application is responsible for caching the new psk.
+ */
+struct NewCachedPsk {
+  CachedPsk psk;
+};
+
 using Action = boost::variant<
     DeliverAppData,
     WriteToSocket,
@@ -65,7 +75,8 @@ using Action = boost::variant<
     ReportEarlyWriteFailed,
     ReportError,
     MutateState,
-    WaitForData>;
+    WaitForData,
+    NewCachedPsk>;
 // TODO use small_vector once we are sure it is portable.
 using Actions = std::vector<Action>;
 

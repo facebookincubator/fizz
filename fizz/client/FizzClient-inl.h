@@ -14,14 +14,14 @@ void FizzClient<ActionMoveVisitor, SM>::connect(
     std::shared_ptr<const FizzClientContext> context,
     std::shared_ptr<const CertificateVerifier> verifier,
     folly::Optional<std::string> sni,
-    folly::Optional<std::string> pskIdentity,
+    folly::Optional<CachedPsk> cachedPsk,
     const std::shared_ptr<ClientExtensions>& extensions) {
   this->addProcessingActions(this->machine_.processConnect(
       this->state_,
       std::move(context),
       std::move(verifier),
       std::move(sni),
-      std::move(pskIdentity),
+      std::move(cachedPsk),
       extensions));
 }
 

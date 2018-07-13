@@ -75,11 +75,16 @@ void AsyncFizzClientT<SM>::connect(
   }
 
   startTransportReads();
+
+  folly::Optional<CachedPsk> cachedPsk = folly::none;
+  if (pskIdentity) {
+    cachedPsk = fizzContext_->getPsk(*pskIdentity);
+  }
   fizzClient_.connect(
       fizzContext_,
       std::move(verifier),
       std::move(sni),
-      std::move(pskIdentity),
+      std::move(cachedPsk),
       extensions_);
 }
 
@@ -247,8 +252,17 @@ void AsyncFizzClientT<SM>::closeNow() {
 template <typename SM>
 void AsyncFizzClientT<SM>::connectSuccess() noexcept {
   startTransportReads();
+
+  folly::Optional<CachedPsk> cachedPsk = folly::none;
+  if (pskIdentity_) {
+    cachedPsk = fizzContext_->getPsk(*pskIdentity_);
+  }
   fizzClient_.connect(
-      fizzContext_, std::move(verifier_), sni_, pskIdentity_, extensions_);
+      fizzContext_,
+      std::move(verifier_),
+      sni_,
+      std::move(cachedPsk),
+      extensions_);
 }
 
 template <typename SM>
@@ -515,6 +529,15 @@ void AsyncFizzClientT<SM>::ActionMoveVisitor::operator()(WaitForData&) {
 template <typename SM>
 void AsyncFizzClientT<SM>::ActionMoveVisitor::operator()(MutateState& mutator) {
   mutator(client_.state_);
+}
+
+template <typename SM>
+void AsyncFizzClientT<SM>::ActionMoveVisitor::operator()(
+    NewCachedPsk& newCachedPsk) {
+  if (client_.pskIdentity_) {
+    client_.fizzContext_->putPsk(
+        *client_.pskIdentity_, std::move(newCachedPsk.psk));
+  }
 }
 
 template <typename SM>

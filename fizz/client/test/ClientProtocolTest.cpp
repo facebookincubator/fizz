@@ -108,7 +108,6 @@ class ClientProtocolTest : public ProtocolTest<ClientTypes, Actions> {
     state_.clientRandom() = std::move(random);
     state_.legacySessionId() = IOBuf::create(0);
     state_.sni() = "www.hostname.com";
-    state_.pskIdentity() = "www.hostname.com";
     state_.verifier() = verifier_;
     state_.earlyDataType() = EarlyDataType::NotAttempted;
     state_.state() = StateEnum::ExpectingServerHello;
@@ -222,7 +221,6 @@ class ClientProtocolTest : public ProtocolTest<ClientTypes, Actions> {
     state_.state() = StateEnum::Established;
     state_.resumptionSecret() = IOBuf::copyBuffer("resumptionsecret");
     state_.sni() = "www.hostname.com";
-    state_.pskIdentity() = "www.hostname.com";
     state_.serverCert() = mockLeaf_;
   }
 
@@ -295,12 +293,10 @@ TEST_F(ClientProtocolTest, TestConnectFlow) {
         mockKex = ret.get();
         return ret;
       }));
-  EXPECT_CALL(*pskCache_, getPsk("hostname-meta")).WillOnce(Return(none));
 
   Connect connect;
   connect.context = context_;
   connect.sni = "www.hostname.com";
-  connect.pskIdentity = "hostname-meta";
   connect.verifier = verifier_;
   auto actions = detail::processEvent(state_, std::move(connect));
 
@@ -317,7 +313,6 @@ TEST_F(ClientProtocolTest, TestConnectFlow) {
   EXPECT_EQ(state_.keyExchangers()->at(NamedGroup::x25519).get(), mockKex);
   EXPECT_EQ(state_.verifier(), verifier_);
   EXPECT_EQ(*state_.sni(), "www.hostname.com");
-  EXPECT_EQ(*state_.pskIdentity(), "hostname-meta");
   Random random;
   random.fill(0x44);
   EXPECT_EQ(*state_.clientRandom(), random);
@@ -360,7 +355,6 @@ TEST_F(ClientProtocolTest, TestConnectPskFlow) {
         mockKex = ret.get();
         return ret;
       }));
-  EXPECT_CALL(*pskCache_, getPsk("www.hostname.com")).WillOnce(Return(psk));
   mockKeyScheduler_ = new MockKeyScheduler();
   mockHandshakeContext_ = new MockHandshakeContext();
   Sequence contextSeq;
@@ -392,7 +386,7 @@ TEST_F(ClientProtocolTest, TestConnectPskFlow) {
   Connect connect;
   connect.context = context_;
   connect.sni = "www.hostname.com";
-  connect.pskIdentity = "www.hostname.com";
+  connect.cachedPsk = psk;
   connect.verifier = verifier_;
   auto actions = detail::processEvent(state_, std::move(connect));
 
@@ -407,7 +401,6 @@ TEST_F(ClientProtocolTest, TestConnectPskFlow) {
   EXPECT_EQ(state_.keyExchangers()->at(NamedGroup::x25519).get(), mockKex);
   EXPECT_EQ(state_.verifier(), verifier_);
   EXPECT_EQ(*state_.sni(), "www.hostname.com");
-  EXPECT_EQ(*state_.pskIdentity(), "www.hostname.com");
   Random random;
   random.fill(0x44);
   EXPECT_EQ(*state_.clientRandom(), random);
@@ -453,7 +446,6 @@ TEST_F(ClientProtocolTest, TestConnectPskEarlyFlow) {
         mockKex = ret.get();
         return ret;
       }));
-  EXPECT_CALL(*pskCache_, getPsk("www.hostname.com")).WillOnce(Return(psk));
   mockKeyScheduler_ = new MockKeyScheduler();
   mockHandshakeContext_ = new MockHandshakeContext();
   Sequence contextSeq;
@@ -509,8 +501,8 @@ TEST_F(ClientProtocolTest, TestConnectPskEarlyFlow) {
 
   Connect connect;
   connect.context = context_;
-  connect.pskIdentity = "www.hostname.com";
   connect.sni = "www.hostname.com";
+  connect.cachedPsk = psk;
   connect.verifier = verifier_;
   auto actions = detail::processEvent(state_, std::move(connect));
 
@@ -528,7 +520,6 @@ TEST_F(ClientProtocolTest, TestConnectPskEarlyFlow) {
   EXPECT_EQ(state_.keyExchangers()->at(NamedGroup::x25519).get(), mockKex);
   EXPECT_EQ(state_.verifier(), verifier_);
   EXPECT_EQ(*state_.sni(), "www.hostname.com");
-  EXPECT_EQ(*state_.pskIdentity(), "www.hostname.com");
   Random random;
   random.fill(0x44);
   EXPECT_EQ(*state_.clientRandom(), random);
@@ -550,7 +541,6 @@ TEST_F(ClientProtocolTest, TestConnectPskEarlyFlow) {
 TEST_F(ClientProtocolTest, TestConnectNoHostNoPsk) {
   Connect connect;
   connect.context = context_;
-  EXPECT_CALL(*pskCache_, getPsk(_)).Times(0);
   auto actions = detail::processEvent(state_, std::move(connect));
   expectActions<MutateState, WriteToSocket>(actions);
   processStateMutations(actions);
@@ -561,10 +551,9 @@ TEST_F(ClientProtocolTest, TestConnectNoHostNoPsk) {
 TEST_F(ClientProtocolTest, TestConnectPskBadVersion) {
   Connect connect;
   connect.context = context_;
-  connect.pskIdentity = "www.hostname.com";
   auto psk = getCachedPsk();
   psk.version = ProtocolVersion::tls_1_2;
-  EXPECT_CALL(*pskCache_, getPsk("www.hostname.com")).WillOnce(Return(psk));
+  connect.cachedPsk = psk;
   auto actions = detail::processEvent(state_, std::move(connect));
   expectActions<MutateState, WriteToSocket>(actions);
   processStateMutations(actions);
@@ -576,10 +565,9 @@ TEST_F(ClientProtocolTest, TestConnectPskBadCipher) {
   context_->setSupportedCiphers({CipherSuite::TLS_AES_128_GCM_SHA256});
   Connect connect;
   connect.context = context_;
-  connect.pskIdentity = "www.hostname.com";
   auto psk = getCachedPsk();
   psk.cipher = CipherSuite::TLS_AES_256_GCM_SHA384;
-  EXPECT_CALL(*pskCache_, getPsk("www.hostname.com")).WillOnce(Return(psk));
+  connect.cachedPsk = psk;
   auto actions = detail::processEvent(state_, std::move(connect));
   expectActions<MutateState, WriteToSocket>(actions);
   processStateMutations(actions);
@@ -591,30 +579,26 @@ TEST_F(ClientProtocolTest, TestConnectSeparatePskIdentity) {
   Connect connect;
   connect.context = context_;
   connect.sni = "www.hostname.com";
-  connect.pskIdentity = "meta-identity";
   auto psk = getCachedPsk();
-  EXPECT_CALL(*pskCache_, getPsk("meta-identity")).WillOnce(Return(psk));
+  connect.cachedPsk = psk;
   auto actions = detail::processEvent(state_, std::move(connect));
   expectActions<MutateState, WriteToSocket>(actions);
   processStateMutations(actions);
   EXPECT_EQ(state_.state(), StateEnum::ExpectingServerHello);
   EXPECT_EQ(state_.attemptedPsk()->psk, psk.psk);
-  EXPECT_EQ(*state_.pskIdentity(), "meta-identity");
 }
 
 TEST_F(ClientProtocolTest, TestConnectPskIdentityWithoutSni) {
   Connect connect;
   connect.context = context_;
-  connect.pskIdentity = "meta-identity";
   auto psk = getCachedPsk();
-  EXPECT_CALL(*pskCache_, getPsk("meta-identity")).WillOnce(Return(psk));
+  connect.cachedPsk = psk;
   auto actions = detail::processEvent(state_, std::move(connect));
   expectActions<MutateState, WriteToSocket>(actions);
   processStateMutations(actions);
   EXPECT_EQ(state_.state(), StateEnum::ExpectingServerHello);
   EXPECT_EQ(state_.attemptedPsk()->psk, psk.psk);
   EXPECT_FALSE(state_.sni().hasValue());
-  EXPECT_EQ(*state_.pskIdentity(), "meta-identity");
 }
 
 TEST_F(ClientProtocolTest, TestConnectNoSni) {
@@ -731,11 +715,10 @@ TEST_F(ClientProtocolTest, TestConnectCachedGroup) {
 
   auto psk = getCachedPsk();
   psk.group = NamedGroup::secp256r1;
-  EXPECT_CALL(*pskCache_, getPsk("www.hostname.com")).WillOnce(Return(psk));
 
   Connect connect;
   connect.context = context_;
-  connect.pskIdentity = "www.hostname.com";
+  connect.cachedPsk = psk;
   auto actions = detail::processEvent(state_, std::move(connect));
   expectActions<MutateState, WriteToSocket>(actions);
   processStateMutations(actions);
@@ -759,10 +742,9 @@ TEST_F(ClientProtocolTest, TestConnectNoShares) {
 TEST_F(ClientProtocolTest, TestConnectPskEarly) {
   Connect connect;
   connect.context = context_;
-  connect.pskIdentity = "www.hostname.com";
   auto psk = getCachedPsk();
   psk.maxEarlyDataSize = 1000;
-  EXPECT_CALL(*pskCache_, getPsk("www.hostname.com")).WillOnce(Return(psk));
+  connect.cachedPsk = psk;
   auto actions = detail::processEvent(state_, std::move(connect));
   expectActions<MutateState, WriteToSocket, ReportEarlyHandshakeSuccess>(
       actions);
@@ -775,11 +757,10 @@ TEST_F(ClientProtocolTest, TestConnectPskEarly) {
 TEST_F(ClientProtocolTest, TestConnectPskEarlyNoAlpn) {
   Connect connect;
   connect.context = context_;
-  connect.pskIdentity = "www.hostname.com";
   auto psk = getCachedPsk();
   psk.maxEarlyDataSize = 1000;
   psk.alpn = folly::none;
-  EXPECT_CALL(*pskCache_, getPsk("www.hostname.com")).WillOnce(Return(psk));
+  connect.cachedPsk = psk;
   auto actions = detail::processEvent(state_, std::move(connect));
   expectActions<MutateState, WriteToSocket, ReportEarlyHandshakeSuccess>(
       actions);
@@ -794,10 +775,9 @@ TEST_F(ClientProtocolTest, TestConnectPskEarlyDisabled) {
   context_->setSendEarlyData(false);
   Connect connect;
   connect.context = context_;
-  connect.pskIdentity = "www.hostname.com";
   auto psk = getCachedPsk();
   psk.maxEarlyDataSize = 1000;
-  EXPECT_CALL(*pskCache_, getPsk("www.hostname.com")).WillOnce(Return(psk));
+  connect.cachedPsk = psk;
   auto actions = detail::processEvent(state_, std::move(connect));
   expectActions<MutateState, WriteToSocket>(actions);
   processStateMutations(actions);
@@ -809,11 +789,10 @@ TEST_F(ClientProtocolTest, TestConnectPskEarlyDisabled) {
 TEST_F(ClientProtocolTest, TestConnectPskEarlyAlpnMismatch) {
   Connect connect;
   connect.context = context_;
-  connect.pskIdentity = "www.hostname.com";
   auto psk = getCachedPsk();
   psk.maxEarlyDataSize = 1000;
   psk.alpn = "gopher";
-  EXPECT_CALL(*pskCache_, getPsk("www.hostname.com")).WillOnce(Return(psk));
+  connect.cachedPsk = psk;
   auto actions = detail::processEvent(state_, std::move(connect));
   expectActions<MutateState, WriteToSocket>(actions);
   processStateMutations(actions);
@@ -839,10 +818,9 @@ TEST_F(ClientProtocolTest, TestConnectCompatEarly) {
   context_->setCompatibilityMode(true);
   Connect connect;
   connect.context = context_;
-  connect.pskIdentity = "www.hostname.com";
   auto psk = getCachedPsk();
   psk.maxEarlyDataSize = 1000;
-  EXPECT_CALL(*pskCache_, getPsk("www.hostname.com")).WillOnce(Return(psk));
+  connect.cachedPsk = psk;
   auto actions = detail::processEvent(state_, std::move(connect));
   expectActions<MutateState, WriteToSocket, ReportEarlyHandshakeSuccess>(
       actions);
@@ -1435,10 +1413,9 @@ TEST_F(ClientProtocolTest, TestServerHelloBadSessionId) {
 TEST_F(ClientProtocolTest, TestConnectPskKeNoShares) {
   Connect connect;
   connect.context = context_;
-  connect.pskIdentity = "www.hostname.com";
   auto psk = getCachedPsk();
   psk.group = folly::none;
-  EXPECT_CALL(*pskCache_, getPsk("www.hostname.com")).WillOnce(Return(psk));
+  connect.cachedPsk = psk;
   auto actions = detail::processEvent(state_, std::move(connect));
   expectActions<MutateState, WriteToSocket>(actions);
   processStateMutations(actions);
@@ -1531,7 +1508,6 @@ TEST_F(ClientProtocolTest, TestHelloRetryRequestFlow) {
   EXPECT_EQ(state_.keyExchangers()->at(NamedGroup::secp256r1).get(), mockKex);
   EXPECT_EQ(state_.verifier(), verifier_);
   EXPECT_EQ(*state_.sni(), "www.hostname.com");
-  EXPECT_EQ(*state_.pskIdentity(), "www.hostname.com");
   Random random;
   random.fill(0x66);
   EXPECT_EQ(*state_.clientRandom(), random);
@@ -1620,7 +1596,6 @@ TEST_F(ClientProtocolTest, TestHelloRetryRequestPskFlow) {
   EXPECT_EQ(state_.keyExchangers()->at(NamedGroup::secp256r1).get(), mockKex);
   EXPECT_EQ(state_.verifier(), verifier_);
   EXPECT_EQ(*state_.sni(), "www.hostname.com");
-  EXPECT_EQ(*state_.pskIdentity(), "www.hostname.com");
   Random random;
   random.fill(0x66);
   EXPECT_EQ(*state_.clientRandom(), random);
@@ -2526,21 +2501,19 @@ TEST_F(ClientProtocolTest, TestNewSessionTicket) {
           []() { return IOBuf::copyBuffer("derivedsecret"); }));
   state_.clientCert() = mockClientCert_;
 
-  EXPECT_CALL(*pskCache_, putPsk("www.hostname.com", _))
-      .WillOnce(Invoke([this](const std::string&, CachedPsk psk) {
-        EXPECT_EQ(psk.psk, "ticket");
-        EXPECT_EQ(psk.secret, "derivedsecret");
-        EXPECT_EQ(psk.type, PskType::Resumption);
-        EXPECT_EQ(psk.version, ProtocolVersion::tls_1_3);
-        EXPECT_EQ(psk.cipher, CipherSuite::TLS_AES_128_GCM_SHA256);
-        EXPECT_EQ(psk.group, NamedGroup::x25519);
-        EXPECT_EQ(psk.serverCert, mockLeaf_);
-        EXPECT_EQ(psk.clientCert, mockClientCert_);
-        EXPECT_EQ(psk.maxEarlyDataSize, 0);
-        EXPECT_EQ(psk.ticketAgeAdd, 0x44444444);
-      }));
   auto actions = detail::processEvent(state_, TestMessages::newSessionTicket());
-  EXPECT_TRUE(actions.empty());
+  auto newCachedPsk = expectSingleAction<NewCachedPsk>(std::move(actions));
+  auto psk = newCachedPsk.psk;
+  EXPECT_EQ(psk.psk, "ticket");
+  EXPECT_EQ(psk.secret, "derivedsecret");
+  EXPECT_EQ(psk.type, PskType::Resumption);
+  EXPECT_EQ(psk.version, ProtocolVersion::tls_1_3);
+  EXPECT_EQ(psk.cipher, CipherSuite::TLS_AES_128_GCM_SHA256);
+  EXPECT_EQ(psk.group, NamedGroup::x25519);
+  EXPECT_EQ(psk.serverCert, mockLeaf_);
+  EXPECT_EQ(psk.clientCert, mockClientCert_);
+  EXPECT_EQ(psk.maxEarlyDataSize, 0);
+  EXPECT_EQ(psk.ticketAgeAdd, 0x44444444);
 }
 
 TEST_F(ClientProtocolTest, TestNewSessionTicketNonce) {
@@ -2552,12 +2525,11 @@ TEST_F(ClientProtocolTest, TestNewSessionTicketNonce) {
           RangeMatches("resumptionsecret"), RangeMatches("nonce")))
       .WillOnce(InvokeWithoutArgs(
           []() { return IOBuf::copyBuffer("derivedsecret"); }));
-  EXPECT_CALL(*pskCache_, putPsk("www.hostname.com", _));
 
   auto nst = TestMessages::newSessionTicket();
   nst.ticket_nonce = IOBuf::copyBuffer("nonce");
   auto actions = detail::processEvent(state_, std::move(nst));
-  EXPECT_TRUE(actions.empty());
+  expectSingleAction<NewCachedPsk>(std::move(actions));
 }
 
 TEST_F(ClientProtocolTest, TestNewSessionTicketEarlyData) {
@@ -2569,35 +2541,22 @@ TEST_F(ClientProtocolTest, TestNewSessionTicketEarlyData) {
       .WillOnce(InvokeWithoutArgs(
           []() { return IOBuf::copyBuffer("derivedsecret"); }));
 
-  EXPECT_CALL(*pskCache_, putPsk("www.hostname.com", _))
-      .WillOnce(Invoke([this](const std::string&, CachedPsk psk) {
-        EXPECT_EQ(psk.psk, "ticket");
-        EXPECT_EQ(psk.secret, "derivedsecret");
-        EXPECT_EQ(psk.type, PskType::Resumption);
-        EXPECT_EQ(psk.version, ProtocolVersion::tls_1_3);
-        EXPECT_EQ(psk.cipher, CipherSuite::TLS_AES_128_GCM_SHA256);
-        EXPECT_EQ(psk.group, NamedGroup::x25519);
-        EXPECT_EQ(psk.serverCert, mockLeaf_);
-        EXPECT_EQ(psk.maxEarlyDataSize, 2000);
-        EXPECT_EQ(psk.ticketAgeAdd, 0x44444444);
-      }));
-
   auto nst = TestMessages::newSessionTicket();
   TicketEarlyData early;
   early.max_early_data_size = 2000;
   nst.extensions.push_back(encodeExtension(std::move(early)));
   auto actions = detail::processEvent(state_, std::move(nst));
-  EXPECT_TRUE(actions.empty());
-}
-
-TEST_F(ClientProtocolTest, TestNewSessionTicketNoIdentity) {
-  setupAcceptingData();
-  state_.pskIdentity() = none;
-  state_.sni() = none;
-
-  EXPECT_CALL(*pskCache_, putPsk(_, _)).Times(0);
-  auto actions = detail::processEvent(state_, TestMessages::newSessionTicket());
-  EXPECT_TRUE(actions.empty());
+  auto newCachedPsk = expectSingleAction<NewCachedPsk>(std::move(actions));
+  auto psk = newCachedPsk.psk;
+  EXPECT_EQ(psk.psk, "ticket");
+  EXPECT_EQ(psk.secret, "derivedsecret");
+  EXPECT_EQ(psk.type, PskType::Resumption);
+  EXPECT_EQ(psk.version, ProtocolVersion::tls_1_3);
+  EXPECT_EQ(psk.cipher, CipherSuite::TLS_AES_128_GCM_SHA256);
+  EXPECT_EQ(psk.group, NamedGroup::x25519);
+  EXPECT_EQ(psk.serverCert, mockLeaf_);
+  EXPECT_EQ(psk.maxEarlyDataSize, 2000);
+  EXPECT_EQ(psk.ticketAgeAdd, 0x44444444);
 }
 
 TEST_F(ClientProtocolTest, TestAppData) {

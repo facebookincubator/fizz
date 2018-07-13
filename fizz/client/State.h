@@ -179,13 +179,6 @@ class State {
   }
 
   /**
-   * Server identity for PSK storage/retrieval
-   */
-  const folly::Optional<std::string>& pskIdentity() const {
-    return pskIdentity_;
-  }
-
-  /**
    * Certificate verifier to be used to verify server certificates on this
    * connection.
    */
@@ -440,10 +433,6 @@ class State {
     return sni_;
   }
 
-  auto& pskIdentity() {
-    return pskIdentity_;
-  }
-
   auto& clientRandom() {
     return clientRandom_;
   }
@@ -528,7 +517,6 @@ class State {
   folly::Optional<EarlyDataType> earlyDataType_;
   folly::Optional<std::string> alpn_;
   folly::Optional<std::string> sni_;
-  folly::Optional<std::string> pskIdentity_;
 
   folly::Optional<EarlyDataParams> earlyDataParams_;
 

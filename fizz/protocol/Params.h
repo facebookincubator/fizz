@@ -10,6 +10,7 @@
 
 #include <boost/variant.hpp>
 #include <fizz/client/ClientExtensions.h>
+#include <fizz/client/PskCache.h>
 #include <fizz/protocol/Events.h>
 #include <fizz/record/Types.h>
 #include <folly/io/IOBuf.h>
@@ -38,7 +39,7 @@ struct Connect : EventType<Event::Connect> {
   std::shared_ptr<const client::FizzClientContext> context;
   std::shared_ptr<const CertificateVerifier> verifier;
   folly::Optional<std::string> sni;
-  folly::Optional<std::string> pskIdentity;
+  folly::Optional<client::CachedPsk> cachedPsk;
   std::shared_ptr<ClientExtensions> extensions;
 };
 
