@@ -33,6 +33,14 @@ class DefaultCertificateVerifierTest : public testing::Test {
 
   void TearDown() override {}
 
+  static int allowSelfSignedLeafCertCallback(int ok, X509_STORE_CTX* ctx) {
+    if (X509_STORE_CTX_get_error(ctx) ==
+        X509_V_ERR_DEPTH_ZERO_SELF_SIGNED_CERT) {
+      return 1;
+    }
+    return ok;
+  }
+
  protected:
   CertAndKey rootCertAndKey_;
   CertAndKey leafCertAndKey_;
@@ -55,9 +63,28 @@ TEST_F(DefaultCertificateVerifierTest, TestVerifySelfSignedCert) {
       verifier_->verify({getPeerCert(selfsigned)}), std::runtime_error);
 }
 
+TEST_F(DefaultCertificateVerifierTest, TestVerifySelfSignedCertWithOverride) {
+  auto selfsigned = createCert("self", false, nullptr);
+  verifier_->setCustomVerifyCallback(
+      &DefaultCertificateVerifierTest::allowSelfSignedLeafCertCallback);
+  // Will not throw because the override allows for this type of error.
+  verifier_->verify({getPeerCert(selfsigned)});
+}
+
 TEST_F(DefaultCertificateVerifierTest, TestVerifyWithIntermediateMissing) {
   auto subauth = createCert("subauth", true, &rootCertAndKey_);
   auto subleaf = createCert("subleaf", false, &subauth);
+  EXPECT_THROW(verifier_->verify({getPeerCert(subleaf)}), std::runtime_error);
+}
+
+TEST_F(
+    DefaultCertificateVerifierTest,
+    TestVerifyWithIntermediateMissingWithOverride) {
+  auto subauth = createCert("subauth", true, &rootCertAndKey_);
+  auto subleaf = createCert("subleaf", false, &subauth);
+  verifier_->setCustomVerifyCallback(
+      &DefaultCertificateVerifierTest::allowSelfSignedLeafCertCallback);
+  // The override is irrelevant to the error here. So exception is expected.
   EXPECT_THROW(verifier_->verify({getPeerCert(subleaf)}), std::runtime_error);
 }
 

@@ -64,6 +64,10 @@ void DefaultCertificateVerifier::verify(
     throw std::runtime_error("failed to set default verification method");
   }
 
+  if (customVerifyCallback_) {
+    X509_STORE_CTX_set_verify_cb(ctx.get(), customVerifyCallback_);
+  }
+
   folly::ssl::X509VerifyParam param(X509_VERIFY_PARAM_new());
   if (!param) {
     throw std::bad_alloc();
@@ -138,4 +142,5 @@ DefaultCertificateVerifier::getCertificateRequestExtensions() const {
   exts.push_back(encodeExtension(authorities_));
   return exts;
 }
+
 } // namespace fizz

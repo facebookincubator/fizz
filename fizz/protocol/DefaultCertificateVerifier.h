@@ -26,10 +26,13 @@ enum class VerificationContext { Client, Server };
  */
 class DefaultCertificateVerifier : public CertificateVerifier {
  public:
+  using X509VerifyCallback = int (*)(int, X509_STORE_CTX*);
+
   explicit DefaultCertificateVerifier(VerificationContext context)
       : context_(context), x509Store_(nullptr) {
     createAuthorities();
   }
+
   explicit DefaultCertificateVerifier(
       VerificationContext context,
       folly::ssl::X509StoreUniquePtr&& store)
@@ -39,6 +42,10 @@ class DefaultCertificateVerifier : public CertificateVerifier {
 
   void verify(const std::vector<std::shared_ptr<const fizz::PeerCert>>& certs)
       const override;
+
+  void setCustomVerifyCallback(X509VerifyCallback cb) {
+    customVerifyCallback_ = cb;
+  }
 
   void setX509Store(folly::ssl::X509StoreUniquePtr&& store) {
     x509Store_ = std::move(store);
@@ -55,8 +62,10 @@ class DefaultCertificateVerifier : public CertificateVerifier {
 
  private:
   void createAuthorities();
+
   CertificateAuthorities authorities_;
   VerificationContext context_;
   folly::ssl::X509StoreUniquePtr x509Store_;
+  X509VerifyCallback customVerifyCallback_{nullptr};
 };
 } // namespace fizz
