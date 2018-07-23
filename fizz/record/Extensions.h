@@ -15,10 +15,14 @@ namespace fizz {
 
 struct SignatureAlgorithms {
   std::vector<SignatureScheme> supported_signature_algorithms;
+  static constexpr ExtensionType extension_type =
+      ExtensionType::signature_algorithms;
 };
 
 struct SupportedGroups {
   std::vector<NamedGroup> named_group_list;
+  static constexpr ExtensionType extension_type =
+      ExtensionType::supported_groups;
 };
 
 struct KeyShareEntry {
@@ -30,18 +34,21 @@ struct ClientKeyShare {
   std::vector<KeyShareEntry> client_shares;
 
   bool preDraft23{false};
+  static constexpr ExtensionType extension_type = ExtensionType::key_share;
 };
 
 struct ServerKeyShare {
   KeyShareEntry server_share;
 
   bool preDraft23{false};
+  static constexpr ExtensionType extension_type = ExtensionType::key_share;
 };
 
 struct HelloRetryRequestKeyShare {
   NamedGroup selected_group;
 
   bool preDraft23{false};
+  static constexpr ExtensionType extension_type = ExtensionType::key_share;
 };
 
 struct PskIdentity {
@@ -56,34 +63,48 @@ struct PskBinder {
 struct ClientPresharedKey {
   std::vector<PskIdentity> identities;
   std::vector<PskBinder> binders;
+  static constexpr ExtensionType extension_type = ExtensionType::pre_shared_key;
 };
 
 struct ServerPresharedKey {
   uint16_t selected_identity;
+  static constexpr ExtensionType extension_type = ExtensionType::pre_shared_key;
 };
 
-struct ClientEarlyData {};
+struct ClientEarlyData {
+  static constexpr ExtensionType extension_type = ExtensionType::early_data;
+};
 
-struct ServerEarlyData {};
+struct ServerEarlyData {
+  static constexpr ExtensionType extension_type = ExtensionType::early_data;
+};
 
 struct TicketEarlyData {
   uint32_t max_early_data_size;
+  static constexpr ExtensionType extension_type = ExtensionType::early_data;
 };
 
 struct Cookie {
   Buf cookie;
+  static constexpr ExtensionType extension_type = ExtensionType::cookie;
 };
 
 struct SupportedVersions {
   std::vector<ProtocolVersion> versions;
+  static constexpr ExtensionType extension_type =
+      ExtensionType::supported_versions;
 };
 
 struct ServerSupportedVersions {
   ProtocolVersion selected_version;
+  static constexpr ExtensionType extension_type =
+      ExtensionType::supported_versions;
 };
 
 struct PskKeyExchangeModes {
   std::vector<PskKeyExchangeMode> modes;
+  static constexpr ExtensionType extension_type =
+      ExtensionType::psk_key_exchange_modes;
 };
 
 struct ProtocolName {
@@ -92,6 +113,8 @@ struct ProtocolName {
 
 struct ProtocolNameList {
   std::vector<ProtocolName> protocol_name_list;
+  static constexpr ExtensionType extension_type =
+      ExtensionType::application_layer_protocol_negotiation;
 };
 
 enum class ServerNameType : uint8_t { host_name = 0 };
@@ -105,6 +128,7 @@ struct ServerNameList {
   std::vector<ServerName> server_name_list;
 
   bool useAlternateCodePoint{false};
+  static constexpr ExtensionType extension_type = ExtensionType::server_name;
 };
 
 struct DistinguishedName {
@@ -113,10 +137,18 @@ struct DistinguishedName {
 
 struct CertificateAuthorities {
   std::vector<DistinguishedName> authorities;
+  static constexpr ExtensionType extension_type =
+      ExtensionType::certificate_authorities;
 };
 
 template <class T>
 folly::Optional<T> getExtension(const std::vector<Extension>& extension);
+template <class T>
+T getExtension(folly::io::Cursor& cursor);
+
+template <>
+folly::Optional<ClientKeyShare> getExtension(
+    const std::vector<Extension>& extensions);
 
 template <class T>
 Extension encodeExtension(const T& t);

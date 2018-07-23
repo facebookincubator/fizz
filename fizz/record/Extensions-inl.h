@@ -23,29 +23,32 @@ inline std::vector<Extension>::const_iterator findExtension(
   return extensions.end();
 }
 
-template <>
-inline folly::Optional<SignatureAlgorithms> getExtension(
+template <class T>
+inline folly::Optional<T> getExtension(
     const std::vector<Extension>& extensions) {
-  auto it = findExtension(extensions, ExtensionType::signature_algorithms);
+  auto it = findExtension(extensions, T::extension_type);
   if (it == extensions.end()) {
     return folly::none;
   }
+  folly::io::Cursor cs{it->extension_data.get()};
+  auto ret = getExtension<T>(cs);
+  if (!cs.isAtEnd()) {
+    throw std::runtime_error("didn't read entire extension");
+  }
+  return ret;
+}
+
+template <>
+inline SignatureAlgorithms getExtension(folly::io::Cursor& cs) {
   SignatureAlgorithms sigs;
-  folly::io::Cursor cursor(it->extension_data.get());
-  detail::readVector<uint16_t>(sigs.supported_signature_algorithms, cursor);
+  detail::readVector<uint16_t>(sigs.supported_signature_algorithms, cs);
   return sigs;
 }
 
 template <>
-inline folly::Optional<SupportedGroups> getExtension(
-    const std::vector<Extension>& extensions) {
-  auto it = findExtension(extensions, ExtensionType::supported_groups);
-  if (it == extensions.end()) {
-    return folly::none;
-  }
+inline SupportedGroups getExtension(folly::io::Cursor& cs) {
   SupportedGroups groups;
-  folly::io::Cursor cursor(it->extension_data.get());
-  detail::readVector<uint16_t>(groups.named_group_list, cursor);
+  detail::readVector<uint16_t>(groups.named_group_list, cs);
   return groups;
 }
 
@@ -61,198 +64,104 @@ inline folly::Optional<ClientKeyShare> getExtension(
     }
     share.preDraft23 = true;
   }
-  folly::io::Cursor cursor(it->extension_data.get());
-  detail::readVector<uint16_t>(share.client_shares, cursor);
+  folly::io::Cursor cs{it->extension_data.get()};
+  detail::readVector<uint16_t>(share.client_shares, cs);
   return std::move(share);
 }
 
 template <>
-inline folly::Optional<ServerKeyShare> getExtension(
-    const std::vector<Extension>& extensions) {
+inline ServerKeyShare getExtension(folly::io::Cursor& cs) {
   ServerKeyShare share;
-  auto it = findExtension(extensions, ExtensionType::key_share);
-  if (it == extensions.end()) {
-    it = findExtension(extensions, ExtensionType::key_share_old);
-    if (it == extensions.end()) {
-      return folly::none;
-    }
-    share.preDraft23 = true;
-  }
-  folly::io::Cursor cursor(it->extension_data.get());
-  detail::read(share.server_share, cursor);
-  return std::move(share);
+  detail::read(share.server_share, cs);
+  return share;
 }
 
 template <>
-inline folly::Optional<HelloRetryRequestKeyShare> getExtension(
-    const std::vector<Extension>& extensions) {
+inline HelloRetryRequestKeyShare getExtension(folly::io::Cursor& cs) {
   HelloRetryRequestKeyShare share;
-  auto it = findExtension(extensions, ExtensionType::key_share);
-  if (it == extensions.end()) {
-    it = findExtension(extensions, ExtensionType::key_share_old);
-    if (it == extensions.end()) {
-      return folly::none;
-    }
-    share.preDraft23 = true;
-  }
-  folly::io::Cursor cursor(it->extension_data.get());
-  detail::read(share.selected_group, cursor);
-  return std::move(share);
+  detail::read(share.selected_group, cs);
+  return share;
 }
 
 template <>
-inline folly::Optional<ClientPresharedKey> getExtension(
-    const std::vector<Extension>& extensions) {
-  auto it = findExtension(extensions, ExtensionType::pre_shared_key);
-  if (it == extensions.end()) {
-    return folly::none;
-  }
+inline ClientPresharedKey getExtension(folly::io::Cursor& cs) {
   ClientPresharedKey share;
-  folly::io::Cursor cursor(it->extension_data.get());
-  detail::readVector<uint16_t>(share.identities, cursor);
-  detail::readVector<uint16_t>(share.binders, cursor);
-  return std::move(share);
+  detail::readVector<uint16_t>(share.identities, cs);
+  detail::readVector<uint16_t>(share.binders, cs);
+  return share;
 }
 
 template <>
-inline folly::Optional<ServerPresharedKey> getExtension(
-    const std::vector<Extension>& extensions) {
-  auto it = findExtension(extensions, ExtensionType::pre_shared_key);
-  if (it == extensions.end()) {
-    return folly::none;
-  }
+inline ServerPresharedKey getExtension(folly::io::Cursor& cs) {
   ServerPresharedKey share;
-  folly::io::Cursor cursor(it->extension_data.get());
-  detail::read(share.selected_identity, cursor);
-  return std::move(share);
+  detail::read(share.selected_identity, cs);
+  return share;
 }
 
 template <>
-inline folly::Optional<ClientEarlyData> getExtension(
-    const std::vector<Extension>& extensions) {
-  auto it = findExtension(extensions, ExtensionType::early_data);
-  if (it == extensions.end()) {
-    return folly::none;
-  }
+inline ClientEarlyData getExtension(folly::io::Cursor& /* unused */) {
   return ClientEarlyData();
 }
 
 template <>
-inline folly::Optional<ServerEarlyData> getExtension(
-    const std::vector<Extension>& extensions) {
-  auto it = findExtension(extensions, ExtensionType::early_data);
-  if (it == extensions.end()) {
-    return folly::none;
-  }
+inline ServerEarlyData getExtension(folly::io::Cursor& /* unused */) {
   return ServerEarlyData();
 }
 
 template <>
-inline folly::Optional<TicketEarlyData> getExtension(
-    const std::vector<Extension>& extensions) {
-  auto it = findExtension(extensions, ExtensionType::early_data);
-  if (it == extensions.end()) {
-    return folly::none;
-  }
+inline TicketEarlyData getExtension(folly::io::Cursor& cs) {
   TicketEarlyData early;
-  folly::io::Cursor cursor(it->extension_data.get());
-  detail::read(early.max_early_data_size, cursor);
-  return std::move(early);
+  detail::read(early.max_early_data_size, cs);
+  return early;
 }
 
 template <>
-inline folly::Optional<Cookie> getExtension(
-    const std::vector<Extension>& extensions) {
-  auto it = findExtension(extensions, ExtensionType::cookie);
-  if (it == extensions.end()) {
-    return folly::none;
-  }
+inline Cookie getExtension(folly::io::Cursor& cs) {
   Cookie cookie;
-  folly::io::Cursor cursor(it->extension_data.get());
-  detail::readBuf<uint16_t>(cookie.cookie, cursor);
-  return std::move(cookie);
+  detail::readBuf<uint16_t>(cookie.cookie, cs);
+  return cookie;
 }
 
 template <>
-inline folly::Optional<SupportedVersions> getExtension(
-    const std::vector<Extension>& extensions) {
-  auto it = findExtension(extensions, ExtensionType::supported_versions);
-  if (it == extensions.end()) {
-    return folly::none;
-  }
+inline SupportedVersions getExtension(folly::io::Cursor& cs) {
   SupportedVersions versions;
-  folly::io::Cursor cursor(it->extension_data.get());
-  detail::readVector<uint8_t>(versions.versions, cursor);
+  detail::readVector<uint8_t>(versions.versions, cs);
   return versions;
 }
 
 template <>
-inline folly::Optional<ServerSupportedVersions> getExtension(
-    const std::vector<Extension>& extensions) {
-  auto it = findExtension(extensions, ExtensionType::supported_versions);
-  if (it == extensions.end()) {
-    return folly::none;
-  }
+inline ServerSupportedVersions getExtension(folly::io::Cursor& cs) {
   ServerSupportedVersions versions;
-  folly::io::Cursor cursor(it->extension_data.get());
-  detail::read(versions.selected_version, cursor);
+  detail::read(versions.selected_version, cs);
   return versions;
 }
 
 template <>
-inline folly::Optional<PskKeyExchangeModes> getExtension(
-    const std::vector<Extension>& extensions) {
-  auto it = findExtension(extensions, ExtensionType::psk_key_exchange_modes);
-  if (it == extensions.end()) {
-    return folly::none;
-  }
+inline PskKeyExchangeModes getExtension(folly::io::Cursor& cs) {
   PskKeyExchangeModes modes;
-  folly::io::Cursor cursor(it->extension_data.get());
-  detail::readVector<uint8_t>(modes.modes, cursor);
+  detail::readVector<uint8_t>(modes.modes, cs);
   return modes;
 }
 
 template <>
-inline folly::Optional<ProtocolNameList> getExtension(
-    const std::vector<Extension>& extensions) {
-  auto it = findExtension(
-      extensions, ExtensionType::application_layer_protocol_negotiation);
-  if (it == extensions.end()) {
-    return folly::none;
-  }
+inline ProtocolNameList getExtension(folly::io::Cursor& cs) {
   ProtocolNameList names;
-  folly::io::Cursor cursor(it->extension_data.get());
-  detail::readVector<uint16_t>(names.protocol_name_list, cursor);
-  return std::move(names);
+  detail::readVector<uint16_t>(names.protocol_name_list, cs);
+  return names;
 }
 
 template <>
-inline folly::Optional<ServerNameList> getExtension(
-    const std::vector<Extension>& extensions) {
-  auto it = findExtension(extensions, ExtensionType::server_name);
-  if (it == extensions.end()) {
-    it = findExtension(extensions, ExtensionType::alternate_server_name);
-    if (it == extensions.end()) {
-      return folly::none;
-    }
-  }
+inline ServerNameList getExtension(folly::io::Cursor& cs) {
   ServerNameList names;
-  folly::io::Cursor cursor(it->extension_data.get());
-  detail::readVector<uint16_t>(names.server_name_list, cursor);
-  return std::move(names);
+  detail::readVector<uint16_t>(names.server_name_list, cs);
+  return names;
 }
 
 template <>
-inline folly::Optional<CertificateAuthorities> getExtension(
-    const std::vector<Extension>& extensions) {
-  auto it = findExtension(extensions, ExtensionType::certificate_authorities);
-  if (it == extensions.end()) {
-    return folly::none;
-  }
+inline CertificateAuthorities getExtension(folly::io::Cursor& cs) {
   CertificateAuthorities authorities;
-  folly::io::Cursor cursor(it->extension_data.get());
-  detail::readVector<uint16_t>(authorities.authorities, cursor);
-  return std::move(authorities);
+  detail::readVector<uint16_t>(authorities.authorities, cs);
+  return authorities;
 }
 
 template <>

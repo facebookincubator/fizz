@@ -21,7 +21,7 @@ using namespace testing;
 
 StringPiece alpn{"00100017001502683208737064792f332e3108687474702f312e31"};
 StringPiece sni{"0000001500130000107777772e66616365626f6f6b2e636f6d"};
-StringPiece helloRetryRequestKeyShare{"002800020017"};
+StringPiece helloRetryRequestKeyShare{"003300020017"};
 StringPiece clientEarlyData{"002a0000"};
 StringPiece serverEarlyData{"002a0000"};
 StringPiece ticketEarlyData{"002a000400000005"};
@@ -113,6 +113,18 @@ TEST_F(ExtensionsTest, TestCertificateAuthorities) {
       StringPiece("CN=Eternity, OU=Fizz, O=Facebook, C=US"));
 
   checkEncode(std::move(*ext), authorities);
+}
+
+TEST_F(ExtensionsTest, TestBadlyFormedExtension) {
+  auto buf = getBuf(sni);
+  buf->reserve(0, 1);
+  buf->append(1);
+  std::vector<Extension> exts;
+  Extension ext;
+  ext.extension_type = ExtensionType::server_name;
+  ext.extension_data = std::move(buf);
+  exts.push_back(std::move(ext));
+  EXPECT_THROW(getExtension<ServerNameList>(exts), std::runtime_error);
 }
 } // namespace test
 } // namespace fizz
