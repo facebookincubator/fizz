@@ -26,13 +26,13 @@ TEST(IOBufUtilTest, TrimBytes) {
   auto expected = IOBuf::copyBuffer("Ispeak");
   auto bufExpected = IOBuf::copyBuffer("helloworld");
   auto bufLen = buf->computeChainDataLength();
-  size_t trimLen = 6;
-  auto trimmed = trimBytes(*buf, trimLen);
+  constexpr size_t trimLen = 6;
+  std::array<uint8_t, trimLen> trimData;
+  folly::MutableByteRange trim(trimData);
+  trimBytes(*buf, trim);
 
   IOBufEqualTo eq;
-  EXPECT_FALSE(trimmed->isChained());
-  EXPECT_EQ(trimLen, trimmed->computeChainDataLength());
-  EXPECT_TRUE(eq(expected, trimmed));
+  EXPECT_EQ(expected->coalesce(), trim.castToConst());
   EXPECT_EQ(bufLen - trimLen, buf->computeChainDataLength());
   EXPECT_TRUE(eq(bufExpected, buf));
 }

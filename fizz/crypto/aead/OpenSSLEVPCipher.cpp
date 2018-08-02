@@ -20,12 +20,12 @@ bool decFunc(
     EVP_CIPHER_CTX*,
     const folly::IOBuf&,
     folly::IOBuf&,
-    folly::IOBuf&);
+    folly::MutableByteRange);
 bool decFuncBlocks(
     EVP_CIPHER_CTX*,
     const folly::IOBuf&,
     folly::IOBuf&,
-    folly::IOBuf&);
+    folly::MutableByteRange);
 
 void encFuncBlocks(
     EVP_CIPHER_CTX* encryptCtx,
@@ -101,13 +101,12 @@ bool decFuncBlocks(
     EVP_CIPHER_CTX* decryptCtx,
     const folly::IOBuf& ciphertext,
     folly::IOBuf& output,
-    folly::IOBuf& tag) {
-  auto tagLen = tag.computeChainDataLength();
+    folly::MutableByteRange tagOut) {
   if (EVP_CIPHER_CTX_ctrl(
           decryptCtx,
           EVP_CTRL_GCM_SET_TAG,
-          tagLen,
-          static_cast<void*>(tag.writableData())) != 1) {
+          tagOut.size(),
+          static_cast<void*>(tagOut.begin())) != 1) {
     throw std::runtime_error("Decryption error");
   }
 
@@ -154,7 +153,7 @@ bool decFunc(
     EVP_CIPHER_CTX* decryptCtx,
     const folly::IOBuf& ciphertext,
     folly::IOBuf& output,
-    folly::IOBuf& tag) {
+    folly::MutableByteRange tagOut) {
   int numWritten = 0;
   int outLen = 0;
   transformBuffer(
@@ -172,12 +171,12 @@ bool decFunc(
         numWritten += outLen;
       });
 
-  auto tagLen = tag.computeChainDataLength();
+  auto tagLen = tagOut.size();
   if (EVP_CIPHER_CTX_ctrl(
           decryptCtx,
           EVP_CTRL_GCM_SET_TAG,
           tagLen,
-          static_cast<void*>(tag.writableData())) != 1) {
+          static_cast<void*>(tagOut.begin())) != 1) {
     throw std::runtime_error("Decryption error");
   }
   return EVP_DecryptFinal_ex(
@@ -190,16 +189,22 @@ std::unique_ptr<folly::IOBuf> evpEncrypt(
     folly::ByteRange iv,
     size_t tagLen,
     bool useBlockOps,
+    size_t headroom,
     EVP_CIPHER_CTX* encryptCtx) {
   auto inputLength = plaintext->computeChainDataLength();
-  // Setup output buffer.
+  // Setup input and output buffers.
   std::unique_ptr<folly::IOBuf> output;
+  folly::IOBuf* input;
 
   if (plaintext->isShared()) {
-    output = folly::IOBuf::create(inputLength);
+    // create enough to also fit the tag and headroom
+    output = folly::IOBuf::create(headroom + inputLength + tagLen);
+    output->advance(headroom);
     output->append(inputLength);
+    input = plaintext.get();
   } else {
-    output = plaintext->clone();
+    output = std::move(plaintext);
+    input = output.get();
   }
 
   if (EVP_EncryptInit_ex(encryptCtx, nullptr, nullptr, nullptr, iv.data()) !=
@@ -225,18 +230,34 @@ std::unique_ptr<folly::IOBuf> evpEncrypt(
   }
 
   if (useBlockOps) {
-    encFuncBlocks(encryptCtx, *plaintext, *output);
+    encFuncBlocks(encryptCtx, *input, *output);
   } else {
-    encFunc(encryptCtx, *plaintext, *output);
+    encFunc(encryptCtx, *input, *output);
   }
 
-  std::unique_ptr<folly::IOBuf> tag = folly::IOBuf::create(tagLen);
-  tag->append(tagLen);
-  if (EVP_CIPHER_CTX_ctrl(
-          encryptCtx, EVP_CTRL_GCM_GET_TAG, tagLen, tag->writableData()) != 1) {
-    throw std::runtime_error("Encryption error");
+  // output is always something we can modify
+  auto tailRoom = output->prev()->tailroom();
+  if (tailRoom < tagLen) {
+    std::unique_ptr<folly::IOBuf> tag = folly::IOBuf::create(tagLen);
+    tag->append(tagLen);
+    if (EVP_CIPHER_CTX_ctrl(
+            encryptCtx, EVP_CTRL_GCM_GET_TAG, tagLen, tag->writableData()) !=
+        1) {
+      throw std::runtime_error("Encryption error");
+    }
+    output->prependChain(std::move(tag));
+  } else {
+    auto lastBuf = output->prev();
+    lastBuf->append(tagLen);
+    // we can copy into output directly
+    if (EVP_CIPHER_CTX_ctrl(
+            encryptCtx,
+            EVP_CTRL_GCM_GET_TAG,
+            tagLen,
+            lastBuf->writableTail() - tagLen) != 1) {
+      throw std::runtime_error("Encryption error");
+    }
   }
-  output->prependChain(std::move(tag));
   return output;
 }
 
@@ -244,24 +265,28 @@ folly::Optional<std::unique_ptr<folly::IOBuf>> evpDecrypt(
     std::unique_ptr<folly::IOBuf>&& ciphertext,
     const folly::IOBuf* associatedData,
     folly::ByteRange iv,
-    size_t tagLen,
+    folly::MutableByteRange tagOut,
     bool useBlockOps,
     EVP_CIPHER_CTX* decryptCtx) {
+  auto tagLen = tagOut.size();
   auto inputLength = ciphertext->computeChainDataLength();
   if (inputLength < tagLen) {
     return folly::none;
   }
   inputLength -= tagLen;
 
+  folly::IOBuf* input;
   std::unique_ptr<folly::IOBuf> output;
-  std::unique_ptr<folly::IOBuf> tag = trimBytes(*ciphertext, tagLen);
+  trimBytes(*ciphertext, tagOut);
   if (ciphertext->isShared()) {
     // If in is shared, then we have to make a copy of it.
     output = folly::IOBuf::create(inputLength);
     output->append(inputLength);
+    input = ciphertext.get();
   } else {
     // If in is not shared we can do decryption in-place.
-    output = ciphertext->clone();
+    output = std::move(ciphertext);
+    input = output.get();
   }
 
   if (EVP_DecryptInit_ex(decryptCtx, nullptr, nullptr, nullptr, iv.data()) !=
@@ -287,8 +312,8 @@ folly::Optional<std::unique_ptr<folly::IOBuf>> evpDecrypt(
   }
 
   auto decrypted = useBlockOps
-      ? decFuncBlocks(decryptCtx, *ciphertext, *output, *tag)
-      : decFunc(decryptCtx, *ciphertext, *output, *tag);
+      ? decFuncBlocks(decryptCtx, *input, *output, tagOut)
+      : decFunc(decryptCtx, *input, *output, tagOut);
   if (!decrypted) {
     return folly::none;
   }

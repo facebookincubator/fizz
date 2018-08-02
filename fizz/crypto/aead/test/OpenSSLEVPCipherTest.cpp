@@ -35,6 +35,8 @@ struct CipherParams {
   CipherSuite cipher;
 };
 
+constexpr size_t kHeadroom = 10;
+
 class OpenSSLEVPCipherTest : public ::testing::TestWithParam<CipherParams> {};
 
 std::unique_ptr<Aead> getCipher(const CipherParams& params) {
@@ -60,6 +62,7 @@ std::unique_ptr<Aead> getCipher(const CipherParams& params) {
   trafficKey.key = toIOBuf(params.key);
   trafficKey.iv = toIOBuf(params.iv);
   cipher->setKey(std::move(trafficKey));
+  cipher->setEncryptedBufferHeadroom(kHeadroom);
   return cipher;
 }
 
@@ -75,7 +78,7 @@ std::unique_ptr<IOBuf> copyBuffer(const folly::IOBuf& buf) {
   return out;
 }
 
-void callEncrypt(
+std::unique_ptr<folly::IOBuf> callEncrypt(
     std::unique_ptr<Aead>& cipher,
     const CipherParams& params,
     std::unique_ptr<IOBuf> plaintext = nullptr,
@@ -83,6 +86,7 @@ void callEncrypt(
   if (!plaintext) {
     plaintext = toIOBuf(params.plaintext);
   }
+
   if (!aad && !params.aad.empty()) {
     aad = toIOBuf(params.aad);
   }
@@ -94,6 +98,7 @@ void callEncrypt(
   EXPECT_EQ(
       out->computeChainDataLength(),
       ptCopy->computeChainDataLength() + cipher->getCipherOverhead());
+  return out;
 }
 
 void callDecrypt(
@@ -123,7 +128,15 @@ void callDecrypt(
 
 TEST_P(OpenSSLEVPCipherTest, TestEncrypt) {
   auto cipher = getCipher(GetParam());
-  callEncrypt(cipher, GetParam());
+  auto out = callEncrypt(cipher, GetParam());
+  EXPECT_EQ(out->headroom(), 0);
+}
+
+TEST_P(OpenSSLEVPCipherTest, TestEncryptWithTagRoom) {
+  auto cipher = getCipher(GetParam());
+  auto input = toIOBuf(GetParam().plaintext, 0, cipher->getCipherOverhead());
+  auto out = callEncrypt(cipher, GetParam(), std::move(input));
+  EXPECT_FALSE(out->isChained());
 }
 
 TEST_P(OpenSSLEVPCipherTest, TestEncryptReusedCipher) {
@@ -140,11 +153,59 @@ TEST_P(OpenSSLEVPCipherTest, TestEncryptChunkedInput) {
   callEncrypt(cipher, GetParam(), std::move(chunkedInput));
 }
 
+TEST_P(OpenSSLEVPCipherTest, TestEncryptChunkedInputWithTagRoomHead) {
+  auto cipher = getCipher(GetParam());
+  auto input = toIOBuf(GetParam().plaintext);
+  auto overhead = cipher->getCipherOverhead();
+  auto creator = [overhead](size_t len, size_t num) {
+    if (num == 0) {
+      // create a buffer w/ room for the tag
+      auto result = IOBuf::create(len + overhead);
+      result->reserve(0, overhead);
+      return result;
+    }
+    return IOBuf::create(len);
+  };
+  auto chunkedInput = chunkIOBuf(std::move(input), 3, creator);
+  auto out = callEncrypt(cipher, GetParam(), std::move(chunkedInput));
+  // even though the head element has tailroom, we don't use it since it's
+  // the last element that needs to have it for copying tag in directly
+  EXPECT_GE(out->tailroom(), overhead);
+}
+
+TEST_P(OpenSSLEVPCipherTest, TestEncryptChunkedInputWithTagRoomLast) {
+  auto cipher = getCipher(GetParam());
+  auto input = toIOBuf(GetParam().plaintext);
+  auto overhead = cipher->getCipherOverhead();
+  size_t chunks = 3;
+  auto creator = [=](size_t len, size_t num) {
+    if (num == chunks - 1) {
+      // create a buffer w/ room for the tag
+      auto result = IOBuf::create(len + overhead);
+      result->reserve(0, overhead);
+      return result;
+    }
+    return IOBuf::create(len);
+  };
+  auto chunkedInput = chunkIOBuf(std::move(input), chunks, creator);
+  auto lastTailRoom = chunkedInput->prev()->tailroom();
+  auto numElements = chunkedInput->countChainElements();
+  auto out = callEncrypt(cipher, GetParam(), std::move(chunkedInput));
+  // we expect the last element in the chain to have tailroom - overhead
+  // left
+  EXPECT_EQ(out->prev()->tailroom(), lastTailRoom - overhead);
+  EXPECT_EQ(out->countChainElements(), numElements);
+}
+
 TEST_P(OpenSSLEVPCipherTest, TestEncryptChunkedSharedInput) {
   auto cipher = getCipher(GetParam());
   auto input = toIOBuf(GetParam().plaintext);
   auto chunkedInput = chunkIOBuf(std::move(input), 3);
-  callEncrypt(cipher, GetParam(), chunkedInput->clone());
+  auto out = callEncrypt(cipher, GetParam(), chunkedInput->clone());
+  // we expect headroom of record size and a single buffer in the
+  // the chain
+  EXPECT_EQ(out->headroom(), kHeadroom);
+  EXPECT_FALSE(out->isChained());
 }
 
 TEST_P(OpenSSLEVPCipherTest, TestEncryptChunkedAad) {

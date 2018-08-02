@@ -50,6 +50,13 @@ class Aead {
       uint64_t seqNum) const = 0;
 
   /**
+   * Set a hint to the AEAD about how much space to try to leave as headroom for
+   * ciphertexts returned from encrypt.  Implementations may or may not honor
+   * this.
+   */
+  virtual void setEncryptedBufferHeadroom(size_t headroom) = 0;
+
+  /**
    * Decrypt ciphertext. Will throw if the ciphertext does not decrypt
    * successfully.
    */

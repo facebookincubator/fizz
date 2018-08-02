@@ -12,10 +12,8 @@ using namespace folly;
 
 namespace fizz {
 
-std::unique_ptr<IOBuf> trimBytes(IOBuf& buf, size_t trim) {
-  auto trimmedBytes = IOBuf::create(trim);
-  trimmedBytes->append(trim);
-
+void trimBytes(IOBuf& buf, folly::MutableByteRange trimmed) {
+  auto trim = trimmed.size();
   size_t currentTrim = trim;
   IOBuf* current = buf.prev();
   size_t chainElements = buf.countChainElements();
@@ -23,14 +21,13 @@ std::unique_ptr<IOBuf> trimBytes(IOBuf& buf, size_t trim) {
     size_t toTrim =
         std::min(currentTrim, static_cast<size_t>(current->length()));
     memcpy(
-        trimmedBytes->writableData() + (currentTrim - toTrim),
+        trimmed.begin() + (currentTrim - toTrim),
         current->data() + (current->length() - toTrim),
         toTrim);
     current->trimEnd(toTrim);
     currentTrim -= toTrim;
     current = current->prev();
   }
-  return trimmedBytes;
 }
 
 void XOR(ByteRange first, MutableByteRange second) {

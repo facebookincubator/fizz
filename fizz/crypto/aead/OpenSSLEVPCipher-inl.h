@@ -12,7 +12,7 @@ folly::Optional<std::unique_ptr<folly::IOBuf>> evpDecrypt(
     std::unique_ptr<folly::IOBuf>&& ciphertext,
     const folly::IOBuf* associatedData,
     folly::ByteRange iv,
-    size_t tagLen,
+    folly::MutableByteRange tag,
     bool useBlockOps,
     EVP_CIPHER_CTX* decryptCtx);
 
@@ -22,6 +22,7 @@ std::unique_ptr<folly::IOBuf> evpEncrypt(
     folly::ByteRange iv,
     size_t tagLen,
     bool useBlockOps,
+    size_t headroom,
     EVP_CIPHER_CTX* encryptCtx);
 } // namespace detail
 
@@ -120,6 +121,7 @@ std::unique_ptr<folly::IOBuf> OpenSSLEVPCipher<EVPImpl>::encrypt(
       iv,
       EVPImpl::kTagLength,
       EVPImpl::kOperatesInBlocks,
+      headroom_,
       encryptCtx_.get());
 }
 
@@ -130,11 +132,14 @@ OpenSSLEVPCipher<EVPImpl>::tryDecrypt(
     const folly::IOBuf* associatedData,
     uint64_t seqNum) const {
   auto iv = createIV(seqNum);
+  // buffer to copy the tag into when we decrypt
+  std::array<uint8_t, EVPImpl::kTagLength> tagData;
+  folly::MutableByteRange tagOut{tagData};
   return detail::evpDecrypt(
       std::move(ciphertext),
       associatedData,
       iv,
-      EVPImpl::kTagLength,
+      tagOut,
       EVPImpl::kOperatesInBlocks,
       decryptCtx_.get());
 }

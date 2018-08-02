@@ -11,15 +11,21 @@
 #include <folly/Memory.h>
 #include <folly/String.h>
 #include <folly/io/IOBuf.h>
+#include <functional>
 
 namespace fizz {
 namespace test {
 
+using BufCreator =
+    std::function<std::unique_ptr<folly::IOBuf>(size_t len, size_t bufNum)>;
+
 // Converts the hex encoded string to an IOBuf.
-std::unique_ptr<folly::IOBuf> toIOBuf(std::string hexData);
+std::unique_ptr<folly::IOBuf>
+toIOBuf(std::string hexData, size_t headroom = 0, size_t tailroom = 0);
 
 std::unique_ptr<folly::IOBuf> chunkIOBuf(
     std::unique_ptr<folly::IOBuf> input,
-    size_t chunks);
+    size_t chunks,
+    BufCreator creator = nullptr);
 } // namespace test
 } // namespace fizz

@@ -137,21 +137,37 @@ Buf EncryptedWriteRecordLayer::write(TLSMessage&& msg) const {
   folly::IOBufQueue queue;
   queue.append(std::move(msg.fragment));
   std::unique_ptr<folly::IOBuf> outBuf;
+  std::array<uint8_t, kEncryptedHeaderSize> headerBuf;
+  auto header = folly::IOBuf::wrapBufferAsValue(folly::range(headerBuf));
+  aead_->setEncryptedBufferHeadroom(kEncryptedHeaderSize);
   while (!queue.empty()) {
     auto dataBuf = getBufToEncrypt(queue);
-
     // Currently we never send padding.
-    auto encryptedFooter = folly::IOBuf::create(sizeof(ContentType));
-    folly::io::Appender appender(encryptedFooter.get(), sizeof(ContentType));
-    appender.writeBE(static_cast<ContentTypeType>(msg.type));
-    dataBuf->prependChain(std::move(encryptedFooter));
+
+    // check if we have enough room to add the encrypted footer.
+    if (!dataBuf->isShared() &&
+        dataBuf->prev()->tailroom() >= sizeof(ContentType)) {
+      // extend it and add it
+      folly::io::Appender appender(dataBuf.get(), 0);
+      appender.writeBE(static_cast<ContentTypeType>(msg.type));
+    } else {
+      // not enough or shared - let's add enough for the tag as well
+      auto encryptedFooter = folly::IOBuf::create(
+          sizeof(ContentType) + aead_->getCipherOverhead());
+      folly::io::Appender appender(encryptedFooter.get(), 0);
+      appender.writeBE(static_cast<ContentTypeType>(msg.type));
+      dataBuf->prependChain(std::move(encryptedFooter));
+    }
 
     if (seqNum_ == std::numeric_limits<uint64_t>::max()) {
       throw std::runtime_error("max write seq num");
     }
 
-    auto header = folly::IOBuf::create(kEncryptedHeaderSize);
-    appender = folly::io::Appender(header.get(), kEncryptedHeaderSize);
+    // we will either be able to memcpy directly into the ciphertext or
+    // need to create a new buf to insert before the ciphertext but we need
+    // it for additional data
+    header.clear();
+    folly::io::Appender appender(&header, 0);
     appender.writeBE(
         static_cast<ContentTypeType>(ContentType::application_data));
     appender.writeBE(static_cast<ProtocolVersionType>(recordVersion_));
@@ -160,14 +176,24 @@ Buf EncryptedWriteRecordLayer::write(TLSMessage&& msg) const {
     appender.writeBE<uint16_t>(ciphertextLength);
 
     auto cipherText = aead_->encrypt(
-        std::move(dataBuf),
-        useAdditionalData_ ? header.get() : nullptr,
-        seqNum_++);
-    header->prependChain(std::move(cipherText));
-    if (!outBuf) {
-      outBuf = std::move(header);
+        std::move(dataBuf), useAdditionalData_ ? &header : nullptr, seqNum_++);
+
+    std::unique_ptr<folly::IOBuf> record;
+    if (!cipherText->isShared() &&
+        cipherText->headroom() >= kEncryptedHeaderSize) {
+      // prepend and then write it in
+      cipherText->prepend(kEncryptedHeaderSize);
+      memcpy(cipherText->writableData(), header.data(), header.length());
+      record = std::move(cipherText);
     } else {
-      outBuf->prependChain(std::move(header));
+      record = folly::IOBuf::copyBuffer(header.data(), header.length());
+      record->prependChain(std::move(cipherText));
+    }
+
+    if (!outBuf) {
+      outBuf = std::move(record);
+    } else {
+      outBuf->prependChain(std::move(record));
     }
   }
 

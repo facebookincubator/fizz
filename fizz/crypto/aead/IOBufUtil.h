@@ -16,10 +16,10 @@
 namespace fizz {
 
 /**
- * Trims trim bytes at the end of a chained IOBuf and returns
- * the trimmed bytes.
+ * Trims trimmed.size() bytes at the end of a chained IOBuf and fills in
+ * trimmed.
  */
-std::unique_ptr<folly::IOBuf> trimBytes(folly::IOBuf& buf, size_t trim);
+void trimBytes(folly::IOBuf& buf, folly::MutableByteRange trimmed);
 
 /**
  * XOR first and second and store the result in second.

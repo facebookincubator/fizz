@@ -43,9 +43,10 @@ class EncryptedRecordTest : public testing::Test {
 
   IOBufEqualTo eq_;
 
-  static Buf getBuf(const std::string& hex) {
+  static Buf
+  getBuf(const std::string& hex, size_t headroom = 0, size_t tailroom = 0) {
     auto data = unhexlify(hex);
-    return IOBuf::copyBuffer(data.data(), data.size());
+    return IOBuf::copyBuffer(data.data(), data.size(), headroom, tailroom);
   }
 
   void addToQueue(const std::string& hex) {
@@ -267,6 +268,21 @@ TEST_F(EncryptedRecordTest, TestWriteAppData) {
         return getBuf("abcd1234abcd");
       }));
   auto buf = write_.write(std::move(msg));
+  expectSame(buf, "1703030006abcd1234abcd");
+}
+
+TEST_F(EncryptedRecordTest, TestWriteAppDataInPlace) {
+  TLSMessage msg{ContentType::application_data, getBuf("1234567890", 5, 17)};
+  EXPECT_CALL(*writeAead_, _encrypt(_, _, 0))
+      .WillOnce(Invoke([](std::unique_ptr<IOBuf>& buf, const IOBuf*, uint64_t) {
+        // footer should have been written w/o chaining
+        EXPECT_FALSE(buf->isChained());
+        expectSame(buf, "123456789017");
+        // we need to return room for the header
+        return getBuf("abcd1234abcd", 5, 0);
+      }));
+  auto buf = write_.write(std::move(msg));
+  EXPECT_FALSE(buf->isChained());
   expectSame(buf, "1703030006abcd1234abcd");
 }
 

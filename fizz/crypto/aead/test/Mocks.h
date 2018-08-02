@@ -22,6 +22,7 @@ class MockAead : public Aead {
   MOCK_CONST_METHOD0(keyLength, size_t());
   MOCK_CONST_METHOD0(ivLength, size_t());
   MOCK_CONST_METHOD0(getCipherOverhead, size_t());
+  MOCK_METHOD1(setEncryptedBufferHeadroom, void(size_t));
 
   MOCK_METHOD1(_setKey, void(TrafficKey& key));
   void setKey(TrafficKey key) override {

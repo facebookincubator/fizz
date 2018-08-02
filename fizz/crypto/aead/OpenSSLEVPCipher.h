@@ -55,6 +55,10 @@ class OpenSSLEVPCipher : public Aead {
     return EVPImpl::kIVLength;
   }
 
+  // If plaintext is not shared, encrypt in place and append a tag,
+  // either in the tail room if available, or by appending a new buf
+  // If plaintext is shared, alloc a new output and encrypt to output.
+  // The returned buffer will have head room == headroom_
   std::unique_ptr<folly::IOBuf> encrypt(
       std::unique_ptr<folly::IOBuf>&& plaintext,
       const folly::IOBuf* associatedData,
@@ -67,6 +71,10 @@ class OpenSSLEVPCipher : public Aead {
 
   size_t getCipherOverhead() const override;
 
+  void setEncryptedBufferHeadroom(size_t headroom) override {
+    headroom_ = headroom;
+  }
+
  private:
   std::array<uint8_t, EVPImpl::kIVLength> createIV(uint64_t seqNum) const;
 
@@ -74,6 +82,7 @@ class OpenSSLEVPCipher : public Aead {
       folly::static_function_deleter<EVP_CIPHER_CTX, &EVP_CIPHER_CTX_free>;
 
   TrafficKey trafficKey_;
+  size_t headroom_{5};
 
   std::unique_ptr<EVP_CIPHER_CTX, CipherCtxDeleter> encryptCtx_;
   std::unique_ptr<EVP_CIPHER_CTX, CipherCtxDeleter> decryptCtx_;
