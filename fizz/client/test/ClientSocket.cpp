@@ -84,11 +84,11 @@ class Connection : public AsyncSocket::ConnectCallback,
   }
 
   void getReadBuffer(void** /* bufReturn */, size_t* /* lenReturn */) override {
-    throw std::runtime_error("getReadBuffer not implemented");
+    CHECK(false) << __func__ << " should not be invoked";
   }
 
   void readDataAvailable(size_t /* len */) noexcept override {
-    throw std::runtime_error("readDataAvailable not implemented");
+    CHECK(false) << __func__ << " should not be invoked";
   }
 
   bool isBufferMovable() noexcept override {
