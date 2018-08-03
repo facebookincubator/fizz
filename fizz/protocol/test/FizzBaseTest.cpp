@@ -79,8 +79,13 @@ class TestStateMachine {
   }
 
   MOCK_METHOD2(
-      processWriteNewSessionTicket,
-      Future<Actions>(const State&, WriteNewSessionTicket));
+      processWriteNewSessionTicket_,
+      Future<Actions>(const State&, WriteNewSessionTicket&));
+  Future<Actions> processWriteNewSessionTicket(
+      const State& state,
+      WriteNewSessionTicket ticket) {
+    return processWriteNewSessionTicket_(state, ticket);
+  }
   MOCK_METHOD2(processAppWrite_, Future<Actions>(const State&, AppWrite&));
   MOCK_METHOD2(
       processEarlyAppWrite_,
@@ -186,7 +191,7 @@ TEST_F(FizzBaseTest, TestReadNoActions) {
 }
 
 TEST_F(FizzBaseTest, TestWriteNewSessionTicket) {
-  EXPECT_CALL(*TestStateMachine::instance, processWriteNewSessionTicket(_, _))
+  EXPECT_CALL(*TestStateMachine::instance, processWriteNewSessionTicket_(_, _))
       .WillOnce(InvokeWithoutArgs([]() { return Actions{A1()}; }));
   EXPECT_CALL(testFizz_->visitor_, a1());
   testFizz_->writeNewSessionTicket(WriteNewSessionTicket());
@@ -238,7 +243,8 @@ TEST_F(FizzBaseTest, TestWriteNewSessionTicketInCallback) {
       }));
   EXPECT_CALL(
       *TestStateMachine::instance,
-      processWriteNewSessionTicket(_, WriteNewSessionTicketMatches("appToken")))
+      processWriteNewSessionTicket_(
+          _, WriteNewSessionTicketMatches("appToken")))
       .InSequence(s_)
       .WillOnce(InvokeWithoutArgs([]() { return Actions{A2()}; }));
   EXPECT_CALL(testFizz_->visitor_, a2())
