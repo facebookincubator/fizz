@@ -61,6 +61,10 @@ struct AppData : EventType<Event::AppData> {
   explicit AppData(std::unique_ptr<folly::IOBuf> buf) : data(std::move(buf)) {}
 };
 
+struct WriteNewSessionTicket : EventType<Event::WriteNewSessionTicket> {
+  Buf appToken;
+};
+
 /**
  * Parameters for each event that will be processed by the state machine.
  */
@@ -81,7 +85,8 @@ using Param = boost::variant<
     Connect,
     AppData,
     AppWrite,
-    EarlyAppWrite>;
+    EarlyAppWrite,
+    WriteNewSessionTicket>;
 
 class EventVisitor : public boost::static_visitor<Event> {
  public:
@@ -93,4 +98,5 @@ class EventVisitor : public boost::static_visitor<Event> {
 
 // App closes bypass the state machine so aren't in the Param variant.
 struct AppClose {};
+
 } // namespace fizz

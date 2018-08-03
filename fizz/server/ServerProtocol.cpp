@@ -68,12 +68,6 @@ FIZZ_DECLARE_EVENT_HANDLER(
 
 FIZZ_DECLARE_EVENT_HANDLER(
     ServerTypes,
-    StateEnum::ExpectingFinished,
-    Event::AppWrite,
-    StateEnum::Error);
-
-FIZZ_DECLARE_EVENT_HANDLER(
-    ServerTypes,
     StateEnum::ExpectingCertificate,
     Event::Certificate,
     StateEnum::ExpectingCertificateVerify,
@@ -88,8 +82,20 @@ FIZZ_DECLARE_EVENT_HANDLER(
 FIZZ_DECLARE_EVENT_HANDLER(
     ServerTypes,
     StateEnum::ExpectingFinished,
+    Event::AppWrite,
+    StateEnum::Error);
+
+FIZZ_DECLARE_EVENT_HANDLER(
+    ServerTypes,
+    StateEnum::ExpectingFinished,
     Event::Finished,
     StateEnum::AcceptingData);
+
+FIZZ_DECLARE_EVENT_HANDLER(
+    ServerTypes,
+    StateEnum::AcceptingData,
+    Event::WriteNewSessionTicket,
+    StateEnum::Error);
 
 FIZZ_DECLARE_EVENT_HANDLER(
     ServerTypes,
@@ -142,6 +148,12 @@ AsyncActions ServerStateMachine::processSocketData(
   } catch (const std::exception& e) {
     return detail::handleError(state, e.what(), AlertDescription::decode_error);
   }
+}
+
+AsyncActions ServerStateMachine::processWriteNewSessionTicket(
+    const State& state,
+    WriteNewSessionTicket write) {
+  return detail::processEvent(state, std::move(write));
 }
 
 AsyncActions ServerStateMachine::processAppWrite(
@@ -1574,6 +1586,62 @@ static WriteToSocket writeNewSessionTicket(
   return nstWrite;
 }
 
+static Future<Optional<WriteToSocket>> generateTicket(
+    const State& state,
+    const std::vector<uint8_t>& resumptionMasterSecret,
+    Buf appToken = nullptr) {
+  auto ticketCipher = state.context()->getTicketCipher();
+
+  if (!ticketCipher || *state.pskType() == PskType::NotSupported) {
+    return folly::none;
+  }
+
+  Buf ticketNonce;
+  Buf resumptionSecret;
+  auto realDraftVersion = getRealDraftVersion(*state.version());
+  if (realDraftVersion == ProtocolVersion::tls_1_3_20) {
+    ticketNonce = nullptr;
+    resumptionSecret =
+        folly::IOBuf::copyBuffer(folly::range(resumptionMasterSecret));
+  } else {
+    ticketNonce = folly::IOBuf::create(0);
+    resumptionSecret = state.keyScheduler()->getResumptionSecret(
+        folly::range(resumptionMasterSecret), ticketNonce->coalesce());
+  }
+
+  ResumptionState resState;
+  resState.version = *state.version();
+  resState.cipher = *state.cipher();
+  resState.resumptionSecret = std::move(resumptionSecret);
+  resState.serverCert = state.serverCert();
+  resState.clientCert = state.clientCert();
+  resState.alpn = state.alpn();
+  resState.ticketAgeAdd = state.context()->getFactory()->makeTicketAgeAdd();
+  resState.ticketIssueTime = std::chrono::system_clock::now();
+  resState.appToken = std::move(appToken);
+
+  auto ticketFuture = ticketCipher->encrypt(std::move(resState));
+  return ticketFuture.via(state.executor())
+      .then(
+          [&state,
+           ticketAgeAdd = resState.ticketAgeAdd,
+           ticketNonce = std::move(ticketNonce)](
+              Optional<std::pair<Buf, std::chrono::seconds>> ticket) mutable
+          -> Optional<WriteToSocket> {
+            if (!ticket) {
+              return folly::none;
+            }
+            return writeNewSessionTicket(
+                *state.context(),
+                *state.writeRecordLayer(),
+                ticket->second,
+                ticketAgeAdd,
+                std::move(ticketNonce),
+                std::move(ticket->first),
+                *state.version());
+          });
+}
+
 AsyncActions
 EventHandler<ServerTypes, StateEnum::ExpectingCertificate, Event::Certificate>::
     handle(const State& state, Param param) {
@@ -1698,78 +1766,60 @@ EventHandler<ServerTypes, StateEnum::ExpectingFinished, Event::Finished>::
       *state.keyScheduler());
 
   state.handshakeContext()->appendToTranscript(*finished.originalEncoding);
+
   auto resumptionMasterSecret = state.keyScheduler()->getSecret(
       MasterSecrets::ResumptionMaster,
       state.handshakeContext()->getHandshakeContext()->coalesce());
-
   state.keyScheduler()->clearMasterSecret();
 
-  auto ticketCipher = state.context()->getTicketCipher();
-  Optional<uint32_t> ticketAgeAdd;
-  Buf ticketNonce;
-  Future<Optional<std::pair<Buf, std::chrono::seconds>>> ticketFuture =
-      folly::none;
-  if (ticketCipher && *state.pskType() != PskType::NotSupported) {
-    Buf resumptionSecret;
-    auto realDraftVersion = getRealDraftVersion(*state.version());
-    if (realDraftVersion == ProtocolVersion::tls_1_3_20) {
-      ticketNonce = nullptr;
-      resumptionSecret =
-          folly::IOBuf::copyBuffer(folly::range(resumptionMasterSecret));
-    } else {
-      ticketNonce = folly::IOBuf::create(0);
-      resumptionSecret = state.keyScheduler()->getResumptionSecret(
-          folly::range(resumptionMasterSecret), ticketNonce->coalesce());
-    }
+  auto saveState = [readRecordLayer = std::move(readRecordLayer),
+                    resumptionMasterSecret](State& newState) mutable {
+    newState.readRecordLayer() = std::move(readRecordLayer);
 
-    ticketAgeAdd = state.context()->getFactory()->makeTicketAgeAdd();
-    ResumptionState resState;
-    resState.version = *state.version();
-    resState.cipher = *state.cipher();
-    resState.resumptionSecret = std::move(resumptionSecret);
-    resState.serverCert = state.serverCert();
-    resState.clientCert = state.clientCert();
-    resState.alpn = state.alpn();
-    resState.ticketAgeAdd = *ticketAgeAdd;
-    resState.ticketIssueTime = std::chrono::system_clock::now();
-    ticketFuture = ticketCipher->encrypt(std::move(resState));
-  }
+    newState.resumptionMasterSecret() = std::move(resumptionMasterSecret);
+  };
 
-  return ticketFuture.via(state.executor())
-      .then([&state,
-             readRecordLayer = std::move(readRecordLayer),
-             ticketNonce = std::move(ticketNonce),
-             ticketAgeAdd](
-                Optional<std::pair<Buf, std::chrono::seconds>> ticket) mutable {
-        Optional<WriteToSocket> nstWrite;
-        if (ticket) {
-          nstWrite = writeNewSessionTicket(
-              *state.context(),
-              *state.writeRecordLayer(),
-              ticket->second,
-              *ticketAgeAdd,
-              std::move(ticketNonce),
-              std::move(ticket->first),
-              *state.version());
-        }
+  if (!state.context()->getSendNewSessionTicket()) {
+    return actions(
+        std::move(saveState),
+        &Transition<StateEnum::AcceptingData>,
+        ReportHandshakeSuccess());
+  } else {
+    auto ticketFuture = generateTicket(state, resumptionMasterSecret);
+    return ticketFuture.via(state.executor())
+        .then([saveState = std::move(saveState)](
+                  Optional<WriteToSocket> nstWrite) mutable {
+          if (!nstWrite) {
+            return actions(
+                std::move(saveState),
+                &Transition<StateEnum::AcceptingData>,
+                ReportHandshakeSuccess());
+          }
 
-        auto saveState = [readRecordLayer = std::move(readRecordLayer)](
-                             State& newState) mutable {
-          newState.readRecordLayer() = std::move(readRecordLayer);
-        };
-
-        if (nstWrite) {
           return actions(
               std::move(saveState),
               &Transition<StateEnum::AcceptingData>,
               std::move(*nstWrite),
               ReportHandshakeSuccess());
-        } else {
-          return actions(
-              std::move(saveState),
-              &Transition<StateEnum::AcceptingData>,
-              ReportHandshakeSuccess());
+        });
+  }
+}
+
+AsyncActions EventHandler<
+    ServerTypes,
+    StateEnum::AcceptingData,
+    Event::WriteNewSessionTicket>::handle(const State& state, Param param) {
+  auto& writeNewSessionTicket = boost::get<WriteNewSessionTicket>(param);
+  auto ticketFuture = generateTicket(
+      state,
+      state.resumptionMasterSecret(),
+      std::move(writeNewSessionTicket.appToken));
+  return ticketFuture.via(state.executor())
+      .then([](Optional<WriteToSocket> nstWrite) {
+        if (!nstWrite) {
+          return actions();
         }
+        return actions(std::move(*nstWrite));
       });
 }
 
@@ -1853,5 +1903,6 @@ EventHandler<ServerTypes, StateEnum::AcceptingData, Event::KeyUpdate>::handle(
       },
       std::move(write));
 }
+
 } // namespace sm
 } // namespace fizz

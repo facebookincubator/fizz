@@ -31,6 +31,7 @@ enum class Event {
   EarlyAppWrite,
   AppWrite,
   AppClose,
+  WriteNewSessionTicket,
   NUM_EVENTS
 };
 

@@ -171,6 +171,12 @@ Actions ClientStateMachine::processSocketData(
   }
 }
 
+Actions ClientStateMachine::processWriteNewSessionTicket(
+    const State& state,
+    WriteNewSessionTicket write) {
+  return detail::processEvent(state, std::move(write));
+}
+
 Actions ClientStateMachine::processAppWrite(
     const State& state,
     AppWrite write) {

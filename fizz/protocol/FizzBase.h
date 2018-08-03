@@ -36,6 +36,11 @@ class FizzBase {
         owner_(owner) {}
 
   /**
+   * Server only: Called to write new session ticket to client.
+   */
+  void writeNewSessionTicket(WriteNewSessionTicket writeNewSessionTicket);
+
+  /**
    * Called to write application data.
    */
   void appWrite(AppWrite appWrite);
@@ -103,7 +108,8 @@ class FizzBase {
   ActionMoveVisitor& visitor_;
   folly::DelayedDestructionBase* owner_;
 
-  using PendingEvent = boost::variant<AppWrite, EarlyAppWrite, AppClose>;
+  using PendingEvent =
+      boost::variant<AppWrite, EarlyAppWrite, AppClose, WriteNewSessionTicket>;
   std::deque<PendingEvent> pendingEvents_;
   bool waitForData_{true};
   folly::Optional<folly::DelayedDestruction::DestructorGuard> actionGuard_;

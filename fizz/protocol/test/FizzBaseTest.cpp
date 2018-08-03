@@ -21,10 +21,20 @@ using namespace folly;
 using namespace folly::test;
 using namespace testing;
 
+static WriteNewSessionTicket writeNewSessionTicket(const std::string& str) {
+  WriteNewSessionTicket write;
+  write.appToken = IOBuf::copyBuffer(str);
+  return write;
+}
+
 static AppWrite appWrite(const std::string& str) {
   AppWrite write;
   write.data = IOBuf::copyBuffer(str);
   return write;
+}
+
+MATCHER_P(WriteNewSessionTicketMatches, expected, "") {
+  return IOBufEqualTo()(IOBuf::copyBuffer(expected), arg.appToken);
 }
 
 MATCHER_P(WriteMatches, expected, "") {
@@ -68,6 +78,9 @@ class TestStateMachine {
     return processEarlyAppWrite_(state, write);
   }
 
+  MOCK_METHOD2(
+      processWriteNewSessionTicket,
+      Future<Actions>(const State&, WriteNewSessionTicket));
   MOCK_METHOD2(processAppWrite_, Future<Actions>(const State&, AppWrite&));
   MOCK_METHOD2(
       processEarlyAppWrite_,
@@ -172,6 +185,13 @@ TEST_F(FizzBaseTest, TestReadNoActions) {
   testFizz_->newTransportData();
 }
 
+TEST_F(FizzBaseTest, TestWriteNewSessionTicket) {
+  EXPECT_CALL(*TestStateMachine::instance, processWriteNewSessionTicket(_, _))
+      .WillOnce(InvokeWithoutArgs([]() { return Actions{A1()}; }));
+  EXPECT_CALL(testFizz_->visitor_, a1());
+  testFizz_->writeNewSessionTicket(WriteNewSessionTicket());
+}
+
 TEST_F(FizzBaseTest, TestWrite) {
   EXPECT_CALL(*TestStateMachine::instance, processAppWrite_(_, _))
       .WillOnce(InvokeWithoutArgs([]() { return Actions{A1()}; }));
@@ -204,6 +224,31 @@ TEST_F(FizzBaseTest, TestAppClose) {
       .WillOnce(InvokeWithoutArgs([]() { return Actions{A1()}; }));
   EXPECT_CALL(testFizz_->visitor_, a1());
   testFizz_->appClose();
+}
+
+TEST_F(FizzBaseTest, TestWriteNewSessionTicketInCallback) {
+  EXPECT_CALL(*TestStateMachine::instance, processSocketData(_, _))
+      .InSequence(s_)
+      .WillOnce(InvokeWithoutArgs([]() { return Actions{A1()}; }));
+  EXPECT_CALL(testFizz_->visitor_, a1())
+      .InSequence(s_)
+      .WillOnce(Invoke([this]() {
+        testFizz_->waitForData();
+        testFizz_->writeNewSessionTicket(writeNewSessionTicket("appToken"));
+      }));
+  EXPECT_CALL(
+      *TestStateMachine::instance,
+      processWriteNewSessionTicket(_, WriteNewSessionTicketMatches("appToken")))
+      .InSequence(s_)
+      .WillOnce(InvokeWithoutArgs([]() { return Actions{A2()}; }));
+  EXPECT_CALL(testFizz_->visitor_, a2())
+      .InSequence(s_)
+      .WillOnce(Invoke([this]() { testFizz_->appWrite(appWrite("write")); }));
+  EXPECT_CALL(
+      *TestStateMachine::instance, processAppWrite_(_, WriteMatches("write")))
+      .InSequence(s_)
+      .WillOnce(InvokeWithoutArgs([]() { return Actions{}; }));
+  testFizz_->newTransportData();
 }
 
 TEST_F(FizzBaseTest, TestWriteInCallback) {

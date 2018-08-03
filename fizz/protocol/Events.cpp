@@ -47,6 +47,8 @@ folly::StringPiece toString(Event event) {
       return "AppWrite";
     case Event::AppClose:
       return "AppClose";
+    case Event::WriteNewSessionTicket:
+      return "WriteNewSessionTicket";
     case Event::NUM_EVENTS:
       return "Invalid event NUM_EVENTS";
   }

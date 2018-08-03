@@ -251,11 +251,16 @@ class ServerProtocolTest : public ProtocolTest<ServerTypes, Actions> {
   void setUpAcceptingData() {
     setMockRecord();
     setMockKeyScheduler();
+    setMockHandshakeContext();
+    state_.executor() = &executor_;
     state_.version() = TestProtocolVersion;
     state_.cipher() = CipherSuite::TLS_AES_128_GCM_SHA256;
     state_.context() = context_;
     state_.executor() = &executor_;
     state_.state() = StateEnum::AcceptingData;
+    state_.serverCert() = cert_;
+    state_.pskType() = PskType::NotAttempted;
+    state_.alpn() = "h2";
   }
 
   ManualExecutor executor_;
@@ -3057,6 +3062,7 @@ TEST_F(ServerProtocolTest, TestFullHandshakeFinished) {
   EXPECT_EQ(state_.state(), StateEnum::AcceptingData);
   EXPECT_EQ(state_.readRecordLayer().get(), rrl);
   EXPECT_EQ(state_.writeRecordLayer().get(), mockWrite_);
+  ASSERT_THAT(state_.resumptionMasterSecret(), ElementsAre('r', 's', 'e', 'c'));
 }
 
 TEST_F(ServerProtocolTest, TestFinishedNoTicket) {
@@ -3105,6 +3111,18 @@ TEST_F(ServerProtocolTest, TestFinishedPskNotSupported) {
   EXPECT_EQ(state_.state(), StateEnum::AcceptingData);
 }
 
+TEST_F(ServerProtocolTest, TestFinishedNoAutomaticNewSessionTicket) {
+  setUpExpectingFinished();
+  context_->setSendNewSessionTicket(false);
+
+  EXPECT_CALL(*mockKeyScheduler_, clearMasterSecret());
+  auto actions =
+      getActions(detail::processEvent(state_, TestMessages::finished()));
+  expectActions<MutateState, ReportHandshakeSuccess>(actions);
+  processStateMutations(actions);
+  EXPECT_EQ(state_.state(), StateEnum::AcceptingData);
+}
+
 TEST_F(ServerProtocolTest, TestFinishedMismatch) {
   setUpExpectingFinished();
   EXPECT_CALL(
@@ -3142,6 +3160,156 @@ TEST_F(ServerProtocolTest, TestExpectingFinishedAppWrite) {
 
   auto write = expectSingleAction<WriteToSocket>(std::move(actions));
   EXPECT_TRUE(IOBufEqualTo()(write.data, IOBuf::copyBuffer("writtenappdata")));
+}
+
+TEST_F(ServerProtocolTest, TestWriteNewSessionTicket) {
+  setUpAcceptingData();
+  context_->setSendNewSessionTicket(false);
+  state_.resumptionMasterSecret() = std::vector<uint8_t>({'r', 's', 'e', 'c'});
+
+  EXPECT_CALL(*mockHandshakeContext_, getHandshakeContext())
+      .WillRepeatedly(
+          Invoke([]() { return IOBuf::copyBuffer("clifincontext"); }));
+  EXPECT_CALL(
+      *mockKeyScheduler_,
+      getResumptionSecret(RangeMatches("rsec"), RangeMatches("")))
+      .WillOnce(
+          InvokeWithoutArgs([]() { return IOBuf::copyBuffer("derivedrsec"); }));
+
+  EXPECT_CALL(*factory_, makeTicketAgeAdd()).WillOnce(Return(0x44444444));
+  EXPECT_CALL(*mockTicketCipher_, _encrypt(_))
+      .WillOnce(Invoke([=](ResumptionState& resState) {
+        EXPECT_EQ(resState.version, TestProtocolVersion);
+        EXPECT_EQ(resState.cipher, CipherSuite::TLS_AES_128_GCM_SHA256);
+        EXPECT_TRUE(IOBufEqualTo()(
+            resState.resumptionSecret, IOBuf::copyBuffer("derivedrsec")));
+        EXPECT_EQ(resState.serverCert, cert_);
+        EXPECT_EQ(*resState.alpn, "h2");
+        EXPECT_EQ(resState.ticketAgeAdd, 0x44444444);
+        return std::make_pair(
+            IOBuf::copyBuffer("ticket"), std::chrono::seconds(100));
+      }));
+  EXPECT_CALL(*mockWrite_, _write(_)).WillOnce(Invoke([](TLSMessage& msg) {
+    EXPECT_EQ(msg.type, ContentType::handshake);
+    EXPECT_TRUE(IOBufEqualTo()(
+        msg.fragment, encodeHandshake(TestMessages::newSessionTicket())));
+    return folly::IOBuf::copyBuffer("handshake");
+  }));
+
+  auto actions =
+      getActions(detail::processEvent(state_, WriteNewSessionTicket()));
+  expectSingleAction<WriteToSocket>(std::move(actions));
+}
+
+TEST_F(ServerProtocolTest, TestWriteNewSessionTicketWithTicketEarly) {
+  acceptEarlyData();
+  setUpAcceptingData();
+  context_->setSendNewSessionTicket(false);
+
+  EXPECT_CALL(*mockWrite_, _write(_)).WillOnce(Invoke([](TLSMessage& msg) {
+    EXPECT_EQ(msg.type, ContentType::handshake);
+    auto nst = TestMessages::newSessionTicket();
+    TicketEarlyData early;
+    early.max_early_data_size = 0xffffffff;
+    nst.extensions.push_back(encodeExtension(std::move(early)));
+    EXPECT_TRUE(IOBufEqualTo()(msg.fragment, encodeHandshake(std::move(nst))));
+    return folly::IOBuf::copyBuffer("handshake");
+  }));
+
+  auto actions =
+      getActions(detail::processEvent(state_, WriteNewSessionTicket()));
+  expectSingleAction<WriteToSocket>(std::move(actions));
+}
+
+TEST_F(ServerProtocolTest, TestWriteNewSessionTicketWithAppToken) {
+  setUpAcceptingData();
+  context_->setSendNewSessionTicket(false);
+
+  std::string appToken("appToken");
+
+  EXPECT_CALL(*factory_, makeTicketAgeAdd()).WillOnce(Return(0x44444444));
+  EXPECT_CALL(*mockTicketCipher_, _encrypt(_))
+      .WillOnce(Invoke([=](ResumptionState& resState) {
+        EXPECT_EQ(resState.serverCert, cert_);
+        EXPECT_EQ(*resState.alpn, "h2");
+        EXPECT_EQ(resState.ticketAgeAdd, 0x44444444);
+        EXPECT_TRUE(
+            IOBufEqualTo()(resState.appToken, IOBuf::copyBuffer(appToken)));
+        return std::make_pair(
+            IOBuf::copyBuffer("ticket"), std::chrono::seconds(100));
+      }));
+
+  WriteNewSessionTicket writeNewSessionTicket;
+  writeNewSessionTicket.appToken = IOBuf::copyBuffer(appToken);
+  auto actions = getActions(
+      detail::processEvent(state_, std::move(writeNewSessionTicket)));
+  expectSingleAction<WriteToSocket>(std::move(actions));
+}
+
+TEST_F(
+    ServerProtocolTest,
+    TestWriteNewSessionTicketWithAppTokenAfterAutomaticSend) {
+  setUpExpectingFinished();
+  context_->setSendNewSessionTicket(true);
+
+  // ExpectingFinished -> AcceptingData
+  EXPECT_CALL(*factory_, makeTicketAgeAdd()).WillOnce(Return(0x44444444));
+  EXPECT_CALL(*mockTicketCipher_, _encrypt(_))
+      .WillOnce(Invoke([=](ResumptionState& resState) {
+        EXPECT_EQ(resState.serverCert, cert_);
+        EXPECT_EQ(*resState.alpn, "h2");
+        EXPECT_EQ(resState.ticketAgeAdd, 0x44444444);
+        EXPECT_FALSE(resState.appToken);
+        return std::make_pair(
+            IOBuf::copyBuffer("ticket"), std::chrono::seconds(100));
+      }));
+  auto actions =
+      getActions(detail::processEvent(state_, TestMessages::finished()));
+  expectActions<MutateState, ReportHandshakeSuccess, WriteToSocket>(actions);
+  processStateMutations(actions);
+  EXPECT_EQ(state_.state(), StateEnum::AcceptingData);
+
+  // AcceptingData: WriteNewSessionTicket
+  std::string appToken("appToken");
+  EXPECT_CALL(*factory_, makeTicketAgeAdd()).WillOnce(Return(0x44444444));
+  EXPECT_CALL(*mockTicketCipher_, _encrypt(_))
+      .WillOnce(Invoke([=](ResumptionState& resState) {
+        EXPECT_EQ(resState.serverCert, cert_);
+        EXPECT_EQ(*resState.alpn, "h2");
+        EXPECT_EQ(resState.ticketAgeAdd, 0x44444444);
+        EXPECT_TRUE(
+            IOBufEqualTo()(resState.appToken, IOBuf::copyBuffer(appToken)));
+        return std::make_pair(
+            IOBuf::copyBuffer("ticket"), std::chrono::seconds(100));
+      }));
+  WriteNewSessionTicket writeNewSessionTicket;
+  writeNewSessionTicket.appToken = IOBuf::copyBuffer(appToken);
+  auto writeNewSessionTicketActions = getActions(
+      detail::processEvent(state_, std::move(writeNewSessionTicket)));
+  expectSingleAction<WriteToSocket>(std::move(writeNewSessionTicketActions));
+}
+
+TEST_F(ServerProtocolTest, TestWriteNewSessionTicketNoTicket) {
+  setUpAcceptingData();
+  context_->setSendNewSessionTicket(false);
+
+  EXPECT_CALL(*mockTicketCipher_, _encrypt(_)).WillOnce(InvokeWithoutArgs([]() {
+    return none;
+  }));
+
+  auto actions =
+      getActions(detail::processEvent(state_, WriteNewSessionTicket()));
+  EXPECT_TRUE(actions.empty());
+}
+
+TEST_F(ServerProtocolTest, TestWriteNewSessionTicketPskNotSupported) {
+  setUpAcceptingData();
+  context_->setSendNewSessionTicket(false);
+  state_.pskType() = PskType::NotSupported;
+
+  auto actions =
+      getActions(detail::processEvent(state_, WriteNewSessionTicket()));
+  EXPECT_TRUE(actions.empty());
 }
 
 TEST_F(ServerProtocolTest, TestAppData) {

@@ -245,6 +245,12 @@ TEST_F(ClientProtocolTest, TestInvalidTransitionNoAlert) {
   expectError(actions, none, "invalid event");
 }
 
+TEST_F(ClientProtocolTest, TestInvalidWriteNewSessionTicket) {
+  auto actions = ClientStateMachine().processWriteNewSessionTicket(
+      state_, WriteNewSessionTicket());
+  expectError(actions, none, "invalid event");
+}
+
 TEST_F(ClientProtocolTest, TestInvalidTransitionAlert) {
   setMockRecord();
   EXPECT_CALL(*mockWrite_, _write(_));

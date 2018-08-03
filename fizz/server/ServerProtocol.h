@@ -38,6 +38,10 @@ class ServerStateMachine {
 
   virtual AsyncActions processSocketData(const State&, folly::IOBufQueue&);
 
+  virtual AsyncActions processWriteNewSessionTicket(
+      const State&,
+      WriteNewSessionTicket);
+
   virtual AsyncActions processAppWrite(const State&, AppWrite);
 
   virtual AsyncActions processEarlyAppWrite(const State&, EarlyAppWrite);

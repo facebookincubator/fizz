@@ -11,6 +11,13 @@
 namespace fizz {
 
 template <typename Derived, typename ActionMoveVisitor, typename StateMachine>
+void FizzBase<Derived, ActionMoveVisitor, StateMachine>::writeNewSessionTicket(
+    WriteNewSessionTicket w) {
+  pendingEvents_.push_back(std::move(w));
+  processPendingEvents();
+}
+
+template <typename Derived, typename ActionMoveVisitor, typename StateMachine>
 void FizzBase<Derived, ActionMoveVisitor, StateMachine>::appWrite(AppWrite w) {
   pendingEvents_.push_back(std::move(w));
   processPendingEvents();
@@ -126,6 +133,10 @@ void FizzBase<Derived, ActionMoveVisitor, StateMachine>::
       pendingEvents_.pop_front();
       folly::variant_match(
           event,
+          [&actions, this](WriteNewSessionTicket& write) {
+            actions =
+                machine_.processWriteNewSessionTicket(state_, std::move(write));
+          },
           [&actions, this](AppWrite& write) {
             actions = machine_.processAppWrite(state_, std::move(write));
           },

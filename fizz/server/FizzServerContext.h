@@ -259,6 +259,20 @@ class FizzServerContext {
     return factory_.get();
   }
 
+  /**
+   * Fizz will automatically send NewSessionTicket before reporting handshake
+   * success if this is true.
+   * Application can use the writeNewSessionTicket API alternatively if this is
+   * set to false.
+   * Default is true.
+   */
+  void setSendNewSessionTicket(bool sendNewSessionTicket) {
+    sendNewSessionTicket_ = sendNewSessionTicket;
+  }
+  bool getSendNewSessionTicket() const {
+    return sendNewSessionTicket_;
+  }
+
  private:
   std::unique_ptr<Factory> factory_;
 
@@ -298,6 +312,8 @@ class FizzServerContext {
   std::shared_ptr<ReplayCache> replayCache_;
 
   bool earlyDataFbOnly_{false};
+
+  bool sendNewSessionTicket_{true};
 };
 } // namespace server
 } // namespace fizz

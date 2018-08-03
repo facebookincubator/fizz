@@ -243,6 +243,13 @@ class State {
   }
 
   /**
+   * Resumption master secret.
+   */
+  const std::vector<uint8_t>& resumptionMasterSecret() const {
+    return resumptionMasterSecret_;
+  }
+
+  /**
    * The certificate chain sent by the client pre-verification
    *
    * Should not be used outside of the state machine.
@@ -348,6 +355,9 @@ class State {
   auto& extensions() {
     return extensions_;
   }
+  auto& resumptionMasterSecret() {
+    return resumptionMasterSecret_;
+  }
   auto& earlyExporterMasterSecret() {
     return earlyExporterMasterSecret_;
   }
@@ -391,6 +401,7 @@ class State {
   folly::Optional<std::chrono::milliseconds> clientClockSkew_;
   std::unique_ptr<AppTokenValidator> appTokenValidator_;
   std::shared_ptr<ServerExtensions> extensions_;
+  std::vector<uint8_t> resumptionMasterSecret_;
 
   std::unique_ptr<HandshakeLogging> handshakeLogging_;
 

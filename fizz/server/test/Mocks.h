@@ -56,6 +56,15 @@ class MockServerStateMachine : public ServerStateMachine {
   }
 
   MOCK_METHOD2(
+      _processWriteNewSessionTicket,
+      folly::Optional<AsyncActions>(const State&, WriteNewSessionTicket&));
+  AsyncActions processWriteNewSessionTicket(
+      const State& state,
+      WriteNewSessionTicket write) override {
+    return *_processWriteNewSessionTicket(state, write);
+  }
+
+  MOCK_METHOD2(
       _processAppWrite,
       folly::Optional<AsyncActions>(const State&, AppWrite&));
   AsyncActions processAppWrite(const State& state, AppWrite appWrite) override {

@@ -35,6 +35,10 @@ class ClientStateMachine {
 
   virtual Actions processSocketData(const State&, folly::IOBufQueue&);
 
+  virtual Actions processWriteNewSessionTicket(
+      const State&,
+      WriteNewSessionTicket);
+
   virtual Actions processAppWrite(const State&, AppWrite);
 
   virtual Actions processEarlyAppWrite(const State&, EarlyAppWrite);
