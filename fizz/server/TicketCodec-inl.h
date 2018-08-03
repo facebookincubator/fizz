@@ -39,7 +39,7 @@ Buf TicketCodec<Storage>::encode(ResumptionState resState) {
   } else {
     fizz::detail::writeBuf<uint8_t>(nullptr, appender);
   }
-
+  fizz::detail::writeBuf<uint16_t>(resState.appToken, appender);
   return buf;
 }
 
@@ -73,6 +73,10 @@ ResumptionState TicketCodec<Storage>::decode(
     resState.serverCert =
         context->getCert(selfIdentity->moveToFbString().toStdString());
   }
+  if (cursor.isAtEnd()) {
+    return resState;
+  }
+  fizz::detail::readBuf<uint16_t>(resState.appToken, cursor);
 
   return resState;
 }

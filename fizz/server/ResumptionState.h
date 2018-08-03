@@ -26,6 +26,7 @@ struct ResumptionState {
   folly::Optional<std::string> alpn;
   uint32_t ticketAgeAdd;
   std::chrono::system_clock::time_point ticketIssueTime;
+  Buf appToken;
 };
 } // namespace server
 } // namespace fizz
