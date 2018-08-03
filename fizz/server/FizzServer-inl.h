@@ -63,12 +63,13 @@ void FizzServer<ActionMoveVisitor, SM>::startActions(AsyncActions actions) {
   folly::variant_match(
       actions,
       [this](folly::Future<Actions>& futureActions) {
-        futureActions.then(
-            &FizzServer::processActions,
-            static_cast<FizzBase<
-                FizzServer<ActionMoveVisitor, SM>,
-                ActionMoveVisitor,
-                SM>*>(this));
+        std::move(futureActions)
+            .then(
+                &FizzServer::processActions,
+                static_cast<FizzBase<
+                    FizzServer<ActionMoveVisitor, SM>,
+                    ActionMoveVisitor,
+                    SM>*>(this));
       },
       [this](Actions& immediateActions) {
         this->processActions(std::move(immediateActions));

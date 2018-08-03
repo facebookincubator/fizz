@@ -125,7 +125,7 @@ class TestFizzBase
   ActionMoveVisitor visitor_;
 
   void startActions(Future<Actions> actions) {
-    actions.then(
+    std::move(actions).then(
         &TestFizzBase::processActions,
         static_cast<
             FizzBase<TestFizzBase, ActionMoveVisitor, TestStateMachine>*>(
