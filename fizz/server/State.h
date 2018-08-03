@@ -17,6 +17,7 @@
 #include <fizz/record/RecordLayer.h>
 #include <fizz/server/Actions.h>
 #include <fizz/server/FizzServerContext.h>
+#include <fizz/server/ResumptionState.h>
 #include <fizz/server/ServerExtensions.h>
 
 namespace fizz {
@@ -48,6 +49,16 @@ struct HandshakeLogging {
   std::vector<SignatureScheme> clientSignatureAlgorithms;
   folly::Optional<bool> clientSessionIdSent;
   folly::Optional<Random> clientRandom;
+};
+
+/**
+ * Validator interface that application can set to check app token.
+ */
+class AppTokenValidator {
+ public:
+  virtual ~AppTokenValidator() = default;
+
+  virtual bool validate(const ResumptionState&) const = 0;
 };
 
 class State {
@@ -164,6 +175,14 @@ class State {
    */
   folly::Optional<std::chrono::milliseconds> clientClockSkew() const {
     return clientClockSkew_;
+  }
+
+  /**
+   * Callback to application that validates appToken from ResumptionState.
+   * If this function returns false, early data should be rejected.
+   */
+  const AppTokenValidator* appTokenValidator() const {
+    return appTokenValidator_.get();
   }
 
   /**
@@ -320,6 +339,9 @@ class State {
   auto& clientClockSkew() {
     return clientClockSkew_;
   }
+  auto& appTokenValidator() {
+    return appTokenValidator_;
+  }
   auto& handshakeLogging() {
     return handshakeLogging_;
   }
@@ -367,6 +389,7 @@ class State {
   folly::Optional<Buf> clientHandshakeSecret_;
   folly::Optional<std::string> alpn_;
   folly::Optional<std::chrono::milliseconds> clientClockSkew_;
+  std::unique_ptr<AppTokenValidator> appTokenValidator_;
   std::shared_ptr<ServerExtensions> extensions_;
 
   std::unique_ptr<HandshakeLogging> handshakeLogging_;

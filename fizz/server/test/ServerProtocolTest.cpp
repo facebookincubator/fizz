@@ -2266,6 +2266,69 @@ TEST_F(ServerProtocolTest, TestClientHelloAcceptEarlyData) {
   EXPECT_EQ(state_.replayCacheResult(), ReplayCacheResult::NotReplay);
 }
 
+TEST_F(
+    ServerProtocolTest,
+    TestClientHelloEarlyDataNotAttemptedWithAppTokenValidator) {
+  acceptEarlyData();
+  setUpExpectingClientHello();
+  auto validator = std::make_unique<MockAppTokenValidator>();
+  auto validatorPtr = validator.get();
+  state_.appTokenValidator() = std::move(validator);
+
+  ON_CALL(*validatorPtr, validate(_)).WillByDefault(InvokeWithoutArgs([]() {
+    EXPECT_TRUE(false)
+        << "Early data not attempted, validator shoudn't be called";
+    return false;
+  }));
+  auto actions =
+      getActions(detail::processEvent(state_, TestMessages::clientHelloPsk()));
+  expectActions<MutateState, WriteToSocket>(actions);
+  processStateMutations(actions);
+  EXPECT_EQ(state_.state(), StateEnum::ExpectingFinished);
+  EXPECT_EQ(state_.pskType(), PskType::Resumption);
+  EXPECT_EQ(state_.earlyDataType(), EarlyDataType::NotAttempted);
+}
+
+TEST_F(ServerProtocolTest, TestClientHelloAcceptEarlyDataWithValidAppToken) {
+  acceptEarlyData();
+  setUpExpectingClientHello();
+  auto validator = std::make_unique<MockAppTokenValidator>();
+  auto validatorPtr = validator.get();
+  state_.appTokenValidator() = std::move(validator);
+
+  std::string appTokenStr("appToken");
+
+  EXPECT_CALL(*validatorPtr, validate(_))
+      .WillOnce(Invoke([&appTokenStr](const ResumptionState& resumptionState) {
+        EXPECT_TRUE(IOBufEqualTo()(
+            resumptionState.appToken, IOBuf::copyBuffer(appTokenStr)));
+        return true;
+      }));
+  EXPECT_CALL(*mockTicketCipher_, _decrypt(_))
+      .WillOnce(InvokeWithoutArgs([=]() {
+        ResumptionState res;
+        res.version = TestProtocolVersion;
+        res.cipher = CipherSuite::TLS_AES_128_GCM_SHA256;
+        res.resumptionSecret = folly::IOBuf::copyBuffer("resumesecret");
+        res.alpn = "h2";
+        res.ticketAgeAdd = 0xffffffff;
+        res.ticketIssueTime =
+            std::chrono::system_clock::now() - std::chrono::seconds(100);
+        res.appToken = IOBuf::copyBuffer(appTokenStr);
+        return std::make_pair(PskType::Resumption, std::move(res));
+      }));
+
+  auto actions = getActions(
+      detail::processEvent(state_, TestMessages::clientHelloPskEarly()));
+  expectActions<MutateState, WriteToSocket, ReportEarlyHandshakeSuccess>(
+      actions);
+  processStateMutations(actions);
+  EXPECT_EQ(state_.state(), StateEnum::AcceptingEarlyData);
+  EXPECT_EQ(state_.pskType(), PskType::Resumption);
+  EXPECT_EQ(state_.earlyDataType(), EarlyDataType::Accepted);
+  EXPECT_EQ(state_.replayCacheResult(), ReplayCacheResult::NotReplay);
+}
+
 TEST_F(ServerProtocolTest, TestClientHelloRejectEarlyData) {
   setUpExpectingClientHello();
 
@@ -2512,6 +2575,45 @@ TEST_F(ServerProtocolTest, TestClientHelloRejectEarlyDataNegativeExpectedAge) {
   EXPECT_EQ(state_.pskType(), PskType::Resumption);
   EXPECT_EQ(state_.earlyDataType(), EarlyDataType::Rejected);
   EXPECT_GT(*state_.clientClockSkew(), std::chrono::milliseconds(5000));
+}
+
+TEST_F(ServerProtocolTest, TestClientHelloRejectEarlyDataInvalidAppToken) {
+  acceptEarlyData();
+  setUpExpectingClientHello();
+  auto validator = std::make_unique<MockAppTokenValidator>();
+  auto validatorPtr = validator.get();
+  state_.appTokenValidator() = std::move(validator);
+
+  std::string appTokenStr("appToken");
+
+  EXPECT_CALL(*validatorPtr, validate(_))
+      .WillOnce(Invoke([&appTokenStr](const ResumptionState& resumptionState) {
+        EXPECT_TRUE(IOBufEqualTo()(
+            resumptionState.appToken, IOBuf::copyBuffer(appTokenStr)));
+        return false;
+      }));
+
+  EXPECT_CALL(*mockTicketCipher_, _decrypt(_))
+      .WillOnce(InvokeWithoutArgs([=]() {
+        ResumptionState res;
+        res.version = TestProtocolVersion;
+        res.cipher = CipherSuite::TLS_AES_128_GCM_SHA256;
+        res.resumptionSecret = folly::IOBuf::copyBuffer("resumesecret");
+        res.alpn = "h2";
+        res.ticketAgeAdd = 0xffffffff;
+        res.ticketIssueTime =
+            std::chrono::system_clock::now() - std::chrono::seconds(100);
+        res.appToken = IOBuf::copyBuffer(appTokenStr);
+        return std::make_pair(PskType::Resumption, std::move(res));
+      }));
+
+  auto actions = getActions(
+      detail::processEvent(state_, TestMessages::clientHelloPskEarly()));
+  expectActions<MutateState, WriteToSocket>(actions);
+  processStateMutations(actions);
+  EXPECT_EQ(state_.state(), StateEnum::ExpectingFinished);
+  EXPECT_EQ(state_.pskType(), PskType::Resumption);
+  EXPECT_EQ(state_.earlyDataType(), EarlyDataType::Rejected);
 }
 
 TEST_F(ServerProtocolTest, TestClientHelloHandshakeLogging) {

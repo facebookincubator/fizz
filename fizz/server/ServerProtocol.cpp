@@ -776,7 +776,8 @@ static EarlyDataType negotiateEarlyDataType(
     Optional<std::string> alpn,
     ReplayCacheResult replayCacheResult,
     Optional<std::chrono::milliseconds> clockSkew,
-    ClockSkewTolerance clockSkewTolerance) {
+    ClockSkewTolerance clockSkewTolerance,
+    const AppTokenValidator* appTokenValidator) {
   if (!getExtension<ClientEarlyData>(chlo.extensions)) {
     return EarlyDataType::NotAttempted;
   }
@@ -824,6 +825,11 @@ static EarlyDataType negotiateEarlyDataType(
                           : "(none)")
             << " toleranceBefore=" << clockSkewTolerance.before.count()
             << " toleranceAfter=" << clockSkewTolerance.after.count();
+    return EarlyDataType::Rejected;
+  }
+
+  if (appTokenValidator && !appTokenValidator->validate(*psk)) {
+    VLOG(5) << "Rejecting early data: invalid app token";
     return EarlyDataType::Rejected;
   }
 
@@ -1054,7 +1060,8 @@ EventHandler<ServerTypes, StateEnum::ExpectingClientHello, Event::ClientHello>::
             alpn,
             replayCacheResult,
             clockSkew,
-            state.context()->getClockSkewTolerance());
+            state.context()->getClockSkewTolerance(),
+            state.appTokenValidator());
 
         std::unique_ptr<EncryptedReadRecordLayer> earlyReadRecordLayer;
         Buf earlyExporterMaster;

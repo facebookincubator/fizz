@@ -187,6 +187,11 @@ class MockReplayCache : public ReplayCache {
  public:
   MOCK_METHOD1(check, folly::Future<ReplayCacheResult>(folly::ByteRange));
 };
+
+class MockAppTokenValidator : public AppTokenValidator {
+ public:
+  MOCK_CONST_METHOD1(validate, bool(const ResumptionState&));
+};
 } // namespace test
 } // namespace server
 } // namespace fizz
