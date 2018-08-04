@@ -78,6 +78,57 @@ For example, to start ServerSocket on port 443 with a specified cert:
 you can connect with `ClientSocket -host localhost -port 443`. ClientSocket will
 dump the data it gets and both will remain running until interrupted via CTRL+C.
 
+## Building
+
+### Ubuntu 16.04 LTS
+
+To begin, you should install the dependencies we need for build. This largely
+consists of [folly](https://github.com/facebook/folly)'s dependencies, as well as
+[libsodium](https://github.com/jedisct1/libsodium).
+
+```
+sudo apt-get install \
+    g++ \
+    cmake \
+    libboost-all-dev \
+    libevent-dev \
+    libdouble-conversion-dev \
+    libgoogle-glog-dev \
+    libgflags-dev \
+    libiberty-dev \
+    liblz4-dev \
+    liblzma-dev \
+    libsnappy-dev \
+    make \
+    zlib1g-dev \
+    binutils-dev \
+    libjemalloc-dev \
+    libssl-dev \
+    pkg-config \
+    libsodium-dev
+```
+
+Then, build and install folly:
+
+```
+git clone https://github.com/facebook/folly
+mkdir folly/build_ && cd folly/build_
+cmake configure ..
+make -j $(nproc)
+sudo make install
+```
+
+And lastly, build and install fizz.
+
+```
+cd ../..
+git clone https://github.com/facebookincubator/fizz
+mkdir fizz/build_ && cd fizz/build_
+cmake configure ../fizz
+make -j $(nproc)
+sudo make install
+```
+
 ## Contributing
 
 We'd love to have your help in making Fizz better. If you're interested, please
