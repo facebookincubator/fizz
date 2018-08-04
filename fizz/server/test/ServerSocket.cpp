@@ -165,6 +165,8 @@ class TestCallbackFactory
 };
 
 int main(int argc, char** argv) {
+  // Works around some platforms where it doesn't log by default.
+  FLAGS_logtostderr = true;
   gflags::ParseCommandLineFlags(&argc, &argv, true);
   google::InitGoogleLogging(argv[0]);
   folly::ssl::init();
