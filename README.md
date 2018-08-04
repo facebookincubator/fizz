@@ -74,9 +74,17 @@ helps us move fast.
 over a TCP connection.
 
 For example, to start ServerSocket on port 443 with a specified cert:
-`ServerSocket -port 443 -cert foo.pem -key foo.key`. Then, on the same host,
-you can connect with `ClientSocket -host localhost -port 443`. ClientSocket will
-dump the data it gets and both will remain running until interrupted via CTRL+C.
+```
+ServerSocket -port 443 -cert foo.pem -key foo.key
+```
+
+Then, on the same host, you can connect with: 
+
+```
+ClientSocket -host localhost -port 443
+```
+ClientSocket will dump the data it gets and both will remain running until
+interrupted via CTRL+C.
 
 ## Building
 
@@ -128,6 +136,37 @@ cmake configure ../fizz
 make -j $(nproc)
 sudo make install
 ```
+
+### Building on Mac
+
+The following instructions were tested on MacOS High Sierra
+with Xcode 9.4.1. They should work with later Xcode versions as well.
+
+Run the helper script from within the `fizz` subdirectory. The helper
+script assumes that you have homebrew installed and are using homebrew
+as your package manager. To install homebrew use the instructions on
+the homebrew [website](https://brew.sh/).
+
+It will install and link the required dependencies and also build folly.
+This may take several minutes the first time.
+
+```
+cd fizz
+./mac-build.sh
+```
+
+After building, the directory `out/` will contain the libraries as well as
+`out/bin` will contain the `ClientSocket` and `ServerSocket` binaries.
+Running it again will be faster and only rebuild `fizz`.
+
+You can also install both `fizz` as well as `folly` to a custom directory
+using the build script, by supplying a `INSTALL_PREFIX` env var.
+
+```
+INSTALL_PREFIX=/usr/local ./mac-build.sh
+```
+
+You might need to run the script as root to install to certain directories.
 
 ## Contributing
 
