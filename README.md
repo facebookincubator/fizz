@@ -44,7 +44,7 @@ Fizz has several important features needed from a modern TLS library.
 Fizz supports scatter/gather IO by default via folly's IOBufs, and will encrypt
 data in-place whenever possible, saving memcpys. Due to this and several
 other optimizations, we found in our load balancer benchmarks that Fizz has 10%
-higher throughput than out prior SSL library which uses folly's
+higher throughput than our prior SSL library which uses folly's
 [AsyncSSLSocket](https://github.com/facebook/folly/blob/master/folly/io/async/AsyncSSLSocket.h).
 Fizz also consumes less memory per connection than AsyncSSLSocket.
 
