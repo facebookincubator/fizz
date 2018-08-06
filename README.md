@@ -7,6 +7,9 @@ Fizz currently supports TLS 1.3 drafts 28, 26 (both wire-compatible with the
 final specification), and 23. All major handshake modes are supported, including
 PSK resumption, early data, client authentication, and HelloRetryRequest.
 
+More background and details are available on the
+[Facebook Code Blog](https://code.fb.com/networking-traffic/deploying-tls-1-3-at-scale-with-fizz-a-performant-open-source-tls-library/).
+
 ## Dependencies
 
 Fizz largely depends on three libraries: [folly](https://www.github.com/facebook/folly),
