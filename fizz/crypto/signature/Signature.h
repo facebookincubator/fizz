@@ -14,7 +14,7 @@
 
 namespace fizz {
 
-enum class KeyType { RSA, P256 };
+enum class KeyType { RSA, P256, P384, P521 };
 
 /**
  * Signature implementation using OpenSSL.

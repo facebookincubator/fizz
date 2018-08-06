@@ -28,6 +28,22 @@ struct P256Test {
   using Invalid = RSATest;
 };
 
+struct P384Test {
+  static constexpr KeyType Type = KeyType::P384;
+  static constexpr SignatureScheme Scheme =
+      SignatureScheme::ecdsa_secp384r1_sha384;
+
+  using Invalid = RSATest;
+};
+
+struct P521Test {
+  static constexpr KeyType Type = KeyType::P521;
+  static constexpr SignatureScheme Scheme =
+      SignatureScheme::ecdsa_secp521r1_sha512;
+
+  using Invalid = RSATest;
+};
+
 struct RSATest {
   static constexpr KeyType Type = KeyType::RSA;
   static constexpr SignatureScheme Scheme = SignatureScheme::rsa_pss_sha256;
@@ -44,6 +60,16 @@ ssl::X509UniquePtr getCert<P256Test>() {
 }
 
 template <>
+ssl::X509UniquePtr getCert<P384Test>() {
+  return fizz::test::getCert(kP384Certificate);
+}
+
+template <>
+ssl::X509UniquePtr getCert<P521Test>() {
+  return fizz::test::getCert(kP521Certificate);
+}
+
+template <>
 ssl::X509UniquePtr getCert<RSATest>() {
   return fizz::test::getCert(kRSACertificate);
 }
@@ -54,6 +80,16 @@ static ssl::EvpPkeyUniquePtr getKey();
 template <>
 ssl::EvpPkeyUniquePtr getKey<P256Test>() {
   return getPrivateKey(kP256Key);
+}
+
+template <>
+ssl::EvpPkeyUniquePtr getKey<P384Test>() {
+  return getPrivateKey(kP384Key);
+}
+
+template <>
+ssl::EvpPkeyUniquePtr getKey<P521Test>() {
+  return getPrivateKey(kP521Key);
 }
 
 template <>
@@ -69,7 +105,7 @@ class CertTestTyped : public Test {
   }
 };
 
-using KeyTypes = Types<P256Test, RSATest>;
+using KeyTypes = Types<P256Test, P384Test, P521Test, RSATest>;
 TYPED_TEST_CASE(CertTestTyped, KeyTypes);
 
 TEST(CertTest, GetIdentity) {

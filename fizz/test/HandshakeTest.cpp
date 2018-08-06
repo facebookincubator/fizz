@@ -68,9 +68,17 @@ class HandshakeTest : public Test {
             getPrivateKey(kRSAKey), std::move(rsaCerts)),
         true);
     std::vector<ssl::X509UniquePtr> p256Certs;
+    std::vector<ssl::X509UniquePtr> p384Certs;
+    std::vector<ssl::X509UniquePtr> p521Certs;
     p256Certs.emplace_back(getCert(kP256Certificate));
+    p384Certs.emplace_back(getCert(kP384Certificate));
+    p521Certs.emplace_back(getCert(kP521Certificate));
     certManager->addCert(std::make_shared<SelfCertImpl<KeyType::P256>>(
         getPrivateKey(kP256Key), std::move(p256Certs)));
+    certManager->addCert(std::make_shared<SelfCertImpl<KeyType::P384>>(
+        getPrivateKey(kP384Key), std::move(p384Certs)));
+    certManager->addCert(std::make_shared<SelfCertImpl<KeyType::P521>>(
+        getPrivateKey(kP521Key), std::move(p521Certs)));
     serverContext_->setCertManager(std::move(certManager));
     serverContext_->setEarlyDataSettings(
         true,
@@ -370,6 +378,9 @@ class HandshakeTest : public Test {
   ExpectedParameters expected_;
 };
 
+class SigSchemeTest : public HandshakeTest,
+                      public ::testing::WithParamInterface<SignatureScheme> {};
+
 TEST_F(HandshakeTest, BasicHandshake) {
   expectSuccess();
   doHandshake();
@@ -399,6 +410,32 @@ TEST_F(HandshakeTest, P256) {
   sendAppData();
 }
 
+TEST_F(HandshakeTest, P384) {
+  clientContext_->setSupportedGroups(
+      {NamedGroup::x25519, NamedGroup::secp384r1});
+  clientContext_->setDefaultShares({NamedGroup::x25519, NamedGroup::secp384r1});
+  serverContext_->setSupportedGroups({NamedGroup::secp384r1});
+  expected_.group = NamedGroup::secp384r1;
+
+  expectSuccess();
+  doHandshake();
+  verifyParameters();
+  sendAppData();
+}
+
+TEST_F(HandshakeTest, P521) {
+  clientContext_->setSupportedGroups(
+      {NamedGroup::x25519, NamedGroup::secp521r1});
+  clientContext_->setDefaultShares({NamedGroup::x25519, NamedGroup::secp521r1});
+  serverContext_->setSupportedGroups({NamedGroup::secp521r1});
+  expected_.group = NamedGroup::secp521r1;
+
+  expectSuccess();
+  doHandshake();
+  verifyParameters();
+  sendAppData();
+}
+
 TEST_F(HandshakeTest, GroupServerPref) {
   clientContext_->setSupportedGroups(
       {NamedGroup::secp256r1, NamedGroup::x25519});
@@ -420,17 +457,6 @@ TEST_F(HandshakeTest, GroupMismatch) {
 
   expectError("alert: handshake_failure", "no group match");
   doHandshake();
-}
-
-TEST_F(HandshakeTest, RSA) {
-  clientContext_->setSupportedSigSchemes({SignatureScheme::rsa_pss_sha256});
-  serverContext_->setSupportedSigSchemes({SignatureScheme::rsa_pss_sha256});
-  expected_.scheme = SignatureScheme::rsa_pss_sha256;
-
-  expectSuccess();
-  doHandshake();
-  verifyParameters();
-  sendAppData();
 }
 
 TEST_F(HandshakeTest, SchemeServerPref) {
@@ -608,6 +634,18 @@ TEST_F(HandshakeTest, BasicCertRequest) {
   serverContext_->setClientAuthMode(ClientAuthMode::Required);
   expected_.clientCert = std::make_shared<PeerCertImpl<KeyType::RSA>>(
       getCert(kClientAuthClientCert));
+  doHandshake();
+  verifyParameters();
+  sendAppData();
+}
+
+TEST_P(SigSchemeTest, Schemes) {
+  SignatureScheme scheme = GetParam();
+  clientContext_->setSupportedSigSchemes({scheme});
+  serverContext_->setSupportedSigSchemes({scheme});
+  expected_.scheme = scheme;
+
+  expectSuccess();
   doHandshake();
   verifyParameters();
   sendAppData();
@@ -968,5 +1006,13 @@ TEST_F(HandshakeTest, TestBadCookie) {
 
   doServerHandshake();
 }
+INSTANTIATE_TEST_CASE_P(
+    SignatureSchemes,
+    SigSchemeTest,
+    ::testing::Values(
+        SignatureScheme::rsa_pss_sha256,
+        SignatureScheme::ecdsa_secp256r1_sha256,
+        SignatureScheme::ecdsa_secp384r1_sha384,
+        SignatureScheme::ecdsa_secp521r1_sha512));
 } // namespace test
 } // namespace fizz

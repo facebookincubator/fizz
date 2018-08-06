@@ -279,7 +279,12 @@ struct KeyUpdate
   KeyUpdateRequest request_update;
 };
 
-enum class NamedGroup : uint16_t { secp256r1 = 23, x25519 = 29 };
+enum class NamedGroup : uint16_t {
+  secp256r1 = 23,
+  secp384r1 = 24,
+  secp521r1 = 25,
+  x25519 = 29
+};
 
 std::string toString(NamedGroup);
 

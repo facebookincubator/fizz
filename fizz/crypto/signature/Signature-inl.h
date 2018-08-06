@@ -36,21 +36,63 @@ void rsaPssVerify(
     int hashNid);
 } // namespace detail
 
-template <>
-template <>
-inline std::unique_ptr<folly::IOBuf>
-OpenSSLSignature<KeyType::P256>::sign<SignatureScheme::ecdsa_secp256r1_sha256>(
-    folly::ByteRange data) const {
-  return detail::ecSign(data, pkey_, NID_sha256);
-}
+template <SignatureScheme Scheme>
+struct SigAlg {};
 
 template <>
+struct SigAlg<SignatureScheme::rsa_pss_sha256> {
+  static constexpr int HashNid = NID_sha256;
+  static constexpr KeyType type = KeyType::RSA;
+};
+
 template <>
-inline void OpenSSLSignature<KeyType::P256>::verify<
-    SignatureScheme::ecdsa_secp256r1_sha256>(
+struct SigAlg<SignatureScheme::ecdsa_secp256r1_sha256> {
+  static constexpr int HashNid = NID_sha256;
+  static constexpr KeyType type = KeyType::P256;
+};
+
+template <>
+struct SigAlg<SignatureScheme::ecdsa_secp384r1_sha384> {
+  static constexpr int HashNid = NID_sha384;
+  static constexpr KeyType type = KeyType::P384;
+};
+
+template <>
+struct SigAlg<SignatureScheme::ecdsa_secp521r1_sha512> {
+  static constexpr int HashNid = NID_sha512;
+  static constexpr KeyType type = KeyType::P521;
+};
+
+template <KeyType Type>
+template <SignatureScheme Scheme>
+inline std::unique_ptr<folly::IOBuf> OpenSSLSignature<Type>::sign(
+    folly::ByteRange data) const {
+  static_assert(
+      SigAlg<Scheme>::type == Type, "Called with mismatched type and scheme");
+  switch (Type) {
+    case KeyType::P256:
+    case KeyType::P384:
+    case KeyType::P521:
+      return detail::ecSign(data, pkey_, SigAlg<Scheme>::HashNid);
+    case KeyType::RSA:
+      return detail::rsaPssSign(data, pkey_, SigAlg<Scheme>::HashNid);
+  }
+}
+
+template <KeyType Type>
+template <SignatureScheme Scheme>
+inline void OpenSSLSignature<Type>::verify(
     folly::ByteRange data,
     folly::ByteRange signature) const {
-  return detail::ecVerify(data, signature, pkey_, NID_sha256);
+  switch (Type) {
+    case KeyType::P256:
+    case KeyType::P384:
+    case KeyType::P521:
+      return detail::ecVerify(data, signature, pkey_, SigAlg<Scheme>::HashNid);
+    case KeyType::RSA:
+      return detail::rsaPssVerify(
+          data, signature, pkey_, SigAlg<Scheme>::HashNid);
+  }
 }
 
 template <>
@@ -60,28 +102,18 @@ inline void OpenSSLSignature<KeyType::P256>::setKey(
   pkey_ = std::move(pkey);
 }
 
-template <SignatureScheme Scheme>
-struct RsaPssSigAlg {};
-
 template <>
-struct RsaPssSigAlg<SignatureScheme::rsa_pss_sha256> {
-  static constexpr int HashNid = NID_sha256;
-};
-
-template <>
-template <SignatureScheme Scheme>
-std::unique_ptr<folly::IOBuf> OpenSSLSignature<KeyType::RSA>::sign(
-    folly::ByteRange data) const {
-  return detail::rsaPssSign(data, pkey_, RsaPssSigAlg<Scheme>::HashNid);
+inline void OpenSSLSignature<KeyType::P384>::setKey(
+    folly::ssl::EvpPkeyUniquePtr pkey) {
+  detail::validateECKey(pkey, NID_secp384r1);
+  pkey_ = std::move(pkey);
 }
 
 template <>
-template <SignatureScheme Scheme>
-void OpenSSLSignature<KeyType::RSA>::verify(
-    folly::ByteRange data,
-    folly::ByteRange signature) const {
-  return detail::rsaPssVerify(
-      data, signature, pkey_, RsaPssSigAlg<Scheme>::HashNid);
+inline void OpenSSLSignature<KeyType::P521>::setKey(
+    folly::ssl::EvpPkeyUniquePtr pkey) {
+  detail::validateECKey(pkey, NID_secp521r1);
+  pkey_ = std::move(pkey);
 }
 
 template <>

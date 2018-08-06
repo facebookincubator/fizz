@@ -230,6 +230,10 @@ std::string toString(NamedGroup group) {
   switch (group) {
     case NamedGroup::secp256r1:
       return "secp256r1";
+    case NamedGroup::secp384r1:
+      return "secp384r1";
+    case NamedGroup::secp521r1:
+      return "secp521r1";
     case NamedGroup::x25519:
       return "x25519";
   }

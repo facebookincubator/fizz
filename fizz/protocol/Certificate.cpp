@@ -8,6 +8,16 @@
 
 #include <fizz/protocol/Certificate.h>
 
+namespace {
+int getCurveName(EVP_PKEY* key) {
+  auto ecKey = EVP_PKEY_get0_EC_KEY(key);
+  if (ecKey) {
+    return EC_GROUP_get_curve_name(EC_KEY_get0_group(ecKey));
+  }
+  return 0;
+}
+} // namespace
+
 namespace fizz {
 
 Buf CertUtils::prepareSignData(
@@ -93,10 +103,18 @@ std::unique_ptr<PeerCert> CertUtils::makePeerCert(Buf certData) {
   if (EVP_PKEY_id(pubKey.get()) == EVP_PKEY_RSA) {
     return std::make_unique<PeerCertImpl<KeyType::RSA>>(std::move(cert));
   } else if (EVP_PKEY_id(pubKey.get()) == EVP_PKEY_EC) {
-    return std::make_unique<PeerCertImpl<KeyType::P256>>(std::move(cert));
-  } else {
-    throw std::runtime_error("unknown peer cert type");
+    switch (getCurveName(pubKey.get())) {
+      case NID_X9_62_prime256v1:
+        return std::make_unique<PeerCertImpl<KeyType::P256>>(std::move(cert));
+      case NID_secp384r1:
+        return std::make_unique<PeerCertImpl<KeyType::P384>>(std::move(cert));
+      case NID_secp521r1:
+        return std::make_unique<PeerCertImpl<KeyType::P521>>(std::move(cert));
+      default:
+        break;
+    }
   }
+  throw std::runtime_error("unknown peer cert type");
 }
 
 std::unique_ptr<SelfCert> CertUtils::makeSelfCert(
@@ -131,16 +149,25 @@ std::unique_ptr<SelfCert> CertUtils::makeSelfCert(
     throw std::runtime_error("Failed to read public key");
   }
 
-  std::unique_ptr<SelfCert> cert;
   if (EVP_PKEY_id(pubKey.get()) == EVP_PKEY_RSA) {
-    cert = std::make_unique<SelfCertImpl<KeyType::RSA>>(
+    return std::make_unique<SelfCertImpl<KeyType::RSA>>(
         std::move(key), std::move(certs));
-  } else {
-    cert = std::make_unique<SelfCertImpl<KeyType::P256>>(
-        std::move(key), std::move(certs));
+  } else if (EVP_PKEY_id(pubKey.get()) == EVP_PKEY_EC) {
+    switch (getCurveName(pubKey.get())) {
+      case NID_X9_62_prime256v1:
+        return std::make_unique<SelfCertImpl<KeyType::P256>>(
+            std::move(key), std::move(certs));
+      case NID_secp384r1:
+        return std::make_unique<SelfCertImpl<KeyType::P384>>(
+            std::move(key), std::move(certs));
+      case NID_secp521r1:
+        return std::make_unique<SelfCertImpl<KeyType::P521>>(
+            std::move(key), std::move(certs));
+      default:
+        break;
+    }
   }
-
-  return cert;
+  throw std::runtime_error("unknown self cert type");
 }
 
 IdentityCert::IdentityCert(std::string identity) : identity_(identity) {}

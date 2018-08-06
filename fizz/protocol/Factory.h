@@ -14,8 +14,8 @@
 #include <fizz/crypto/aead/AESOCB128.h>
 #include <fizz/crypto/aead/ChaCha20Poly1305.h>
 #include <fizz/crypto/aead/OpenSSLEVPCipher.h>
+#include <fizz/crypto/exchange/ECCurveKeyExchange.h>
 #include <fizz/crypto/exchange/KeyExchange.h>
-#include <fizz/crypto/exchange/P256KeyExchange.h>
 #include <fizz/crypto/exchange/X25519.h>
 #include <fizz/protocol/Certificate.h>
 #include <fizz/protocol/HandshakeContext.h>
@@ -90,6 +90,10 @@ class Factory {
     switch (group) {
       case NamedGroup::secp256r1:
         return std::make_unique<OpenSSLKeyExchange<P256>>();
+      case NamedGroup::secp384r1:
+        return std::make_unique<OpenSSLKeyExchange<P384>>();
+      case NamedGroup::secp521r1:
+        return std::make_unique<OpenSSLKeyExchange<P521>>();
       case NamedGroup::x25519:
         return std::make_unique<X25519KeyExchange>();
       default:

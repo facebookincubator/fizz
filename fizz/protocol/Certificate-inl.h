@@ -19,6 +19,16 @@ inline std::vector<SignatureScheme> CertUtils::getSigSchemes<KeyType::P256>() {
 }
 
 template <>
+inline std::vector<SignatureScheme> CertUtils::getSigSchemes<KeyType::P384>() {
+  return {SignatureScheme::ecdsa_secp384r1_sha384};
+}
+
+template <>
+inline std::vector<SignatureScheme> CertUtils::getSigSchemes<KeyType::P521>() {
+  return {SignatureScheme::ecdsa_secp521r1_sha512};
+}
+
+template <>
 inline std::vector<SignatureScheme> CertUtils::getSigSchemes<KeyType::RSA>() {
   return {SignatureScheme::rsa_pss_sha256};
 }
@@ -77,6 +87,36 @@ inline Buf SelfCertImpl<KeyType::P256>::sign(
 }
 
 template <>
+inline Buf SelfCertImpl<KeyType::P384>::sign(
+    SignatureScheme scheme,
+    CertificateVerifyContext context,
+    folly::ByteRange toBeSigned) const {
+  auto signData = CertUtils::prepareSignData(context, toBeSigned);
+  switch (scheme) {
+    case SignatureScheme::ecdsa_secp384r1_sha384:
+      return signature_.sign<SignatureScheme::ecdsa_secp384r1_sha384>(
+          signData->coalesce());
+    default:
+      throw std::runtime_error("Unsupported signature scheme");
+  }
+}
+
+template <>
+inline Buf SelfCertImpl<KeyType::P521>::sign(
+    SignatureScheme scheme,
+    CertificateVerifyContext context,
+    folly::ByteRange toBeSigned) const {
+  auto signData = CertUtils::prepareSignData(context, toBeSigned);
+  switch (scheme) {
+    case SignatureScheme::ecdsa_secp521r1_sha512:
+      return signature_.sign<SignatureScheme::ecdsa_secp521r1_sha512>(
+          signData->coalesce());
+    default:
+      throw std::runtime_error("Unsupported signature scheme");
+  }
+}
+
+template <>
 inline Buf SelfCertImpl<KeyType::RSA>::sign(
     SignatureScheme scheme,
     CertificateVerifyContext context,
@@ -116,6 +156,38 @@ inline void PeerCertImpl<KeyType::P256>::verify(
   switch (scheme) {
     case SignatureScheme::ecdsa_secp256r1_sha256:
       return signature_.verify<SignatureScheme::ecdsa_secp256r1_sha256>(
+          signData->coalesce(), signature);
+    default:
+      throw std::runtime_error("Unsupported signature scheme");
+  }
+}
+
+template <>
+inline void PeerCertImpl<KeyType::P384>::verify(
+    SignatureScheme scheme,
+    CertificateVerifyContext context,
+    folly::ByteRange toBeSigned,
+    folly::ByteRange signature) const {
+  auto signData = CertUtils::prepareSignData(context, toBeSigned);
+  switch (scheme) {
+    case SignatureScheme::ecdsa_secp384r1_sha384:
+      return signature_.verify<SignatureScheme::ecdsa_secp384r1_sha384>(
+          signData->coalesce(), signature);
+    default:
+      throw std::runtime_error("Unsupported signature scheme");
+  }
+}
+
+template <>
+inline void PeerCertImpl<KeyType::P521>::verify(
+    SignatureScheme scheme,
+    CertificateVerifyContext context,
+    folly::ByteRange toBeSigned,
+    folly::ByteRange signature) const {
+  auto signData = CertUtils::prepareSignData(context, toBeSigned);
+  switch (scheme) {
+    case SignatureScheme::ecdsa_secp521r1_sha512:
+      return signature_.verify<SignatureScheme::ecdsa_secp521r1_sha512>(
           signData->coalesce(), signature);
     default:
       throw std::runtime_error("Unsupported signature scheme");

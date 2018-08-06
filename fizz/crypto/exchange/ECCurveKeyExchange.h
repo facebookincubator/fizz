@@ -8,7 +8,7 @@
 
 #pragma once
 
-#include <fizz/crypto/P256.h>
+#include <fizz/crypto/ECCurve.h>
 #include <fizz/crypto/exchange/OpenSSLKeyExchange.h>
 #include <folly/io/IOBuf.h>
 
@@ -17,4 +17,12 @@ namespace fizz {
 using P256KeyExchange = detail::OpenSSLECKeyExchange<P256>;
 using P256PublicKeyDecoder = detail::OpenSSLECKeyDecoder<P256>;
 using P256PublicKeyEncoder = detail::OpenSSLECKeyEncoder;
+
+using P384KeyExchange = detail::OpenSSLECKeyExchange<P384>;
+using P384PublicKeyDecoder = detail::OpenSSLECKeyDecoder<P384>;
+using P384PublicKeyEncoder = detail::OpenSSLECKeyEncoder;
+
+using P521KeyExchange = detail::OpenSSLECKeyExchange<P521>;
+using P521PublicKeyDecoder = detail::OpenSSLECKeyDecoder<P521>;
+using P521PublicKeyEncoder = detail::OpenSSLECKeyEncoder;
 } // namespace fizz
