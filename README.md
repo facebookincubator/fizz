@@ -3,9 +3,9 @@
 </p>
 Fizz is a TLS 1.3 implementation.
 
-Fizz currently supports TLS 1.3 drafts 23-28.  Each draft also has a
-corresponding "fb" version. These match the draft versions except for some
-minor record layer differences.
+Fizz currently supports TLS 1.3 drafts 28, 26 (both wire-compatible with the
+final specification), and 23. All major handshake modes are supported, including
+PSK resumption, early data, client authentication, and HelloRetryRequest.
 
 ## Dependencies
 
@@ -78,7 +78,7 @@ For example, to start ServerSocket on port 443 with a specified cert:
 ServerSocket -port 443 -cert foo.pem -key foo.key
 ```
 
-Then, on the same host, you can connect with: 
+Then, on the same host, you can connect with:
 
 ```
 ClientSocket -host localhost -port 443
