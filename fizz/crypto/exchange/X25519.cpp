@@ -11,14 +11,9 @@
 #include <fizz/crypto/Utils.h>
 
 #include <folly/Conv.h>
-#include <sodium/crypto_scalarmult.h>
+#include <sodium.h>
 
 using namespace folly;
-
-namespace {
-
-constexpr std::array<uint8_t, crypto_scalarmult_curve25519_BYTES> kZeros{};
-}
 
 namespace fizz {
 
@@ -46,17 +41,14 @@ std::unique_ptr<folly::IOBuf> X25519KeyExchange::generateSharedSecret(
   if (!privKey_ || !pubKey_) {
     throw std::runtime_error("Key not generated");
   }
-  if (keyShare.size() != crypto_box_curve25519xsalsa20poly1305_PUBLICKEYBYTES) {
+  if (keyShare.size() != crypto_scalarmult_BYTES) {
     throw std::runtime_error("Invalid external public key");
   }
-  auto key = IOBuf::create(crypto_scalarmult_curve25519_BYTES);
-  key->append(crypto_scalarmult_curve25519_BYTES);
-  int err = crypto_scalarmult_curve25519(
+  auto key = IOBuf::create(crypto_scalarmult_BYTES);
+  key->append(crypto_scalarmult_BYTES);
+  int err = crypto_scalarmult(
       key->writableData(), privKey_->data(), keyShare.data());
   if (err != 0) {
-    throw std::runtime_error(to<std::string>("DH failed ", err));
-  }
-  if (CryptoUtils::equal(key->coalesce(), range(kZeros))) {
     throw std::runtime_error("Invalid point");
   }
   return key;
