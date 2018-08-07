@@ -30,7 +30,7 @@ def fbcode_builder_spec(builder):
     return {
         'depends_on': [gmock, folly, sodium],
         'steps': [
-            builder.fb_github_cmake_install('fizz/_build', '../fizz'),
+            builder.fb_github_cmake_install('fizz/_build', '../fizz', 'facebookincubator'),
             builder.step(
                 'Run fizz tests', [
                     builder.run(
