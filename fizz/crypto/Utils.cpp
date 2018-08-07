@@ -20,6 +20,6 @@ bool CryptoUtils::equal(folly::ByteRange a, folly::ByteRange b) {
 }
 
 void CryptoUtils::clean(folly::MutableByteRange range) {
-  return sodium_memzero(range.data(), range.size());
+  sodium_memzero(range.data(), range.size());
 }
 } // namespace fizz
