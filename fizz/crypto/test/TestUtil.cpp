@@ -59,12 +59,12 @@ std::unique_ptr<folly::IOBuf> getCertData(folly::StringPiece cert) {
 }
 
 static struct randombytes_implementation mockRandom = {
-    .implementation_name = []() { return "test"; },
-    .random = []() { return (uint32_t)0x44444444; },
-    .stir = nullptr,
-    .uniform = nullptr,
-    .buf = [](void* const buf, const size_t size) { memset(buf, 0x44, size); },
-    .close = nullptr};
+    []() { return "test"; }, // implementation_name
+    []() { return (uint32_t)0x44444444; }, // random
+    nullptr, // stir
+    nullptr, // uniform
+    [](void* const buf, const size_t size) { memset(buf, 0x44, size); }, // buf
+    nullptr}; // close
 
 void useMockRandom() {
   randombytes_set_implementation(&mockRandom);
