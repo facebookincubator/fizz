@@ -45,63 +45,63 @@ class Key : public ::testing::Test {
 
 template <>
 KeyParams Key<P256>::getKeyParams() {
-  return (KeyParams){kP256Key,
-                     kP256K1Key,
-                     "048d5e897c896b17e1679766c14c785dd2c328c3"
-                     "eecc7dbfd2e2e817cd35c786aceea79bf1286ab8"
-                     "a5c3c464c46f5ba06338b24ea96ce442a4d13356"
-                     "902dfcd1e9",
-                     "048d5e897c896b17e1679766c14c785dd2c328c3"
-                     "eecc7dbfd2e2e817cd35c786abeea79bf1286ab8"
-                     "a5c3c464c46f5ba06338b24ea96ce442a4d13356"
-                     "902dfcd1e9",
-                     "048d5e897c896b17e1679766c14c785dd2c328c3"};
+  return KeyParams{kP256Key,
+                   kP256K1Key,
+                   "048d5e897c896b17e1679766c14c785dd2c328c3"
+                   "eecc7dbfd2e2e817cd35c786aceea79bf1286ab8"
+                   "a5c3c464c46f5ba06338b24ea96ce442a4d13356"
+                   "902dfcd1e9",
+                   "048d5e897c896b17e1679766c14c785dd2c328c3"
+                   "eecc7dbfd2e2e817cd35c786abeea79bf1286ab8"
+                   "a5c3c464c46f5ba06338b24ea96ce442a4d13356"
+                   "902dfcd1e9",
+                   "048d5e897c896b17e1679766c14c785dd2c328c3"};
 }
 
 template <>
 KeyParams Key<P384>::getKeyParams() {
-  return (KeyParams){kP384Key,
-                     kP256Key,
-                     "04811041962bbac9859eb2aa19a475"
-                     "2e573949d3f1eb8abcb131c1674e75"
-                     "061f5e17b6a24724eeb73268ed82fd"
-                     "3d2bfc93db88cabbf8c9da9e4c1479"
-                     "ffdb9a54b522990aef401c1ab004aa"
-                     "1fdf0e26aa8692ca5860ad6f6cf8ea"
-                     "3bb95dbecb82a3",
-                     "04811041962bbac9859eb2aa19a475"
-                     "2e573949d3f1eb8abcb131c1674e75"
-                     "061f5e17b6a24724eeb73268ed82fd"
-                     "3d2bfc93db88cabbf8c9da9e4c1479"
-                     "ffdb9a54b522990aef401c1ab004aa"
-                     "1fdf0e26aa8621ca5860ad6f6cf8ea"
-                     "3bb95dbecb82a3",
-                     "3bb95dbecb82a3"};
+  return KeyParams{kP384Key,
+                   kP256Key,
+                   "04811041962bbac9859eb2aa19a475"
+                   "2e573949d3f1eb8abcb131c1674e75"
+                   "061f5e17b6a24724eeb73268ed82fd"
+                   "3d2bfc93db88cabbf8c9da9e4c1479"
+                   "ffdb9a54b522990aef401c1ab004aa"
+                   "1fdf0e26aa8692ca5860ad6f6cf8ea"
+                   "3bb95dbecb82a3",
+                   "04811041962bbac9859eb2aa19a475"
+                   "2e573949d3f1eb8abcb131c1674e75"
+                   "061f5e17b6a24724eeb73268ed82fd"
+                   "3d2bfc93db88cabbf8c9da9e4c1479"
+                   "ffdb9a54b522990aef401c1ab004aa"
+                   "1fdf0e26aa8621ca5860ad6f6cf8ea"
+                   "3bb95dbecb82a3",
+                   "3bb95dbecb82a3"};
 }
 
 template <>
 KeyParams Key<P521>::getKeyParams() {
-  return (KeyParams){kP521Key,
-                     kP384Key,
-                     "0401a76d5b0c42f557e418bf982b35"
-                     "6e903f937b9d530cca8250e07c98ca"
-                     "03293958b2fa8da20f9c4e9f7684df"
-                     "3e872b470dac5368697b664ce4c677"
-                     "3feb8862707b5f01434182eb962a3a"
-                     "a8a707c868caa6edee62dd8456172e"
-                     "f0bd738fac3abb04e87bd3e9ea9c1b"
-                     "d09f8720a994c6162cb42546f86e32"
-                     "8de930387e8ecc2c68ec41bcf2",
-                     "0401a76d5b0c42f557e418bf982b35"
-                     "6e903f937b9d530cca8250e07c98bd"
-                     "03293958b2fa8da20f9c4e9f7684df"
-                     "3e872b470dac5368697b664ce4c677"
-                     "3feb8862707b5f01434182eb962a3a"
-                     "a8a707c868caa6edee62dd8456172e"
-                     "f0bd738fac3abb04e87bd3e9ea9c1b"
-                     "d09f8720a994c6162cb42546f86e32"
-                     "8de930387e8ecc2c68ec41bcf2",
-                     "8de930387e8ecc2c68ec41bcf2"};
+  return KeyParams{kP521Key,
+                   kP384Key,
+                   "0401a76d5b0c42f557e418bf982b35"
+                   "6e903f937b9d530cca8250e07c98ca"
+                   "03293958b2fa8da20f9c4e9f7684df"
+                   "3e872b470dac5368697b664ce4c677"
+                   "3feb8862707b5f01434182eb962a3a"
+                   "a8a707c868caa6edee62dd8456172e"
+                   "f0bd738fac3abb04e87bd3e9ea9c1b"
+                   "d09f8720a994c6162cb42546f86e32"
+                   "8de930387e8ecc2c68ec41bcf2",
+                   "0401a76d5b0c42f557e418bf982b35"
+                   "6e903f937b9d530cca8250e07c98bd"
+                   "03293958b2fa8da20f9c4e9f7684df"
+                   "3e872b470dac5368697b664ce4c677"
+                   "3feb8862707b5f01434182eb962a3a"
+                   "a8a707c868caa6edee62dd8456172e"
+                   "f0bd738fac3abb04e87bd3e9ea9c1b"
+                   "d09f8720a994c6162cb42546f86e32"
+                   "8de930387e8ecc2c68ec41bcf2",
+                   "8de930387e8ecc2c68ec41bcf2"};
 }
 using KeyTypes = ::testing::Types<P256, P384, P521>;
 TYPED_TEST_CASE(Key, KeyTypes);
@@ -267,7 +267,7 @@ INSTANTIATE_TEST_CASE_P(
     ECDHTest,
     ::testing::
         Values(
-            (Params){
+            Params{
                 "e19007eb245d6995ffa8b3ede1e59193aa6cfaaf4cc1e1d126948610c9b3f44c",
                 "758b2f0e79a3d0a94f521ae31dcff50fabd394bb4bbec8fa37d1566f463444e7",
                 "b981e686e53e9e9dc2e3f263e810c89b4c271e62392f59ed45ed30ac3a5bfd33",
@@ -277,7 +277,7 @@ INSTANTIATE_TEST_CASE_P(
                 "5cbea453310285b22f128178bd09b906fde9e660b5a17a7cec809a5a9a1e9287",
                 true,
                 KeyType::P256},
-            (Params){
+            Params{
                 "0ced658b6113979f8d05fd7b305ce0b8d70f45034d021b052cbcb318e0cfd602",
                 "acbcb31f5f6798a00f28aa4a634873744768db612925336efca98122a76d1b5e",
                 "7dcefeb3ccb530029a8b62e5a7f00c42fc7ebeac8f469c289ea77b6186d661f0",
@@ -287,7 +287,7 @@ INSTANTIATE_TEST_CASE_P(
                 "f70e4fc9ba68aafe07be1767620e64dd5e5bb7ab279f0657465cddeb69e36fa9",
                 true,
                 KeyType::P256},
-            (Params){
+            Params{
                 "0ced658b6113979f8d05fd7b305ce0b8d70f45034d021b052cbcb318e0cfd602",
                 "758b2f0e79a3d0a94f521ae31dcff50fabd394bb4bbec8fa37d1566f463444e7",
                 "b981e686e53e9e9dc2e3f263e810c89b4c271e62392f59ed45ed30ac3a5bfd33",
@@ -297,7 +297,7 @@ INSTANTIATE_TEST_CASE_P(
                 "5cbea453310285b22f128178bd09b906fde9e660b5a17a7cec809a5a9a1e9287",
                 true,
                 KeyType::P256},
-            (Params){
+            Params{
                 "639ef9ee75a3888617fdd7ed89d62f7398b0eb4f20ccbd35026e150fc937c927",
                 "1d2dda4a3735be1f3aedfa8a7bb1410c3867c5d67f55a3dd5376b137352f113d",
                 "eca92fb210b1813f51ea2483ff461eb24786afb41f1a00870cf65aab5bbd725e",
@@ -307,7 +307,7 @@ INSTANTIATE_TEST_CASE_P(
                 "9f5f64d76f9bb2f2af24debdd47323d5df9d2b84fc7c7aac1f6d41678adec7de",
                 false,
                 KeyType::P256},
-            (Params){
+            Params{
                 "305dfb4a8850cc59280891147baf457bfe5e2bae984571634a77dc8d3472fa9b",
                 "202cb5a224e6c2a84e624094486edf04116c8d68ec1f4a0e0ed9ee090e1a900b",
                 "cacf3a5789bb33954be600425d62d9eae5371f90f88167258814213e4a4f4b1a",
@@ -320,7 +320,7 @@ INSTANTIATE_TEST_CASE_P(
             /*
              * P384
              */
-            (Params){
+            Params{
                 "0e5c98ff2d2a3aab14ad0067b60dbe64e4f541ab5bed11c5a0c55ae1e60b51ff5faaf377837977d80cbfdc33c2ff542b",
                 "d1bf2ac21637d66d6398aac01dcd56ac6f065fb45d1f6f16747bab9e9b01b4630b59b20927aea147355bf41838acb482",
                 "4c9e23f1c5a41647d094086bf4ed31708651f21d996c47780688ac10f77deee2e43b5241b6caecd2fd5444bc50472e0e",
@@ -330,7 +330,7 @@ INSTANTIATE_TEST_CASE_P(
                 "a781430e6078a179df3f9ee27cd8fdc6188f161b6c4ccc4053ef6c6ca6fc222946883a53c06db08f0a020023ced055aa",
                 true,
                 KeyType::P384},
-            (Params){
+            Params{
                 "925065e50f7eae1319865720ae483de4dba7449dc144c4b50b8e96c4f4fcd9f8b3fbf693262429c91c69d8dd8355fdd8",
                 "4c619593e459e4aca7c572834064134d93e8b1b676388b0ff67b893722cf7e8396cd953df38a42e4131dbad29518b2af",
                 "dbe261af918baade39070e88f62eabe4ee9d5f2563707271cc566dd7a2380aa4707d15d6eef142a52d75a67429afd0c6",
@@ -340,7 +340,7 @@ INSTANTIATE_TEST_CASE_P(
                 "128934db846099c8d8caa788b0b84bb65bd57b20774ff7f8e7f29939297d72bbc232c5d2b2c8ef1d63e3d75d3908e778",
                 true,
                 KeyType::P384},
-            (Params){
+            Params{
                 "259c53eec19d01d19428f6cc5cd445ab685578c53325f6d2f157bd0328deca4ffb8c21dca891d59e34a807203f7e9a5d",
                 "d18832f4cf3013e514b4fb4c42bbeb15708e20ed91b982598deb2d67b37275587fcb35cf214039ec4fd1834d704c1faf",
                 "917c49465bef063949957256eddbece762090ef10f8c48566bd71dc0ad9eb3bc00f0b3f6a88d614210804dd633ca6e68",
@@ -350,7 +350,7 @@ INSTANTIATE_TEST_CASE_P(
                 "5c8d476518873208e1c97685c033a1ba6ec279b8674060cc1a99469908604353043bf488109150b9b2f9b3b1440a426c",
                 true,
                 KeyType::P384},
-            (Params){
+            Params{
                 "4e422a76b085ae939a8166afb98e344b9ac30bab610e90b3d7449de0a0de6b88fadb095e4818521bb1473540a7ec73ee",
                 "de464ed2129eef42ef23cb1bfad27382293edad91d867b1b8b82a19bd17516daf0a73548787a733d66ca4f4d40b52da1",
                 "f07bd6003229de37d6293513cbace59ebc24efb571c065df2bc1465c4570928fd612a59a46805b6adce7fb94e36ad043",
@@ -360,7 +360,7 @@ INSTANTIATE_TEST_CASE_P(
                 "d80415977c3ce1737fd574596e981c767ecaf5c70084fae6c2072f0ccecc8bdda54a0bf44357981303a2ecc78b26e97c",
                 false,
                 KeyType::P384},
-            (Params){
+            Params{
                 "4ee6a24b5dca82b215c92cb298d5ac24b77820c7b7e9c8fe4d05d7a297b8f6be40f8d8cf09a4bb238cfdbe05f851c493",
                 "1f9af3b14439d4c56b353b5892dd85b6a27053e1d23f5f05ff95ea3fa942eb463e1074b01828a79c865b16fde0fc0f24",
                 "01a81aaef502fe84508b054924d90078f68d8d4e9ae5299bd0ea60a97167c549011f4a024e964292d378e82b6874caad",
@@ -373,7 +373,7 @@ INSTANTIATE_TEST_CASE_P(
             /*
              * P521
              */
-            (Params){
+            Params{
                 "0000002fef62381162942889a6094a6bb9ac1f4ddf66d9cda9f618232d31b90c50d7da78a47ed91d40cae946898571db972dc294b109815f38feee9eaac0d5f7c3250728",
                 "0000004b05ffa025113390797f2736174aa1c784f4dd34e764ee40d40e4d2442677ebea3498086c9473e5c92789cbdb02bb327bbd61d58690f6a83d9ca73bccbde37dec4",
                 "0000004da67cffc98070b82af61feba78787efefb13bd810d80ff92304788e49a4e5b634b3565474a8ecb1615d7b1b77a7a27875adb73a8a5d8f3f84e5e8b744cda250b0",
@@ -383,7 +383,7 @@ INSTANTIATE_TEST_CASE_P(
                 "01a5e4b31be4b1346e53906b6767b1fe94ec1a8a5abc28fb6f01518c056959af3bc9335dddab178b52318cc5512559931b8dc18de0ce810c2c7f15769d7ce70e719c",
                 false,
                 KeyType::P521},
-            (Params){
+            Params{
                 "0000013262b7f4f36de274b2c60e4a812866740e545186953f798ac07b5d74e4f0cc1123a9bfcbf77850e2d856246065c54a2437a2816a7d79d6180a9a6ba17f18df8b65",
                 "000001474af758238005238b2fa253c4f9c557de664d64c66d7d88f334555997591ccc242ff3c6d0e34d07fc835aaae024c2bd21f2ba5c0b0a8ac3fdd90e1c479cb8e538",
                 "000000a721b04654204ca19064b37a4abf4247413a6d29e9211a0df9d50975c7d8d4654dc04a478455ea24993f0fef5460f189c4729c15fba385fd85ef42ae7610e39450",
@@ -393,7 +393,7 @@ INSTANTIATE_TEST_CASE_P(
                 "01e8ff7a8c57b017f8b8266adab65fe2c417173566087e15c5fc972071cc560ac93908a806468bc44b8312a8a48464886ca0d767db938447387a348f3f56c6463796",
                 true,
                 KeyType::P521},
-            (Params){
+            Params{
                 "000000364b6cc953c841d2e1c8c292fadaa673ea073d150da4cec9c0c6544c92373c6a42a781283bedb080a4de720b99769869019a38023019b9d15c99b2a08a02104cc7",
                 "000001abbbcd3912723cbb3147145a12b8f2f40d1fe6484fa831250435ffb8eb751bccdf425e81d8e79518ec84c56bd28763c417f30a16c213abbfd8e5871d93dcb3f0d0",
                 "00000237c413a4527ca89dee7c8a5c45fc0207627e3db79353ee506857d68f746ea2c7b4d04ab1c10df56b1a706012f616ec9a5510467c49a56941841a1636f620dc3ac4",
@@ -403,7 +403,7 @@ INSTANTIATE_TEST_CASE_P(
                 "013eeaad91133eb338a4c1f27af66aa7f7614619b6c21c20f0e2d68fca2e9cbaa224104a45aa4dbefcb1e49b7f1a36171a35102d2b7d2ffbade07e600b4a7e28c05c",
                 false,
                 KeyType::P521},
-            (Params){
+            Params{
                 "000001ef093db892daaa05d43e70654bd702d7e177465b00a5ff70a9a072774d7cda3893c181ad1dbb23f8352d3098025406a442c60afaf949dd37ee9c36ee2f785dc693",
                 "0000017e817b93e7e3eb95291545afffa2dcd1ff90b97c2b7d9cc7a46511cbdf7a7afe7a2ce126822d08bc71519542743dfece750e18f1e01bb5201e622e2697e5b1faa6",
                 "00000025e5e302514ccb15ed84291ba30746b1176f2b080bfa78ef7ce5721fd00d3d717421932d61ad74068c36885a9a0e6537183209a79054fcb8df43b83066f60c47d5",
@@ -413,7 +413,7 @@ INSTANTIATE_TEST_CASE_P(
                 "01bca2f6325ccf7a6a213b2678ded8ce3e687497c7f7f46a4a06bf3e69dabb745a883d130936c786debf2fe5ef8880f1bb976a79e33b68d30d7356b5a4672e65fcea",
                 false,
                 KeyType::P521},
-            (Params){
+            Params{
                 "0000014199e2e81aa1f98bf0f39d069e720820d0433222f5b8ca26606fe7c4d0cd619b415d2a629674479a6ec6171f05f657a168aad9342e8489a39cf485a396a8400c59",
                 "00000070ce983ca6d0a7aa7849bef13e11e3dc1d62e1ddb85b54d4a3c9de5b47a078846f92105304efe4a4e71d7ff91c19a7b4e03fd87c2d8fb70732e274b114a0bf3bd2",
                 "0000009f564f73a5c7282556437dc4c2fbdf87d5fcfbaab0feecf1f7a88104f15a7314b083f711bd7b3a2c74b1096fdccdac01e0a35b8fd86d99ba9d64d10e190033c3df",

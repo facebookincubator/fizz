@@ -184,7 +184,7 @@ TEST_P(ECDSA521Test, TestSignature) {
 INSTANTIATE_TEST_CASE_P(
     TestVectors,
     ECDSA256Test,
-    ::testing::Values((Params){
+    ::testing::Values(Params{
         "sample",
         "C9AFA9D845BA75166B5C215767B1D6934E50C3DB36E89B127B8A622B120F6721",
         "60FED4BA255A9D31C961EB74C6356D68C049B8923B61FA6CE669622E60F29FB6",
@@ -192,7 +192,7 @@ INSTANTIATE_TEST_CASE_P(
 INSTANTIATE_TEST_CASE_P(
     TestVectors,
     ECDSA384Test,
-    ::testing::Values((Params){
+    ::testing::Values(Params{
         "sample",
         "6B9D3DAD2E1B8C1C05B19875B6659F4DE23C3B667BF297BA9AA47740787137D8"
         "96D5724E4C70A825F872C9EA60D2EDF5",
@@ -203,7 +203,7 @@ INSTANTIATE_TEST_CASE_P(
 INSTANTIATE_TEST_CASE_P(
     TestVectors,
     ECDSA521Test,
-    ::testing::Values((Params){
+    ::testing::Values(Params{
         "sample",
         // NOTE these are 0 padded at the beginning for unhexlify
         "00FAD06DAA62BA3B25D2FB40133DA757205DE67F5BB0018FEE8C86E1B68C7E75C"

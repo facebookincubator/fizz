@@ -66,17 +66,17 @@ INSTANTIATE_TEST_CASE_P(
     KeyDerivation,
     KeyDerivationTest,
     ::testing::Values(
-        (KdfParams){
+        KdfParams{
             "09cf566b0a8cb6910fd56947fd030027f8195fc6c5b18ded76d758b436f5db2b",
             "handshake key expansion, client write iv",
             "b89ff73312c94b89fadc3320689fd2316a9fd04116b6742e5920a35aaed072a5",
             "0788c228aca5f4b6873b7b57"},
-        (KdfParams){
+        KdfParams{
             "6174b457f0282fcad096afd50eb92d172638b6fa9baaf8e23ef6b23fe551df73",
             "server finished",
             "",
             "e1ad4d2331428327317047fbf73f3545a8c46fc17b1db445586e9e9b4249c00d"},
-        (KdfParams){
+        KdfParams{
             "09cf566b0a8cb6910fd56947fd030027f8195fc6c5b18ded76d758b436f5db2b",
             "handshake key expansion, client write key",
             "b89ff73312c94b89fadc3320689fd2316a9fd04116b6742e5920a35aaed072a5",
