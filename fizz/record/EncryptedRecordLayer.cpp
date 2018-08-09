@@ -8,6 +8,8 @@
 
 #include <fizz/record/EncryptedRecordLayer.h>
 
+#include <folly/Conv.h>
+
 namespace fizz {
 
 using ContentTypeType = typename std::underlying_type<ContentType>::type;
@@ -173,7 +175,7 @@ Buf EncryptedWriteRecordLayer::write(TLSMessage&& msg) const {
     appender.writeBE(static_cast<ProtocolVersionType>(recordVersion_));
     auto ciphertextLength =
         dataBuf->computeChainDataLength() + aead_->getCipherOverhead();
-    appender.writeBE<uint16_t>(ciphertextLength);
+    appender.writeBE<uint16_t>(folly::to<uint16_t>(ciphertextLength));
 
     auto cipherText = aead_->encrypt(
         std::move(dataBuf), useAdditionalData_ ? &header : nullptr, seqNum_++);

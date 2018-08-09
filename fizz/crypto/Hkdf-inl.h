@@ -32,6 +32,9 @@ inline std::unique_ptr<folly::IOBuf> HkdfImpl<Hash>::expand(
   }
   // HDKF expansion step.
   size_t numRounds = (outputBytes + Hash::HashLen - 1) / Hash::HashLen;
+  if (numRounds > std::numeric_limits<uint8_t>::max()) {
+    throw std::runtime_error("Output too long");
+  }
   auto expanded = folly::IOBuf::create(numRounds * Hash::HashLen);
 
   auto in = folly::IOBuf::create(0);
@@ -42,7 +45,7 @@ inline std::unique_ptr<folly::IOBuf> HkdfImpl<Hash>::expand(
     // the method.
     auto roundNum = folly::IOBuf::create(1);
     roundNum->append(1);
-    roundNum->writableData()[0] = round;
+    roundNum->writableData()[0] = static_cast<uint8_t>(round);
     in->prependChain(std::move(roundNum));
 
     size_t outputStartIdx = (round - 1) * Hash::HashLen;
