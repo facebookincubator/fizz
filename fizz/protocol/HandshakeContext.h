@@ -59,8 +59,7 @@ class HandshakeContextImpl : public HandshakeContext {
   }
 
  private:
-  Buf transcript;
-  folly::ssl::OpenSSLHash::Digest hashState;
+  folly::ssl::OpenSSLHash::Digest hashState_;
 };
 } // namespace fizz
 

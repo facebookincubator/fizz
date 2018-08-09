@@ -12,18 +12,18 @@ namespace fizz {
 
 template <typename Hash>
 HandshakeContextImpl<Hash>::HandshakeContextImpl() {
-  hashState = folly::ssl::OpenSSLHash::Digest();
-  hashState.hash_init(Hash::HashEngine());
+  hashState_ = folly::ssl::OpenSSLHash::Digest();
+  hashState_.hash_init(Hash::HashEngine());
 }
 
 template <typename Hash>
 void HandshakeContextImpl<Hash>::appendToTranscript(const Buf& data) {
-  hashState.hash_update(*data);
+  hashState_.hash_update(*data);
 }
 
 template <typename Hash>
 Buf HandshakeContextImpl<Hash>::getHandshakeContext() const {
-  folly::ssl::OpenSSLHash::Digest copied(hashState);
+  folly::ssl::OpenSSLHash::Digest copied(hashState_);
   auto out = folly::IOBuf::create(Hash::HashLen);
   out->append(Hash::HashLen);
   folly::MutableByteRange outRange(out->writableData(), out->length());
