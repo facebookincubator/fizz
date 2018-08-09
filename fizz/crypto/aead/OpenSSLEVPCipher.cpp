@@ -10,8 +10,6 @@
 
 #include <functional>
 
-#include <folly/Conv.h>
-
 namespace fizz {
 namespace detail {
 
@@ -107,7 +105,7 @@ bool decFuncBlocks(
   if (EVP_CIPHER_CTX_ctrl(
           decryptCtx,
           EVP_CTRL_GCM_SET_TAG,
-          folly::to<int>(tagOut.size()),
+          tagOut.size(),
           static_cast<void*>(tagOut.begin())) != 1) {
     throw std::runtime_error("Decryption error");
   }
@@ -177,7 +175,7 @@ bool decFunc(
   if (EVP_CIPHER_CTX_ctrl(
           decryptCtx,
           EVP_CTRL_GCM_SET_TAG,
-          folly::to<int>(tagLen),
+          tagLen,
           static_cast<void*>(tagOut.begin())) != 1) {
     throw std::runtime_error("Decryption error");
   }

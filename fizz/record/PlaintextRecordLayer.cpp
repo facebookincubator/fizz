@@ -117,8 +117,7 @@ Buf PlaintextWriteRecordLayer::write(
   std::unique_ptr<folly::IOBuf> data;
   while (!cursor.isAtEnd()) {
     Buf thisFragment;
-    auto len = static_cast<uint16_t>(
-        cursor.cloneAtMost(thisFragment, kMaxPlaintextRecordSize));
+    auto len = cursor.cloneAtMost(thisFragment, kMaxPlaintextRecordSize);
 
     auto header = folly::IOBuf::create(kPlaintextHeaderSize);
     folly::io::Appender appender(header.get(), kPlaintextHeaderSize);

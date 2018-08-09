@@ -174,8 +174,8 @@ void AsyncFizzBase::deliverError(
   }
 }
 
-void AsyncFizzBase::getReadBuffer(void** bufReturn, uint64_t* lenReturn) {
-  std::pair<void*, uint64_t> readSpace =
+void AsyncFizzBase::getReadBuffer(void** bufReturn, size_t* lenReturn) {
+  std::pair<void*, uint32_t> readSpace =
       transportReadBuf_.preallocate(kMinReadSize, kMaxReadSize);
   *bufReturn = readSpace.first;
   *lenReturn = readSpace.second;

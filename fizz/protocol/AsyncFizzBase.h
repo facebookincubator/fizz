@@ -190,7 +190,7 @@ class AsyncFizzBase : public folly::WriteChainAsyncTransportWrapper<
   /**
    * ReadCallback implementation.
    */
-  void getReadBuffer(void** bufReturn, uint64_t* lenReturn) override;
+  void getReadBuffer(void** bufReturn, size_t* lenReturn) override;
   void readDataAvailable(size_t len) noexcept override;
   bool isBufferMovable() noexcept override;
   void readBufferAvailable(
