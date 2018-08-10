@@ -94,7 +94,7 @@ class BogoTestServer : public AsyncSocket::ConnectCallback,
   }
 
   void readDataAvailable(size_t /* len */) noexcept override {
-    throw std::runtime_error("readDataAvailable not implemented");
+    CHECK(false) << "readDataAvailable not implemented";
   }
 
   bool isBufferMovable() noexcept override {
@@ -203,7 +203,7 @@ class BogoTestClient : public AsyncSocket::ConnectCallback,
   }
 
   void readDataAvailable(size_t /* len */) noexcept override {
-    throw std::runtime_error("readDataAvailable not implemented");
+    CHECK(false) << "readDataAvailable not implemented";
   }
 
   bool isBufferMovable() noexcept override {
