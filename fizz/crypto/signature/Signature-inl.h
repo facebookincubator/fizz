@@ -8,6 +8,7 @@
 
 #include <fizz/crypto/openssl/OpenSSLKeyUtils.h>
 #include <folly/io/IOBuf.h>
+#include <folly/lang/Assume.h>
 
 namespace fizz {
 
@@ -77,6 +78,7 @@ inline std::unique_ptr<folly::IOBuf> OpenSSLSignature<Type>::sign(
     case KeyType::RSA:
       return detail::rsaPssSign(data, pkey_, SigAlg<Scheme>::HashNid);
   }
+  folly::assume_unreachable();
 }
 
 template <KeyType Type>
@@ -93,6 +95,7 @@ inline void OpenSSLSignature<Type>::verify(
       return detail::rsaPssVerify(
           data, signature, pkey_, SigAlg<Scheme>::HashNid);
   }
+  folly::assume_unreachable();
 }
 
 template <>
