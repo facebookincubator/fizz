@@ -14,7 +14,9 @@
  * The Makefile links it into all of the test programs so that tests do not need
  * to - and indeed should typically not - define their own main() functions
  */
+#ifndef _MSC_VER
 int main(int argc, char** argv) __attribute__((__weak__));
+#endif
 
 int main(int argc, char** argv) {
   ::testing::InitGoogleTest(&argc, argv);
