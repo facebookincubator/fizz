@@ -132,7 +132,8 @@ class ProtocolTest : public testing::Test {
             EXPECT_EQ(aead, *readAead);
           }));
           if (skipFailedDecryption.hasValue()) {
-            EXPECT_CALL(*ret, setSkipFailedDecryption(*skipFailedDecryption));
+            EXPECT_CALL(
+                *ret, setSkipFailedDecryption(skipFailedDecryption.value()));
           }
           return ret;
         }));
