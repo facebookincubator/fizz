@@ -1,6 +1,9 @@
 <p align="center">
   <img width="500" height="216" alt="Fizz" src="logo2x.png">
 </p>
+
+[![Build Status](https://api.travis-ci.org/facebookincubator/fizz.svg?branch=master)](https://travis-ci.org/facebookincubator/fizz)
+
 Fizz is a TLS 1.3 implementation.
 
 Fizz currently supports TLS 1.3 drafts 28, 26 (both wire-compatible with the
