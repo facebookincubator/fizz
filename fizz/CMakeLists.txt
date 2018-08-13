@@ -289,6 +289,11 @@ if(BUILD_TESTS)
     fizz_test_support
     fizz_test_main
     ${LIBGMOCK_LIBRARIES})
+
+  # GMOCK_MOCK_METHOD() will complain otherwise
+  target_compile_options(${test_name}
+    PRIVATE "-Wno-inconsistent-missing-override")
+
   add_test(${test_name} bin/${test_name})
   endmacro(add_gtest)
 
