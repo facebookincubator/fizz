@@ -219,8 +219,9 @@ int main(int argc, char** argv) {
   // Handle advanced settings
   auto serverContext = serv.getFizzContext();
   serverContext->setSupportedAlpns({"http/1.1"});
-  serverContext->setSupportedVersions(
-      {ProtocolVersion::tls_1_3_26, ProtocolVersion::tls_1_3_23});
+  serverContext->setSupportedVersions({ProtocolVersion::tls_1_3,
+                                       ProtocolVersion::tls_1_3_26,
+                                       ProtocolVersion::tls_1_3_23});
   serverContext->setVersionFallbackEnabled(FLAGS_fallback);
 
   SocketAddress address = serv.getAddress();

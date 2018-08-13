@@ -184,8 +184,7 @@ class FizzClientContext {
  private:
   std::unique_ptr<Factory> factory_;
 
-  std::vector<ProtocolVersion> supportedVersions_ = {
-      ProtocolVersion::tls_1_3_26};
+  std::vector<ProtocolVersion> supportedVersions_ = {ProtocolVersion::tls_1_3};
   std::vector<CipherSuite> supportedCiphers_ = {
       CipherSuite::TLS_AES_128_GCM_SHA256,
       CipherSuite::TLS_AES_256_GCM_SHA384,

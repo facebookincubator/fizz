@@ -35,7 +35,7 @@ namespace fizz {
 namespace test {
 
 struct ExpectedParameters {
-  ProtocolVersion version{ProtocolVersion::tls_1_3_26};
+  ProtocolVersion version{ProtocolVersion::tls_1_3};
   CipherSuite cipher{CipherSuite::TLS_AES_128_GCM_SHA256};
   folly::Optional<SignatureScheme> scheme{
       SignatureScheme::ecdsa_secp256r1_sha256};

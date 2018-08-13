@@ -282,8 +282,7 @@ class FizzServerContext {
   std::unique_ptr<CertManager> certManager_;
   std::shared_ptr<const CertificateVerifier> clientCertVerifier_;
 
-  std::vector<ProtocolVersion> supportedVersions_ = {
-      ProtocolVersion::tls_1_3_26};
+  std::vector<ProtocolVersion> supportedVersions_ = {ProtocolVersion::tls_1_3};
   std::vector<std::vector<CipherSuite>> supportedCiphers_ = {
       {
           CipherSuite::TLS_AES_128_GCM_SHA256,
