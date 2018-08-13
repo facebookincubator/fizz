@@ -88,11 +88,11 @@ class TestCallbackFactory
     }
 
     void getReadBuffer(void**, size_t*) override {
-      throw std::runtime_error("getReadBuffer not implemented");
+      LOG(FATAL) << "getReadBuffer not implemented";
     }
 
     void readDataAvailable(size_t) noexcept override {
-      throw std::runtime_error("readDataAvailable not implemented");
+      LOG(FATAL) << "readDataAvailable not implemented";
     }
 
     bool isBufferMovable() noexcept override {
