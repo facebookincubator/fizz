@@ -22,6 +22,7 @@ DEFINE_bool(
     "for the second one");
 DEFINE_bool(early, false, "send early data");
 DEFINE_bool(verify, false, "enable verification of server certificate chain");
+DEFINE_string(cafile, "", "CA file to use");
 
 using namespace fizz;
 using namespace fizz::client;
@@ -173,8 +174,13 @@ int main(int argc, char** argv) {
 
   std::shared_ptr<const CertificateVerifier> verifier;
   if (FLAGS_verify) {
-    verifier = std::make_shared<const DefaultCertificateVerifier>(
-        VerificationContext::Client);
+    if (FLAGS_cafile.empty()) {
+      verifier = std::make_shared<const DefaultCertificateVerifier>(
+          VerificationContext::Client);
+    } else {
+      verifier = DefaultCertificateVerifier::createFromCAFile(
+          VerificationContext::Client, FLAGS_cafile);
+    }
   }
   Connection conn(&evb, clientContext, sni, verifier);
   Connection resumptionConn(&evb, clientContext, sni, verifier);
