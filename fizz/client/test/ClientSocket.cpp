@@ -7,6 +7,7 @@
  */
 
 #include <fizz/client/AsyncFizzClient.h>
+#include <fizz/crypto/Utils.h>
 #include <folly/ssl/Init.h>
 
 DEFINE_string(host, "localhost", "host to connect to");
@@ -156,7 +157,7 @@ int main(int argc, char** argv) {
   FLAGS_logtostderr = true;
   gflags::ParseCommandLineFlags(&argc, &argv, true);
   google::InitGoogleLogging(argv[0]);
-  folly::ssl::init();
+  CryptoUtils::init();
 
   auto clientContext = std::make_shared<FizzClientContext>();
   clientContext->setSupportedAlpns({"http/1.1"});

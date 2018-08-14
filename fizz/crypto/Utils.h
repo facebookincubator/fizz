@@ -25,5 +25,10 @@ struct CryptoUtils {
    * Overwrites the memory in range.
    */
   static void clean(folly::MutableByteRange range);
+
+  /**
+   * Initialize all required crypto libraries.
+   */
+  static void init();
 };
 } // namespace fizz

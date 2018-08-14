@@ -7,6 +7,7 @@
  */
 
 #include <fizz/client/AsyncFizzClient.h>
+#include <fizz/crypto/Utils.h>
 #include <fizz/crypto/aead/AESGCM128.h>
 #include <fizz/crypto/aead/OpenSSLEVPCipher.h>
 #include <fizz/server/AsyncFizzServer.h>
@@ -378,7 +379,7 @@ int main(int argc, char** argv) {
 
   gflags::ParseCommandLineFlags(&argc, &argv, true);
   google::InitGoogleLogging(argv[0]);
-  OpenSSL_add_all_algorithms();
+  CryptoUtils::init();
 
   if (FLAGS_port == 0) {
     throw std::runtime_error("must specify port");

@@ -6,6 +6,7 @@
  *  LICENSE file in the root directory of this source tree.
  */
 
+#include <fizz/crypto/Utils.h>
 #include <fizz/server/test/Utils.h>
 #include <folly/String.h>
 #include <folly/io/async/AsyncSSLSocket.h>
@@ -169,7 +170,7 @@ int main(int argc, char** argv) {
   FLAGS_logtostderr = true;
   gflags::ParseCommandLineFlags(&argc, &argv, true);
   google::InitGoogleLogging(argv[0]);
-  folly::ssl::init();
+  CryptoUtils::init();
 
   if (FLAGS_cert.empty() ^ FLAGS_key.empty()) {
     LOG(ERROR) << "Both -cert and -key required when either is provided.";

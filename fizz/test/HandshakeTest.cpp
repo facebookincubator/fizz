@@ -11,6 +11,7 @@
 
 #include <fizz/client/AsyncFizzClient.h>
 #include <fizz/client/test/Mocks.h>
+#include <fizz/crypto/Utils.h>
 #include <fizz/crypto/aead/AESGCM128.h>
 #include <fizz/crypto/aead/OpenSSLEVPCipher.h>
 #include <fizz/crypto/test/TestUtil.h>
@@ -52,7 +53,7 @@ struct ExpectedParameters {
 class HandshakeTest : public Test {
  public:
   void SetUp() override {
-    OpenSSL_add_all_algorithms();
+    CryptoUtils::init();
 
     clientContext_ = std::make_shared<FizzClientContext>();
     serverContext_ = std::make_shared<FizzServerContext>();

@@ -4,8 +4,8 @@
 #include <folly/Benchmark.h>
 #include <folly/Random.h>
 #include <folly/init/Init.h>
-#include <folly/ssl/Init.h>
 
+#include <fizz/crypto/Utils.h>
 #include <fizz/crypto/aead/AESGCM128.h>
 #include <fizz/crypto/aead/AESOCB128.h>
 #include <fizz/crypto/aead/OpenSSLEVPCipher.h>
@@ -98,7 +98,7 @@ BENCHMARK_PARAM(encryptOCB, 8000);
 
 int main(int argc, char** argv) {
   folly::init(&argc, &argv);
-  folly::ssl::init();
+  CryptoUtils::init();
   folly::runBenchmarks();
   return 0;
 }

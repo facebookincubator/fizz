@@ -10,6 +10,22 @@
 
 #include <sodium.h>
 
+#include <folly/ssl/Init.h>
+
+namespace {
+
+class InitFizz {
+ public:
+  InitFizz() {
+    if (sodium_init() == -1) {
+      throw std::runtime_error("Couldn't init libsodium");
+    }
+
+    folly::ssl::init();
+  }
+};
+} // namespace
+
 namespace fizz {
 
 bool CryptoUtils::equal(folly::ByteRange a, folly::ByteRange b) {
@@ -21,5 +37,9 @@ bool CryptoUtils::equal(folly::ByteRange a, folly::ByteRange b) {
 
 void CryptoUtils::clean(folly::MutableByteRange range) {
   sodium_memzero(range.data(), range.size());
+}
+
+void CryptoUtils::init() {
+  static InitFizz initFizz;
 }
 } // namespace fizz
