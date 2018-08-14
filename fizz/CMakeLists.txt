@@ -182,8 +182,10 @@ install(
 # statement above.  install(TARGETS) appears to only support installing
 # PUBLIC_HEADER in a flat include directory, and not a deeper tree.
 foreach(dir ${FIZZ_HEADER_DIRS})
-  install(DIRECTORY ${dir} DESTINATION "${INCLUDE_INSTALL_DIR}/fizz"
-          FILES_MATCHING PATTERN "*.h")
+  get_filename_component(PARENT_DIR "/${dir}" DIRECTORY)
+  install(DIRECTORY ${dir} DESTINATION "${INCLUDE_INSTALL_DIR}/fizz${PARENT_DIR}"
+          FILES_MATCHING PATTERN "*.h"
+          PATTERN "test" EXCLUDE)
 endforeach()
 
 # Install CMake package configuration files for fizz
