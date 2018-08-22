@@ -1815,7 +1815,7 @@ AsyncActions EventHandler<
       state.resumptionMasterSecret(),
       std::move(writeNewSessionTicket.appToken));
   return ticketFuture.via(state.executor())
-      .then([](Optional<WriteToSocket> nstWrite) {
+      .thenValue([](Optional<WriteToSocket> nstWrite) {
         if (!nstWrite) {
           return actions();
         }
