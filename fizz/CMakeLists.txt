@@ -255,7 +255,6 @@ if(BUILD_TESTS)
     set(LIBGMOCK_LIBRARIES libgmock libgmock_main)
     set(LIBGMOCK_INCLUDE_DIR "${source_dir}/googlemock/include")
     set(LIBGTEST_INCLUDE_DIR "${source_dir}/googletest/include")
-    set(LIBGTEST_INCLUDE_DIR "${source_dir}/googletest/include")
   endif()
 
   add_library(fizz_test_support
@@ -268,28 +267,16 @@ if(BUILD_TESTS)
       fizz
   )
 
-  add_library(fizz_test_main
-    test/CMakeTestMain.cpp)
-
-  target_link_libraries(fizz_test_main
-    PUBLIC
-      fizz
-      fizz_test_support
-      ${LIBGMOCK_LIBRARIES})
-
-  target_include_directories(fizz_test_main
-    PUBLIC
-    ${LIBGMOCK_INCLUDE_DIR}
-    ${LIBGTEST_INCLUDE_DIR})
-
   macro(add_gtest test_source test_name)
-  add_executable(${test_name} ${test_source})
+  add_executable(${test_name} ${test_source} test/CMakeTestMain.cpp)
+
+  set_property(TARGET ${test_name} PROPERTY ENABLE_EXPORTS true)
   target_include_directories(
     ${test_name} PUBLIC ${LIBGMOCK_INCLUDE_DIR} ${LIBGTEST_INCLUDE_DIR})
-  target_link_libraries(${test_name}
+  target_link_libraries(
+    ${test_name}
     fizz
     fizz_test_support
-    fizz_test_main
     ${LIBGMOCK_LIBRARIES})
 
   # GMOCK_MOCK_METHOD() will complain otherwise
