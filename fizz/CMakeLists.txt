@@ -65,6 +65,7 @@ set(FIZZ_HEADER_DIRS
   protocol
   record
   server
+  util
 )
 
 set(FIZZ_TEST_HEADER_DIRS
@@ -75,6 +76,7 @@ set(FIZZ_TEST_HEADER_DIRS
   protocol/test
   record/test
   server/test
+  util/test
   test
 )
 
@@ -128,6 +130,7 @@ set(FIZZ_SOURCES
   client/ClientProtocol.cpp
   client/SynchronizedLruPskCache.cpp
   client/EarlyDataRejectionPolicy.cpp
+  util/FizzUtil.cpp
 )
 
 add_library(fizz
@@ -327,6 +330,7 @@ if(BUILD_TESTS)
   add_gtest(server/test/ServerProtocolTest.cpp ServerProtocolTest)
   add_gtest(server/test/NegotiatorTest.cpp NegotiatorTest)
   add_gtest(server/test/FizzServerTest.cpp FizzServerTest)
+  add_gtest(util/test/FizzUtilTest.cpp FizzUtilTest)
   add_gtest(test/AsyncFizzBaseTest.cpp AsyncFizzBaseTest)
   add_gtest(test/HandshakeTest.cpp HandshakeTest)
 endif()
