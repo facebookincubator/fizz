@@ -52,7 +52,7 @@ Actions processEvent(const State& state, Param param);
 
 Actions handleError(
     const State& state,
-    const std::string& errorMsg,
+    ReportError error,
     folly::Optional<AlertDescription> alertDesc);
 
 Actions handleAppClose(const State& state);

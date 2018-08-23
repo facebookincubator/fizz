@@ -79,6 +79,11 @@ class ProtocolTest : public testing::Test {
         getNumActions<T2, Args...>(actions, expectNonZero);
   }
 
+  void expectExceptionType(Actions& actions) {
+    auto error = expectAction<ReportError>(actions);
+  }
+
+  template <typename ExceptionType>
   void expectError(
       Actions& actions,
       folly::Optional<AlertDescription> alert,
@@ -95,6 +100,8 @@ class ProtocolTest : public testing::Test {
       expectActions<MutateState, ReportError>(actions);
     }
     auto error = expectAction<ReportError>(actions);
+    auto ex = error.error.template get_exception<ExceptionType>();
+    EXPECT_NE(ex, nullptr);
     EXPECT_THAT(error.error.what().toStdString(), HasSubstr(msg));
     processStateMutations(actions);
     EXPECT_EQ(state_.state(), SM::StateEnum::Error);

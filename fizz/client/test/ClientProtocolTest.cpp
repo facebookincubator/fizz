@@ -242,20 +242,21 @@ class ClientProtocolTest : public ProtocolTest<ClientTypes, Actions> {
 
 TEST_F(ClientProtocolTest, TestInvalidTransitionNoAlert) {
   auto actions = ClientStateMachine().processAppWrite(state_, AppWrite());
-  expectError(actions, none, "invalid event");
+  expectError<FizzException>(actions, none, "invalid event");
 }
 
 TEST_F(ClientProtocolTest, TestInvalidWriteNewSessionTicket) {
   auto actions = ClientStateMachine().processWriteNewSessionTicket(
       state_, WriteNewSessionTicket());
-  expectError(actions, none, "invalid event");
+  expectError<FizzException>(actions, none, "invalid event");
 }
 
 TEST_F(ClientProtocolTest, TestInvalidTransitionAlert) {
   setMockRecord();
   EXPECT_CALL(*mockWrite_, _write(_));
   auto actions = ClientStateMachine().processAppWrite(state_, AppWrite());
-  expectError(actions, AlertDescription::unexpected_message, "invalid event");
+  expectError<FizzException>(
+      actions, AlertDescription::unexpected_message, "invalid event");
 }
 
 TEST_F(ClientProtocolTest, TestInvalidTransitionError) {
@@ -1251,7 +1252,7 @@ TEST_F(ClientProtocolTest, TestServerHelloExtraData) {
   EXPECT_CALL(*mockRead_, hasUnparsedHandshakeData())
       .WillRepeatedly(Return(true));
   auto actions = detail::processEvent(state_, TestMessages::serverHello());
-  expectError(
+  expectError<FizzException>(
       actions, AlertDescription::unexpected_message, "data after server hello");
 }
 
@@ -1263,7 +1264,7 @@ TEST_F(ClientProtocolTest, TestServerHelloBadVersion) {
   supportedVersions.selected_version = ProtocolVersion::tls_1_1;
   shlo.extensions.push_back(encodeExtension(std::move(supportedVersions)));
   auto actions = detail::processEvent(state_, std::move(shlo));
-  expectError(
+  expectError<FizzException>(
       actions,
       AlertDescription::protocol_version,
       "unsupported server version");
@@ -1274,7 +1275,7 @@ TEST_F(ClientProtocolTest, TestServerHelloBadCipher) {
   auto shlo = TestMessages::serverHello();
   shlo.cipher_suite = static_cast<CipherSuite>(0x03ff);
   auto actions = detail::processEvent(state_, std::move(shlo));
-  expectError(
+  expectError<FizzException>(
       actions, AlertDescription::handshake_failure, "unsupported cipher");
 }
 
@@ -1289,7 +1290,7 @@ TEST_F(ClientProtocolTest, TestServerHelloBadGroup) {
       folly::IOBuf::copyBuffer("servershare");
   shlo.extensions.push_back(encodeExtension(std::move(serverKeyShare)));
   auto actions = detail::processEvent(state_, std::move(shlo));
-  expectError(
+  expectError<FizzException>(
       actions, AlertDescription::handshake_failure, "unsupported group");
 }
 
@@ -1298,7 +1299,7 @@ TEST_F(ClientProtocolTest, TestServerHelloNoKeyShare) {
   auto shlo = TestMessages::serverHello();
   TestMessages::removeExtension(shlo, ExtensionType::key_share);
   auto actions = detail::processEvent(state_, std::move(shlo));
-  expectError(
+  expectError<FizzException>(
       actions, AlertDescription::handshake_failure, "did not send share");
 }
 
@@ -1306,7 +1307,7 @@ TEST_F(ClientProtocolTest, TestServerHelloHrrBadVersion) {
   setupExpectingServerHelloAfterHrr();
   state_.version() = ProtocolVersion::tls_1_2;
   auto actions = detail::processEvent(state_, TestMessages::serverHello());
-  expectError(
+  expectError<FizzException>(
       actions, AlertDescription::handshake_failure, "version does not match");
 }
 
@@ -1314,7 +1315,7 @@ TEST_F(ClientProtocolTest, TestServerHelloHrrBadCipher) {
   setupExpectingServerHelloAfterHrr();
   state_.cipher() = CipherSuite::TLS_AES_256_GCM_SHA384;
   auto actions = detail::processEvent(state_, TestMessages::serverHello());
-  expectError(
+  expectError<FizzException>(
       actions, AlertDescription::handshake_failure, "cipher does not match");
 }
 
@@ -1327,7 +1328,8 @@ TEST_F(ClientProtocolTest, TestServerHelloHrrBadGroup) {
   state_.keyExchangers() = std::move(kexs);
 
   auto actions = detail::processEvent(state_, TestMessages::serverHello());
-  expectError(actions, AlertDescription::handshake_failure, "group");
+  expectError<FizzException>(
+      actions, AlertDescription::handshake_failure, "group");
 }
 
 TEST_F(ClientProtocolTest, TestServerHelloPskAcceptedNotSent) {
@@ -1339,7 +1341,7 @@ TEST_F(ClientProtocolTest, TestServerHelloPskAcceptedNotSent) {
        ExtensionType::server_name,
        ExtensionType::application_layer_protocol_negotiation});
   auto actions = detail::processEvent(state_, TestMessages::serverHelloPsk());
-  expectError(
+  expectError<FizzException>(
       actions,
       AlertDescription::illegal_parameter,
       "unexpected extension in shlo: pre_shared_key");
@@ -1353,7 +1355,8 @@ TEST_F(ClientProtocolTest, TestServerHelloOtherPskAccepted) {
   pskExt.selected_identity = 1;
   shlo.extensions.push_back(encodeExtension(std::move(pskExt)));
   auto actions = detail::processEvent(state_, std::move(shlo));
-  expectError(actions, AlertDescription::illegal_parameter, "non-0 psk");
+  expectError<FizzException>(
+      actions, AlertDescription::illegal_parameter, "non-0 psk");
 }
 
 TEST_F(ClientProtocolTest, TestServerHelloPskDifferentHash) {
@@ -1361,7 +1364,7 @@ TEST_F(ClientProtocolTest, TestServerHelloPskDifferentHash) {
   state_.attemptedPsk() = getCachedPsk();
   state_.attemptedPsk()->cipher = CipherSuite::TLS_AES_256_GCM_SHA384;
   auto actions = detail::processEvent(state_, TestMessages::serverHelloPsk());
-  expectError(
+  expectError<FizzException>(
       actions,
       AlertDescription::handshake_failure,
       "incompatible cipher in psk");
@@ -1383,7 +1386,7 @@ TEST_F(ClientProtocolTest, TestServerHelloPskDheNotSupported) {
   setupExpectingServerHello();
   state_.attemptedPsk() = getCachedPsk();
   auto actions = detail::processEvent(state_, TestMessages::serverHelloPsk());
-  expectError(
+  expectError<FizzException>(
       actions, AlertDescription::handshake_failure, "unsupported psk mode");
 }
 
@@ -1404,7 +1407,7 @@ TEST_F(ClientProtocolTest, TestServerHelloPskKeNotSupported) {
   auto shlo = TestMessages::serverHelloPsk();
   TestMessages::removeExtension(shlo, ExtensionType::key_share);
   auto actions = detail::processEvent(state_, std::move(shlo));
-  expectError(
+  expectError<FizzException>(
       actions, AlertDescription::handshake_failure, "unsupported psk mode");
 }
 
@@ -1413,7 +1416,8 @@ TEST_F(ClientProtocolTest, TestServerHelloBadSessionId) {
   auto shlo = TestMessages::serverHello();
   shlo.legacy_session_id_echo = IOBuf::copyBuffer("hi!!");
   auto actions = detail::processEvent(state_, std::move(shlo));
-  expectError(actions, AlertDescription::illegal_parameter, "session id");
+  expectError<FizzException>(
+      actions, AlertDescription::illegal_parameter, "session id");
 }
 
 TEST_F(ClientProtocolTest, TestConnectPskKeNoShares) {
@@ -1640,7 +1644,8 @@ TEST_F(ClientProtocolTest, TestDoubleHelloRetryRequest) {
   state_.keyExchangeType() = KeyExchangeType::HelloRetryRequest;
   auto actions =
       detail::processEvent(state_, TestMessages::helloRetryRequest());
-  expectError(actions, AlertDescription::unexpected_message, "two HRRs");
+  expectError<FizzException>(
+      actions, AlertDescription::unexpected_message, "two HRRs");
 }
 
 TEST_F(ClientProtocolTest, TestHelloRetryRequestBadVersion) {
@@ -1652,7 +1657,7 @@ TEST_F(ClientProtocolTest, TestHelloRetryRequestBadVersion) {
   ;
   hrr.extensions.push_back(encodeExtension(std::move(supportedVersions)));
   auto actions = detail::processEvent(state_, std::move(hrr));
-  expectError(
+  expectError<FizzException>(
       actions,
       AlertDescription::protocol_version,
       "unsupported server version");
@@ -1663,7 +1668,7 @@ TEST_F(ClientProtocolTest, TestHelloRetryRequestBadCipher) {
   auto hrr = TestMessages::helloRetryRequest();
   hrr.cipher_suite = static_cast<CipherSuite>(0x03ff);
   auto actions = detail::processEvent(state_, std::move(hrr));
-  expectError(
+  expectError<FizzException>(
       actions, AlertDescription::handshake_failure, "unsupported cipher");
 }
 
@@ -1675,7 +1680,7 @@ TEST_F(ClientProtocolTest, TestHelloRetryRequestBadGroup) {
   keyShare.selected_group = static_cast<NamedGroup>(0x8923);
   hrr.extensions.push_back(encodeExtension(std::move(keyShare)));
   auto actions = detail::processEvent(state_, std::move(hrr));
-  expectError(
+  expectError<FizzException>(
       actions, AlertDescription::handshake_failure, "unsupported group");
 }
 
@@ -1687,7 +1692,7 @@ TEST_F(ClientProtocolTest, TestHelloRetryRequestGroupAlreadySent) {
   keyShare.selected_group = NamedGroup::x25519;
   hrr.extensions.push_back(encodeExtension(std::move(keyShare)));
   auto actions = detail::processEvent(state_, std::move(hrr));
-  expectError(
+  expectError<FizzException>(
       actions, AlertDescription::illegal_parameter, "already-sent group");
 }
 
@@ -1791,14 +1796,16 @@ TEST_F(ClientProtocolTest, TestEncryptedExtensionsEmptyAlpn) {
       ee, ExtensionType::application_layer_protocol_negotiation);
   ee.extensions.push_back(encodeExtension(ProtocolNameList()));
   auto actions = detail::processEvent(state_, std::move(ee));
-  expectError(actions, AlertDescription::illegal_parameter, "alpn list");
+  expectError<FizzException>(
+      actions, AlertDescription::illegal_parameter, "alpn list");
 }
 
 TEST_F(ClientProtocolTest, TestEncryptedExtensionsAlpnMismatch) {
   context_->setSupportedAlpns({"h3", "h1"});
   setupExpectingEncryptedExtensions();
   auto actions = detail::processEvent(state_, TestMessages::encryptedExt());
-  expectError(actions, AlertDescription::illegal_parameter, "alpn mismatch");
+  expectError<FizzException>(
+      actions, AlertDescription::illegal_parameter, "alpn mismatch");
 }
 
 TEST_F(ClientProtocolTest, TestEncryptedExtensionsNoAlpn) {
@@ -1819,7 +1826,7 @@ TEST_F(ClientProtocolTest, TestEncryptedExtensionsDisallowedExtension) {
   auto ee = TestMessages::encryptedExt();
   ee.extensions.push_back(encodeExtension(ClientPresharedKey()));
   auto actions = detail::processEvent(state_, std::move(ee));
-  expectError(
+  expectError<FizzException>(
       actions,
       AlertDescription::illegal_parameter,
       "unexpected extension in ee: pre_shared_key");
@@ -1834,7 +1841,7 @@ TEST_F(ClientProtocolTest, TestEncryptedExtensionsUnrequestedExtension) {
   auto ee = TestMessages::encryptedExt();
   ee.extensions.push_back(encodeExtension(ServerNameList()));
   auto actions = detail::processEvent(state_, std::move(ee));
-  expectError(
+  expectError<FizzException>(
       actions,
       AlertDescription::illegal_parameter,
       "unexpected extension in ee: server_name");
@@ -1878,7 +1885,7 @@ TEST_F(ClientProtocolTest, TestEncryptedExtensionsEarlyAcceptedHrr) {
   auto ee = TestMessages::encryptedExt();
   ee.extensions.push_back(encodeExtension(ServerEarlyData()));
   auto actions = detail::processEvent(state_, std::move(ee));
-  expectError(
+  expectError<FizzException>(
       actions,
       AlertDescription::illegal_parameter,
       "unexpected accepted early data");
@@ -1890,7 +1897,8 @@ TEST_F(ClientProtocolTest, TestEncryptedExtensionsEarlyCipherMismatch) {
   auto ee = TestMessages::encryptedExt();
   ee.extensions.push_back(encodeExtension(ServerEarlyData()));
   auto actions = detail::processEvent(state_, std::move(ee));
-  expectError(actions, AlertDescription::illegal_parameter, "different cipher");
+  expectError<FizzException>(
+      actions, AlertDescription::illegal_parameter, "different cipher");
 }
 
 TEST_F(ClientProtocolTest, TestEncryptedExtensionsEarlyAlpnMismatch) {
@@ -1900,7 +1908,8 @@ TEST_F(ClientProtocolTest, TestEncryptedExtensionsEarlyAlpnMismatch) {
   auto ee = TestMessages::encryptedExt();
   ee.extensions.push_back(encodeExtension(ServerEarlyData()));
   auto actions = detail::processEvent(state_, std::move(ee));
-  expectError(actions, AlertDescription::illegal_parameter, "different alpn");
+  expectError<FizzException>(
+      actions, AlertDescription::illegal_parameter, "different alpn");
 }
 
 TEST_F(ClientProtocolTest, TestCertificateFlow) {
@@ -1952,7 +1961,7 @@ TEST_F(ClientProtocolTest, TestCertificateWithRequestContext) {
   entry.cert_data = folly::IOBuf::copyBuffer("cert");
   certificate.certificate_list.push_back(std::move(entry));
   auto actions = detail::processEvent(state_, std::move(certificate));
-  expectError(
+  expectError<FizzException>(
       actions, AlertDescription::illegal_parameter, "context must be empty");
 }
 
@@ -1960,7 +1969,8 @@ TEST_F(ClientProtocolTest, TestCertificateEmpty) {
   setupExpectingCertificate();
   auto certificate = TestMessages::certificate();
   auto actions = detail::processEvent(state_, std::move(certificate));
-  expectError(actions, AlertDescription::illegal_parameter, "no cert");
+  expectError<FizzException>(
+      actions, AlertDescription::illegal_parameter, "no cert");
 }
 
 TEST_F(ClientProtocolTest, TestCertificateVerifyFlow) {
@@ -2023,7 +2033,7 @@ TEST_F(ClientProtocolTest, TestCertificateVerifyUnsupportedAlgorithm) {
   setupExpectingCertificateVerify();
   auto actions =
       detail::processEvent(state_, TestMessages::certificateVerify());
-  expectError(
+  expectError<FizzException>(
       actions, AlertDescription::illegal_parameter, "unsupported sig scheme");
 }
 
@@ -2040,17 +2050,19 @@ TEST_F(ClientProtocolTest, TestCertificateVerifyFailure) {
           FizzException("verify failed", AlertDescription::bad_record_mac)));
   auto actions =
       detail::processEvent(state_, TestMessages::certificateVerify());
-  expectError(actions, AlertDescription::bad_record_mac, "verify failed");
+  expectError<FizzException>(
+      actions, AlertDescription::bad_record_mac, "verify failed");
 }
 
 TEST_F(ClientProtocolTest, TestCertificateVerifyVerifierFailure) {
   setupExpectingCertificateVerify();
   EXPECT_CALL(*verifier_, verify(_))
-      .WillOnce(Throw(
-          FizzException("verify failed", AlertDescription::bad_record_mac)));
+      .WillOnce(Throw(FizzVerificationException(
+          "verify failed", AlertDescription::bad_record_mac)));
   auto actions =
       detail::processEvent(state_, TestMessages::certificateVerify());
-  expectError(actions, AlertDescription::bad_record_mac, "verify failed");
+  expectError<FizzVerificationException>(
+      actions, AlertDescription::bad_record_mac, "verify failed");
 }
 
 TEST_F(ClientProtocolTest, TestCertificateVerifyVerifierFailureOtherException) {
@@ -2059,7 +2071,7 @@ TEST_F(ClientProtocolTest, TestCertificateVerifyVerifierFailureOtherException) {
       .WillOnce(Throw(std::runtime_error("no good")));
   auto actions =
       detail::processEvent(state_, TestMessages::certificateVerify());
-  expectError(
+  expectError<FizzException>(
       actions, AlertDescription::bad_certificate, "verifier failure: no good");
 }
 
@@ -2082,7 +2094,7 @@ TEST_F(ClientProtocolTest, TestCertificateRequestDuplicated) {
   processStateMutations(actions);
   certificateRequest = TestMessages::certificateRequest();
   actions = detail::processEvent(state_, std::move(certificateRequest));
-  expectError(
+  expectError<FizzException>(
       actions,
       AlertDescription::unexpected_message,
       "duplicate certificate request message");
@@ -2463,7 +2475,7 @@ TEST_F(ClientProtocolTest, TestFinishedExtraData) {
   EXPECT_CALL(*mockRead_, hasUnparsedHandshakeData())
       .WillRepeatedly(Return(true));
   auto actions = detail::processEvent(state_, TestMessages::finished());
-  expectError(
+  expectError<FizzException>(
       actions, AlertDescription::unexpected_message, "data after finished");
 }
 
@@ -2472,7 +2484,7 @@ TEST_F(ClientProtocolTest, TestFinishedMismatch) {
   auto finished = TestMessages::finished();
   finished.verify_data = IOBuf::copyBuffer("ver1fydata");
   auto actions = detail::processEvent(state_, std::move(finished));
-  expectError(
+  expectError<FizzException>(
       actions, AlertDescription::bad_record_mac, "finished verify failure");
 }
 
@@ -2599,7 +2611,7 @@ TEST_F(ClientProtocolTest, TestKeyUpdateExtraData) {
   EXPECT_CALL(*mockRead_, hasUnparsedHandshakeData())
       .WillRepeatedly(Return(true));
   auto actions = detail::processEvent(state_, TestMessages::keyUpdate(false));
-  expectError(
+  expectError<FizzException>(
       actions, AlertDescription::unexpected_message, "data after key_update");
 }
 
@@ -2663,7 +2675,7 @@ TEST_F(ClientProtocolTest, TestInvalidEarlyWrite) {
   setupExpectingServerHello();
 
   auto actions = detail::processEvent(state_, TestMessages::earlyAppWrite());
-  expectError(actions, folly::none, "invalid early write");
+  expectError<FizzException>(actions, folly::none, "invalid early write");
 }
 
 TEST_F(ClientProtocolTest, TestExpectingSHEarlyWrite) {

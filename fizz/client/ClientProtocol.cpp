@@ -158,7 +158,7 @@ Actions ClientStateMachine::processSocketData(
     if (!state.readRecordLayer()) {
       return detail::handleError(
           state,
-          "attempting to process data without record layer",
+          ReportError("attempting to process data without record layer"),
           folly::none);
     }
     auto param = state.readRecordLayer()->readEvent(buf);
@@ -167,7 +167,10 @@ Actions ClientStateMachine::processSocketData(
     }
     return detail::processEvent(state, std::move(*param));
   } catch (const std::exception& e) {
-    return detail::handleError(state, e.what(), AlertDescription::decode_error);
+    return detail::handleError(
+        state,
+        ReportError(folly::exception_wrapper(std::current_exception(), e)),
+        AlertDescription::decode_error);
   }
 }
 
@@ -201,18 +204,22 @@ Actions processEvent(const State& state, Param param) {
     return sm::StateMachine<ClientTypes>::getHandler(state.state(), event)(
         state, std::move(param));
   } catch (const FizzException& e) {
-    return detail::handleError(state, e.what(), e.getAlert());
+    return detail::handleError(
+        state,
+        ReportError(folly::exception_wrapper(std::current_exception(), e)),
+        e.getAlert());
   } catch (const std::exception& e) {
     return detail::handleError(
-        state, e.what(), AlertDescription::unexpected_message);
+        state,
+        ReportError(folly::exception_wrapper(std::current_exception(), e)),
+        AlertDescription::unexpected_message);
   }
 }
 
 Actions handleError(
     const State& state,
-    const std::string& errorMsg,
+    ReportError error,
     Optional<AlertDescription> alertDesc) {
-  ReportError error(errorMsg);
   if (state.state() == StateEnum::Error) {
     return actions(std::move(error));
   }
@@ -1399,7 +1406,7 @@ Actions EventHandler<
     } catch (const FizzException&) {
       std::rethrow_exception(std::current_exception());
     } catch (const std::exception& e) {
-      throw FizzException(
+      throw FizzVerificationException(
           folly::to<std::string>("verifier failure: ", e.what()),
           AlertDescription::bad_certificate);
     }

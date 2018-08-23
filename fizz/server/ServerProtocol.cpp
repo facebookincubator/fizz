@@ -137,7 +137,7 @@ AsyncActions ServerStateMachine::processSocketData(
     if (!state.readRecordLayer()) {
       return detail::handleError(
           state,
-          "attempting to process data without record layer",
+          ReportError("attempting to process data without record layer"),
           folly::none);
     }
     auto param = state.readRecordLayer()->readEvent(buf);
@@ -146,7 +146,10 @@ AsyncActions ServerStateMachine::processSocketData(
     }
     return detail::processEvent(state, std::move(*param));
   } catch (const std::exception& e) {
-    return detail::handleError(state, e.what(), AlertDescription::decode_error);
+    return detail::handleError(
+        state,
+        ReportError(folly::exception_wrapper(std::current_exception(), e)),
+        AlertDescription::decode_error);
   }
 }
 
@@ -186,33 +189,41 @@ AsyncActions processEvent(const State& state, Param param) {
         actions,
         [&state](folly::Future<Actions>& futureActions) -> AsyncActions {
           return std::move(futureActions)
-              .onError([&state](const FizzException& e) {
-                return detail::handleError(state, e.what(), e.getAlert());
-              })
-              .onError([&state](const std::exception& e) {
+              .onError([&state](folly::exception_wrapper ew) {
+                auto ex = ew.get_exception<FizzException>();
+                if (ex) {
+                  return detail::handleError(
+                      state, ReportError(std::move(ew)), ex->getAlert());
+                }
                 return detail::handleError(
-                    state, e.what(), AlertDescription::unexpected_message);
+                    state,
+                    ReportError(std::move(ew)),
+                    AlertDescription::unexpected_message);
               });
         },
         [](Actions& immediateActions) -> AsyncActions {
           return std::move(immediateActions);
         });
   } catch (const FizzException& e) {
-    return detail::handleError(state, e.what(), e.getAlert());
+    return detail::handleError(
+        state,
+        ReportError(folly::exception_wrapper(std::current_exception(), e)),
+        e.getAlert());
   } catch (const std::exception& e) {
     return detail::handleError(
-        state, e.what(), AlertDescription::unexpected_message);
+        state,
+        ReportError(folly::exception_wrapper(std::current_exception(), e)),
+        AlertDescription::unexpected_message);
   }
 }
 
 Actions handleError(
     const State& state,
-    const std::string& errorMsg,
+    ReportError error,
     Optional<AlertDescription> alertDesc) {
   if (state.state() == StateEnum::Error) {
     return actions();
   }
-  ReportError error(errorMsg);
   auto transition = [](State& newState) {
     newState.state() = StateEnum::Error;
     newState.writeRecordLayer() = nullptr;
@@ -1722,7 +1733,7 @@ AsyncActions EventHandler<
   } catch (const FizzException&) {
     throw;
   } catch (const std::exception& e) {
-    throw FizzException(
+    throw FizzVerificationException(
         folly::to<std::string>("client certificate failure: ", e.what()),
         AlertDescription::bad_certificate);
   }

@@ -38,6 +38,8 @@ struct ReportError {
 
   explicit ReportError(const std::string& errorMsg)
       : error(folly::make_exception_wrapper<std::runtime_error>(errorMsg)) {}
+
+  explicit ReportError(folly::exception_wrapper e) : error(std::move(e)) {}
 };
 
 /**

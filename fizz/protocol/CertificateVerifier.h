@@ -13,6 +13,10 @@
 
 namespace fizz {
 
+class FizzVerificationException : public FizzException {
+  using FizzException::FizzException;
+};
+
 class CertificateVerifier {
  public:
   virtual ~CertificateVerifier() = default;
