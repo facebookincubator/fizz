@@ -167,6 +167,7 @@ target_link_libraries(fizz
     ${Boost_LIBRARIES}
     ${OPENSSL_LIBRARIES}
     ${SODIUM}
+    Threads::Threads
   PRIVATE
     ${GLOG_LIBRARIES}
     ${GFLAGS_LIBRARIES}
