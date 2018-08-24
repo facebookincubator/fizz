@@ -166,7 +166,7 @@ After building, the directory `out/` will contain the libraries as well as
 Running it again will be faster and only rebuild `fizz`.
 
 You can also install both `fizz` as well as `folly` to a custom directory
-using the build script, by supplying a `INSTALL_PREFIX` env var.
+using the build script, by supplying an `INSTALL_PREFIX` env var.
 
 ```
 INSTALL_PREFIX=/usr/local ./mac-build.sh
