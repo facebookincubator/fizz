@@ -14,7 +14,11 @@
 namespace fizz {
 
 class FizzVerificationException : public FizzException {
-  using FizzException::FizzException;
+ public:
+  FizzVerificationException(
+      const std::string& msg,
+      folly::Optional<AlertDescription> alert)
+      : FizzException(msg, alert) {}
 };
 
 class CertificateVerifier {

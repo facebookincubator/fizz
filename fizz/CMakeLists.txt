@@ -46,11 +46,7 @@ endif()
 
 include(CheckAtomic)
 
-find_library(SODIUM sodium)
-if(SODIUM-NOTFOUND)
-  MESSAGE (FATAL_ERROR "libsodium is required")
-ENDIF()
-
+find_package(Sodium REQUIRED)
 
 set(FIZZ_HEADER_DIRS
   base
@@ -166,7 +162,7 @@ target_link_libraries(fizz
     ${FOLLY_LIBRARIES}
     ${Boost_LIBRARIES}
     ${OPENSSL_LIBRARIES}
-    ${SODIUM}
+    sodium
     Threads::Threads
   PRIVATE
     ${GLOG_LIBRARIES}
