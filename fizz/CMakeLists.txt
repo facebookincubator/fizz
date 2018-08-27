@@ -1,7 +1,7 @@
 #  Copyright (c) 2018, Facebook, Inc.
 #  All rights reserved.
 
-cmake_minimum_required(VERSION 3.0.2)
+cmake_minimum_required(VERSION 3.1)
 
 project("fizz" VERSION 1.0.0 LANGUAGES CXX)
 
