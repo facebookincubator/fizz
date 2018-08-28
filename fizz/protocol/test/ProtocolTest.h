@@ -152,10 +152,11 @@ class ProtocolTest : public testing::Test {
       MockAead** writeAead,
       Buf (*expectedWrite)(TLSMessage&) = nullptr,
       Sequence* s = nullptr) {
-    EXPECT_CALL(*factory_, makeEncryptedWriteRecordLayer())
+    EXPECT_CALL(*factory_, makeEncryptedWriteRecordLayer(_))
         .InSequence(s ? *s : Sequence())
-        .WillOnce(Invoke([=]() {
-          auto ret = std::make_unique<MockEncryptedWriteRecordLayer>();
+        .WillOnce(Invoke([=](EncryptionLevel encryptionLevel) {
+          auto ret =
+              std::make_unique<MockEncryptedWriteRecordLayer>(encryptionLevel);
           ret->setDefaults();
           *recordLayer = ret.get();
           EXPECT_CALL(*ret, _setAead(_)).WillOnce(Invoke([=](Aead* aead) {

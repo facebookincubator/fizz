@@ -138,4 +138,8 @@ Buf PlaintextWriteRecordLayer::write(
   }
   return data;
 }
+
+EncryptionLevel PlaintextWriteRecordLayer::getEncryptionLevel() const {
+  return EncryptionLevel::Plaintext;
+}
 } // namespace fizz

@@ -65,6 +65,8 @@ class EncryptedWriteRecordLayer : public WriteRecordLayer {
  public:
   ~EncryptedWriteRecordLayer() override = default;
 
+  explicit EncryptedWriteRecordLayer(EncryptionLevel encryptionLevel);
+
   Buf write(TLSMessage&& msg) const override;
 
   virtual void setAead(std::unique_ptr<Aead> aead) {
@@ -80,9 +82,12 @@ class EncryptedWriteRecordLayer : public WriteRecordLayer {
     maxRecord_ = size;
   }
 
+  EncryptionLevel getEncryptionLevel() const override;
+
  private:
   Buf getBufToEncrypt(folly::IOBufQueue& queue) const;
 
+  EncryptionLevel encryptionLevel_;
   std::unique_ptr<Aead> aead_;
 
   uint16_t maxRecord_{kMaxPlaintextRecordSize};

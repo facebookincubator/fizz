@@ -141,6 +141,10 @@ EncryptionLevel EncryptedReadRecordLayer::getEncryptionLevel() const {
   return encryptionLevel_;
 }
 
+EncryptedWriteRecordLayer::EncryptedWriteRecordLayer(
+    EncryptionLevel encryptionLevel)
+    : encryptionLevel_(encryptionLevel) {}
+
 Buf EncryptedWriteRecordLayer::write(TLSMessage&& msg) const {
   folly::IOBufQueue queue;
   queue.append(std::move(msg.fragment));
@@ -210,6 +214,10 @@ Buf EncryptedWriteRecordLayer::write(TLSMessage&& msg) const {
   }
 
   return outBuf;
+}
+
+EncryptionLevel EncryptedWriteRecordLayer::getEncryptionLevel() const {
+  return encryptionLevel_;
 }
 
 Buf EncryptedWriteRecordLayer::getBufToEncrypt(folly::IOBufQueue& queue) const {

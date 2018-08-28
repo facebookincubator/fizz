@@ -146,9 +146,10 @@ class MockFactory : public Factory {
       makeEncryptedReadRecordLayer,
       std::unique_ptr<EncryptedReadRecordLayer>(
           EncryptionLevel encryptionLevel));
-  MOCK_CONST_METHOD0(
+  MOCK_CONST_METHOD1(
       makeEncryptedWriteRecordLayer,
-      std::unique_ptr<EncryptedWriteRecordLayer>());
+      std::unique_ptr<EncryptedWriteRecordLayer>(
+          EncryptionLevel encryptionLevel));
   MOCK_CONST_METHOD1(
       makeKeyScheduler,
       std::unique_ptr<KeyScheduler>(CipherSuite cipher));
@@ -184,9 +185,10 @@ class MockFactory : public Factory {
               encryptionLevel);
         }));
 
-    ON_CALL(*this, makeEncryptedWriteRecordLayer())
-        .WillByDefault(InvokeWithoutArgs([]() {
-          auto ret = std::make_unique<MockEncryptedWriteRecordLayer>();
+    ON_CALL(*this, makeEncryptedWriteRecordLayer(_))
+        .WillByDefault(Invoke([](EncryptionLevel encryptionLevel) {
+          auto ret =
+              std::make_unique<MockEncryptedWriteRecordLayer>(encryptionLevel);
           ret->setDefaults();
           return ret;
         }));

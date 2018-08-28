@@ -90,6 +90,8 @@ class WriteRecordLayer {
     }
   }
 
+  virtual EncryptionLevel getEncryptionLevel() const = 0;
+
  protected:
   mutable ProtocolVersion recordVersion_{ProtocolVersion::tls_1_2};
   mutable bool useAdditionalData_{true};

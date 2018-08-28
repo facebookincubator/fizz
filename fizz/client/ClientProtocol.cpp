@@ -587,7 +587,8 @@ EventHandler<ClientTypes, StateEnum::Uninitialized, Event::Connect>::handle(
 
     if (earlyDataParams) {
       earlyWriteRecordLayer =
-          context->getFactory()->makeEncryptedWriteRecordLayer();
+          context->getFactory()->makeEncryptedWriteRecordLayer(
+              EncryptionLevel::EarlyData);
       earlyWriteRecordLayer->setProtocolVersion(psk->version);
       auto earlyWriteSecret = keyScheduler->getSecret(
           EarlySecrets::ClientEarlyTraffic,
@@ -910,7 +911,8 @@ EventHandler<ClientTypes, StateEnum::ExpectingServerHello, Event::ServerHello>::
   }
 
   auto handshakeWriteRecordLayer =
-      state.context()->getFactory()->makeEncryptedWriteRecordLayer();
+      state.context()->getFactory()->makeEncryptedWriteRecordLayer(
+          EncryptionLevel::Handshake);
   handshakeWriteRecordLayer->setProtocolVersion(version);
   auto handshakeWriteSecret = scheduler->getSecret(
       HandshakeSecrets::ClientHandshakeTraffic,
@@ -1535,7 +1537,8 @@ EventHandler<ClientTypes, StateEnum::ExpectingFinished, Event::Finished>::
   state.keyScheduler()->clearMasterSecret();
 
   auto writeRecordLayer =
-      state.context()->getFactory()->makeEncryptedWriteRecordLayer();
+      state.context()->getFactory()->makeEncryptedWriteRecordLayer(
+          EncryptionLevel::AppTraffic);
   writeRecordLayer->setProtocolVersion(*state.version());
   auto writeSecret =
       state.keyScheduler()->getSecret(AppTrafficSecrets::ClientAppTraffic);
@@ -1688,7 +1691,8 @@ EventHandler<ClientTypes, StateEnum::Established, Event::KeyUpdate>::handle(
   state.keyScheduler()->clientKeyUpdate();
 
   auto writeRecordLayer =
-      state.context()->getFactory()->makeEncryptedWriteRecordLayer();
+      state.context()->getFactory()->makeEncryptedWriteRecordLayer(
+          EncryptionLevel::AppTraffic);
   writeRecordLayer->setProtocolVersion(*state.version());
   auto writeSecret =
       state.keyScheduler()->getSecret(AppTrafficSecrets::ClientAppTraffic);

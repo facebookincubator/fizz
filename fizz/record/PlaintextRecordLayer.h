@@ -54,6 +54,8 @@ class PlaintextWriteRecordLayer : public WriteRecordLayer {
    */
   virtual Buf writeInitialClientHello(Buf encodedClientHello) const;
 
+  EncryptionLevel getEncryptionLevel() const override;
+
  private:
   Buf write(TLSMessage msg, ProtocolVersion recordVersion) const;
 };

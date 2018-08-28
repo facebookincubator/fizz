@@ -35,7 +35,7 @@ class EncryptedRecordTest : public testing::Test {
 
  protected:
   EncryptedReadRecordLayer read_{EncryptionLevel::AppTraffic};
-  EncryptedWriteRecordLayer write_;
+  EncryptedWriteRecordLayer write_{EncryptionLevel::AppTraffic};
   MockAead* readAead_;
   MockAead* writeAead_;
 

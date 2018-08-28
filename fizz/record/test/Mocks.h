@@ -80,6 +80,9 @@ class MockPlaintextWriteRecordLayer : public PlaintextWriteRecordLayer {
 
 class MockEncryptedWriteRecordLayer : public EncryptedWriteRecordLayer {
  public:
+  MockEncryptedWriteRecordLayer(EncryptionLevel encryptionLevel)
+      : EncryptedWriteRecordLayer(encryptionLevel) {}
+
   MOCK_CONST_METHOD1(_write, Buf(TLSMessage& msg));
   Buf write(TLSMessage&& msg) const override {
     return _write(msg);

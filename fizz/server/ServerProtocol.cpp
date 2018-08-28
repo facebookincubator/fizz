@@ -1234,7 +1234,8 @@ EventHandler<ServerTypes, StateEnum::ExpectingClientHello, Event::ClientHello>::
 
         // Derive handshake keys.
         auto handshakeWriteRecordLayer =
-            state.context()->getFactory()->makeEncryptedWriteRecordLayer();
+            state.context()->getFactory()->makeEncryptedWriteRecordLayer(
+                EncryptionLevel::Handshake);
         handshakeWriteRecordLayer->setProtocolVersion(version);
         auto handshakeWriteSecret = scheduler->getSecret(
             HandshakeSecrets::ServerHandshakeTraffic,
@@ -1416,9 +1417,8 @@ EventHandler<ServerTypes, StateEnum::ExpectingClientHello, Event::ClientHello>::
               scheduler->deriveAppTrafficSecrets(
                   clientFinishedContext->coalesce());
               auto appTrafficWriteRecordLayer =
-                  state.context()
-                      ->getFactory()
-                      ->makeEncryptedWriteRecordLayer();
+                  state.context()->getFactory()->makeEncryptedWriteRecordLayer(
+                      EncryptionLevel::AppTraffic);
               appTrafficWriteRecordLayer->setProtocolVersion(version);
               auto writeSecret =
                   scheduler->getSecret(AppTrafficSecrets::ServerAppTraffic);
@@ -1899,7 +1899,8 @@ EventHandler<ServerTypes, StateEnum::AcceptingData, Event::KeyUpdate>::handle(
   state.keyScheduler()->serverKeyUpdate();
 
   auto writeRecordLayer =
-      state.context()->getFactory()->makeEncryptedWriteRecordLayer();
+      state.context()->getFactory()->makeEncryptedWriteRecordLayer(
+          EncryptionLevel::AppTraffic);
   writeRecordLayer->setProtocolVersion(*state.version());
   auto writeSecret =
       state.keyScheduler()->getSecret(AppTrafficSecrets::ServerAppTraffic);

@@ -339,6 +339,9 @@ TEST_F(ServerProtocolTest, TestAccept) {
       state_.readRecordLayer()->getEncryptionLevel(),
       EncryptionLevel::Plaintext);
   EXPECT_EQ(state_.writeRecordLayer().get(), wrl);
+  EXPECT_EQ(
+      state_.writeRecordLayer()->getEncryptionLevel(),
+      EncryptionLevel::Plaintext);
 }
 
 TEST_F(ServerProtocolTest, TestAppClose) {
@@ -558,6 +561,9 @@ TEST_F(ServerProtocolTest, TestClientHelloFullHandshakeFlow) {
       state_.readRecordLayer()->getEncryptionLevel(),
       EncryptionLevel::Handshake);
   EXPECT_EQ(state_.writeRecordLayer().get(), appwrl);
+  EXPECT_EQ(
+      state_.writeRecordLayer()->getEncryptionLevel(),
+      EncryptionLevel::AppTraffic);
   EXPECT_EQ(state_.handshakeContext().get(), mockHandshakeContext_);
   EXPECT_EQ(state_.keyScheduler().get(), mockKeyScheduler_);
   EXPECT_EQ(state_.serverCert(), cert_);
@@ -949,6 +955,9 @@ TEST_F(ServerProtocolTest, TestClientHelloPskFlow) {
       state_.readRecordLayer()->getEncryptionLevel(),
       EncryptionLevel::Handshake);
   EXPECT_EQ(state_.writeRecordLayer().get(), appwrl);
+  EXPECT_EQ(
+      state_.writeRecordLayer()->getEncryptionLevel(),
+      EncryptionLevel::AppTraffic);
   EXPECT_EQ(state_.handshakeContext().get(), mockHandshakeContext_);
   EXPECT_EQ(state_.keyScheduler().get(), mockKeyScheduler_);
   EXPECT_EQ(state_.serverCert(), cert_);
@@ -1138,6 +1147,9 @@ TEST_F(ServerProtocolTest, TestClientHelloPskDheFlow) {
       state_.readRecordLayer()->getEncryptionLevel(),
       EncryptionLevel::Handshake);
   EXPECT_EQ(state_.writeRecordLayer().get(), appwrl);
+  EXPECT_EQ(
+      state_.writeRecordLayer()->getEncryptionLevel(),
+      EncryptionLevel::AppTraffic);
   EXPECT_EQ(state_.handshakeContext().get(), mockHandshakeContext_);
   EXPECT_EQ(state_.keyScheduler().get(), mockKeyScheduler_);
   EXPECT_EQ(state_.serverCert(), cert_);
@@ -1211,6 +1223,9 @@ TEST_F(ServerProtocolTest, TestClientHelloHelloRetryRequestFlow) {
       state_.readRecordLayer()->getEncryptionLevel(),
       EncryptionLevel::Plaintext);
   EXPECT_EQ(state_.writeRecordLayer().get(), mockWrite_);
+  EXPECT_EQ(
+      state_.writeRecordLayer()->getEncryptionLevel(),
+      EncryptionLevel::Plaintext);
   EXPECT_EQ(state_.handshakeContext().get(), secondHandshakeContext);
   EXPECT_EQ(state_.version(), TestProtocolVersion);
   EXPECT_EQ(state_.cipher(), CipherSuite::TLS_AES_128_GCM_SHA256);
@@ -1790,6 +1805,9 @@ TEST_F(ServerProtocolTest, TestClientHelloPskDheEarlyFlow) {
   EXPECT_EQ(
       state_.readRecordLayer()->getEncryptionLevel(), EncryptionLevel::EarlyData);
   EXPECT_EQ(state_.writeRecordLayer().get(), appwrl);
+  EXPECT_EQ(
+      state_.writeRecordLayer()->getEncryptionLevel(),
+      EncryptionLevel::AppTraffic);
   EXPECT_EQ(state_.handshakeContext().get(), mockHandshakeContext_);
   EXPECT_EQ(state_.keyScheduler().get(), mockKeyScheduler_);
   EXPECT_EQ(state_.serverCert(), cert_);
@@ -2000,6 +2018,9 @@ TEST_F(ServerProtocolTest, TestClientHelloPskEarlyFlow) {
   EXPECT_EQ(
       state_.readRecordLayer()->getEncryptionLevel(), EncryptionLevel::EarlyData);
   EXPECT_EQ(state_.writeRecordLayer().get(), appwrl);
+  EXPECT_EQ(
+      state_.writeRecordLayer()->getEncryptionLevel(),
+      EncryptionLevel::AppTraffic);
   EXPECT_EQ(state_.handshakeContext().get(), mockHandshakeContext_);
   EXPECT_EQ(state_.keyScheduler().get(), mockKeyScheduler_);
   EXPECT_EQ(state_.serverCert(), cert_);
@@ -2409,6 +2430,9 @@ TEST_F(ServerProtocolTest, TestClientHelloHrrRejectEarlyData) {
   EXPECT_EQ(
       state_.readRecordLayer()->getEncryptionLevel(),
       EncryptionLevel::Plaintext);
+  EXPECT_EQ(
+      state_.writeRecordLayer()->getEncryptionLevel(),
+      EncryptionLevel::Plaintext);
 }
 
 TEST_F(ServerProtocolTest, TestClientHelloCookieRejectEarlyData) {
@@ -2432,6 +2456,9 @@ TEST_F(ServerProtocolTest, TestClientHelloCookieRejectEarlyData) {
   EXPECT_EQ(
       state_.readRecordLayer()->getEncryptionLevel(),
       EncryptionLevel::Handshake);
+  EXPECT_EQ(
+      state_.writeRecordLayer()->getEncryptionLevel(),
+      EncryptionLevel::AppTraffic);
 }
 
 TEST_F(ServerProtocolTest, TestClientHelloRejectEarlyDataPskRejected) {
@@ -2452,6 +2479,9 @@ TEST_F(ServerProtocolTest, TestClientHelloRejectEarlyDataPskRejected) {
   EXPECT_EQ(
       state_.readRecordLayer()->getEncryptionLevel(),
       EncryptionLevel::Handshake);
+  EXPECT_EQ(
+      state_.writeRecordLayer()->getEncryptionLevel(),
+      EncryptionLevel::AppTraffic);
 }
 
 TEST_F(ServerProtocolTest, TestClientHelloRejectEarlyDataReplayCache) {

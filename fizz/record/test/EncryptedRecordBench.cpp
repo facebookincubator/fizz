@@ -43,7 +43,7 @@ TrafficKey getKey() {
 void encryptGCM(uint32_t n, size_t size) {
   std::unique_ptr<Aead> aead;
   std::vector<fizz::TLSMessage> msgs;
-  EncryptedWriteRecordLayer write;
+  EncryptedWriteRecordLayer write{EncryptionLevel::AppTraffic};
   BENCHMARK_SUSPEND {
     aead = std::make_unique<OpenSSLEVPCipher<AESGCM128>>();
     aead->setKey(getKey());
@@ -71,7 +71,7 @@ BENCHMARK_PARAM(encryptGCM, 8000);
 void encryptOCB(uint32_t n, size_t size) {
   std::unique_ptr<Aead> aead;
   std::vector<fizz::TLSMessage> msgs;
-  EncryptedWriteRecordLayer write;
+  EncryptedWriteRecordLayer write{EncryptionLevel::AppTraffic};
   BENCHMARK_SUSPEND {
     aead = std::make_unique<OpenSSLEVPCipher<AESOCB128>>();
     aead->setKey(getKey());
