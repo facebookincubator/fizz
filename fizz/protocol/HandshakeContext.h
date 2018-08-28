@@ -46,7 +46,7 @@ class HandshakeContext {
 template <typename Hash>
 class HandshakeContextImpl : public HandshakeContext {
  public:
-  HandshakeContextImpl();
+  HandshakeContextImpl(const std::string& hkdfLabelPrefix);
 
   void appendToTranscript(const Buf& data) override;
 
@@ -60,6 +60,7 @@ class HandshakeContextImpl : public HandshakeContext {
 
  private:
   folly::ssl::OpenSSLHash::Digest hashState_;
+  std::string hkdfLabelPrefix_;
 };
 } // namespace fizz
 

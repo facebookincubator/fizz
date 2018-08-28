@@ -54,6 +54,10 @@ class KeyDerivation {
 template <typename Hash>
 class KeyDerivationImpl : public KeyDerivation {
  public:
+  ~KeyDerivationImpl() override = default;
+
+  KeyDerivationImpl(const std::string& labelPrefix);
+
   size_t hashLength() const override {
     return Hash::HashLen;
   }
@@ -84,6 +88,9 @@ class KeyDerivationImpl : public KeyDerivation {
       override {
     return HkdfImpl<Hash>().extract(salt, ikm);
   }
+
+ private:
+  std::string labelPrefix_;
 };
 } // namespace fizz
 

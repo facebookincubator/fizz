@@ -460,11 +460,11 @@ inline Buf encode<NewSessionTicket>(NewSessionTicket&& nst) {
   return buf;
 }
 
-template <>
-inline Buf encode<HkdfLabel>(HkdfLabel&& label) {
-  static constexpr folly::StringPiece kLabelPrefix = "tls13 ";
+inline Buf encodeHkdfLabel(
+    HkdfLabel&& label,
+    const std::string& hkdfLabelPrefix) {
   auto labelBuf = folly::IOBuf::copyBuffer(
-      folly::to<std::string>(kLabelPrefix, label.label));
+      folly::to<std::string>(hkdfLabelPrefix, label.label));
   auto buf = folly::IOBuf::create(sizeof(label.length) + label.label.size());
   folly::io::Appender appender(buf.get(), 20);
   detail::write(label.length, appender);

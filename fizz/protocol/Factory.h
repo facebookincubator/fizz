@@ -22,6 +22,7 @@
 #include <fizz/protocol/KeyScheduler.h>
 #include <fizz/record/EncryptedRecordLayer.h>
 #include <fizz/record/PlaintextRecordLayer.h>
+#include <fizz/record/Types.h>
 
 namespace fizz {
 
@@ -64,9 +65,9 @@ class Factory {
       case CipherSuite::TLS_CHACHA20_POLY1305_SHA256:
       case CipherSuite::TLS_AES_128_GCM_SHA256:
       case CipherSuite::TLS_AES_128_OCB_SHA256_EXPERIMENTAL:
-        return std::make_unique<KeyDerivationImpl<Sha256>>();
+        return std::make_unique<KeyDerivationImpl<Sha256>>(getHkdfPrefix());
       case CipherSuite::TLS_AES_256_GCM_SHA384:
-        return std::make_unique<KeyDerivationImpl<Sha384>>();
+        return std::make_unique<KeyDerivationImpl<Sha384>>(getHkdfPrefix());
       default:
         throw std::runtime_error("ks: not implemented");
     }
@@ -78,9 +79,9 @@ class Factory {
       case CipherSuite::TLS_CHACHA20_POLY1305_SHA256:
       case CipherSuite::TLS_AES_128_GCM_SHA256:
       case CipherSuite::TLS_AES_128_OCB_SHA256_EXPERIMENTAL:
-        return std::make_unique<HandshakeContextImpl<Sha256>>();
+        return std::make_unique<HandshakeContextImpl<Sha256>>(getHkdfPrefix());
       case CipherSuite::TLS_AES_256_GCM_SHA384:
-        return std::make_unique<HandshakeContextImpl<Sha384>>();
+        return std::make_unique<HandshakeContextImpl<Sha384>>(getHkdfPrefix());
       default:
         throw std::runtime_error("hs: not implemented");
     }
@@ -126,6 +127,10 @@ class Factory {
 
   virtual std::shared_ptr<PeerCert> makePeerCert(Buf certData) const {
     return CertUtils::makePeerCert(std::move(certData));
+  }
+
+  virtual std::string getHkdfPrefix() const {
+    return kHkdfLabelPrefix.str();
   }
 };
 } // namespace fizz

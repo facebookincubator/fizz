@@ -9,6 +9,10 @@
 namespace fizz {
 
 template <typename Hash>
+KeyDerivationImpl<Hash>::KeyDerivationImpl(const std::string& labelPrefix)
+    : labelPrefix_(labelPrefix) {}
+
+template <typename Hash>
 Buf KeyDerivationImpl<Hash>::expandLabel(
     folly::ByteRange secret,
     folly::StringPiece label,
@@ -16,7 +20,8 @@ Buf KeyDerivationImpl<Hash>::expandLabel(
     uint16_t length) {
   HkdfLabel hkdfLabel = {
       length, std::string(label.begin(), label.end()), std::move(hashValue)};
-  return HkdfImpl<Hash>().expand(secret, *encode(std::move(hkdfLabel)), length);
+  return HkdfImpl<Hash>().expand(
+      secret, *encodeHkdfLabel(std::move(hkdfLabel), labelPrefix_), length);
 }
 
 template <typename Hash>

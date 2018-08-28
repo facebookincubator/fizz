@@ -17,6 +17,8 @@
 
 namespace fizz {
 
+constexpr folly::StringPiece kHkdfLabelPrefix = "tls13 ";
+
 using Buf = std::unique_ptr<folly::IOBuf>;
 
 enum class ProtocolVersion : uint16_t {
@@ -319,6 +321,8 @@ template <class T>
 T decode(folly::io::Cursor& cursor);
 template <typename T>
 std::string enumToHex(T enumValue);
+
+Buf encodeHkdfLabel(HkdfLabel&& label, const std::string& hkdfLabelPrefix);
 } // namespace fizz
 
 #include <fizz/record/Types-inl.h>
