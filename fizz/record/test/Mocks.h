@@ -8,6 +8,7 @@
 
 #pragma once
 
+#include <fizz/protocol/Types.h>
 #include <fizz/record/EncryptedRecordLayer.h>
 #include <fizz/record/PlaintextRecordLayer.h>
 
@@ -43,6 +44,9 @@ class MockPlaintextReadRecordLayer : public PlaintextReadRecordLayer {
 
 class MockEncryptedReadRecordLayer : public EncryptedReadRecordLayer {
  public:
+  explicit MockEncryptedReadRecordLayer(EncryptionLevel encryptionLevel)
+      : EncryptedReadRecordLayer(encryptionLevel) {}
+
   MOCK_METHOD1(read, folly::Optional<TLSMessage>(folly::IOBufQueue& buf));
   MOCK_CONST_METHOD0(hasUnparsedHandshakeData, bool());
 

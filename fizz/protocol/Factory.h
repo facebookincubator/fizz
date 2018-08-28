@@ -44,8 +44,8 @@ class Factory {
   }
 
   virtual std::unique_ptr<EncryptedReadRecordLayer>
-  makeEncryptedReadRecordLayer() const {
-    return std::make_unique<EncryptedReadRecordLayer>();
+  makeEncryptedReadRecordLayer(EncryptionLevel encryptionLevel) const {
+    return std::make_unique<EncryptedReadRecordLayer>(encryptionLevel);
   }
 
   virtual std::unique_ptr<EncryptedWriteRecordLayer>

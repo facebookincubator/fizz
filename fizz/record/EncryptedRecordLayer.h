@@ -20,6 +20,8 @@ class EncryptedReadRecordLayer : public ReadRecordLayer {
  public:
   ~EncryptedReadRecordLayer() override = default;
 
+  explicit EncryptedReadRecordLayer(EncryptionLevel encryptionLevel);
+
   folly::Optional<TLSMessage> read(folly::IOBufQueue& buf) override;
 
   virtual void setAead(std::unique_ptr<Aead> aead) {
@@ -45,9 +47,12 @@ class EncryptedReadRecordLayer : public ReadRecordLayer {
     }
   }
 
+  EncryptionLevel getEncryptionLevel() const override;
+
  private:
   folly::Optional<Buf> getDecryptedBuf(folly::IOBufQueue& buf);
 
+  EncryptionLevel encryptionLevel_;
   std::unique_ptr<Aead> aead_;
   bool skipFailedDecryption_{false};
 

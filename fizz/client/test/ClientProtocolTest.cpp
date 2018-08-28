@@ -902,6 +902,9 @@ TEST_F(ClientProtocolTest, TestServerHelloFlow) {
   processStateMutations(actions);
   EXPECT_EQ(state_.state(), StateEnum::ExpectingEncryptedExtensions);
   EXPECT_EQ(state_.readRecordLayer().get(), rrl);
+  EXPECT_EQ(
+      state_.readRecordLayer()->getEncryptionLevel(),
+      EncryptionLevel::Handshake);
   EXPECT_EQ(state_.writeRecordLayer().get(), wrl);
   EXPECT_EQ(state_.handshakeContext().get(), mockHandshakeContext_);
   EXPECT_EQ(state_.keyScheduler().get(), mockKeyScheduler_);
@@ -972,6 +975,9 @@ TEST_F(ClientProtocolTest, TestServerHelloAfterHrrFlow) {
   processStateMutations(actions);
   EXPECT_EQ(state_.state(), StateEnum::ExpectingEncryptedExtensions);
   EXPECT_EQ(state_.readRecordLayer().get(), rrl);
+  EXPECT_EQ(
+      state_.readRecordLayer()->getEncryptionLevel(),
+      EncryptionLevel::Handshake);
   EXPECT_EQ(state_.writeRecordLayer().get(), wrl);
   EXPECT_EQ(state_.handshakeContext().get(), mockHandshakeContext_);
   EXPECT_EQ(state_.keyScheduler().get(), mockKeyScheduler_);
@@ -1053,6 +1059,9 @@ TEST_F(ClientProtocolTest, TestServerHelloPskFlow) {
   processStateMutations(actions);
   EXPECT_EQ(state_.state(), StateEnum::ExpectingEncryptedExtensions);
   EXPECT_EQ(state_.readRecordLayer().get(), rrl);
+  EXPECT_EQ(
+      state_.readRecordLayer()->getEncryptionLevel(),
+      EncryptionLevel::Handshake);
   EXPECT_EQ(state_.writeRecordLayer().get(), wrl);
   EXPECT_EQ(state_.handshakeContext().get(), mockHandshakeContext_);
   EXPECT_EQ(state_.keyScheduler().get(), mockKeyScheduler_);
@@ -1133,6 +1142,9 @@ TEST_F(ClientProtocolTest, TestServerHelloPskNoDhFlow) {
   processStateMutations(actions);
   EXPECT_EQ(state_.state(), StateEnum::ExpectingEncryptedExtensions);
   EXPECT_EQ(state_.readRecordLayer().get(), rrl);
+  EXPECT_EQ(
+      state_.readRecordLayer()->getEncryptionLevel(),
+      EncryptionLevel::Handshake);
   EXPECT_EQ(state_.writeRecordLayer().get(), wrl);
   EXPECT_EQ(state_.handshakeContext().get(), mockHandshakeContext_);
   EXPECT_EQ(state_.keyScheduler().get(), mockKeyScheduler_);
@@ -1204,6 +1216,9 @@ TEST_F(ClientProtocolTest, TestServerHelloPskAfterHrrFlow) {
   processStateMutations(actions);
   EXPECT_EQ(state_.state(), StateEnum::ExpectingEncryptedExtensions);
   EXPECT_EQ(state_.readRecordLayer().get(), rrl);
+  EXPECT_EQ(
+      state_.readRecordLayer()->getEncryptionLevel(),
+      EncryptionLevel::Handshake);
   EXPECT_EQ(state_.writeRecordLayer().get(), wrl);
   EXPECT_EQ(state_.handshakeContext().get(), mockHandshakeContext_);
   EXPECT_EQ(state_.keyScheduler().get(), mockKeyScheduler_);
@@ -1508,6 +1523,9 @@ TEST_F(ClientProtocolTest, TestHelloRetryRequestFlow) {
   processStateMutations(actions);
   EXPECT_EQ(state_.state(), StateEnum::ExpectingServerHello);
   EXPECT_EQ(state_.readRecordLayer().get(), mockRead_);
+  EXPECT_EQ(
+      state_.readRecordLayer()->getEncryptionLevel(),
+      EncryptionLevel::Plaintext);
   EXPECT_EQ(state_.writeRecordLayer().get(), mockWrite_);
   EXPECT_TRUE(
       IOBufEqualTo()(*state_.encodedClientHello(), encodedExpectedChlo));
@@ -1601,6 +1619,9 @@ TEST_F(ClientProtocolTest, TestHelloRetryRequestPskFlow) {
   processStateMutations(actions);
   EXPECT_EQ(state_.state(), StateEnum::ExpectingServerHello);
   EXPECT_EQ(state_.readRecordLayer().get(), mockRead_);
+  EXPECT_EQ(
+      state_.readRecordLayer()->getEncryptionLevel(),
+      EncryptionLevel::Plaintext);
   EXPECT_EQ(state_.writeRecordLayer().get(), mockWrite_);
   EXPECT_EQ(state_.keyExchangers()->size(), 1);
   EXPECT_EQ(state_.keyExchangers()->at(NamedGroup::secp256r1).get(), mockKex);
@@ -2306,6 +2327,8 @@ TEST_F(ClientProtocolTest, TestFinishedEarlyFlow) {
   EXPECT_EQ(reportSuccess.earlyDataAccepted, true);
   processStateMutations(actions);
   EXPECT_EQ(state_.readRecordLayer().get(), rrl);
+  EXPECT_EQ(
+      state_.readRecordLayer()->getEncryptionLevel(), EncryptionLevel::AppTraffic);
   EXPECT_EQ(state_.writeRecordLayer().get(), wrl);
   EXPECT_EQ(state_.earlyWriteRecordLayer().get(), nullptr);
   EXPECT_EQ(state_.state(), StateEnum::Established);
@@ -2455,6 +2478,8 @@ void ClientProtocolTest::doFinishedFlow(ClientAuthType authType) {
   EXPECT_EQ(reportSuccess.earlyDataAccepted, false);
   processStateMutations(actions);
   EXPECT_EQ(state_.readRecordLayer().get(), rrl);
+  EXPECT_EQ(
+      state_.readRecordLayer()->getEncryptionLevel(), EncryptionLevel::AppTraffic);
   EXPECT_EQ(state_.writeRecordLayer().get(), wrl);
   EXPECT_EQ(state_.state(), StateEnum::Established);
   EXPECT_TRUE(
@@ -2667,6 +2692,9 @@ TEST_F(ClientProtocolTest, TestKeyUpdateRequestFlow) {
   EXPECT_TRUE(IOBufEqualTo()(write.data, IOBuf::copyBuffer("keyupdated")));
   processStateMutations(actions);
   EXPECT_EQ(state_.readRecordLayer().get(), rrl);
+  EXPECT_EQ(
+      state_.readRecordLayer()->getEncryptionLevel(),
+      EncryptionLevel::AppTraffic);
   EXPECT_EQ(state_.writeRecordLayer().get(), wrl);
   EXPECT_EQ(state_.state(), StateEnum::Established);
 }

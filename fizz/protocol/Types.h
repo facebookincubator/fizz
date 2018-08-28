@@ -23,6 +23,11 @@ enum class PskType {
   Resumption
 };
 
+/**
+ * Encryption level for the TLS layer.
+ */
+enum class EncryptionLevel { Plaintext, Handshake, EarlyData, AppTraffic };
+
 enum class KeyExchangeType { None, OneRtt, HelloRetryRequest };
 
 enum class EarlyDataType { NotAttempted, Attempted, Rejected, Accepted };

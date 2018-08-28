@@ -1092,7 +1092,8 @@ EventHandler<ServerTypes, StateEnum::ExpectingClientHello, Event::ClientHello>::
           auto earlyContext = handshakeContext->getHandshakeContext();
 
           earlyReadRecordLayer =
-              state.context()->getFactory()->makeEncryptedReadRecordLayer();
+              state.context()->getFactory()->makeEncryptedReadRecordLayer(
+                  EncryptionLevel::EarlyData);
           earlyReadRecordLayer->setProtocolVersion(version);
           auto earlyReadSecret = scheduler->getSecret(
               EarlySecrets::ClientEarlyTraffic, earlyContext->coalesce());
@@ -1246,7 +1247,8 @@ EventHandler<ServerTypes, StateEnum::ExpectingClientHello, Event::ClientHello>::
             *scheduler);
 
         auto handshakeReadRecordLayer =
-            state.context()->getFactory()->makeEncryptedReadRecordLayer();
+            state.context()->getFactory()->makeEncryptedReadRecordLayer(
+                EncryptionLevel::Handshake);
         handshakeReadRecordLayer->setProtocolVersion(version);
         handshakeReadRecordLayer->setSkipFailedDecryption(
             earlyDataType == EarlyDataType::Rejected);
@@ -1765,7 +1767,8 @@ EventHandler<ServerTypes, StateEnum::ExpectingFinished, Event::Finished>::
   }
 
   auto readRecordLayer =
-      state.context()->getFactory()->makeEncryptedReadRecordLayer();
+      state.context()->getFactory()->makeEncryptedReadRecordLayer(
+          EncryptionLevel::AppTraffic);
   readRecordLayer->setProtocolVersion(*state.version());
   auto readSecret =
       state.keyScheduler()->getSecret(AppTrafficSecrets::ClientAppTraffic);
@@ -1868,7 +1871,8 @@ EventHandler<ServerTypes, StateEnum::AcceptingData, Event::KeyUpdate>::handle(
   }
   state.keyScheduler()->clientKeyUpdate();
   auto readRecordLayer =
-      state.context()->getFactory()->makeEncryptedReadRecordLayer();
+      state.context()->getFactory()->makeEncryptedReadRecordLayer(
+          EncryptionLevel::AppTraffic);
   readRecordLayer->setProtocolVersion(*state.version());
   auto readSecret =
       state.keyScheduler()->getSecret(AppTrafficSecrets::ClientAppTraffic);

@@ -94,6 +94,10 @@ folly::Optional<TLSMessage> PlaintextReadRecordLayer::read(
   }
 }
 
+EncryptionLevel PlaintextReadRecordLayer::getEncryptionLevel() const {
+  return EncryptionLevel::Plaintext;
+}
+
 Buf PlaintextWriteRecordLayer::write(TLSMessage&& msg) const {
   return write(std::move(msg), recordVersion_);
 }

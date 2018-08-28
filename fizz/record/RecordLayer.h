@@ -37,6 +37,12 @@ class ReadRecordLayer {
    */
   virtual bool hasUnparsedHandshakeData() const;
 
+  /**
+   * Returns the current encryption level of the data that the read record layer
+   * can process.
+   */
+  virtual EncryptionLevel getEncryptionLevel() const = 0;
+
  private:
   static folly::Optional<Param> decodeHandshakeMessage(folly::IOBufQueue& buf);
 

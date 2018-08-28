@@ -130,10 +130,11 @@ class ProtocolTest : public testing::Test {
       MockAead** readAead,
       folly::Optional<bool> skipFailedDecryption = folly::none,
       Sequence* s = nullptr) {
-    EXPECT_CALL(*factory_, makeEncryptedReadRecordLayer())
+    EXPECT_CALL(*factory_, makeEncryptedReadRecordLayer(_))
         .InSequence(s ? *s : Sequence())
-        .WillOnce(Invoke([=]() {
-          auto ret = std::make_unique<MockEncryptedReadRecordLayer>();
+        .WillOnce(Invoke([=](EncryptionLevel encryptionLevel) {
+          auto ret =
+              std::make_unique<MockEncryptedReadRecordLayer>(encryptionLevel);
           *recordLayer = ret.get();
           EXPECT_CALL(*ret, _setAead(_)).WillOnce(Invoke([=](Aead* aead) {
             EXPECT_EQ(aead, *readAead);

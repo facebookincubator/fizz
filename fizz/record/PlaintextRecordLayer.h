@@ -33,6 +33,8 @@ class PlaintextReadRecordLayer : public ReadRecordLayer {
     return receivedRecordVersion_;
   }
 
+  EncryptionLevel getEncryptionLevel() const override;
+
  private:
   bool skipEncryptedRecords_{false};
 

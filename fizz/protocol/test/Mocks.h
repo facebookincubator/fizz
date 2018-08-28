@@ -16,6 +16,7 @@
 #include <fizz/protocol/Factory.h>
 #include <fizz/protocol/HandshakeContext.h>
 #include <fizz/protocol/KeyScheduler.h>
+#include <fizz/protocol/Types.h>
 #include <fizz/record/test/Mocks.h>
 
 /* using override */
@@ -141,9 +142,10 @@ class MockFactory : public Factory {
   MOCK_CONST_METHOD0(
       makePlaintextWriteRecordLayer,
       std::unique_ptr<PlaintextWriteRecordLayer>());
-  MOCK_CONST_METHOD0(
+  MOCK_CONST_METHOD1(
       makeEncryptedReadRecordLayer,
-      std::unique_ptr<EncryptedReadRecordLayer>());
+      std::unique_ptr<EncryptedReadRecordLayer>(
+          EncryptionLevel encryptionLevel));
   MOCK_CONST_METHOD0(
       makeEncryptedWriteRecordLayer,
       std::unique_ptr<EncryptedWriteRecordLayer>());
@@ -176,9 +178,11 @@ class MockFactory : public Factory {
           ret->setDefaults();
           return ret;
         }));
-    ON_CALL(*this, makeEncryptedReadRecordLayer())
-        .WillByDefault(InvokeWithoutArgs(
-            []() { return std::make_unique<MockEncryptedReadRecordLayer>(); }));
+    ON_CALL(*this, makeEncryptedReadRecordLayer(_))
+        .WillByDefault(Invoke([](EncryptionLevel encryptionLevel) {
+          return std::make_unique<MockEncryptedReadRecordLayer>(
+              encryptionLevel);
+        }));
 
     ON_CALL(*this, makeEncryptedWriteRecordLayer())
         .WillByDefault(InvokeWithoutArgs([]() {

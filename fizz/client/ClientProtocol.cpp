@@ -923,7 +923,8 @@ EventHandler<ClientTypes, StateEnum::ExpectingServerHello, Event::ServerHello>::
       *scheduler);
 
   auto handshakeReadRecordLayer =
-      state.context()->getFactory()->makeEncryptedReadRecordLayer();
+      state.context()->getFactory()->makeEncryptedReadRecordLayer(
+          EncryptionLevel::Handshake);
   handshakeReadRecordLayer->setProtocolVersion(version);
   auto handshakeReadSecret = scheduler->getSecret(
       HandshakeSecrets::ServerHandshakeTraffic,
@@ -1546,7 +1547,8 @@ EventHandler<ClientTypes, StateEnum::ExpectingFinished, Event::Finished>::
       *state.keyScheduler());
 
   auto readRecordLayer =
-      state.context()->getFactory()->makeEncryptedReadRecordLayer();
+      state.context()->getFactory()->makeEncryptedReadRecordLayer(
+          EncryptionLevel::AppTraffic);
   readRecordLayer->setProtocolVersion(*state.version());
   auto readSecret =
       state.keyScheduler()->getSecret(AppTrafficSecrets::ServerAppTraffic);
@@ -1658,7 +1660,8 @@ EventHandler<ClientTypes, StateEnum::Established, Event::KeyUpdate>::handle(
   }
   state.keyScheduler()->serverKeyUpdate();
   auto readRecordLayer =
-      state.context()->getFactory()->makeEncryptedReadRecordLayer();
+      state.context()->getFactory()->makeEncryptedReadRecordLayer(
+          EncryptionLevel::AppTraffic);
   readRecordLayer->setProtocolVersion(*state.version());
   auto readSecret =
       state.keyScheduler()->getSecret(AppTrafficSecrets::ServerAppTraffic);
