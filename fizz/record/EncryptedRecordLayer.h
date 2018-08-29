@@ -15,6 +15,7 @@
 namespace fizz {
 
 constexpr uint16_t kMaxPlaintextRecordSize = 0x4000; // 16k
+constexpr uint16_t kMinSuggestedRecordSize = 1500;
 
 class EncryptedReadRecordLayer : public ReadRecordLayer {
  public:
@@ -84,6 +85,12 @@ class EncryptedWriteRecordLayer : public WriteRecordLayer {
 
   EncryptionLevel getEncryptionLevel() const override;
 
+  void setMinDesiredRecord(uint16_t size) {
+    CHECK_GT(size, 0);
+    DCHECK_LE(size, kMaxPlaintextRecordSize);
+    desiredMinRecord_ = size;
+  }
+
  private:
   Buf getBufToEncrypt(folly::IOBufQueue& queue) const;
 
@@ -91,6 +98,7 @@ class EncryptedWriteRecordLayer : public WriteRecordLayer {
   std::unique_ptr<Aead> aead_;
 
   uint16_t maxRecord_{kMaxPlaintextRecordSize};
+  uint16_t desiredMinRecord_{kMinSuggestedRecordSize};
 
   mutable uint64_t seqNum_{0};
 };

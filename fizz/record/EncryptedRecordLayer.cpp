@@ -221,13 +221,12 @@ EncryptionLevel EncryptedWriteRecordLayer::getEncryptionLevel() const {
 }
 
 Buf EncryptedWriteRecordLayer::getBufToEncrypt(folly::IOBufQueue& queue) const {
-  static constexpr size_t kMinSuggestedRecordSize = 1500;
   if (queue.front()->length() > maxRecord_) {
     return queue.splitAtMost(maxRecord_);
-  } else if (queue.front()->length() >= kMinSuggestedRecordSize) {
+  } else if (queue.front()->length() >= desiredMinRecord_) {
     return queue.pop_front();
   } else {
-    return queue.splitAtMost(kMinSuggestedRecordSize);
+    return queue.splitAtMost(desiredMinRecord_);
   }
 }
 } // namespace fizz

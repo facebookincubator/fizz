@@ -375,5 +375,30 @@ TEST_F(EncryptedRecordTest, TestWriteMaxSize) {
           }));
   write_.write(std::move(msg));
 }
+
+TEST_F(EncryptedRecordTest, TestWriteMinSize) {
+  write_.setMinDesiredRecord(1700);
+  TLSMessage msg{ContentType::application_data, IOBuf::create(1000)};
+  msg.fragment->append(1000);
+  memset(msg.fragment->writableData(), 0x1, msg.fragment->length());
+  auto next = IOBuf::create(1000);
+  next->append(1000);
+  memset(next->writableData(), 0x2, next->length());
+  msg.fragment->prependChain(std::move(next));
+
+  Sequence s;
+  EXPECT_CALL(*writeAead_, _encrypt(_, _, _))
+      .WillOnce(Invoke([](std::unique_ptr<IOBuf>& buf, const IOBuf*, uint64_t) {
+        // one byte for footer
+        EXPECT_EQ(buf->computeChainDataLength(), 1701);
+        return getBuf("aaaa");
+      }))
+      .WillOnce(Invoke([](std::unique_ptr<IOBuf>& buf, const IOBuf*, uint64_t) {
+        // one byte for footer
+        EXPECT_EQ(buf->computeChainDataLength(), 301);
+        return getBuf("bbbb");
+      }));
+  write_.write(std::move(msg));
+}
 } // namespace test
 } // namespace fizz
