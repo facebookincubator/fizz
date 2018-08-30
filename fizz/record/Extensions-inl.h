@@ -317,11 +317,7 @@ inline Extension encodeExtension(const ProtocolNameList& names) {
 template <>
 inline Extension encodeExtension(const ServerNameList& names) {
   Extension ext;
-  if (names.useAlternateCodePoint) {
-    ext.extension_type = ExtensionType::alternate_server_name;
-  } else {
-    ext.extension_type = ExtensionType::server_name;
-  }
+  ext.extension_type = ExtensionType::server_name;
   ext.extension_data = folly::IOBuf::create(0);
   folly::io::Appender appender(ext.extension_data.get(), 10);
   detail::writeVector<uint16_t>(names.server_name_list, appender);

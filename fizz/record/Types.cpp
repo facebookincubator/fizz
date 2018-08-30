@@ -110,8 +110,6 @@ std::string toString(ExtensionType extType) {
       return "signature_algorithms_cert";
     case ExtensionType::key_share:
       return "key_share";
-    case ExtensionType::alternate_server_name:
-      return "alternate_server_name";
   }
   return enumToHex(extType);
 }

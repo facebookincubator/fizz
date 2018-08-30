@@ -159,18 +159,6 @@ class FizzClientContext {
   }
 
   /**
-   * Sets whether to use an alternate SNI code point. This is a temporary
-   * experiment to measure any SNI filtering.
-   */
-  void setUseAlternateSniCodePoint(bool enabled) {
-    useAlternateSniCodePoint_ = enabled;
-  }
-
-  bool getUseAlternateSniCodePoint() const {
-    return useAlternateSniCodePoint_;
-  }
-
-  /**
    * Set the factory to use. Should generally only be changed for testing.
    */
   void setFactory(std::unique_ptr<Factory> factory) {
@@ -208,8 +196,6 @@ class FizzClientContext {
 
   std::shared_ptr<PskCache> pskCache_;
   std::shared_ptr<const SelfCert> clientCert_;
-
-  bool useAlternateSniCodePoint_{false};
 };
 } // namespace client
 } // namespace fizz

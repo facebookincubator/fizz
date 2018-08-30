@@ -325,7 +325,6 @@ static std::map<NamedGroup, std::unique_ptr<KeyExchange>> getKeyExchangers(
 static ClientHello getClientHello(
     const Factory& /*factory*/,
     const Random& random,
-    bool alternateSniCodePoint,
     const std::vector<CipherSuite>& supportedCiphers,
     const std::vector<ProtocolVersion>& supportedVersions,
     const std::vector<NamedGroup>& supportedGroups,
@@ -371,7 +370,6 @@ static ClientHello getClientHello(
     ServerName sn;
     sn.hostname = folly::IOBuf::copyBuffer(*hostname);
     sni.server_name_list.push_back(std::move(sn));
-    sni.useAlternateCodePoint = alternateSniCodePoint;
     chlo.extensions.push_back(encodeExtension(std::move(sni)));
   }
 
@@ -555,7 +553,6 @@ EventHandler<ClientTypes, StateEnum::Uninitialized, Event::Connect>::handle(
   auto chlo = getClientHello(
       *context->getFactory(),
       random,
-      context->getUseAlternateSniCodePoint(),
       context->getSupportedCiphers(),
       context->getSupportedVersions(),
       context->getSupportedGroups(),
@@ -1074,7 +1071,6 @@ Actions EventHandler<
   auto chlo = getClientHello(
       *state.context()->getFactory(),
       state.clientRandom(),
-      state.context()->getUseAlternateSniCodePoint(),
       state.context()->getSupportedCiphers(),
       state.context()->getSupportedVersions(),
       state.context()->getSupportedGroups(),

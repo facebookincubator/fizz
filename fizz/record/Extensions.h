@@ -126,8 +126,6 @@ struct ServerName {
 
 struct ServerNameList {
   std::vector<ServerName> server_name_list;
-
-  bool useAlternateCodePoint{false};
   static constexpr ExtensionType extension_type = ExtensionType::server_name;
 };
 

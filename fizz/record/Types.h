@@ -107,7 +107,7 @@ enum class ExtensionType : uint16_t {
   signature_algorithms_cert = 50,
   key_share = 51,
 
-  alternate_server_name = 0xfb00,
+  // alternate_server_name = 0xfb00,
 };
 
 std::string toString(ExtensionType);
