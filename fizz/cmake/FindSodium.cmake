@@ -64,13 +64,13 @@ if (UNIX)
 
         # if pkgconfig for libsodium doesn't provide
         # static lib info, then override PKG_STATIC here..
-        if (sodium_PKG_STATIC_LIBRARIES STREQUAL "")
+        if (NOT sodium_PKG_STATIC_FOUND)
             set(sodium_PKG_STATIC_LIBRARIES libsodium.a)
         endif()
 
         set(XPREFIX sodium_PKG_STATIC)
     else()
-        if (sodium_PKG_LIBRARIES STREQUAL "")
+        if (NOT sodium_PKG_FOUND)
             set(sodium_PKG_LIBRARIES sodium)
         endif()
 
