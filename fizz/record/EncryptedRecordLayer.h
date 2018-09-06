@@ -68,7 +68,7 @@ class EncryptedWriteRecordLayer : public WriteRecordLayer {
 
   explicit EncryptedWriteRecordLayer(EncryptionLevel encryptionLevel);
 
-  Buf write(TLSMessage&& msg) const override;
+  TLSContent write(TLSMessage&& msg) const override;
 
   virtual void setAead(std::unique_ptr<Aead> aead) {
     if (seqNum_ != 0) {
@@ -83,23 +83,23 @@ class EncryptedWriteRecordLayer : public WriteRecordLayer {
     maxRecord_ = size;
   }
 
-  EncryptionLevel getEncryptionLevel() const override;
-
   void setMinDesiredRecord(uint16_t size) {
     CHECK_GT(size, 0);
     DCHECK_LE(size, kMaxPlaintextRecordSize);
     desiredMinRecord_ = size;
   }
 
+  EncryptionLevel getEncryptionLevel() const override;
+
  private:
   Buf getBufToEncrypt(folly::IOBufQueue& queue) const;
 
-  EncryptionLevel encryptionLevel_;
   std::unique_ptr<Aead> aead_;
 
   uint16_t maxRecord_{kMaxPlaintextRecordSize};
   uint16_t desiredMinRecord_{kMinSuggestedRecordSize};
 
   mutable uint64_t seqNum_{0};
+  EncryptionLevel encryptionLevel_;
 };
 } // namespace fizz

@@ -15,6 +15,12 @@
 
 namespace fizz {
 
+struct TLSContent {
+  Buf data;
+  ContentType contentType;
+  EncryptionLevel encryptionLevel;
+};
+
 class ReadRecordLayer {
  public:
   virtual ~ReadRecordLayer() = default;
@@ -54,18 +60,18 @@ class WriteRecordLayer {
  public:
   virtual ~WriteRecordLayer() = default;
 
-  virtual Buf write(TLSMessage&& msg) const = 0;
+  virtual TLSContent write(TLSMessage&& msg) const = 0;
 
-  Buf writeAlert(Alert&& alert) const {
+  TLSContent writeAlert(Alert&& alert) const {
     return write(TLSMessage{ContentType::alert, encode(std::move(alert))});
   }
 
-  Buf writeAppData(std::unique_ptr<folly::IOBuf>&& appData) const {
+  TLSContent writeAppData(std::unique_ptr<folly::IOBuf>&& appData) const {
     return write(TLSMessage{ContentType::application_data, std::move(appData)});
   }
 
   template <typename... Args>
-  Buf writeHandshake(Buf&& encodedHandshakeMsg, Args&&... args) const {
+  TLSContent writeHandshake(Buf&& encodedHandshakeMsg, Args&&... args) const {
     TLSMessage msg{ContentType::handshake, std::move(encodedHandshakeMsg)};
     addMessage(msg.fragment, std::forward<Args>(args)...);
     return write(std::move(msg));
@@ -90,6 +96,10 @@ class WriteRecordLayer {
     }
   }
 
+  /**
+   * Returns the current encryption level of the data that the write record
+   * layer writes at.
+   */
   virtual EncryptionLevel getEncryptionLevel() const = 0;
 
  protected:

@@ -19,19 +19,24 @@ namespace fizz {
 
 template <typename T>
 void setWriteDefaults(T* obj) {
-  ON_CALL(*obj, _write(_)).WillByDefault(Invoke([](TLSMessage& msg) {
+  ON_CALL(*obj, _write(_)).WillByDefault(Invoke([obj](TLSMessage& msg) {
+    TLSContent content;
+    content.contentType = msg.type;
+    content.encryptionLevel = obj->getEncryptionLevel();
+
     if (msg.type == ContentType::application_data) {
-      return folly::IOBuf::copyBuffer("appdata");
+      content.data = folly::IOBuf::copyBuffer("appdata");
     } else if (msg.type == ContentType::handshake) {
-      return folly::IOBuf::copyBuffer("handshake");
+      content.data = folly::IOBuf::copyBuffer("handshake");
     } else if (msg.type == ContentType::alert) {
       auto buf = folly::IOBuf::copyBuffer("alert");
       buf->prependChain(std::move(msg.fragment));
       buf->coalesce();
-      return buf;
+      content.data = std::move(buf);
     } else {
-      return std::unique_ptr<folly::IOBuf>();
+      content.data = std::unique_ptr<folly::IOBuf>();
     }
+    return content;
   }));
 }
 
@@ -60,21 +65,26 @@ class MockEncryptedReadRecordLayer : public EncryptedReadRecordLayer {
 
 class MockPlaintextWriteRecordLayer : public PlaintextWriteRecordLayer {
  public:
-  MOCK_CONST_METHOD1(_write, Buf(TLSMessage& msg));
-  Buf write(TLSMessage&& msg) const override {
+  MOCK_CONST_METHOD1(_write, TLSContent(TLSMessage& msg));
+  TLSContent write(TLSMessage&& msg) const override {
     return _write(msg);
   }
 
-  MOCK_CONST_METHOD1(_writeInitialClientHello, Buf(Buf&));
-  Buf writeInitialClientHello(Buf encoded) const override {
+  MOCK_CONST_METHOD1(_writeInitialClientHello, TLSContent(Buf&));
+  TLSContent writeInitialClientHello(Buf encoded) const override {
     return _writeInitialClientHello(encoded);
   }
 
   void setDefaults() {
     setWriteDefaults(this);
     ON_CALL(*this, _writeInitialClientHello(_))
-        .WillByDefault(InvokeWithoutArgs(
-            []() { return folly::IOBuf::copyBuffer("handshake"); }));
+        .WillByDefault(InvokeWithoutArgs([]() {
+          TLSContent record;
+          record.contentType = ContentType::handshake;
+          record.data = folly::IOBuf::copyBuffer("handshake");
+          record.encryptionLevel = EncryptionLevel::Plaintext;
+          return record;
+        }));
   }
 };
 
@@ -83,8 +93,8 @@ class MockEncryptedWriteRecordLayer : public EncryptedWriteRecordLayer {
   MockEncryptedWriteRecordLayer(EncryptionLevel encryptionLevel)
       : EncryptedWriteRecordLayer(encryptionLevel) {}
 
-  MOCK_CONST_METHOD1(_write, Buf(TLSMessage& msg));
-  Buf write(TLSMessage&& msg) const override {
+  MOCK_CONST_METHOD1(_write, TLSContent(TLSMessage& msg));
+  TLSContent write(TLSMessage&& msg) const override {
     return _write(msg);
   }
 

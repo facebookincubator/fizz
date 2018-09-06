@@ -45,18 +45,18 @@ class PlaintextWriteRecordLayer : public WriteRecordLayer {
  public:
   ~PlaintextWriteRecordLayer() override = default;
 
-  Buf write(TLSMessage&& msg) const override;
+  TLSContent write(TLSMessage&& msg) const override;
 
   /**
    * Write the initial ClientHello handshake message. This is a separate method
    * as the record encoding can be slightly different since the version has not
    * been negotiated yet.
    */
-  virtual Buf writeInitialClientHello(Buf encodedClientHello) const;
+  virtual TLSContent writeInitialClientHello(Buf encodedClientHello) const;
 
   EncryptionLevel getEncryptionLevel() const override;
 
  private:
-  Buf write(TLSMessage msg, ProtocolVersion recordVersion) const;
+  TLSContent write(TLSMessage msg, ProtocolVersion recordVersion) const;
 };
 } // namespace fizz

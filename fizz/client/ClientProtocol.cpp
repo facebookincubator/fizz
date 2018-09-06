@@ -231,7 +231,8 @@ Actions handleError(
   if (alertDesc && state.writeRecordLayer()) {
     Alert alert(*alertDesc);
     WriteToSocket write;
-    write.data = state.writeRecordLayer()->writeAlert(std::move(alert));
+    write.contents.emplace_back(
+        state.writeRecordLayer()->writeAlert(std::move(alert)));
     return actions(std::move(transition), std::move(write), std::move(error));
   } else {
     return actions(std::move(transition), std::move(error));
@@ -247,7 +248,8 @@ Actions handleAppClose(const State& state) {
   if (state.writeRecordLayer()) {
     Alert alert(AlertDescription::close_notify);
     WriteToSocket write;
-    write.data = state.writeRecordLayer()->writeAlert(std::move(alert));
+    write.contents.emplace_back(
+        state.writeRecordLayer()->writeAlert(std::move(alert)));
     return actions(std::move(transition), std::move(write));
   } else {
     return actions(std::move(transition));
@@ -615,8 +617,8 @@ EventHandler<ClientTypes, StateEnum::Uninitialized, Event::Connect>::handle(
       context->getFactory()->makePlaintextWriteRecordLayer();
 
   WriteToSocket write;
-  write.data =
-      writeRecordLayer->writeInitialClientHello(encodedClientHello->clone());
+  write.contents.emplace_back(
+      writeRecordLayer->writeInitialClientHello(encodedClientHello->clone()));
 
   EarlyDataType earlyDataType =
       earlyDataParams ? EarlyDataType::Attempted : EarlyDataType::NotAttempted;
@@ -1117,17 +1119,21 @@ Actions EventHandler<
       ? EarlyDataType::Rejected
       : state.earlyDataType();
 
-  WriteToSocket write;
-  write.data =
+  WriteToSocket clientFlight;
+  auto chloWrite =
       state.writeRecordLayer()->writeHandshake(encodedClientHello->clone());
 
   bool sentCCS = state.sentCCS();
+  folly::Optional<client::Action> ccsWrite;
   if (state.context()->getCompatibilityMode() && !sentCCS) {
-    auto fakeCCS = folly::IOBuf::wrapBuffer(FakeChangeCipherSpec);
-    fakeCCS->prependChain(std::move(write.data));
-    write.data = std::move(fakeCCS);
+    TLSContent writeCCS;
+    writeCCS.data = folly::IOBuf::wrapBuffer(FakeChangeCipherSpec);
+    writeCCS.contentType = ContentType::change_cipher_spec;
+    writeCCS.encryptionLevel = EncryptionLevel::Plaintext;
+    clientFlight.contents.emplace_back(std::move(writeCCS));
     sentCCS = true;
   }
+  clientFlight.contents.emplace_back(std::move(chloWrite));
 
   return actions(
       [version,
@@ -1151,7 +1157,7 @@ Actions EventHandler<
         newState.requestedExtensions() = std::move(requestedExtensions);
         newState.sentCCS() = sentCCS;
       },
-      std::move(write),
+      std::move(clientFlight),
       &Transition<StateEnum::ExpectingServerHello>);
 }
 
@@ -1445,12 +1451,12 @@ EventHandler<ClientTypes, StateEnum::ExpectingFinished, Event::Finished>::
   auto clientFinishedContext = state.handshakeContext()->getHandshakeContext();
   state.keyScheduler()->deriveMasterSecret();
 
-  Buf writtenEndOfEarly;
+  folly::Optional<TLSContent> eoedWrite;
   if (state.earlyDataType() == EarlyDataType::Accepted) {
     auto encodedEndOfEarly = encodeHandshake(EndOfEarlyData());
     state.handshakeContext()->appendToTranscript(encodedEndOfEarly);
     DCHECK(state.earlyWriteRecordLayer());
-    writtenEndOfEarly = state.earlyWriteRecordLayer()->writeHandshake(
+    eoedWrite = state.earlyWriteRecordLayer()->writeHandshake(
         std::move(encodedEndOfEarly));
   }
 
@@ -1501,31 +1507,33 @@ EventHandler<ClientTypes, StateEnum::ExpectingFinished, Event::Finished>::
           MasterSecrets::ResumptionMaster,
           state.handshakeContext()->getHandshakeContext()->coalesce())));
 
-  WriteToSocket write;
-  if (auth == ClientAuthType::RequestedNoMatch) {
-    write.data = state.writeRecordLayer()->writeHandshake(
-        std::move(*encodedCertMessage), std::move(encodedFinished));
-  } else if (auth == ClientAuthType::Sent) {
-    write.data = state.writeRecordLayer()->writeHandshake(
-        std::move(*encodedCertMessage),
-        std::move(*encodedCertVerify),
-        std::move(encodedFinished));
-  } else {
-    write.data =
-        state.writeRecordLayer()->writeHandshake(std::move(encodedFinished));
-  }
-
-  if (writtenEndOfEarly) {
-    writtenEndOfEarly->prependChain(std::move(write.data));
-    write.data = std::move(writtenEndOfEarly);
-  }
+  WriteToSocket clientFlight;
 
   bool sentCCS = state.sentCCS();
   if (state.context()->getCompatibilityMode() && !sentCCS) {
-    auto fakeCCS = folly::IOBuf::wrapBuffer(FakeChangeCipherSpec);
-    fakeCCS->prependChain(std::move(write.data));
-    write.data = std::move(fakeCCS);
+    TLSContent writeCCS;
+    writeCCS.encryptionLevel = EncryptionLevel::Plaintext;
+    writeCCS.contentType = ContentType::change_cipher_spec;
+    writeCCS.data = folly::IOBuf::wrapBuffer(FakeChangeCipherSpec);
+    clientFlight.contents.emplace_back(std::move(writeCCS));
     sentCCS = true;
+  }
+
+  if (eoedWrite) {
+    clientFlight.contents.emplace_back(std::move(*eoedWrite));
+  }
+
+  if (auth == ClientAuthType::RequestedNoMatch) {
+    clientFlight.contents.emplace_back(state.writeRecordLayer()->writeHandshake(
+        std::move(*encodedCertMessage), std::move(encodedFinished)));
+  } else if (auth == ClientAuthType::Sent) {
+    clientFlight.contents.emplace_back(state.writeRecordLayer()->writeHandshake(
+        std::move(*encodedCertMessage),
+        std::move(*encodedCertVerify),
+        std::move(encodedFinished)));
+  } else {
+    clientFlight.contents.emplace_back(
+        state.writeRecordLayer()->writeHandshake(std::move(encodedFinished)));
   }
 
   state.keyScheduler()->deriveAppTrafficSecrets(
@@ -1581,7 +1589,7 @@ EventHandler<ClientTypes, StateEnum::ExpectingFinished, Event::Finished>::
         newState.sentCCS() = sentCCS;
       },
       &Transition<StateEnum::Established>,
-      std::move(write),
+      std::move(clientFlight),
       std::move(reportSuccess));
 }
 
@@ -1641,7 +1649,8 @@ EventHandler<ClientTypes, StateEnum::Established, Event::AppWrite>::handle(
 
   WriteToSocket write;
   write.callback = appWrite.callback;
-  write.data = state.writeRecordLayer()->writeAppData(std::move(appWrite.data));
+  write.contents.emplace_back(
+      state.writeRecordLayer()->writeAppData(std::move(appWrite.data)));
   write.flags = appWrite.flags;
 
   return actions(std::move(write));
@@ -1681,8 +1690,8 @@ EventHandler<ClientTypes, StateEnum::Established, Event::KeyUpdate>::handle(
   auto encodedKeyUpdated =
       Protocol::getKeyUpdated(KeyUpdateRequest::update_not_requested);
   WriteToSocket write;
-  write.data =
-      state.writeRecordLayer()->writeHandshake(std::move(encodedKeyUpdated));
+  write.contents.emplace_back(
+      state.writeRecordLayer()->writeHandshake(std::move(encodedKeyUpdated)));
 
   state.keyScheduler()->clientKeyUpdate();
 
@@ -1734,19 +1743,22 @@ static Actions handleEarlyAppWrite(const State& state, EarlyAppWrite appWrite) {
     case EarlyDataType::Accepted: {
       WriteToSocket write;
       write.callback = appWrite.callback;
-      write.data =
-          state.earlyWriteRecordLayer()->writeAppData(std::move(appWrite.data));
       write.flags = appWrite.flags;
+      auto appData =
+          state.earlyWriteRecordLayer()->writeAppData(std::move(appWrite.data));
 
       if (!state.sentCCS() && state.context()->getCompatibilityMode()) {
-        auto realData = std::move(write.data);
-        write.data = folly::IOBuf::wrapBuffer(FakeChangeCipherSpec);
-        write.data->prependChain(std::move(realData));
-
+        TLSContent writeCCS;
+        writeCCS.data = folly::IOBuf::wrapBuffer(FakeChangeCipherSpec);
+        writeCCS.contentType = ContentType::change_cipher_spec;
+        writeCCS.encryptionLevel = EncryptionLevel::Plaintext;
+        write.contents.emplace_back(std::move(writeCCS));
+        write.contents.emplace_back(std::move(appData));
         return actions(
             [](State& newState) { newState.sentCCS() = true; },
             std::move(write));
       } else {
+        write.contents.emplace_back(std::move(appData));
         return actions(std::move(write));
       }
     }
@@ -1805,8 +1817,8 @@ EventHandler<ClientTypes, StateEnum::Established, Event::EarlyAppWrite>::handle(
     // the all-or-nothing property of early data.
     WriteToSocket write;
     write.callback = appWrite.callback;
-    write.data =
-        state.writeRecordLayer()->writeAppData(std::move(appWrite.data));
+    write.contents.emplace_back(
+        state.writeRecordLayer()->writeAppData(std::move(appWrite.data)));
     write.flags = appWrite.flags;
     return actions(std::move(write));
   } else {

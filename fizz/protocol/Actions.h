@@ -8,9 +8,11 @@
 
 #pragma once
 
+#include <fizz/record/RecordLayer.h>
 #include <folly/ExceptionWrapper.h>
 #include <folly/io/IOBuf.h>
 #include <folly/io/async/AsyncTransport.h>
+#include <folly/small_vector.h>
 
 namespace fizz {
 
@@ -23,10 +25,17 @@ struct DeliverAppData {
 
 /**
  * Raw data that must be written to the transport.
+ * callback: The callback that should be invoked after the write has finished.
+ *           This is usually when the kernel has accepted the buffer in the
+ *           case of TCP.
+ * contents: The TLS records that need to be written. Each TLSContent object
+ *           can represent several TLS records at a certain encryption level /
+ *           content type.
+ * flags   : The flags to use when writing the contents to the socket.
  */
 struct WriteToSocket {
   folly::AsyncTransportWrapper::WriteCallback* callback{nullptr};
-  std::unique_ptr<folly::IOBuf> data;
+  folly::small_vector<TLSContent, 4> contents;
   folly::WriteFlags flags{folly::WriteFlags::NONE};
 };
 

@@ -74,8 +74,12 @@ class AsyncFizzClientTest : public Test {
   void expectAppClose() {
     EXPECT_CALL(*machine_, _processAppClose(_))
         .WillOnce(InvokeWithoutArgs([]() {
+          TLSContent record;
+          record.contentType = ContentType::handshake;
+          record.data = IOBuf::copyBuffer("closenotify");
+          record.encryptionLevel = EncryptionLevel::Handshake;
           WriteToSocket write;
-          write.data = IOBuf::copyBuffer("closenotify");
+          write.contents.emplace_back(std::move(record));
           return detail::actions(
               [](State& newState) { newState.state() = StateEnum::Error; },
               std::move(write));
@@ -272,8 +276,12 @@ TEST_F(AsyncFizzClientTest, TestWriteToSocket) {
   client_->setReadCB(&readCallback_);
   EXPECT_CALL(*machine_, _processSocketData(_, _))
       .WillOnce(InvokeWithoutArgs([]() {
+        TLSContent record;
+        record.contentType = ContentType::handshake;
+        record.data = IOBuf::copyBuffer("XYZ");
+        record.encryptionLevel = EncryptionLevel::Handshake;
         WriteToSocket write;
-        write.data = IOBuf::copyBuffer("XYZ");
+        write.contents.emplace_back(std::move(record));
         return detail::actions(std::move(write), WaitForData());
       }));
   EXPECT_CALL(*socket_, writeChain(_, _, _));

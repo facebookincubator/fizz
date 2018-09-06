@@ -134,12 +134,12 @@ TEST_F(PlaintextRecordTest, TestSkipAndRead) {
 TEST_F(PlaintextRecordTest, TestWriteHandshake) {
   TLSMessage msg{ContentType::handshake, getBuf("1234567890")};
   auto buf = write_.write(std::move(msg));
-  expectSame(buf, "16030300051234567890");
+  expectSame(buf.data, "16030300051234567890");
 }
 
 TEST_F(PlaintextRecordTest, TestWriteClientHello) {
   auto buf = write_.writeInitialClientHello(getBuf("1234567890"));
-  expectSame(buf, "16030100051234567890");
+  expectSame(buf.data, "16030100051234567890");
 }
 
 TEST_F(PlaintextRecordTest, TestWriteAppData) {
@@ -169,9 +169,9 @@ TEST_F(PlaintextRecordTest, TestFragmentedWrite) {
   msg2.fragment->prependChain(std::move(buf));
   auto write2 = write_.write(std::move(msg2));
 
-  write1->prependChain(std::move(write2));
+  write1.data->prependChain(std::move(write2.data));
   IOBufEqualTo eq;
-  EXPECT_TRUE(eq(write, write1));
+  EXPECT_TRUE(eq(write.data, write1.data));
 }
 } // namespace test
 } // namespace fizz

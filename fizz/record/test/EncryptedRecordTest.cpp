@@ -257,7 +257,7 @@ TEST_F(EncryptedRecordTest, TestWriteHandshake) {
         return getBuf("abcd1234abcd");
       }));
   auto buf = write_.write(std::move(msg));
-  expectSame(buf, "1703030006abcd1234abcd");
+  expectSame(buf.data, "1703030006abcd1234abcd");
 }
 
 TEST_F(EncryptedRecordTest, TestWriteAppData) {
@@ -268,7 +268,7 @@ TEST_F(EncryptedRecordTest, TestWriteAppData) {
         return getBuf("abcd1234abcd");
       }));
   auto buf = write_.write(std::move(msg));
-  expectSame(buf, "1703030006abcd1234abcd");
+  expectSame(buf.data, "1703030006abcd1234abcd");
 }
 
 TEST_F(EncryptedRecordTest, TestWriteAppDataInPlace) {
@@ -282,8 +282,8 @@ TEST_F(EncryptedRecordTest, TestWriteAppDataInPlace) {
         return getBuf("abcd1234abcd", 5, 0);
       }));
   auto buf = write_.write(std::move(msg));
-  EXPECT_FALSE(buf->isChained());
-  expectSame(buf, "1703030006abcd1234abcd");
+  EXPECT_FALSE(buf.data->isChained());
+  expectSame(buf.data, "1703030006abcd1234abcd");
 }
 
 TEST_F(EncryptedRecordTest, TestFragmentedWrite) {
@@ -305,7 +305,7 @@ TEST_F(EncryptedRecordTest, TestFragmentedWrite) {
             return getBuf("bbbb");
           }));
   auto outBuf = write_.write(std::move(msg));
-  expectSame(outBuf, "1703034001aaaa1703030a01bbbb");
+  expectSame(outBuf.data, "1703034001aaaa1703030a01bbbb");
 }
 
 TEST_F(EncryptedRecordTest, TestWriteSplittingWholeBuf) {
@@ -356,7 +356,7 @@ TEST_F(EncryptedRecordTest, TestWriteSeqNum) {
 TEST_F(EncryptedRecordTest, TestWriteEmpty) {
   TLSMessage msg{ContentType::application_data, folly::IOBuf::create(0)};
   auto outBuf = write_.write(std::move(msg));
-  EXPECT_TRUE(outBuf->empty());
+  EXPECT_TRUE(outBuf.data->empty());
 }
 
 TEST_F(EncryptedRecordTest, TestWriteMaxSize) {

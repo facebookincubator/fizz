@@ -30,8 +30,8 @@ class ConcreteReadRecordLayer : public PlaintextReadRecordLayer {
 
 class ConcreteWriteRecordLayer : public PlaintextWriteRecordLayer {
  public:
-  MOCK_CONST_METHOD1(_write, Buf(TLSMessage& msg));
-  Buf write(TLSMessage&& msg) const override {
+  MOCK_CONST_METHOD1(_write, TLSContent(TLSMessage& msg));
+  TLSContent write(TLSMessage&& msg) const override {
     return _write(msg);
   }
 };
@@ -155,25 +155,37 @@ TEST_F(RecordTest, TestHandshakeSpliced) {
 }
 
 TEST_F(RecordTest, TestWriteAppData) {
-  EXPECT_CALL(write_, _write(_)).WillOnce(Invoke([](TLSMessage& msg) {
+  EXPECT_CALL(write_, _write(_)).WillOnce(Invoke([&](TLSMessage& msg) {
+    TLSContent content;
+    content.contentType = msg.type;
+    content.encryptionLevel = write_.getEncryptionLevel();
+    content.data = nullptr;
     EXPECT_EQ(msg.type, ContentType::application_data);
-    return nullptr;
+    return content;
   }));
   write_.writeAppData(IOBuf::copyBuffer("hi"));
 }
 
 TEST_F(RecordTest, TestWriteAlert) {
-  EXPECT_CALL(write_, _write(_)).WillOnce(Invoke([](TLSMessage& msg) {
+  EXPECT_CALL(write_, _write(_)).WillOnce(Invoke([&](TLSMessage& msg) {
     EXPECT_EQ(msg.type, ContentType::alert);
-    return nullptr;
+    TLSContent content;
+    content.contentType = msg.type;
+    content.encryptionLevel = write_.getEncryptionLevel();
+    content.data = nullptr;
+    return content;
   }));
   write_.writeAlert(Alert());
 }
 
 TEST_F(RecordTest, TestWriteHandshake) {
-  EXPECT_CALL(write_, _write(_)).WillOnce(Invoke([](TLSMessage& msg) {
+  EXPECT_CALL(write_, _write(_)).WillOnce(Invoke([&](TLSMessage& msg) {
     EXPECT_EQ(msg.type, ContentType::handshake);
-    return nullptr;
+    TLSContent content;
+    content.contentType = msg.type;
+    content.encryptionLevel = write_.getEncryptionLevel();
+    content.data = nullptr;
+    return content;
   }));
   write_.writeHandshake(IOBuf::copyBuffer("msg1"), IOBuf::copyBuffer("msg2"));
 }

@@ -144,7 +144,7 @@ EncryptedWriteRecordLayer::EncryptedWriteRecordLayer(
     EncryptionLevel encryptionLevel)
     : encryptionLevel_(encryptionLevel) {}
 
-Buf EncryptedWriteRecordLayer::write(TLSMessage&& msg) const {
+TLSContent EncryptedWriteRecordLayer::write(TLSMessage&& msg) const {
   folly::IOBufQueue queue;
   queue.append(std::move(msg.fragment));
   std::unique_ptr<folly::IOBuf> outBuf;
@@ -212,11 +212,11 @@ Buf EncryptedWriteRecordLayer::write(TLSMessage&& msg) const {
     outBuf = folly::IOBuf::create(0);
   }
 
-  return outBuf;
-}
-
-EncryptionLevel EncryptedWriteRecordLayer::getEncryptionLevel() const {
-  return encryptionLevel_;
+  TLSContent content;
+  content.data = std::move(outBuf);
+  content.contentType = msg.type;
+  content.encryptionLevel = encryptionLevel_;
+  return content;
 }
 
 Buf EncryptedWriteRecordLayer::getBufToEncrypt(folly::IOBufQueue& queue) const {
@@ -227,5 +227,9 @@ Buf EncryptedWriteRecordLayer::getBufToEncrypt(folly::IOBufQueue& queue) const {
   } else {
     return queue.splitAtMost(desiredMinRecord_);
   }
+}
+
+EncryptionLevel EncryptedWriteRecordLayer::getEncryptionLevel() const {
+  return encryptionLevel_;
 }
 } // namespace fizz

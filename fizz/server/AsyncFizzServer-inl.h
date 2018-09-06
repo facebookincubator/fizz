@@ -225,8 +225,12 @@ void AsyncFizzServerT<SM>::ActionMoveVisitor::operator()(DeliverAppData& data) {
 
 template <typename SM>
 void AsyncFizzServerT<SM>::ActionMoveVisitor::operator()(WriteToSocket& data) {
-  server_.transport_->writeChain(
-      data.callback, std::move(data.data), data.flags);
+  DCHECK(!data.contents.empty());
+  Buf allData = std::move(data.contents.front().data);
+  for (size_t i = 1; i < data.contents.size(); ++i) {
+    allData->prependChain(std::move(data.contents[i].data));
+  }
+  server_.transport_->writeChain(data.callback, std::move(allData), data.flags);
 }
 
 template <typename SM>

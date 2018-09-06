@@ -121,8 +121,9 @@ Buf AeadCookieCipher<AeadType, HkdfType>::getStatelessResponse(
   auto statelessMessage = getStatelessHelloRetryRequest(
       state.version, state.cipher, state.group, std::move(*cookie));
 
-  return PlaintextWriteRecordLayer().writeHandshake(
-      std::move(statelessMessage));
+  return PlaintextWriteRecordLayer()
+      .writeHandshake(std::move(statelessMessage))
+      .data;
 }
 } // namespace server
 } // namespace fizz

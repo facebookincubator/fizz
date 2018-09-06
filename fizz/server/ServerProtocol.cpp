@@ -232,7 +232,8 @@ Actions handleError(
   if (alertDesc && state.writeRecordLayer()) {
     Alert alert(*alertDesc);
     WriteToSocket write;
-    write.data = state.writeRecordLayer()->writeAlert(std::move(alert));
+    write.contents.emplace_back(
+        state.writeRecordLayer()->writeAlert(std::move(alert)));
     return actions(std::move(transition), std::move(write), std::move(error));
   } else {
     return actions(std::move(transition), std::move(error));
@@ -248,7 +249,8 @@ Actions handleAppClose(const State& state) {
   if (state.writeRecordLayer()) {
     Alert alert(AlertDescription::close_notify);
     WriteToSocket write;
-    write.data = state.writeRecordLayer()->writeAlert(std::move(alert));
+    write.contents.emplace_back(
+        state.writeRecordLayer()->writeAlert(std::move(alert)));
     return actions(std::move(transition), std::move(write));
   } else {
     return actions(std::move(transition));
@@ -984,8 +986,9 @@ EventHandler<ServerTypes, StateEnum::ExpectingClientHello, Event::ClientHello>::
       // necessarily preserve it byte-for-byte, but it isn't authenticated so
       // should be ok.
       fallback.clientHello =
-          PlaintextWriteRecordLayer().writeInitialClientHello(
-              std::move(*chlo.originalEncoding));
+          PlaintextWriteRecordLayer()
+              .writeInitialClientHello(std::move(*chlo.originalEncoding))
+              .data;
       return actions(&Transition<StateEnum::Error>, std::move(fallback));
     } else {
       throw FizzException(
@@ -1146,13 +1149,17 @@ EventHandler<ServerTypes, StateEnum::ExpectingClientHello, Event::ClientHello>::
                 legacySessionId ? legacySessionId->clone() : nullptr,
                 *handshakeContext);
 
-            WriteToSocket write;
-            write.data = state.writeRecordLayer()->writeHandshake(
-                std::move(encodedHelloRetryRequest));
+            WriteToSocket serverFlight;
+            serverFlight.contents.emplace_back(
+                state.writeRecordLayer()->writeHandshake(
+                    std::move(encodedHelloRetryRequest)));
 
             if (legacySessionId && !legacySessionId->empty()) {
-              write.data->prependChain(
-                  folly::IOBuf::wrapBuffer(FakeChangeCipherSpec));
+              TLSContent writeCCS;
+              writeCCS.encryptionLevel = EncryptionLevel::Plaintext;
+              writeCCS.contentType = ContentType::change_cipher_spec;
+              writeCCS.data = folly::IOBuf::wrapBuffer(FakeChangeCipherSpec);
+              serverFlight.contents.emplace_back(std::move(writeCCS));
             }
 
             // Create a new record layer in case we need to skip early data.
@@ -1184,7 +1191,7 @@ EventHandler<ServerTypes, StateEnum::ExpectingClientHello, Event::ClientHello>::
                   newState.replayCacheResult() = replayCacheResult;
                   newState.readRecordLayer() = std::move(newReadRecordLayer);
                 },
-                std::move(write),
+                std::move(serverFlight),
                 &Transition<StateEnum::ExpectingClientHello>));
           }
 
@@ -1387,23 +1394,31 @@ EventHandler<ServerTypes, StateEnum::ExpectingClientHello, Event::ClientHello>::
               // Some middleboxes appear to break if the first encrypted record
               // is larger than ~1300 bytes (likely if it does not fit in the
               // first packet).
-              auto writtenEncryptedHandshake =
-                  handshakeWriteRecordLayer->writeHandshake(
-                      combined.splitAtMost(1000));
+              auto serverEncrypted = handshakeWriteRecordLayer->writeHandshake(
+                  combined.splitAtMost(1000));
               if (!combined.empty()) {
-                writtenEncryptedHandshake->prependChain(
-                    handshakeWriteRecordLayer->writeHandshake(combined.move()));
+                auto splitRecord =
+                    handshakeWriteRecordLayer->writeHandshake(combined.move());
+                // Split record must have the same encryption level as the main
+                // handshake.
+                DCHECK(
+                    splitRecord.encryptionLevel ==
+                    serverEncrypted.encryptionLevel);
+                serverEncrypted.data->prependChain(std::move(splitRecord.data));
               }
 
-              WriteToSocket write;
-              write.data = state.writeRecordLayer()->writeHandshake(
-                  std::move(encodedServerHello));
+              WriteToSocket serverFlight;
+              serverFlight.contents.emplace_back(
+                  state.writeRecordLayer()->writeHandshake(
+                      std::move(encodedServerHello)));
               if (legacySessionId && !legacySessionId->empty()) {
-                write.data->prependChain(
-                    folly::IOBuf::wrapBuffer(FakeChangeCipherSpec));
+                TLSContent ccsWrite;
+                ccsWrite.encryptionLevel = EncryptionLevel::Plaintext;
+                ccsWrite.contentType = ContentType::change_cipher_spec;
+                ccsWrite.data = folly::IOBuf::wrapBuffer(FakeChangeCipherSpec);
+                serverFlight.contents.emplace_back(std::move(ccsWrite));
               }
-
-              write.data->prependChain(std::move(writtenEncryptedHandshake));
+              serverFlight.contents.emplace_back(std::move(serverEncrypted));
 
               scheduler->deriveMasterSecret();
               auto clientFinishedContext =
@@ -1495,7 +1510,7 @@ EventHandler<ServerTypes, StateEnum::ExpectingClientHello, Event::ClientHello>::
                           std::move(earlyExporterMaster);
                     },
                     std::move(saveState),
-                    std::move(write),
+                    std::move(serverFlight),
                     &Transition<StateEnum::AcceptingEarlyData>,
                     ReportEarlyHandshakeSuccess());
               } else {
@@ -1509,7 +1524,7 @@ EventHandler<ServerTypes, StateEnum::ExpectingClientHello, Event::ClientHello>::
                           std::move(handshakeReadRecordLayer);
                     },
                     std::move(saveState),
-                    std::move(write),
+                    std::move(serverFlight),
                     transition);
               }
             });
@@ -1531,7 +1546,8 @@ EventHandler<ServerTypes, StateEnum::AcceptingEarlyData, Event::AppWrite>::
 
   WriteToSocket write;
   write.callback = appWrite.callback;
-  write.data = state.writeRecordLayer()->writeAppData(std::move(appWrite.data));
+  write.contents.emplace_back(
+      state.writeRecordLayer()->writeAppData(std::move(appWrite.data)));
   write.flags = appWrite.flags;
 
   return actions(std::move(write));
@@ -1566,7 +1582,8 @@ EventHandler<ServerTypes, StateEnum::ExpectingFinished, Event::AppWrite>::
 
   WriteToSocket write;
   write.callback = appWrite.callback;
-  write.data = state.writeRecordLayer()->writeAppData(std::move(appWrite.data));
+  write.contents.emplace_back(
+      state.writeRecordLayer()->writeAppData(std::move(appWrite.data)));
   write.flags = appWrite.flags;
 
   return actions(std::move(write));
@@ -1593,9 +1610,9 @@ static WriteToSocket writeNewSessionTicket(
   }
 
   auto encodedNst = encodeHandshake(std::move(nst));
-  auto writtenNst = recordLayer.writeHandshake(std::move(encodedNst));
   WriteToSocket nstWrite;
-  nstWrite.data = std::move(writtenNst);
+  nstWrite.contents.emplace_back(
+      recordLayer.writeHandshake(std::move(encodedNst)));
   return nstWrite;
 }
 
@@ -1854,7 +1871,8 @@ EventHandler<ServerTypes, StateEnum::AcceptingData, Event::AppWrite>::handle(
 
   WriteToSocket write;
   write.callback = appWrite.callback;
-  write.data = state.writeRecordLayer()->writeAppData(std::move(appWrite.data));
+  write.contents.emplace_back(
+      state.writeRecordLayer()->writeAppData(std::move(appWrite.data)));
   write.flags = appWrite.flags;
 
   return actions(std::move(write));
@@ -1893,8 +1911,8 @@ EventHandler<ServerTypes, StateEnum::AcceptingData, Event::KeyUpdate>::handle(
   auto encodedKeyUpdated =
       Protocol::getKeyUpdated(KeyUpdateRequest::update_not_requested);
   WriteToSocket write;
-  write.data =
-      state.writeRecordLayer()->writeHandshake(std::move(encodedKeyUpdated));
+  write.contents.emplace_back(
+      state.writeRecordLayer()->writeHandshake(std::move(encodedKeyUpdated)));
 
   state.keyScheduler()->serverKeyUpdate();
 

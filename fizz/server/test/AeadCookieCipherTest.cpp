@@ -60,8 +60,9 @@ class AeadCookieCipherTest : public Test {
       chlo.extensions.push_back(encodeExtension(std::move(c)));
     }
 
-    return PlaintextWriteRecordLayer().writeInitialClientHello(
-        encodeHandshake(std::move(chlo)));
+    return PlaintextWriteRecordLayer()
+        .writeInitialClientHello(encodeHandshake(std::move(chlo)))
+        .data;
   }
 
   std::shared_ptr<FizzServerContext> context_;
@@ -72,8 +73,7 @@ TEST_F(AeadCookieCipherTest, TestGetRetry) {
   useMockRandom();
   auto res = cipher_->getTokenOrRetry(
       getClientHello(nullptr), IOBuf::copyBuffer("test"));
-  auto msg = std::move(
-      boost::get<StatelessHelloRetryRequest>(res));
+  auto msg = std::move(boost::get<StatelessHelloRetryRequest>(res));
   EXPECT_EQ(hexlify(msg.data->coalesce()), retry);
 }
 
@@ -82,8 +82,7 @@ TEST_F(AeadCookieCipherTest, TestGetRetryGroup) {
   context_->setSupportedGroups({NamedGroup::secp256r1});
   auto res = cipher_->getTokenOrRetry(
       getClientHello(nullptr), IOBuf::copyBuffer("test"));
-  auto msg = std::move(
-      boost::get<StatelessHelloRetryRequest>(res));
+  auto msg = std::move(boost::get<StatelessHelloRetryRequest>(res));
   EXPECT_EQ(hexlify(msg.data->coalesce()), retryGroup);
 }
 

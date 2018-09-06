@@ -95,7 +95,7 @@ class ProtocolTest : public testing::Test {
       a.description = *alert;
       auto buf = folly::IOBuf::copyBuffer("alert");
       buf->prependChain(encode(std::move(a)));
-      EXPECT_TRUE(folly::IOBufEqualTo()(write.data, buf));
+      EXPECT_TRUE(folly::IOBufEqualTo()(write.contents[0].data, buf));
     } else {
       expectActions<MutateState, ReportError>(actions);
     }
@@ -150,7 +150,8 @@ class ProtocolTest : public testing::Test {
   void expectEncryptedWriteRecordLayerCreation(
       MockEncryptedWriteRecordLayer** recordLayer,
       MockAead** writeAead,
-      Buf (*expectedWrite)(TLSMessage&) = nullptr,
+      std::function<TLSContent(TLSMessage&, MockEncryptedWriteRecordLayer*)>
+          expectedWrite = nullptr,
       Sequence* s = nullptr) {
     EXPECT_CALL(*factory_, makeEncryptedWriteRecordLayer(_))
         .InSequence(s ? *s : Sequence())
@@ -163,7 +164,12 @@ class ProtocolTest : public testing::Test {
             EXPECT_EQ(aead, *writeAead);
           }));
           if (expectedWrite) {
-            EXPECT_CALL(*ret, _write(_)).WillOnce(Invoke(expectedWrite));
+            EXPECT_CALL(*ret, _write(_))
+                .WillOnce(
+                    Invoke([writeFunc = std::move(expectedWrite),
+                            writeRecord = *recordLayer](auto& msg) mutable {
+                      return writeFunc(msg, writeRecord);
+                    }));
           }
           return ret;
         }));

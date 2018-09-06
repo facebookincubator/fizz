@@ -98,18 +98,18 @@ EncryptionLevel PlaintextReadRecordLayer::getEncryptionLevel() const {
   return EncryptionLevel::Plaintext;
 }
 
-Buf PlaintextWriteRecordLayer::write(TLSMessage&& msg) const {
+TLSContent PlaintextWriteRecordLayer::write(TLSMessage&& msg) const {
   return write(std::move(msg), recordVersion_);
 }
 
-Buf PlaintextWriteRecordLayer::writeInitialClientHello(
+TLSContent PlaintextWriteRecordLayer::writeInitialClientHello(
     Buf encodedClientHello) const {
   return write(
       TLSMessage{ContentType::handshake, std::move(encodedClientHello)},
       ProtocolVersion::tls_1_0);
 }
 
-Buf PlaintextWriteRecordLayer::write(
+TLSContent PlaintextWriteRecordLayer::write(
     TLSMessage msg,
     ProtocolVersion recordVersion) const {
   if (msg.type == ContentType::application_data) {
@@ -136,7 +136,11 @@ Buf PlaintextWriteRecordLayer::write(
     }
     data->prependChain(std::move(thisFragment));
   }
-  return data;
+  TLSContent content;
+  content.data = std::move(data);
+  content.contentType = msg.type;
+  content.encryptionLevel = EncryptionLevel::Plaintext;
+  return content;
 }
 
 EncryptionLevel PlaintextWriteRecordLayer::getEncryptionLevel() const {

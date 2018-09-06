@@ -54,6 +54,16 @@ class ClientProtocolTest : public ProtocolTest<ClientTypes, Actions> {
     state_.writeRecordLayer().reset(mockWrite_);
   }
 
+  void setMockHandshakeEncryptedRecord() {
+    mockHandshakeRead_ =
+        new MockEncryptedReadRecordLayer(EncryptionLevel::Handshake);
+    mockHandshakeWrite_ =
+        new MockEncryptedWriteRecordLayer(EncryptionLevel::Handshake);
+    mockHandshakeWrite_->setDefaults();
+    state_.readRecordLayer().reset(mockHandshakeRead_);
+    state_.writeRecordLayer().reset(mockHandshakeWrite_);
+  }
+
   void setMockEarlyRecord() {
     mockEarlyWrite_ =
         new MockEncryptedWriteRecordLayer(EncryptionLevel::EarlyData);
@@ -199,7 +209,7 @@ class ClientProtocolTest : public ProtocolTest<ClientTypes, Actions> {
   }
 
   void setupExpectingFinished() {
-    setMockRecord();
+    setMockHandshakeEncryptedRecord();
     setMockContextAndScheduler();
     state_.context() = context_;
     state_.version() = TestProtocolVersion;
@@ -231,6 +241,8 @@ class ClientProtocolTest : public ProtocolTest<ClientTypes, Actions> {
   MockPlaintextReadRecordLayer* mockRead_;
   MockPlaintextWriteRecordLayer* mockWrite_;
   MockEncryptedWriteRecordLayer* mockEarlyWrite_;
+  MockEncryptedWriteRecordLayer* mockHandshakeWrite_;
+  MockEncryptedReadRecordLayer* mockHandshakeRead_;
   MockKeyExchange* mockKex_;
   MockKeyScheduler* mockKeyScheduler_;
   MockHandshakeContext* mockHandshakeContext_;
@@ -281,7 +293,11 @@ TEST_F(ClientProtocolTest, TestConnectFlow) {
             .WillOnce(Invoke([](Buf& encoded) {
               EXPECT_TRUE(IOBufEqualTo()(
                   encoded, encodeHandshake(getDefaultClientHello())));
-              return IOBuf::copyBuffer("writtenchlo");
+              TLSContent record;
+              record.contentType = ContentType::handshake;
+              record.encryptionLevel = EncryptionLevel::Plaintext;
+              record.data = IOBuf::copyBuffer("writtenchlo");
+              return record;
             }));
         return ret;
       }));
@@ -310,7 +326,8 @@ TEST_F(ClientProtocolTest, TestConnectFlow) {
 
   expectActions<MutateState, WriteToSocket>(actions);
   auto write = expectAction<WriteToSocket>(actions);
-  EXPECT_TRUE(IOBufEqualTo()(write.data, IOBuf::copyBuffer("writtenchlo")));
+  EXPECT_TRUE(
+      IOBufEqualTo()(write.contents[0].data, IOBuf::copyBuffer("writtenchlo")));
   processStateMutations(actions);
   EXPECT_EQ(state_.state(), StateEnum::ExpectingServerHello);
   EXPECT_EQ(state_.readRecordLayer().get(), mockRead_);
@@ -343,8 +360,13 @@ TEST_F(ClientProtocolTest, TestConnectPskFlow) {
         auto ret = std::make_unique<MockPlaintextWriteRecordLayer>();
         mockWrite_ = ret.get();
         EXPECT_CALL(*ret, _writeInitialClientHello(_))
-            .WillOnce(
-                Invoke([](Buf&) { return IOBuf::copyBuffer("writtenchlo"); }));
+            .WillOnce(Invoke([](Buf&) {
+              TLSContent record;
+              record.contentType = ContentType::handshake;
+              record.encryptionLevel = EncryptionLevel::Plaintext;
+              record.data = IOBuf::copyBuffer("writtenchlo");
+              return record;
+            }));
         return ret;
       }));
   EXPECT_CALL(*factory_, makeRandom()).WillOnce(Invoke([]() {
@@ -400,7 +422,8 @@ TEST_F(ClientProtocolTest, TestConnectPskFlow) {
 
   expectActions<MutateState, WriteToSocket>(actions);
   auto write = expectAction<WriteToSocket>(actions);
-  EXPECT_TRUE(IOBufEqualTo()(write.data, IOBuf::copyBuffer("writtenchlo")));
+  EXPECT_TRUE(
+      IOBufEqualTo()(write.contents[0].data, IOBuf::copyBuffer("writtenchlo")));
   processStateMutations(actions);
   EXPECT_EQ(state_.state(), StateEnum::ExpectingServerHello);
   EXPECT_EQ(state_.readRecordLayer().get(), mockRead_);
@@ -434,8 +457,13 @@ TEST_F(ClientProtocolTest, TestConnectPskEarlyFlow) {
         auto ret = std::make_unique<MockPlaintextWriteRecordLayer>();
         mockWrite_ = ret.get();
         EXPECT_CALL(*ret, _writeInitialClientHello(_))
-            .WillOnce(
-                Invoke([](Buf&) { return IOBuf::copyBuffer("writtenchlo"); }));
+            .WillOnce(Invoke([](Buf&) {
+              TLSContent record;
+              record.contentType = ContentType::handshake;
+              record.encryptionLevel = EncryptionLevel::Plaintext;
+              record.data = IOBuf::copyBuffer("writtenchlo");
+              return record;
+            }));
         return ret;
       }));
   EXPECT_CALL(*factory_, makeRandom()).WillOnce(Invoke([]() {
@@ -517,7 +545,8 @@ TEST_F(ClientProtocolTest, TestConnectPskEarlyFlow) {
   expectActions<MutateState, WriteToSocket, ReportEarlyHandshakeSuccess>(
       actions);
   auto write = expectAction<WriteToSocket>(actions);
-  EXPECT_TRUE(IOBufEqualTo()(write.data, IOBuf::copyBuffer("writtenchlo")));
+  EXPECT_TRUE(
+      IOBufEqualTo()(write.contents[0].data, IOBuf::copyBuffer("writtenchlo")));
   auto earlySuccess = expectAction<ReportEarlyHandshakeSuccess>(actions);
   EXPECT_EQ(earlySuccess.maxEarlyDataSize, 9000);
   processStateMutations(actions);
@@ -1524,18 +1553,22 @@ TEST_F(ClientProtocolTest, TestHelloRetryRequestFlow) {
       findExtension(chlo.extensions, ExtensionType::key_share));
   chlo.extensions.insert(it, encodeExtension(std::move(keyShare)));
   auto encodedExpectedChlo = encodeHandshake(std::move(chlo));
-  EXPECT_CALL(*mockWrite_, _write(_))
-      .WillOnce(Invoke([&encodedExpectedChlo](TLSMessage& msg) {
-        EXPECT_EQ(msg.type, ContentType::handshake);
-        EXPECT_TRUE(IOBufEqualTo()(msg.fragment, encodedExpectedChlo));
-        return IOBuf::copyBuffer("writtenchlo");
-      }));
+  EXPECT_CALL(*mockWrite_, _write(_)).WillOnce(Invoke([&](TLSMessage& msg) {
+    TLSContent content;
+    content.contentType = msg.type;
+    content.encryptionLevel = mockWrite_->getEncryptionLevel();
+    EXPECT_EQ(msg.type, ContentType::handshake);
+    EXPECT_TRUE(IOBufEqualTo()(msg.fragment, encodedExpectedChlo));
+    content.data = IOBuf::copyBuffer("writtenchlo");
+    return content;
+  }));
 
   auto actions =
       detail::processEvent(state_, TestMessages::helloRetryRequest());
   expectActions<MutateState, WriteToSocket>(actions);
   auto write = expectAction<WriteToSocket>(actions);
-  EXPECT_TRUE(IOBufEqualTo()(write.data, IOBuf::copyBuffer("writtenchlo")));
+  EXPECT_TRUE(
+      IOBufEqualTo()(write.contents[0].data, IOBuf::copyBuffer("writtenchlo")));
   processStateMutations(actions);
   EXPECT_EQ(state_.state(), StateEnum::ExpectingServerHello);
   EXPECT_EQ(state_.readRecordLayer().get(), mockRead_);
@@ -1626,15 +1659,21 @@ TEST_F(ClientProtocolTest, TestHelloRetryRequestPskFlow) {
         mockKex = ret.get();
         return ret;
       }));
-  EXPECT_CALL(*mockWrite_, _write(_)).WillOnce(Invoke([](TLSMessage& msg) {
+  EXPECT_CALL(*mockWrite_, _write(_)).WillOnce(Invoke([&](TLSMessage& msg) {
+    TLSContent content;
+    content.contentType = msg.type;
+    content.encryptionLevel = mockWrite_->getEncryptionLevel();
     EXPECT_EQ(msg.type, ContentType::handshake);
-    return IOBuf::copyBuffer("writtenchlo");
+    content.data = IOBuf::copyBuffer("writtenchlo");
+    return content;
   }));
 
   auto actions =
       detail::processEvent(state_, TestMessages::helloRetryRequest());
   expectActions<MutateState, WriteToSocket>(actions);
   auto write = expectAction<WriteToSocket>(actions);
+  EXPECT_EQ(write.contents[0].contentType, ContentType::handshake);
+  EXPECT_EQ(write.contents[0].encryptionLevel, EncryptionLevel::Plaintext);
   processStateMutations(actions);
   EXPECT_EQ(state_.state(), StateEnum::ExpectingServerHello);
   EXPECT_EQ(state_.readRecordLayer().get(), mockRead_);
@@ -1697,7 +1736,6 @@ TEST_F(ClientProtocolTest, TestHelloRetryRequestBadVersion) {
   TestMessages::removeExtension(hrr, ExtensionType::supported_versions);
   ServerSupportedVersions supportedVersions;
   supportedVersions.selected_version = ProtocolVersion::tls_1_1;
-  ;
   hrr.extensions.push_back(encodeExtension(std::move(supportedVersions)));
   auto actions = detail::processEvent(state_, std::move(hrr));
   expectError<FizzException>(
@@ -1734,9 +1772,13 @@ TEST_F(ClientProtocolTest, TestHelloRetryRequestGroupAlreadySent) {
   HelloRetryRequestKeyShare keyShare;
   keyShare.selected_group = NamedGroup::x25519;
   hrr.extensions.push_back(encodeExtension(std::move(keyShare)));
+  auto encryptionLevel = state_.writeRecordLayer()->getEncryptionLevel();
   auto actions = detail::processEvent(state_, std::move(hrr));
   expectError<FizzException>(
       actions, AlertDescription::illegal_parameter, "already-sent group");
+  auto write = expectAction<WriteToSocket>(actions);
+  EXPECT_EQ(write.contents[0].encryptionLevel, encryptionLevel);
+  EXPECT_EQ(write.contents[0].contentType, ContentType::alert);
 }
 
 TEST_F(ClientProtocolTest, TestHelloRetryRequestNoKeyShare) {
@@ -1789,6 +1831,12 @@ TEST_F(ClientProtocolTest, TestHelloRetryRequestCompat) {
       detail::processEvent(state_, TestMessages::helloRetryRequest());
   expectActions<MutateState, WriteToSocket>(actions);
   processStateMutations(actions);
+  auto write = expectAction<WriteToSocket>(actions);
+  EXPECT_EQ(write.contents.size(), 2);
+  EXPECT_EQ(write.contents[0].encryptionLevel, EncryptionLevel::Plaintext);
+  EXPECT_EQ(write.contents[0].contentType, ContentType::change_cipher_spec);
+  EXPECT_EQ(write.contents[1].encryptionLevel, EncryptionLevel::Plaintext);
+  EXPECT_EQ(write.contents[1].contentType, ContentType::handshake);
   EXPECT_EQ(state_.state(), StateEnum::ExpectingServerHello);
   EXPECT_TRUE(state_.sentCCS());
 }
@@ -2288,18 +2336,28 @@ TEST_F(ClientProtocolTest, TestFinishedEarlyFlow) {
   EXPECT_CALL(*mockHandshakeContext_, getHandshakeContext())
       .InSequence(contextSeq)
       .WillRepeatedly(Invoke([]() { return IOBuf::copyBuffer("fincontext"); }));
-  EXPECT_CALL(*mockWrite_, _write(_)).WillOnce(Invoke([](TLSMessage& msg) {
-    EXPECT_EQ(msg.type, ContentType::handshake);
-    EXPECT_TRUE(IOBufEqualTo()(
-        msg.fragment, encodeHandshake(TestMessages::finished())));
-    return folly::IOBuf::copyBuffer("finwrite");
-  }));
-  EXPECT_CALL(*mockEarlyWrite_, _write(_)).WillOnce(Invoke([](TLSMessage& msg) {
-    EXPECT_EQ(msg.type, ContentType::handshake);
-    EXPECT_TRUE(
-        IOBufEqualTo()(msg.fragment, encodeHandshake(EndOfEarlyData())));
-    return folly::IOBuf::copyBuffer("eoed");
-  }));
+  EXPECT_CALL(*mockHandshakeWrite_, _write(_))
+      .WillOnce(Invoke([&](TLSMessage& msg) {
+        TLSContent content;
+        content.contentType = msg.type;
+        content.encryptionLevel = mockHandshakeWrite_->getEncryptionLevel();
+        EXPECT_EQ(msg.type, ContentType::handshake);
+        EXPECT_TRUE(IOBufEqualTo()(
+            msg.fragment, encodeHandshake(TestMessages::finished())));
+        content.data = folly::IOBuf::copyBuffer("finwrite");
+        return content;
+      }));
+  EXPECT_CALL(*mockEarlyWrite_, _write(_))
+      .WillOnce(Invoke([&](TLSMessage& msg) {
+        TLSContent content;
+        content.contentType = msg.type;
+        content.encryptionLevel = mockEarlyWrite_->getEncryptionLevel();
+        EXPECT_EQ(msg.type, ContentType::handshake);
+        EXPECT_TRUE(
+            IOBufEqualTo()(msg.fragment, encodeHandshake(EndOfEarlyData())));
+        content.data = folly::IOBuf::copyBuffer("eoed");
+        return content;
+      }));
   EXPECT_CALL(*mockKeyScheduler_, deriveMasterSecret());
   EXPECT_CALL(
       *mockKeyScheduler_,
@@ -2344,13 +2402,23 @@ TEST_F(ClientProtocolTest, TestFinishedEarlyFlow) {
   auto actions = detail::processEvent(state_, TestMessages::finished());
   expectActions<MutateState, ReportHandshakeSuccess, WriteToSocket>(actions);
   auto write = expectAction<WriteToSocket>(actions);
-  EXPECT_TRUE(IOBufEqualTo()(write.data, IOBuf::copyBuffer("eoedfinwrite")));
+  EXPECT_EQ(write.contents.size(), 2);
+  EXPECT_EQ(write.contents[0].encryptionLevel, EncryptionLevel::EarlyData);
+  EXPECT_EQ(write.contents[0].contentType, ContentType::handshake);
+  EXPECT_TRUE(
+      IOBufEqualTo()(write.contents[0].data, IOBuf::copyBuffer("eoed")));
+
+  EXPECT_EQ(write.contents[1].encryptionLevel, EncryptionLevel::Handshake);
+  EXPECT_EQ(write.contents[1].contentType, ContentType::handshake);
+  EXPECT_TRUE(
+      IOBufEqualTo()(write.contents[1].data, IOBuf::copyBuffer("finwrite")));
   auto reportSuccess = expectAction<ReportHandshakeSuccess>(actions);
   EXPECT_EQ(reportSuccess.earlyDataAccepted, true);
   processStateMutations(actions);
   EXPECT_EQ(state_.readRecordLayer().get(), rrl);
   EXPECT_EQ(
-      state_.readRecordLayer()->getEncryptionLevel(), EncryptionLevel::AppTraffic);
+      state_.readRecordLayer()->getEncryptionLevel(),
+      EncryptionLevel::AppTraffic);
   EXPECT_EQ(state_.writeRecordLayer().get(), wrl);
   EXPECT_EQ(
       state_.writeRecordLayer()->getEncryptionLevel(),
@@ -2423,8 +2491,11 @@ void ClientProtocolTest::doFinishedFlow(ClientAuthType authType) {
   EXPECT_CALL(*mockHandshakeContext_, getHandshakeContext())
       .InSequence(contextSeq)
       .WillRepeatedly(Invoke([]() { return IOBuf::copyBuffer("fincontext"); }));
-  EXPECT_CALL(*mockWrite_, _write(_))
-      .WillOnce(Invoke([authType](TLSMessage& msg) {
+  EXPECT_CALL(*mockHandshakeWrite_, _write(_))
+      .WillOnce(Invoke([&](TLSMessage& msg) {
+        TLSContent content;
+        content.contentType = msg.type;
+        content.encryptionLevel = mockHandshakeWrite_->getEncryptionLevel();
         EXPECT_EQ(msg.type, ContentType::handshake);
 
         switch (authType) {
@@ -2451,8 +2522,8 @@ void ClientProtocolTest::doFinishedFlow(ClientAuthType authType) {
             break;
           }
         }
-
-        return folly::IOBuf::copyBuffer("finwrite");
+        content.data = folly::IOBuf::copyBuffer("finwrite");
+        return content;
       }));
   EXPECT_CALL(*mockKeyScheduler_, deriveMasterSecret());
   EXPECT_CALL(
@@ -2498,13 +2569,17 @@ void ClientProtocolTest::doFinishedFlow(ClientAuthType authType) {
   auto actions = detail::processEvent(state_, TestMessages::finished());
   expectActions<MutateState, ReportHandshakeSuccess, WriteToSocket>(actions);
   auto write = expectAction<WriteToSocket>(actions);
-  EXPECT_TRUE(IOBufEqualTo()(write.data, IOBuf::copyBuffer("finwrite")));
+  EXPECT_EQ(write.contents[0].encryptionLevel, EncryptionLevel::Handshake);
+  EXPECT_EQ(write.contents[0].contentType, ContentType::handshake);
+  EXPECT_TRUE(
+      IOBufEqualTo()(write.contents[0].data, IOBuf::copyBuffer("finwrite")));
   auto reportSuccess = expectAction<ReportHandshakeSuccess>(actions);
   EXPECT_EQ(reportSuccess.earlyDataAccepted, false);
   processStateMutations(actions);
   EXPECT_EQ(state_.readRecordLayer().get(), rrl);
   EXPECT_EQ(
-      state_.readRecordLayer()->getEncryptionLevel(), EncryptionLevel::AppTraffic);
+      state_.readRecordLayer()->getEncryptionLevel(),
+      EncryptionLevel::AppTraffic);
   EXPECT_EQ(state_.writeRecordLayer().get(), wrl);
   EXPECT_EQ(
       state_.writeRecordLayer()->getEncryptionLevel(),
@@ -2525,7 +2600,7 @@ TEST_F(ClientProtocolTest, TestFinished) {
 
 TEST_F(ClientProtocolTest, TestFinishedExtraData) {
   setupExpectingFinished();
-  EXPECT_CALL(*mockRead_, hasUnparsedHandshakeData())
+  EXPECT_CALL(*mockHandshakeRead_, hasUnparsedHandshakeData())
       .WillRepeatedly(Return(true));
   auto actions = detail::processEvent(state_, TestMessages::finished());
   expectError<FizzException>(
@@ -2557,6 +2632,12 @@ TEST_F(ClientProtocolTest, TestFinishedCompat) {
   setupExpectingFinished();
   auto actions = detail::processEvent(state_, TestMessages::finished());
   expectActions<MutateState, ReportHandshakeSuccess, WriteToSocket>(actions);
+  auto write = expectAction<WriteToSocket>(actions);
+  EXPECT_EQ(write.contents.size(), 2);
+  EXPECT_EQ(write.contents[0].encryptionLevel, EncryptionLevel::Plaintext);
+  EXPECT_EQ(write.contents[0].contentType, ContentType::change_cipher_spec);
+  EXPECT_EQ(write.contents[1].encryptionLevel, EncryptionLevel::Handshake);
+  EXPECT_EQ(write.contents[1].contentType, ContentType::handshake);
   processStateMutations(actions);
   EXPECT_EQ(state_.state(), StateEnum::Established);
   EXPECT_TRUE(state_.sentCCS());
@@ -2640,16 +2721,24 @@ TEST_F(ClientProtocolTest, TestAppData) {
 
 TEST_F(ClientProtocolTest, TestAppWrite) {
   setupAcceptingData();
-  EXPECT_CALL(*mockWrite_, _write(_)).WillOnce(Invoke([](TLSMessage& msg) {
+  EXPECT_CALL(*mockWrite_, _write(_)).WillOnce(Invoke([&](TLSMessage& msg) {
+    TLSContent content;
+    content.contentType = msg.type;
+    content.encryptionLevel = mockWrite_->getEncryptionLevel();
     EXPECT_EQ(msg.type, ContentType::application_data);
     EXPECT_TRUE(IOBufEqualTo()(msg.fragment, IOBuf::copyBuffer("appdata")));
-    return IOBuf::copyBuffer("writtenappdata");
+    content.data = IOBuf::copyBuffer("writtenappdata");
+    return content;
   }));
 
   auto actions = detail::processEvent(state_, TestMessages::appWrite());
-
   auto write = expectSingleAction<WriteToSocket>(std::move(actions));
-  EXPECT_TRUE(IOBufEqualTo()(write.data, IOBuf::copyBuffer("writtenappdata")));
+  EXPECT_TRUE(IOBufEqualTo()(
+      write.contents[0].data, IOBuf::copyBuffer("writtenappdata")));
+  EXPECT_EQ(
+      write.contents[0].encryptionLevel,
+      state_.writeRecordLayer()->getEncryptionLevel());
+  EXPECT_EQ(write.contents[0].contentType, ContentType::application_data);
 }
 
 TEST_F(ClientProtocolTest, TestKeyUpdateNotRequested) {
@@ -2679,11 +2768,15 @@ TEST_F(ClientProtocolTest, TestKeyUpdateRequestFlow) {
         return std::vector<uint8_t>({'s', 'a', 't'});
       }));
 
-  EXPECT_CALL(*mockWrite_, _write(_)).WillOnce(Invoke([](TLSMessage& msg) {
+  EXPECT_CALL(*mockWrite_, _write(_)).WillOnce(Invoke([&](TLSMessage& msg) {
+    TLSContent content;
+    content.contentType = msg.type;
+    content.encryptionLevel = mockWrite_->getEncryptionLevel();
     EXPECT_EQ(msg.type, ContentType::handshake);
     EXPECT_TRUE(IOBufEqualTo()(
         msg.fragment, encodeHandshake(TestMessages::keyUpdate(false))));
-    return folly::IOBuf::copyBuffer("keyupdated");
+    content.data = folly::IOBuf::copyBuffer("keyupdated");
+    return content;
   }));
 
   EXPECT_CALL(*mockKeyScheduler_, clientKeyUpdate());
@@ -2715,9 +2808,13 @@ TEST_F(ClientProtocolTest, TestKeyUpdateRequestFlow) {
 
   auto actions = detail::processEvent(state_, TestMessages::keyUpdate(true));
   expectActions<MutateState, WriteToSocket>(actions);
-
   auto write = expectAction<WriteToSocket>(actions);
-  EXPECT_TRUE(IOBufEqualTo()(write.data, IOBuf::copyBuffer("keyupdated")));
+  EXPECT_TRUE(
+      IOBufEqualTo()(write.contents[0].data, IOBuf::copyBuffer("keyupdated")));
+  EXPECT_EQ(
+      write.contents[0].encryptionLevel,
+      state_.writeRecordLayer()->getEncryptionLevel());
+  EXPECT_EQ(write.contents[0].contentType, ContentType::handshake);
   processStateMutations(actions);
   EXPECT_EQ(state_.readRecordLayer().get(), rrl);
   EXPECT_EQ(
@@ -2741,16 +2838,22 @@ TEST_F(ClientProtocolTest, TestExpectingSHEarlyWrite) {
   setupExpectingServerHello();
   setMockEarlyRecord();
   state_.earlyDataType() = EarlyDataType::Attempted;
-  EXPECT_CALL(*mockEarlyWrite_, _write(_)).WillOnce(Invoke([](TLSMessage& msg) {
-    EXPECT_EQ(msg.type, ContentType::application_data);
-    EXPECT_TRUE(IOBufEqualTo()(msg.fragment, IOBuf::copyBuffer("appdata")));
-    return IOBuf::copyBuffer("writtenappdata");
-  }));
+  EXPECT_CALL(*mockEarlyWrite_, _write(_))
+      .WillOnce(Invoke([&](TLSMessage& msg) {
+        TLSContent content;
+        content.contentType = msg.type;
+        content.encryptionLevel = mockEarlyWrite_->getEncryptionLevel();
+        EXPECT_EQ(msg.type, ContentType::application_data);
+        EXPECT_TRUE(IOBufEqualTo()(msg.fragment, IOBuf::copyBuffer("appdata")));
+        content.data = IOBuf::copyBuffer("writtenappdata");
+        return content;
+      }));
 
   auto actions = detail::processEvent(state_, TestMessages::earlyAppWrite());
 
   auto write = expectSingleAction<WriteToSocket>(std::move(actions));
-  EXPECT_TRUE(IOBufEqualTo()(write.data, IOBuf::copyBuffer("writtenappdata")));
+  EXPECT_TRUE(IOBufEqualTo()(
+      write.contents[0].data, IOBuf::copyBuffer("writtenappdata")));
 }
 
 TEST_F(ClientProtocolTest, TestEarlyEncryptionLevelRecvSHLO) {
@@ -2790,8 +2893,13 @@ TEST_F(ClientProtocolTest, TestEarlyWriteCompat) {
   context_->setCompatibilityMode(true);
 
   auto actions = detail::processEvent(state_, TestMessages::earlyAppWrite());
-
   expectActions<MutateState, WriteToSocket>(actions);
+  auto write = expectAction<WriteToSocket>(actions);
+  EXPECT_EQ(write.contents.size(), 2);
+  EXPECT_EQ(write.contents[0].encryptionLevel, EncryptionLevel::Plaintext);
+  EXPECT_EQ(write.contents[0].contentType, ContentType::change_cipher_spec);
+  EXPECT_EQ(write.contents[1].encryptionLevel, EncryptionLevel::EarlyData);
+  EXPECT_EQ(write.contents[1].contentType, ContentType::application_data);
   processStateMutations(actions);
   EXPECT_TRUE(state_.sentCCS());
 }
@@ -2809,6 +2917,30 @@ TEST_F(ClientProtocolTest, TestEarlyWriteCompatCCSAlreadySent) {
   EXPECT_TRUE(state_.sentCCS());
 }
 
+TEST_F(ClientProtocolTest, TestEarlyAcceptedCompatNoEarlyData) {
+  setupExpectingFinished();
+  setMockEarlyRecord();
+  state_.earlyDataType() = EarlyDataType::Accepted;
+  context_->setCompatibilityMode(true);
+
+  auto actions = detail::processEvent(state_, TestMessages::finished());
+
+  expectActions<MutateState, WriteToSocket, ReportHandshakeSuccess>(actions);
+  auto write = expectAction<WriteToSocket>(actions);
+  ASSERT_EQ(write.contents.size(), 3);
+  EXPECT_EQ(write.contents[0].contentType, ContentType::change_cipher_spec);
+  EXPECT_EQ(write.contents[0].encryptionLevel, EncryptionLevel::Plaintext);
+
+  EXPECT_EQ(write.contents[1].contentType, ContentType::handshake);
+  EXPECT_EQ(write.contents[1].encryptionLevel, EncryptionLevel::EarlyData);
+
+  EXPECT_EQ(write.contents[2].contentType, ContentType::handshake);
+  EXPECT_EQ(write.contents[2].encryptionLevel, EncryptionLevel::Handshake);
+
+  processStateMutations(actions);
+  EXPECT_TRUE(state_.sentCCS());
+}
+
 TEST_F(ClientProtocolTest, TestExpectingSHEarlyWriteRejected) {
   setupExpectingServerHello();
   state_.earlyDataType() = EarlyDataType::Rejected;
@@ -2822,16 +2954,22 @@ TEST_F(ClientProtocolTest, TestExpectingSHEarlyWriteRejected) {
 
 TEST_F(ClientProtocolTest, TestExpectingEEEarlyWrite) {
   setupExpectingEncryptedExtensionsEarlySent();
-  EXPECT_CALL(*mockEarlyWrite_, _write(_)).WillOnce(Invoke([](TLSMessage& msg) {
-    EXPECT_EQ(msg.type, ContentType::application_data);
-    EXPECT_TRUE(IOBufEqualTo()(msg.fragment, IOBuf::copyBuffer("appdata")));
-    return IOBuf::copyBuffer("writtenappdata");
-  }));
+  EXPECT_CALL(*mockEarlyWrite_, _write(_))
+      .WillOnce(Invoke([&](TLSMessage& msg) {
+        TLSContent content;
+        content.contentType = msg.type;
+        content.encryptionLevel = mockEarlyWrite_->getEncryptionLevel();
+        EXPECT_EQ(msg.type, ContentType::application_data);
+        EXPECT_TRUE(IOBufEqualTo()(msg.fragment, IOBuf::copyBuffer("appdata")));
+        content.data = IOBuf::copyBuffer("writtenappdata");
+        return content;
+      }));
 
   auto actions = detail::processEvent(state_, TestMessages::earlyAppWrite());
 
   auto write = expectSingleAction<WriteToSocket>(std::move(actions));
-  EXPECT_TRUE(IOBufEqualTo()(write.data, IOBuf::copyBuffer("writtenappdata")));
+  EXPECT_TRUE(IOBufEqualTo()(
+      write.contents[0].data, IOBuf::copyBuffer("writtenappdata")));
 }
 
 TEST_F(ClientProtocolTest, TestExpectingEEEarlyWriteRejected) {
@@ -2871,16 +3009,22 @@ TEST_F(ClientProtocolTest, TestExpectingFinishedEarlyWrite) {
   setupExpectingFinished();
   setMockEarlyRecord();
   state_.earlyDataType() = EarlyDataType::Accepted;
-  EXPECT_CALL(*mockEarlyWrite_, _write(_)).WillOnce(Invoke([](TLSMessage& msg) {
-    EXPECT_EQ(msg.type, ContentType::application_data);
-    EXPECT_TRUE(IOBufEqualTo()(msg.fragment, IOBuf::copyBuffer("appdata")));
-    return IOBuf::copyBuffer("writtenappdata");
-  }));
+  EXPECT_CALL(*mockEarlyWrite_, _write(_))
+      .WillOnce(Invoke([&](TLSMessage& msg) {
+        TLSContent content;
+        content.contentType = msg.type;
+        content.encryptionLevel = mockEarlyWrite_->getEncryptionLevel();
+        EXPECT_EQ(msg.type, ContentType::application_data);
+        EXPECT_TRUE(IOBufEqualTo()(msg.fragment, IOBuf::copyBuffer("appdata")));
+        content.data = IOBuf::copyBuffer("writtenappdata");
+        return content;
+      }));
 
   auto actions = detail::processEvent(state_, TestMessages::earlyAppWrite());
 
   auto write = expectSingleAction<WriteToSocket>(std::move(actions));
-  EXPECT_TRUE(IOBufEqualTo()(write.data, IOBuf::copyBuffer("writtenappdata")));
+  EXPECT_TRUE(IOBufEqualTo()(
+      write.contents[0].data, IOBuf::copyBuffer("writtenappdata")));
 }
 
 TEST_F(ClientProtocolTest, TestExpectingFinishedEarlyWriteRejected) {
@@ -2897,16 +3041,21 @@ TEST_F(ClientProtocolTest, TestExpectingFinishedEarlyWriteRejected) {
 TEST_F(ClientProtocolTest, TestEstablishedEarlyWrite) {
   setupAcceptingData();
   state_.earlyDataType() = EarlyDataType::Accepted;
-  EXPECT_CALL(*mockWrite_, _write(_)).WillOnce(Invoke([](TLSMessage& msg) {
+  EXPECT_CALL(*mockWrite_, _write(_)).WillOnce(Invoke([&](TLSMessage& msg) {
+    TLSContent content;
+    content.contentType = msg.type;
+    content.encryptionLevel = mockWrite_->getEncryptionLevel();
     EXPECT_EQ(msg.type, ContentType::application_data);
     EXPECT_TRUE(IOBufEqualTo()(msg.fragment, IOBuf::copyBuffer("appdata")));
-    return IOBuf::copyBuffer("writtenappdata");
+    content.data = IOBuf::copyBuffer("writtenappdata");
+    return content;
   }));
 
   auto actions = detail::processEvent(state_, TestMessages::earlyAppWrite());
 
   auto write = expectSingleAction<WriteToSocket>(std::move(actions));
-  EXPECT_TRUE(IOBufEqualTo()(write.data, IOBuf::copyBuffer("writtenappdata")));
+  EXPECT_TRUE(IOBufEqualTo()(
+      write.contents[0].data, IOBuf::copyBuffer("writtenappdata")));
 }
 
 TEST_F(ClientProtocolTest, TestEstablishedEarlyWriteRejected) {
