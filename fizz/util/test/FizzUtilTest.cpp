@@ -9,6 +9,7 @@
 #include <gtest/gtest.h>
 
 #include <fizz/crypto/test/TestUtil.h>
+#include <fizz/server/TicketTypes.h>
 #include <fizz/util/FizzUtil.h>
 #include <folly/FileUtil.h>
 #include <folly/experimental/TestUtil.h>
@@ -40,7 +41,7 @@ TEST(UtilTest, GetAlpnFromNpn) {
 }
 
 TEST(UtilTest, CreateTickerCipher) {
-  auto cipher = FizzUtil::createTicketCipher(
+  auto cipher = FizzUtil::createTicketCipher<server::AES128TicketCipher>(
       std::vector<std::string>(),
       "fakeSecretttttttttttttttttttttttttt",
       std::vector<std::string>(),
@@ -55,7 +56,7 @@ TEST(UtilTest, CreateTickerCipher) {
         PskType::Resumption);
   }
   {
-    auto newCipher = FizzUtil::createTicketCipher(
+    auto newCipher = FizzUtil::createTicketCipher<server::AES128TicketCipher>(
         std::vector<std::string>(),
         "fakeSecrettttttttttttttttttttttttt2",
         std::vector<std::string>(),

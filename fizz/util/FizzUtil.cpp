@@ -94,29 +94,6 @@ folly::ssl::EvpPkeyUniquePtr FizzUtil::decryptPrivateKey(
   return pkey;
 }
 
-std::shared_ptr<server::TicketCipher> FizzUtil::createTicketCipher(
-    const std::vector<std::string>& oldSecrets,
-    const std::string& currentSecret,
-    const std::vector<std::string>& newSecrets,
-    std::chrono::seconds validity,
-    std::string pskContext) {
-  std::vector<folly::ByteRange> ticketSecrets;
-  ticketSecrets.push_back(folly::StringPiece(currentSecret));
-  for (const auto& secret : oldSecrets) {
-    ticketSecrets.push_back(folly::StringPiece(secret));
-  }
-  for (const auto& secret : newSecrets) {
-    ticketSecrets.push_back(folly::StringPiece(secret));
-  }
-
-  auto cipher =
-      std::make_shared<fizz::server::AES128TicketCipher>(std::move(pskContext));
-  cipher->setTicketSecrets(std::move(ticketSecrets));
-  cipher->setValidity(validity);
-
-  return cipher;
-}
-
 std::vector<std::string> FizzUtil::getAlpnsFromNpnList(
     const std::list<folly::SSLContext::NextProtocolsItem>& list) {
   CHECK(!list.empty());

@@ -29,8 +29,8 @@ class FizzUtil {
       const std::string& filename,
       const std::string& passwordFilename);
 
-  // Takes list of next protocols and determines the preferred protocol list
-  // by item having the max weight
+  // Fizz does not yet support randomized next protocols so we use the highest
+  // weighted list on the first context.
   static std::vector<std::string> getAlpnsFromNpnList(
       const std::list<folly::SSLContext::NextProtocolsItem>& list);
 
@@ -38,13 +38,34 @@ class FizzUtil {
       const std::string& data,
       folly::PasswordInFile* pf);
 
-  // Creates a AES128TicketCipher with given params
-  static std::shared_ptr<fizz::server::TicketCipher> createTicketCipher(
+  // Creates a TicketCipher with given params
+  template <class TicketCipher>
+  static std::shared_ptr<TicketCipher> createTicketCipher(
       const std::vector<std::string>& oldSecrets,
       const std::string& currentSecret,
       const std::vector<std::string>& newSecrets,
       std::chrono::seconds validity,
-      std::string pskContext);
+      std::string pskContext) {
+    std::vector<folly::ByteRange> ticketSecrets;
+    if (!currentSecret.empty()) {
+      ticketSecrets.push_back(folly::StringPiece(currentSecret));
+    }
+    for (const auto& secret : oldSecrets) {
+      ticketSecrets.push_back(folly::StringPiece(secret));
+    }
+    for (const auto& secret : newSecrets) {
+      ticketSecrets.push_back(folly::StringPiece(secret));
+    }
+    std::shared_ptr<TicketCipher> cipher;
+    if (!pskContext.empty()) {
+      cipher = std::make_shared<TicketCipher>(std::move(pskContext));
+    } else {
+      cipher = std::make_shared<TicketCipher>();
+    }
+    cipher->setTicketSecrets(std::move(ticketSecrets));
+    cipher->setValidity(validity);
+    return cipher;
+  }
 };
 
 } // namespace fizz
