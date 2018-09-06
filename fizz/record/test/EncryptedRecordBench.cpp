@@ -54,11 +54,11 @@ void encryptGCM(uint32_t n, size_t size) {
     }
   }
 
-  std::unique_ptr<folly::IOBuf> buf;
+  TLSContent content;
   for (auto& msg : msgs) {
-    buf = write.write(std::move(msg));
+    content = write.write(std::move(msg));
   }
-  doNotOptimizeAway(buf);
+  folly::doNotOptimizeAway(content);
 }
 
 BENCHMARK_PARAM(encryptGCM, 10);
@@ -82,11 +82,11 @@ void encryptOCB(uint32_t n, size_t size) {
     }
   }
 
-  std::unique_ptr<folly::IOBuf> buf;
+  TLSContent content;
   for (auto& msg : msgs) {
-    buf = write.write(std::move(msg));
+    content = write.write(std::move(msg));
   }
-  doNotOptimizeAway(buf);
+  folly::doNotOptimizeAway(content);
 }
 
 BENCHMARK_PARAM(encryptOCB, 10);
