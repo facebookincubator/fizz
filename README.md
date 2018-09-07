@@ -127,7 +127,7 @@ Then, build and install folly:
 ```
 git clone https://github.com/facebook/folly
 mkdir folly/build_ && cd folly/build_
-cmake configure ..
+cmake ..
 make -j $(nproc)
 sudo make install
 ```
@@ -138,7 +138,7 @@ And lastly, build and install fizz.
 cd ../..
 git clone https://github.com/facebookincubator/fizz
 mkdir fizz/build_ && cd fizz/build_
-cmake configure ../fizz
+cmake ../fizz
 make -j $(nproc)
 sudo make install
 ```
