@@ -45,7 +45,7 @@ class FizzUtil {
       const std::string& currentSecret,
       const std::vector<std::string>& newSecrets,
       std::chrono::seconds validity,
-      std::string pskContext) {
+      folly::Optional<std::string> pskContext) {
     std::vector<folly::ByteRange> ticketSecrets;
     if (!currentSecret.empty()) {
       ticketSecrets.push_back(folly::StringPiece(currentSecret));
@@ -57,8 +57,8 @@ class FizzUtil {
       ticketSecrets.push_back(folly::StringPiece(secret));
     }
     std::shared_ptr<TicketCipher> cipher;
-    if (!pskContext.empty()) {
-      cipher = std::make_shared<TicketCipher>(std::move(pskContext));
+    if (pskContext.hasValue()) {
+      cipher = std::make_shared<TicketCipher>(std::move(*pskContext));
     } else {
       cipher = std::make_shared<TicketCipher>();
     }

@@ -47,7 +47,7 @@ TEST(UtilTest, CreateTickerCipher) {
       std::vector<std::string>(),
       // any number high enough to last the duration of the test should be fine
       std::chrono::seconds(100),
-      "fakeContext");
+      folly::Optional<std::string>("fakeContext"));
   {
     server::ResumptionState state;
     auto blob = cipher->encrypt(std::move(state)).get();
@@ -61,7 +61,7 @@ TEST(UtilTest, CreateTickerCipher) {
         "fakeSecrettttttttttttttttttttttttt2",
         std::vector<std::string>(),
         std::chrono::seconds(100),
-        "fakeContext");
+        folly::Optional<std::string>("fakeContext"));
     server::ResumptionState state;
     auto blob = cipher->encrypt(std::move(state)).get();
     EXPECT_EQ(
