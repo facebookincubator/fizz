@@ -56,7 +56,7 @@ class AsyncFizzServerT : public AsyncFizzBase {
   bool isReplaySafe() const override;
   void setReplaySafetyCallback(
       folly::AsyncTransport::ReplaySafetyCallback* callback) override;
-  std::string getApplicationProtocol() noexcept override;
+  std::string getApplicationProtocol() const noexcept override;
 
   void close() override;
   void closeWithReset() override;

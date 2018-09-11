@@ -90,7 +90,7 @@ class AsyncFizzBase : public folly::WriteChainAsyncTransportWrapper<
   bool isReplaySafe() const override = 0;
   void setReplaySafetyCallback(
       folly::AsyncTransport::ReplaySafetyCallback* callback) override = 0;
-  std::string getApplicationProtocol() noexcept override = 0;
+  std::string getApplicationProtocol() const noexcept override = 0;
 
   /**
    * Clean up transport on destruction

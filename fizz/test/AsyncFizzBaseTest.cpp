@@ -51,9 +51,9 @@ class AsyncFizzBaseTest : public testing::Test, public AsyncFizzBase {
       void(folly::AsyncTransport::ReplaySafetyCallback* callback));
   MOCK_CONST_METHOD0(getSelfCertificate, const Cert*());
   MOCK_CONST_METHOD0(getPeerCertificate, const Cert*());
-  MOCK_METHOD0(getApplicationProtocol_, std::string());
+  MOCK_CONST_METHOD0(getApplicationProtocol_, std::string());
 
-  std::string getApplicationProtocol() noexcept override {
+  std::string getApplicationProtocol() const noexcept override {
     return getApplicationProtocol_();
   }
 

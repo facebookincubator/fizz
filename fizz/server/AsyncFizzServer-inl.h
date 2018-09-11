@@ -104,7 +104,7 @@ void AsyncFizzServerT<SM>::setReplaySafetyCallback(
 }
 
 template <typename SM>
-std::string AsyncFizzServerT<SM>::getApplicationProtocol() noexcept {
+std::string AsyncFizzServerT<SM>::getApplicationProtocol() const noexcept {
   if (getState().alpn()) {
     return *getState().alpn();
   } else {
