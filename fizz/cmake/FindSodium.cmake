@@ -234,6 +234,11 @@ find_package_handle_standard_args(
         sodium_VERSION
 )
 
+if(Sodium_FOUND)
+    set(sodium_LIBRARIES
+        optimized ${sodium_LIBRARY_RELEASE} debug ${sodium_LIBRARY_DEBUG})
+endif()
+
 # mark file paths as advanced
 mark_as_advanced(sodium_INCLUDE_DIR)
 mark_as_advanced(sodium_LIBRARY_DEBUG)

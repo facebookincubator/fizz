@@ -162,7 +162,10 @@ target_link_libraries(fizz
     ${FOLLY_LIBRARIES}
     ${Boost_LIBRARIES}
     ${OPENSSL_LIBRARIES}
-    sodium
+    # Don't use the sodium target here because it will break clients that
+    # consume fizz's exported targets (fizz-targets.cmake) since the sodium
+    # target is not exported.
+    ${sodium_LIBRARIES}
     Threads::Threads
   PRIVATE
     ${GLOG_LIBRARIES}
