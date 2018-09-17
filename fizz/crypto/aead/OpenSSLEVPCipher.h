@@ -16,6 +16,7 @@
 #include <folly/Range.h>
 #include <folly/String.h>
 #include <folly/lang/Bits.h>
+#include <folly/ssl/OpenSSLPtrTypes.h>
 #include <glog/logging.h>
 #include <openssl/evp.h>
 
@@ -78,14 +79,11 @@ class OpenSSLEVPCipher : public Aead {
  private:
   std::array<uint8_t, EVPImpl::kIVLength> createIV(uint64_t seqNum) const;
 
-  using CipherCtxDeleter =
-      folly::static_function_deleter<EVP_CIPHER_CTX, &EVP_CIPHER_CTX_free>;
-
   TrafficKey trafficKey_;
   size_t headroom_{5};
 
-  std::unique_ptr<EVP_CIPHER_CTX, CipherCtxDeleter> encryptCtx_;
-  std::unique_ptr<EVP_CIPHER_CTX, CipherCtxDeleter> decryptCtx_;
+  folly::ssl::EvpCipherCtxUniquePtr encryptCtx_;
+  folly::ssl::EvpCipherCtxUniquePtr decryptCtx_;
 };
 } // namespace fizz
 #include <fizz/crypto/aead/OpenSSLEVPCipher-inl.h>
