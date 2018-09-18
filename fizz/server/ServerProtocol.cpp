@@ -1332,37 +1332,38 @@ EventHandler<ServerTypes, StateEnum::ExpectingClientHello, Event::ClientHello>::
         }
 
         return signature.via(state.executor())
-            .then([&state,
-                   scheduler = std::move(scheduler),
-                   handshakeContext = std::move(handshakeContext),
-                   cipher,
-                   group,
-                   encodedServerHello = std::move(encodedServerHello),
-                   handshakeWriteRecordLayer =
-                       std::move(handshakeWriteRecordLayer),
-                   handshakeWriteSecret = std::move(handshakeWriteSecret),
-                   handshakeReadRecordLayer =
-                       std::move(handshakeReadRecordLayer),
-                   earlyReadRecordLayer = std::move(earlyReadRecordLayer),
-                   earlyExporterMaster = std::move(earlyExporterMaster),
-                   clientHandshakeSecret = std::move(clientHandshakeSecret),
-                   encodedEncryptedExt = std::move(encodedEncryptedExt),
-                   encodedCertificate = std::move(encodedCertificate),
-                   encodedCertRequest = std::move(encodedCertRequest),
-                   requestClientAuth,
-                   pskType,
-                   pskMode,
-                   sigScheme,
-                   version,
-                   keyExchangeType,
-                   earlyDataType,
-                   replayCacheResult,
-                   serverCert = std::move(serverCert),
-                   clientCert = std::move(clientCert),
-                   alpn = std::move(alpn),
-                   clockSkew,
-                   legacySessionId =
-                       std::move(legacySessionId)](Optional<Buf> sig) mutable {
+            .thenValue([&state,
+                        scheduler = std::move(scheduler),
+                        handshakeContext = std::move(handshakeContext),
+                        cipher,
+                        group,
+                        encodedServerHello = std::move(encodedServerHello),
+                        handshakeWriteRecordLayer =
+                            std::move(handshakeWriteRecordLayer),
+                        handshakeWriteSecret = std::move(handshakeWriteSecret),
+                        handshakeReadRecordLayer =
+                            std::move(handshakeReadRecordLayer),
+                        earlyReadRecordLayer = std::move(earlyReadRecordLayer),
+                        earlyExporterMaster = std::move(earlyExporterMaster),
+                        clientHandshakeSecret =
+                            std::move(clientHandshakeSecret),
+                        encodedEncryptedExt = std::move(encodedEncryptedExt),
+                        encodedCertificate = std::move(encodedCertificate),
+                        encodedCertRequest = std::move(encodedCertRequest),
+                        requestClientAuth,
+                        pskType,
+                        pskMode,
+                        sigScheme,
+                        version,
+                        keyExchangeType,
+                        earlyDataType,
+                        replayCacheResult,
+                        serverCert = std::move(serverCert),
+                        clientCert = std::move(clientCert),
+                        alpn = std::move(alpn),
+                        clockSkew,
+                        legacySessionId = std::move(legacySessionId)](
+                           Optional<Buf> sig) mutable {
               Optional<Buf> encodedCertificateVerify;
               if (sig) {
                 encodedCertificateVerify = getCertificateVerify(
@@ -1652,7 +1653,7 @@ static Future<Optional<WriteToSocket>> generateTicket(
 
   auto ticketFuture = ticketCipher->encrypt(std::move(resState));
   return ticketFuture.via(state.executor())
-      .then(
+      .thenValue(
           [&state,
            ticketAgeAdd = resState.ticketAgeAdd,
            ticketNonce = std::move(ticketNonce)](
@@ -1818,8 +1819,8 @@ EventHandler<ServerTypes, StateEnum::ExpectingFinished, Event::Finished>::
   } else {
     auto ticketFuture = generateTicket(state, resumptionMasterSecret);
     return ticketFuture.via(state.executor())
-        .then([saveState = std::move(saveState)](
-                  Optional<WriteToSocket> nstWrite) mutable {
+        .thenValue([saveState = std::move(saveState)](
+                       Optional<WriteToSocket> nstWrite) mutable {
           if (!nstWrite) {
             return actions(
                 std::move(saveState),
