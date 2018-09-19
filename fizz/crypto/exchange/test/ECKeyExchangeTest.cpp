@@ -229,17 +229,20 @@ TEST_P(ECDHTest, TestKeyAgreement) {
         P256KeyExchange kex;
         kex.setPrivateKey(std::move(privateKey));
         shared = kex.generateSharedSecret(pkeyPeerKey);
-      } break;
+        break;
+      }
       case KeyType::P384: {
         P384KeyExchange kex;
         kex.setPrivateKey(std::move(privateKey));
         shared = kex.generateSharedSecret(pkeyPeerKey);
-      } break;
+        break;
+      }
       case KeyType::P521: {
         P521KeyExchange kex;
         kex.setPrivateKey(std::move(privateKey));
         shared = kex.generateSharedSecret(pkeyPeerKey);
-      } break;
+        break;
+      }
       default:
         throw std::runtime_error("unknown key type");
     }
