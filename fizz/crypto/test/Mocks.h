@@ -47,6 +47,12 @@ class MockKeyDerivation : public KeyDerivation {
       hkdfExtract,
       std::vector<uint8_t>(folly::ByteRange salt, folly::ByteRange ikm));
   MOCK_METHOD2(hash, void(const folly::IOBuf& in, folly::MutableByteRange out));
+  MOCK_METHOD3(
+      hmac,
+      void(
+          folly::ByteRange key,
+          const folly::IOBuf& in,
+          folly::MutableByteRange out));
 };
 
 } // namespace fizz

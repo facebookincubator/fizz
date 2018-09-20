@@ -49,6 +49,11 @@ class KeyDerivation {
       folly::ByteRange ikm) = 0;
 
   virtual void hash(const folly::IOBuf& in, folly::MutableByteRange out) = 0;
+
+  virtual void hmac(
+      folly::ByteRange key,
+      const folly::IOBuf& in,
+      folly::MutableByteRange out) = 0;
 };
 
 template <typename Hash>
@@ -64,6 +69,13 @@ class KeyDerivationImpl : public KeyDerivation {
 
   void hash(const folly::IOBuf& in, folly::MutableByteRange out) override {
     Hash::hash(in, out);
+  }
+
+  void hmac(
+      folly::ByteRange key,
+      const folly::IOBuf& in,
+      folly::MutableByteRange out) override {
+    Hash::hmac(key, in, out);
   }
 
   folly::ByteRange blankHash() const override {
