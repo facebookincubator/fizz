@@ -40,7 +40,7 @@ class FizzUtil {
 
   // Creates a TicketCipher with given params
   template <class TicketCipher>
-  static std::shared_ptr<TicketCipher> createTicketCipher(
+  static std::unique_ptr<TicketCipher> createTicketCipher(
       const std::vector<std::string>& oldSecrets,
       const std::string& currentSecret,
       const std::vector<std::string>& newSecrets,
@@ -56,11 +56,11 @@ class FizzUtil {
     for (const auto& secret : newSecrets) {
       ticketSecrets.push_back(folly::StringPiece(secret));
     }
-    std::shared_ptr<TicketCipher> cipher;
+    std::unique_ptr<TicketCipher> cipher;
     if (pskContext.hasValue()) {
-      cipher = std::make_shared<TicketCipher>(std::move(*pskContext));
+      cipher = std::make_unique<TicketCipher>(std::move(*pskContext));
     } else {
-      cipher = std::make_shared<TicketCipher>();
+      cipher = std::make_unique<TicketCipher>();
     }
     cipher->setTicketSecrets(std::move(ticketSecrets));
     cipher->setValidity(validity);
