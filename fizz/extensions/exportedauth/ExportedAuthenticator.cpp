@@ -74,6 +74,14 @@ Buf ExportedAuthenticator::getAuthenticator(
       CertificateVerifyContext::Authenticator);
 }
 
+Buf ExportedAuthenticator::getAuthenticatorContext(Buf authenticator) {
+  folly::IOBufQueue authQueue{folly::IOBufQueue::cacheChainLength()};
+  authQueue.append(std::move(authenticator));
+  auto param = fizz::ReadRecordLayer::decodeHandshakeMessage(authQueue);
+  auto& certMsg = boost::get<CertificateMsg>(*param);
+  return std::move(certMsg.certificate_request_context);
+}
+
 Buf ExportedAuthenticator::makeAuthenticator(
     std::unique_ptr<KeyDerivation>& kderiver,
     std::vector<SignatureScheme> supportedSchemes,

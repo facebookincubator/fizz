@@ -13,6 +13,7 @@
 #include <fizz/protocol/Certificate.h>
 #include <fizz/protocol/Exporter.h>
 #include <fizz/protocol/Protocol.h>
+#include <fizz/record/RecordLayer.h>
 #include <fizz/record/Types.h>
 #include <fizz/server/AsyncFizzServer.h>
 #include <fizz/server/State.h>
@@ -64,6 +65,13 @@ class ExportedAuthenticator {
       Buf handshakeContext,
       Buf finishedMacKey,
       CertificateVerifyContext context);
+
+  /**
+   * "get context" API
+   *
+   * Returns the certificate_request_context given an authenticator
+   */
+  static Buf getAuthenticatorContext(Buf authenticator);
 };
 
 } // namespace fizz
