@@ -27,14 +27,17 @@ Buf CertUtils::prepareSignData(
       "TLS 1.3, server CertificateVerify";
   static constexpr folly::StringPiece kClientLabel =
       "TLS 1.3, client CertificateVerify";
+  static constexpr folly::StringPiece kAuthLabel = "Exported Authenticator";
   static constexpr size_t kSigPrefixLen = 64;
   static constexpr uint8_t kSigPrefix = 32;
 
   folly::StringPiece label;
   if (context == CertificateVerifyContext::Server) {
     label = kServerLabel;
-  } else {
+  } else if (context == CertificateVerifyContext::Client) {
     label = kClientLabel;
+  } else {
+    label = kAuthLabel;
   }
 
   size_t sigDataLen = kSigPrefixLen + label.size() + 1 + toBeSigned.size();

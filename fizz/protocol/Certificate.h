@@ -14,7 +14,7 @@
 
 namespace fizz {
 
-enum class CertificateVerifyContext { Server, Client };
+enum class CertificateVerifyContext { Server, Client, Authenticator };
 
 using Cert = folly::AsyncTransportCertificate;
 
