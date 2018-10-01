@@ -49,9 +49,9 @@ class ReadRecordLayer {
    */
   virtual EncryptionLevel getEncryptionLevel() const = 0;
 
- private:
   static folly::Optional<Param> decodeHandshakeMessage(folly::IOBufQueue& buf);
 
+ private:
   folly::IOBufQueue unparsedHandshakeData_{
       folly::IOBufQueue::cacheChainLength()};
 };
