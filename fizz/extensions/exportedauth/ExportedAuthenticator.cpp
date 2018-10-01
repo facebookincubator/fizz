@@ -82,6 +82,54 @@ Buf ExportedAuthenticator::getAuthenticatorContext(Buf authenticator) {
   return std::move(certMsg.certificate_request_context);
 }
 
+folly::Optional<std::vector<CertificateEntry>>
+ExportedAuthenticator::validateAuthenticator(
+    const fizz::server::AsyncFizzServer& transport,
+    Buf authenticatorRequest,
+    Buf authenticator) {
+  const auto& state = transport.getState();
+  const auto& cipher = *(state.cipher());
+  auto deriver = Factory().makeKeyDeriver(cipher);
+  auto hashLength = deriver->hashLength();
+  auto supportedSchemes = state.context()->getSupportedSigSchemes();
+  auto handshakeContext = transport.getEkm(
+      "EXPORTER-client authenticator handshake context", nullptr, hashLength);
+  auto finishedMacKey = transport.getEkm(
+      "EXPORTER-client authenticator finished key", nullptr, hashLength);
+  auto certs = validate(
+      deriver,
+      std::move(authenticatorRequest),
+      std::move(authenticator),
+      std::move(handshakeContext),
+      std::move(finishedMacKey),
+      CertificateVerifyContext::Authenticator);
+  return certs;
+}
+
+folly::Optional<std::vector<CertificateEntry>>
+ExportedAuthenticator::validateAuthenticator(
+    const fizz::client::AsyncFizzClient& transport,
+    Buf authenticatorRequest,
+    Buf authenticator) {
+  const auto& state = transport.getState();
+  const auto& cipher = *(state.cipher());
+  auto deriver = Factory().makeKeyDeriver(cipher);
+  auto hashLength = deriver->hashLength();
+  auto supportedSchemes = state.context()->getSupportedSigSchemes();
+  auto handshakeContext = transport.getEkm(
+      "EXPORTER-server authenticator handshake context", nullptr, hashLength);
+  auto finishedMacKey = transport.getEkm(
+      "EXPORTER-server authenticator finished key", nullptr, hashLength);
+  auto certs = validate(
+      deriver,
+      std::move(authenticatorRequest),
+      std::move(authenticator),
+      std::move(handshakeContext),
+      std::move(finishedMacKey),
+      CertificateVerifyContext::Authenticator);
+  return certs;
+}
+
 Buf ExportedAuthenticator::makeAuthenticator(
     std::unique_ptr<KeyDerivation>& kderiver,
     std::vector<SignatureScheme> supportedSchemes,
@@ -106,7 +154,7 @@ Buf ExportedAuthenticator::makeAuthenticator(
         std::move(finishedMacKey));
     return emptyAuth;
   }
-
+  // Compute CertificateMsg.
   CertificateMsg certificate =
       cert.getCertMessage(std::move(certificateRequestContext));
   auto encodedCertMsg = encodeHandshake(std::move(certificate));
@@ -132,6 +180,87 @@ Buf ExportedAuthenticator::makeAuthenticator(
 
   return detail::computeTranscript(
       encodedCertMsg, encodedCertificateVerify, encodedFinished);
+}
+
+folly::Optional<std::vector<CertificateEntry>> ExportedAuthenticator::validate(
+    std::unique_ptr<KeyDerivation>& kderiver,
+    Buf authenticatorRequest,
+    Buf authenticator,
+    Buf handshakeContext,
+    Buf finishedMacKey,
+    CertificateVerifyContext context) {
+  folly::Optional<std::vector<CertificateEntry>> certs;
+  folly::IOBufQueue authQueue{folly::IOBufQueue::cacheChainLength()};
+  constexpr uint16_t capacity = 256;
+  // Clone the authenticator which is later compared to the re-calculated empty
+  // authenticator.
+  auto authClone = authenticator->clone();
+  authQueue.append(std::move(authenticator));
+  auto param = fizz::ReadRecordLayer::decodeHandshakeMessage(authQueue);
+  if (!param) {
+    return folly::none;
+  }
+  // First check if the authenticator is empty.
+  auto finished = boost::get<Finished>(&(*param));
+  if (finished) {
+    auto emptyAuth = detail::getEmptyAuthenticator(
+        kderiver,
+        std::move(authenticatorRequest),
+        std::move(handshakeContext),
+        std::move(finishedMacKey));
+    if (folly::IOBufEqualTo()(emptyAuth, authClone)) {
+      return std::vector<CertificateEntry>();
+    } else {
+      return folly::none;
+    }
+  }
+  auto param2 = fizz::ReadRecordLayer::decodeHandshakeMessage(authQueue);
+  if (!param2) {
+    return folly::none;
+  }
+  auto param3 = fizz::ReadRecordLayer::decodeHandshakeMessage(authQueue);
+  if (!param3) {
+    return folly::none;
+  }
+  auto certMsg = boost::get<CertificateMsg>(&(*param));
+  auto certVerify = boost::get<CertificateVerify>(&(*param2));
+  finished = boost::get<Finished>(&(*param3));
+  if (!certMsg || !certVerify || !finished) {
+    return folly::none;
+  }
+
+  auto leafCert = folly::IOBuf::create(capacity);
+  folly::io::Appender appender(leafCert.get(), capacity);
+  detail::writeBuf(certMsg->certificate_list.front().cert_data, appender);
+  auto peerCert = CertUtils::makePeerCert(std::move(leafCert));
+  auto encodedCertMsg = encodeHandshake(std::move(*certMsg));
+  auto transcript = detail::computeTranscript(
+      handshakeContext, authenticatorRequest, encodedCertMsg);
+  auto transcriptHash = detail::computeTranscriptHash(kderiver, transcript);
+  try {
+    peerCert->verify(
+        certVerify->algorithm,
+        context,
+        transcriptHash->coalesce(),
+        certVerify->signature->coalesce());
+  } catch (const std::runtime_error&) {
+    return folly::none;
+  }
+  // Verify if Finished message matches.
+  auto encodedCertVerify = encodeHandshake(std::move(*certVerify));
+  auto finishedTranscript =
+      detail::computeFinishedTranscript(transcript, encodedCertVerify);
+  auto finishedTranscriptHash =
+      detail::computeTranscriptHash(kderiver, finishedTranscript);
+  auto verifyData =
+      detail::getFinishedData(kderiver, finishedMacKey, finishedTranscriptHash);
+
+  if (folly::IOBufEqualTo()(finished->verify_data, verifyData)) {
+    certs = std::move(certMsg->certificate_list);
+    return certs;
+  } else {
+    return folly::none;
+  }
 }
 
 namespace detail {

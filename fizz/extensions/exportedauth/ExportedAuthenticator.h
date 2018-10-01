@@ -19,6 +19,7 @@
 #include <fizz/server/State.h>
 
 namespace fizz {
+
 /**
  * Public facing interface for Exported Authenticators
  * (draft-ietf-tls-exported-authenticator) which enable application layer
@@ -72,6 +73,30 @@ class ExportedAuthenticator {
    * Returns the certificate_request_context given an authenticator
    */
   static Buf getAuthenticatorContext(Buf authenticator);
+
+  /**
+   * "validate" API
+   *
+   * Returns the certificate chain and extensions. If the authenticator was
+   * empty, the certificate chain will contain no certificates.
+   **/
+  static folly::Optional<std::vector<CertificateEntry>> validateAuthenticator(
+      const fizz::server::AsyncFizzServer& transport,
+      Buf authenticatorRequest,
+      Buf authenticator);
+
+  static folly::Optional<std::vector<CertificateEntry>> validateAuthenticator(
+      const fizz::client::AsyncFizzClient& transport,
+      Buf authenticatorRequest,
+      Buf authenticator);
+
+  static folly::Optional<std::vector<CertificateEntry>> validate(
+      std::unique_ptr<KeyDerivation>& kderiver,
+      Buf authenticatorRequest,
+      Buf authenticator,
+      Buf handshakeContext,
+      Buf finishedMacKey,
+      CertificateVerifyContext context);
 };
 
 } // namespace fizz

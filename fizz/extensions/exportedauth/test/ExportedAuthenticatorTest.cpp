@@ -31,6 +31,8 @@ StringPiece expected_auth_request = {
 StringPiece expected_authenticator = {
     "0b000004000000000f00000d040300097369676e617475726514000020b523548c421b05f7f3c33276fbdd5266ba2df103796d7d483368259860a648f2"};
 StringPiece expected_cr_context = {"303132333435363738396162636465666768696a"};
+StringPiece expected_cert = {
+    "308201ee30820195a003020102020900c569eec901ce86d9300a06082a8648ce3d0403023054310b3009060355040613025553310b300906035504080c024e59310b300906035504070c024e59310d300b060355040a0c0446697a7a310d300b060355040b0c0446697a7a310d300b06035504030c0446697a7a301e170d3137303430343138323930395a170d3431313132343138323930395a3054310b3009060355040613025553310b300906035504080c024e59310b300906035504070c024e59310d300b060355040a0c0446697a7a310d300b060355040b0c0446697a7a310d300b06035504030c0446697a7a3059301306072a8648ce3d020106082a8648ce3d030107034200049d87bcaddb65d8dcf6df8b148a9679b5b710db19c95a9badfff13468cb358b4e21d24a5c826112658ebb96d64e2985dfb41c1948334391a4aa81b67837e2dbf0a350304e301d0603551d0e041604143c5b8ba954d9752faf3c8ad6d1a62449dccaa850301f0603551d230418301680143c5b8ba954d9752faf3c8ad6d1a62449dccaa850300c0603551d13040530030101ff300a06082a8648ce3d04030203470030440220349b7d34d7132fb2756576e0bfa36cbe1723337a7a6f5ef9c8d3bf1aa7efa4a5022025c50a91e0aa4272f1f52c3d5583a7d7cee14b178835273a0bd814303e62d714"};
 StringPiece expected_empty_authenticator = {
     "1400002011fae4bcdf4673b6dfb276d886c4cd1c5b0920da961643f062d1d4a6062115b1"};
 
@@ -142,6 +144,97 @@ TEST(ExportedAuthenticatorTest, TestGetContext) {
   EXPECT_EQ(
       expected_cr_context,
       StringPiece(hexlify(certRequestContext->coalesce())));
+}
+
+class ValidateAuthenticatorTest : public ::testing::Test {
+ public:
+  void SetUp() override {
+    folly::ssl::init();
+    CipherSuite cipher = CipherSuite::TLS_AES_128_GCM_SHA256;
+    deriver_ = Factory().makeKeyDeriver(cipher);
+    schemes_.push_back(SignatureScheme::ecdsa_secp256r1_sha256);
+    authrequest_ = {
+        "14303132333435363738396162636465666768696a0008000d000400020403"};
+    handshakeContext_ = {"12345678901234567890123456789012"};
+    finishedKey_ = {"12345678901234567890123456789012"};
+  }
+
+ protected:
+  std::unique_ptr<KeyDerivation> deriver_;
+  std::vector<SignatureScheme> schemes_;
+  StringPiece authrequest_;
+  StringPiece handshakeContext_;
+  StringPiece finishedKey_;
+};
+
+TEST_F(ValidateAuthenticatorTest, TestValidateValidAuthenticator) {
+  auto cert = fizz::test::getCert(kP256Certificate);
+  auto key = fizz::test::getPrivateKey(kP256Key);
+  std::vector<folly::ssl::X509UniquePtr> certs;
+  certs.push_back(std::move(cert));
+  SelfCertImpl<KeyType::P256> certificate(std::move(key), std::move(certs));
+  auto authenticatorRequest = folly::IOBuf::copyBuffer(unhexlify(authrequest_));
+  auto handshakeContext =
+      folly::IOBuf::copyBuffer(unhexlify(handshakeContext_));
+  auto finishedMacKey = folly::IOBuf::copyBuffer(unhexlify(finishedKey_));
+  auto authenticator = ExportedAuthenticator::makeAuthenticator(
+      deriver_,
+      schemes_,
+      certificate,
+      std::move(authenticatorRequest),
+      std::move(handshakeContext),
+      std::move(finishedMacKey),
+      CertificateVerifyContext::Authenticator);
+
+  authenticatorRequest = folly::IOBuf::copyBuffer(unhexlify(authrequest_));
+  handshakeContext = folly::IOBuf::copyBuffer(unhexlify(handshakeContext_));
+  finishedMacKey = folly::IOBuf::copyBuffer(unhexlify(finishedKey_));
+  auto decodedCerts = ExportedAuthenticator::validate(
+      deriver_,
+      std::move(authenticatorRequest),
+      std::move(authenticator),
+      std::move(handshakeContext),
+      std::move(finishedMacKey),
+      CertificateVerifyContext::Authenticator);
+  EXPECT_TRUE(decodedCerts.hasValue());
+  EXPECT_EQ((*decodedCerts).size(), 1);
+  EXPECT_EQ(
+      expected_cert,
+      StringPiece(hexlify(((*decodedCerts)[0].cert_data)->coalesce())));
+}
+
+TEST_F(ValidateAuthenticatorTest, TestValidateEmptyAuthenticator) {
+  auto cert = fizz::test::getCert(kP256Certificate);
+  auto key = fizz::test::getPrivateKey(kP256Key);
+  std::vector<folly::ssl::X509UniquePtr> certs;
+  certs.push_back(std::move(cert));
+  SelfCertImpl<KeyType::P256> certificate(std::move(key), std::move(certs));
+  schemes_.clear();
+  auto authenticatorRequest = folly::IOBuf::copyBuffer(unhexlify(authrequest_));
+  auto handshakeContext =
+      folly::IOBuf::copyBuffer(unhexlify(handshakeContext_));
+  auto finishedMacKey = folly::IOBuf::copyBuffer(unhexlify(finishedKey_));
+  auto authenticator = ExportedAuthenticator::makeAuthenticator(
+      deriver_,
+      schemes_,
+      certificate,
+      std::move(authenticatorRequest),
+      std::move(handshakeContext),
+      std::move(finishedMacKey),
+      CertificateVerifyContext::Authenticator);
+
+  authenticatorRequest = folly::IOBuf::copyBuffer(unhexlify(authrequest_));
+  handshakeContext = folly::IOBuf::copyBuffer(unhexlify(handshakeContext_));
+  finishedMacKey = folly::IOBuf::copyBuffer(unhexlify(finishedKey_));
+  auto decodedCerts = ExportedAuthenticator::validate(
+      deriver_,
+      std::move(authenticatorRequest),
+      std::move(authenticator),
+      std::move(handshakeContext),
+      std::move(finishedMacKey),
+      CertificateVerifyContext::Authenticator);
+  EXPECT_TRUE(decodedCerts.hasValue());
+  EXPECT_EQ((*decodedCerts).size(), 0);
 }
 
 } // namespace test
