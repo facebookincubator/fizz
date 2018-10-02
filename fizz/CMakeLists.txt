@@ -56,6 +56,7 @@ set(FIZZ_HEADER_DIRS
   crypto/exchange
   crypto/signature
   crypto/openssl
+  extensions/exportedauth
   extensions/secretlogging
   extensions/tokenbinding
   protocol
@@ -117,6 +118,7 @@ set(FIZZ_SOURCES
   protocol/Events.cpp
   protocol/KeyScheduler.cpp
   protocol/Certificate.cpp
+  extensions/exportedauth/ExportedAuthenticator.cpp
   extensions/secretlogging/LoggingKeyScheduler.cpp
   extensions/tokenbinding/Types.cpp
   extensions/tokenbinding/TokenBindingConstructor.cpp
