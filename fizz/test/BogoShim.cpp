@@ -15,6 +15,7 @@
 #include <folly/String.h>
 #include <folly/io/async/AsyncSSLSocket.h>
 #include <folly/io/async/SSLContext.h>
+#include <folly/portability/GFlags.h>
 
 using namespace fizz;
 using namespace fizz::client;

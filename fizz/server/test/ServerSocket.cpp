@@ -12,6 +12,7 @@
 #include <folly/io/async/AsyncSSLSocket.h>
 #include <folly/io/async/AsyncServerSocket.h>
 #include <folly/io/async/SSLContext.h>
+#include <folly/portability/GFlags.h>
 #include <folly/ssl/Init.h>
 
 DEFINE_int32(port, 8443, "port to listen on");
