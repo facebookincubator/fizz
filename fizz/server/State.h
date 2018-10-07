@@ -260,6 +260,15 @@ class State {
   }
 
   /**
+   * Get the certificate compression algorithm used for the sent certificate
+   * (if any).
+   */
+  const folly::Optional<CertificateCompressionAlgorithm>& serverCertCompAlgo()
+      const {
+    return serverCertCompAlgo_;
+  }
+
+  /**
    * Get the early exporter master secret. Only available if early data was
    * accepted.
    */
@@ -306,6 +315,9 @@ class State {
   }
   auto& clientCert() {
     return clientCert_;
+  }
+  auto& serverCertCompAlgo() {
+    return serverCertCompAlgo_;
   }
   auto& unverifiedCertChain() {
     return unverifiedCertChain_;
@@ -383,6 +395,7 @@ class State {
 
   std::shared_ptr<const Cert> serverCert_;
   std::shared_ptr<const Cert> clientCert_;
+  folly::Optional<CertificateCompressionAlgorithm> serverCertCompAlgo_;
 
   folly::Optional<std::vector<std::shared_ptr<const PeerCert>>>
       unverifiedCertChain_;

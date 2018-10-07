@@ -104,6 +104,9 @@ class MockSelfCert : public SelfCert {
   CertificateMsg getCertMessage(Buf buf) const override {
     return _getCertMessage(buf);
   }
+  MOCK_CONST_METHOD1(
+      getCompressedCert,
+      CompressedCertificate(CertificateCompressionAlgorithm));
 
   MOCK_CONST_METHOD3(
       sign,

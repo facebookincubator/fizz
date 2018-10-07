@@ -273,6 +273,19 @@ class FizzServerContext {
     return sendNewSessionTicket_;
   }
 
+  /**
+   * Set supported cert compression algorithms. Note: It is expected that any
+   * certificate used has been initialized with compressors corresponding to the
+   * algorithms set here.
+   */
+  void setSupportedCompressionAlgorithms(
+      std::vector<CertificateCompressionAlgorithm> algos) {
+    supportedCompressionAlgos_ = algos;
+  }
+  const auto& getSupportedCompressionAlgorithms() const {
+    return supportedCompressionAlgos_;
+  }
+
  private:
   std::unique_ptr<Factory> factory_;
 
@@ -309,6 +322,8 @@ class FizzServerContext {
   uint32_t maxEarlyDataSize_{std::numeric_limits<uint32_t>::max()};
   ClockSkewTolerance clockSkewTolerance_;
   std::shared_ptr<ReplayCache> replayCache_;
+
+  std::vector<CertificateCompressionAlgorithm> supportedCompressionAlgos_;
 
   bool earlyDataFbOnly_{false};
 

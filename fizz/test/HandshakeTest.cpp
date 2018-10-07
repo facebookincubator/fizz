@@ -18,6 +18,8 @@
 #include <fizz/extensions/tokenbinding/TokenBindingClientExtension.h>
 #include <fizz/extensions/tokenbinding/TokenBindingContext.h>
 #include <fizz/extensions/tokenbinding/TokenBindingServerExtension.h>
+#include <fizz/protocol/ZlibCertificateCompressor.h>
+#include <fizz/protocol/ZlibCertificateDecompressor.h>
 #include <fizz/protocol/test/Matchers.h>
 #include <fizz/protocol/test/Utilities.h>
 #include <fizz/server/AsyncFizzServer.h>
@@ -48,6 +50,7 @@ struct ExpectedParameters {
   folly::Optional<EarlyDataType> earlyDataType{EarlyDataType::NotAttempted};
   folly::Optional<std::string> alpn;
   std::shared_ptr<const Cert> clientCert;
+  folly::Optional<CertificateCompressionAlgorithm> serverCertCompAlgo;
 };
 
 class HandshakeTest : public Test {
@@ -62,11 +65,13 @@ class HandshakeTest : public Test {
     clientContext_->setPskCache(std::move(pskCache));
 
     auto certManager = std::make_unique<CertManager>();
+    std::vector<std::shared_ptr<CertificateCompressor>> compressors = {
+        std::make_shared<ZlibCertificateCompressor>(9)};
     std::vector<ssl::X509UniquePtr> rsaCerts;
     rsaCerts.emplace_back(getCert(kRSACertificate));
     certManager->addCert(
         std::make_shared<SelfCertImpl<KeyType::RSA>>(
-            getPrivateKey(kRSAKey), std::move(rsaCerts)),
+            getPrivateKey(kRSAKey), std::move(rsaCerts), compressors),
         true);
     std::vector<ssl::X509UniquePtr> p256Certs;
     std::vector<ssl::X509UniquePtr> p384Certs;
@@ -75,11 +80,11 @@ class HandshakeTest : public Test {
     p384Certs.emplace_back(getCert(kP384Certificate));
     p521Certs.emplace_back(getCert(kP521Certificate));
     certManager->addCert(std::make_shared<SelfCertImpl<KeyType::P256>>(
-        getPrivateKey(kP256Key), std::move(p256Certs)));
+        getPrivateKey(kP256Key), std::move(p256Certs), compressors));
     certManager->addCert(std::make_shared<SelfCertImpl<KeyType::P384>>(
-        getPrivateKey(kP384Key), std::move(p384Certs)));
+        getPrivateKey(kP384Key), std::move(p384Certs), compressors));
     certManager->addCert(std::make_shared<SelfCertImpl<KeyType::P521>>(
-        getPrivateKey(kP521Key), std::move(p521Certs)));
+        getPrivateKey(kP521Key), std::move(p521Certs), compressors));
     serverContext_->setCertManager(std::move(certManager));
     serverContext_->setEarlyDataSettings(
         true,
@@ -323,6 +328,10 @@ class HandshakeTest : public Test {
     EXPECT_EQ(server_->getState().alpn(), expected_.alpn);
     EXPECT_TRUE(
         certsMatch(server_->getState().clientCert(), expected_.clientCert));
+    EXPECT_EQ(
+        client_->getState().serverCertCompAlgo(), expected_.serverCertCompAlgo);
+    EXPECT_EQ(
+        server_->getState().serverCertCompAlgo(), expected_.serverCertCompAlgo);
   }
 
   void setupResume() {
@@ -691,6 +700,21 @@ TEST_F(HandshakeTest, CertRequestBadCert) {
           std::move(badCert.key), std::move(certVec)));
   expectServerError("alert: bad_certificate", "client certificate failure");
   doHandshake();
+}
+
+TEST_F(HandshakeTest, BasicCertCompression) {
+  expectSuccess();
+  auto decompressor = std::make_shared<ZlibCertificateDecompressor>();
+  auto decompressionMgr = std::make_shared<CertDecompressionManager>();
+  decompressionMgr->setDecompressors(
+      {std::static_pointer_cast<CertificateDecompressor>(decompressor)});
+  clientContext_->setCertDecompressionManager(decompressionMgr);
+  serverContext_->setSupportedCompressionAlgorithms(
+      {CertificateCompressionAlgorithm::zlib});
+  expected_.serverCertCompAlgo = CertificateCompressionAlgorithm::zlib;
+  doHandshake();
+  verifyParameters();
+  sendAppData();
 }
 
 TEST_F(HandshakeTest, EarlyDataAccepted) {

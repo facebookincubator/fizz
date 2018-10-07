@@ -409,13 +409,18 @@ inline Buf encode<CertificateMsg>(CertificateMsg&& cert) {
 }
 
 template <>
-inline Buf encode<CompressedCertificate>(CompressedCertificate&& cc) {
+inline Buf encode<CompressedCertificate&>(CompressedCertificate& cc) {
   auto buf = folly::IOBuf::create(20);
   folly::io::Appender appender(buf.get(), 20);
   detail::write(cc.algorithm, appender);
   detail::writeBits24(cc.uncompressed_length, appender);
   detail::writeBuf<detail::bits24>(cc.compressed_certificate_message, appender);
   return buf;
+}
+
+template <>
+inline Buf encode<CompressedCertificate>(CompressedCertificate&& cc) {
+  return encode<CompressedCertificate&>(cc);
 }
 
 template <>

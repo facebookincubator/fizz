@@ -173,6 +173,16 @@ std::unique_ptr<SelfCert> CertUtils::makeSelfCert(
   throw std::runtime_error("unknown self cert type");
 }
 
+CompressedCertificate CertUtils::cloneCompressedCert(
+    const CompressedCertificate& src) {
+  CompressedCertificate ret;
+  ret.algorithm = src.algorithm;
+  ret.compressed_certificate_message =
+      src.compressed_certificate_message->clone();
+  ret.uncompressed_length = src.uncompressed_length;
+  return ret;
+}
+
 IdentityCert::IdentityCert(std::string identity) : identity_(identity) {}
 
 std::string IdentityCert::getIdentity() const {

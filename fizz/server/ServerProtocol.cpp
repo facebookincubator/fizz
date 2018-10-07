@@ -913,12 +913,29 @@ static std::pair<std::shared_ptr<SelfCert>, SignatureScheme> chooseCert(
   return *certAndScheme;
 }
 
-static Buf getCertificate(
+static std::tuple<Buf, folly::Optional<CertificateCompressionAlgorithm>>
+getCertificate(
     const std::shared_ptr<const SelfCert>& serverCert,
+    const FizzServerContext& context,
+    const ClientHello& chlo,
     HandshakeContext& handshakeContext) {
-  auto encodedCertificate = encodeHandshake(serverCert->getCertMessage());
+  // Check for compression support first, and if so, send compressed.
+  Buf encodedCertificate;
+  folly::Optional<CertificateCompressionAlgorithm> algo;
+  auto compAlgos =
+      getExtension<CertificateCompressionAlgorithms>(chlo.extensions);
+  if (compAlgos && !context.getSupportedCompressionAlgorithms().empty()) {
+    algo = negotiate(
+        context.getSupportedCompressionAlgorithms(), compAlgos->algorithms);
+  }
+
+  if (algo) {
+    encodedCertificate = encodeHandshake(serverCert->getCompressedCert(*algo));
+  } else {
+    encodedCertificate = encodeHandshake(serverCert->getCertMessage());
+  }
   handshakeContext.appendToTranscript(encodedCertificate);
-  return encodedCertificate;
+  return std::make_tuple(std::move(encodedCertificate), std::move(algo));
 }
 
 static Buf getCertificateVerify(
@@ -1303,13 +1320,14 @@ EventHandler<ServerTypes, StateEnum::ExpectingClientHello, Event::ClientHello>::
         Optional<SignatureScheme> sigScheme;
         Optional<std::shared_ptr<const Cert>> serverCert;
         std::shared_ptr<const Cert> clientCert;
+        Optional<CertificateCompressionAlgorithm> certCompressionAlgo;
         if (!resState) { // TODO or reauth
           std::shared_ptr<const SelfCert> originalSelfCert;
           std::tie(originalSelfCert, sigScheme) =
               chooseCert(*state.context(), chlo);
 
-          encodedCertificate =
-              getCertificate(originalSelfCert, *handshakeContext);
+          std::tie(encodedCertificate, certCompressionAlgo) = getCertificate(
+              originalSelfCert, *state.context(), chlo, *handshakeContext);
 
           auto toBeSigned = handshakeContext->getHandshakeContext();
           auto asyncSelfCert =
@@ -1362,8 +1380,9 @@ EventHandler<ServerTypes, StateEnum::ExpectingClientHello, Event::ClientHello>::
                         clientCert = std::move(clientCert),
                         alpn = std::move(alpn),
                         clockSkew,
-                        legacySessionId = std::move(legacySessionId)](
-                           Optional<Buf> sig) mutable {
+                        legacySessionId = std::move(legacySessionId),
+                        serverCertCompAlgo =
+                            certCompressionAlgo](Optional<Buf> sig) mutable {
               Optional<Buf> encodedCertificateVerify;
               if (sig) {
                 encodedCertificateVerify = getCertificateVerify(
@@ -1473,7 +1492,8 @@ EventHandler<ServerTypes, StateEnum::ExpectingClientHello, Event::ClientHello>::
                                 alpn = std::move(alpn),
                                 earlyDataTypeSave,
                                 replayCacheResult,
-                                clockSkew](State& newState) mutable {
+                                clockSkew,
+                                serverCertCompAlgo](State& newState) mutable {
                 newState.writeRecordLayer() =
                     std::move(appTrafficWriteRecordLayer);
                 newState.handshakeContext() = std::move(handshakeContext);
@@ -1494,6 +1514,7 @@ EventHandler<ServerTypes, StateEnum::ExpectingClientHello, Event::ClientHello>::
                 newState.replayCacheResult() = replayCacheResult;
                 newState.alpn() = std::move(alpn);
                 newState.clientClockSkew() = clockSkew;
+                newState.serverCertCompAlgo() = serverCertCompAlgo;
               };
 
               if (earlyDataType == EarlyDataType::Accepted) {

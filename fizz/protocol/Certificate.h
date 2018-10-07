@@ -9,8 +9,11 @@
 #pragma once
 
 #include <fizz/crypto/signature/Signature.h>
+#include <fizz/protocol/CertificateCompressor.h>
 #include <fizz/record/Types.h>
 #include <folly/io/async/AsyncTransportCertificate.h>
+
+#include <map>
 
 namespace fizz {
 
@@ -48,6 +51,9 @@ class SelfCert : public Cert {
 
   virtual CertificateMsg getCertMessage(
       Buf certificateRequestContext = nullptr) const = 0;
+
+  virtual CompressedCertificate getCompressedCert(
+      CertificateCompressionAlgorithm algo) const = 0;
 
   virtual Buf sign(
       SignatureScheme scheme,
@@ -103,6 +109,13 @@ class CertUtils {
   static std::unique_ptr<SelfCert> makeSelfCert(
       std::vector<folly::ssl::X509UniquePtr> certs,
       folly::ssl::EvpPkeyUniquePtr key);
+
+  /**
+   * Clones a compressed cert by copying the relevant fields and cloning the
+   * underlying data IOBuf.
+   */
+  static CompressedCertificate cloneCompressedCert(
+      const CompressedCertificate& src);
 };
 
 template <KeyType T>
@@ -114,7 +127,9 @@ class SelfCertImpl : public SelfCert {
    */
   SelfCertImpl(
       folly::ssl::EvpPkeyUniquePtr pkey,
-      std::vector<folly::ssl::X509UniquePtr> certs);
+      std::vector<folly::ssl::X509UniquePtr> certs,
+      const std::vector<std::shared_ptr<fizz::CertificateCompressor>>&
+          compressors = {});
 
   ~SelfCertImpl() override = default;
 
@@ -127,6 +142,9 @@ class SelfCertImpl : public SelfCert {
   CertificateMsg getCertMessage(
       Buf certificateRequestContext = nullptr) const override;
 
+  CompressedCertificate getCompressedCert(
+      CertificateCompressionAlgorithm algo) const override;
+
   Buf sign(
       SignatureScheme scheme,
       CertificateVerifyContext context,
@@ -137,6 +155,8 @@ class SelfCertImpl : public SelfCert {
  private:
   OpenSSLSignature<T> signature_;
   std::vector<folly::ssl::X509UniquePtr> certs_;
+  std::map<CertificateCompressionAlgorithm, CompressedCertificate>
+      compressedCerts_;
 };
 
 template <KeyType T>

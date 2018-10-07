@@ -36,7 +36,9 @@ inline std::vector<SignatureScheme> CertUtils::getSigSchemes<KeyType::RSA>() {
 template <KeyType T>
 SelfCertImpl<T>::SelfCertImpl(
     folly::ssl::EvpPkeyUniquePtr pkey,
-    std::vector<folly::ssl::X509UniquePtr> certs) {
+    std::vector<folly::ssl::X509UniquePtr> certs,
+    const std::vector<std::shared_ptr<fizz::CertificateCompressor>>&
+        compressors) {
   if (certs.size() == 0) {
     throw std::runtime_error("Must supply at least 1 cert");
   }
@@ -46,6 +48,10 @@ SelfCertImpl<T>::SelfCertImpl(
   // TODO: more strict validation of chaining requirements.
   signature_.setKey(std::move(pkey));
   certs_ = std::move(certs);
+  for (const auto& compressor : compressors) {
+    compressedCerts_[compressor->getAlgorithm()] =
+        compressor->compress(getCertMessage());
+  }
 }
 
 template <KeyType T>
@@ -64,6 +70,12 @@ CertificateMsg SelfCertImpl<T>::getCertMessage(
     Buf certificateRequestContext) const {
   return CertUtils::getCertMessage(
       certs_, std::move(certificateRequestContext));
+}
+
+template <KeyType T>
+CompressedCertificate SelfCertImpl<T>::getCompressedCert(
+    CertificateCompressionAlgorithm algo) const {
+  return CertUtils::cloneCompressedCert(compressedCerts_.at(algo));
 }
 
 template <KeyType T>
