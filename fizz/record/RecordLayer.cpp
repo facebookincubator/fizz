@@ -15,8 +15,6 @@ using HandshakeTypeType = typename std::underlying_type<HandshakeType>::type;
 static constexpr size_t kHandshakeHeaderSize =
     sizeof(HandshakeType) + detail::bits24::size;
 
-static constexpr size_t kMaxHandshakeSize = 0x20000; // 128k
-
 folly::Optional<Param> ReadRecordLayer::readEvent(
     folly::IOBufQueue& socketBuf) {
   if (!unparsedHandshakeData_.empty()) {

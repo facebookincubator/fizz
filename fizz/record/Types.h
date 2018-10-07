@@ -75,6 +75,8 @@ enum class HandshakeType : uint8_t {
   message_hash = 254
 };
 
+constexpr size_t kMaxHandshakeSize = 0x20000; // 128k
+
 struct message_hash {
   static constexpr HandshakeType handshake_type = HandshakeType::message_hash;
   std::unique_ptr<folly::IOBuf> hash;
