@@ -390,12 +390,22 @@ inline Buf encode<CertificateRequest>(CertificateRequest&& cr) {
 }
 
 template <>
-inline Buf encode<CertificateMsg>(CertificateMsg&& cert) {
+inline Buf encode<const CertificateMsg&>(const CertificateMsg& cert) {
   auto buf = folly::IOBuf::create(20);
   folly::io::Appender appender(buf.get(), 20);
   detail::writeBuf<uint8_t>(cert.certificate_request_context, appender);
   detail::writeVector<detail::bits24>(cert.certificate_list, appender);
   return buf;
+}
+
+template <>
+inline Buf encode<CertificateMsg&>(CertificateMsg& cert) {
+  return encode<const CertificateMsg&>(cert);
+}
+
+template <>
+inline Buf encode<CertificateMsg>(CertificateMsg&& cert) {
+  return encode<CertificateMsg&>(cert);
 }
 
 template <>
