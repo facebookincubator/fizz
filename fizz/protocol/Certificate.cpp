@@ -122,7 +122,8 @@ std::unique_ptr<PeerCert> CertUtils::makePeerCert(Buf certData) {
 
 std::unique_ptr<SelfCert> CertUtils::makeSelfCert(
     std::string certData,
-    std::string keyData) {
+    std::string keyData,
+    const std::vector<std::shared_ptr<CertificateCompressor>>& compressors) {
   auto certs = folly::ssl::OpenSSLCertUtils::readCertsFromBuffer(
       folly::StringPiece(certData));
   if (certs.empty()) {
@@ -141,12 +142,13 @@ std::unique_ptr<SelfCert> CertUtils::makeSelfCert(
     throw std::runtime_error("Failed to read key");
   }
 
-  return makeSelfCert(std::move(certs), std::move(key));
+  return makeSelfCert(std::move(certs), std::move(key), compressors);
 }
 
 std::unique_ptr<SelfCert> CertUtils::makeSelfCert(
     std::vector<folly::ssl::X509UniquePtr> certs,
-    folly::ssl::EvpPkeyUniquePtr key) {
+    folly::ssl::EvpPkeyUniquePtr key,
+    const std::vector<std::shared_ptr<CertificateCompressor>>& compressors) {
   folly::ssl::EvpPkeyUniquePtr pubKey(X509_get_pubkey(certs.front().get()));
   if (!pubKey) {
     throw std::runtime_error("Failed to read public key");
@@ -154,18 +156,18 @@ std::unique_ptr<SelfCert> CertUtils::makeSelfCert(
 
   if (EVP_PKEY_id(pubKey.get()) == EVP_PKEY_RSA) {
     return std::make_unique<SelfCertImpl<KeyType::RSA>>(
-        std::move(key), std::move(certs));
+        std::move(key), std::move(certs), compressors);
   } else if (EVP_PKEY_id(pubKey.get()) == EVP_PKEY_EC) {
     switch (getCurveName(pubKey.get())) {
       case NID_X9_62_prime256v1:
         return std::make_unique<SelfCertImpl<KeyType::P256>>(
-            std::move(key), std::move(certs));
+            std::move(key), std::move(certs), compressors);
       case NID_secp384r1:
         return std::make_unique<SelfCertImpl<KeyType::P384>>(
-            std::move(key), std::move(certs));
+            std::move(key), std::move(certs), compressors);
       case NID_secp521r1:
         return std::make_unique<SelfCertImpl<KeyType::P521>>(
-            std::move(key), std::move(certs));
+            std::move(key), std::move(certs), compressors);
       default:
         break;
     }

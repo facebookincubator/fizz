@@ -99,16 +99,19 @@ class CertUtils {
   static std::unique_ptr<PeerCert> makePeerCert(Buf certData);
 
   /**
-   * Creates a SelfCert using the supplied certificate and key file data.
+   * Creates a SelfCert using the supplied certificate/key file data and
+   * compressors.
    * Throws std::runtime_error on error.
    */
   static std::unique_ptr<SelfCert> makeSelfCert(
       std::string certData,
-      std::string keyData);
+      std::string keyData,
+      const std::vector<std::shared_ptr<CertificateCompressor>>& compressors = {});
 
   static std::unique_ptr<SelfCert> makeSelfCert(
       std::vector<folly::ssl::X509UniquePtr> certs,
-      folly::ssl::EvpPkeyUniquePtr key);
+      folly::ssl::EvpPkeyUniquePtr key,
+      const std::vector<std::shared_ptr<CertificateCompressor>>& compressors = {});
 
   /**
    * Clones a compressed cert by copying the relevant fields and cloning the
