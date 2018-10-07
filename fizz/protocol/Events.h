@@ -20,6 +20,7 @@ enum class Event {
   EncryptedExtensions,
   CertificateRequest,
   Certificate,
+  CompressedCertificate,
   CertificateVerify,
   Finished,
   NewSessionTicket,

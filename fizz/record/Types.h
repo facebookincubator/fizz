@@ -71,6 +71,7 @@ enum class HandshakeType : uint8_t {
   certificate_verify = 15,
   finished = 20,
   key_update = 24,
+  compressed_certificate = 240,
   message_hash = 254
 };
 
@@ -108,6 +109,7 @@ enum class ExtensionType : uint16_t {
   key_share = 51,
 
   // alternate_server_name = 0xfb00,
+  compress_certificate = 0xff02,
 };
 
 std::string toString(ExtensionType);
@@ -159,6 +161,12 @@ std::string toString(CipherSuite);
 enum class PskKeyExchangeMode : uint8_t { psk_ke = 0, psk_dhe_ke = 1 };
 
 std::string toString(PskKeyExchangeMode);
+
+enum class CertificateCompressionAlgorithm : uint16_t {
+  zlib = 1,
+};
+
+std::string toString(CertificateCompressionAlgorithm);
 
 struct Extension {
   ExtensionType extension_type;
@@ -227,6 +235,14 @@ struct CertificateMsg
     : HandshakeStruct<Event::Certificate, HandshakeType::certificate> {
   Buf certificate_request_context;
   std::vector<CertificateEntry> certificate_list;
+};
+
+struct CompressedCertificate : HandshakeStruct<
+                                Event::CompressedCertificate,
+                                HandshakeType::compressed_certificate> {
+  CertificateCompressionAlgorithm algorithm;
+  uint32_t uncompressed_length;
+  Buf compressed_certificate_message;
 };
 
 struct CertificateRequest : HandshakeStruct<

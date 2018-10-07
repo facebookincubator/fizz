@@ -75,6 +75,7 @@ using Param = boost::variant<
     HelloRetryRequest,
     EncryptedExtensions,
     CertificateRequest,
+    CompressedCertificate,
     CertificateMsg,
     CertificateVerify,
     Finished,

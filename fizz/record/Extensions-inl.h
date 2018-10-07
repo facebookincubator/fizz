@@ -165,6 +165,13 @@ inline CertificateAuthorities getExtension(folly::io::Cursor& cs) {
 }
 
 template <>
+inline CertificateCompressionAlgorithms getExtension(folly::io::Cursor& cs) {
+  CertificateCompressionAlgorithms cca;
+  detail::readVector<uint8_t>(cca.algorithms, cs);
+  return cca;
+}
+
+template <>
 inline Extension encodeExtension(const SignatureAlgorithms& sig) {
   Extension ext;
   ext.extension_type = ExtensionType::signature_algorithms;
@@ -331,6 +338,16 @@ inline Extension encodeExtension(const CertificateAuthorities& authorities) {
   ext.extension_data = folly::IOBuf::create(0);
   folly::io::Appender appender(ext.extension_data.get(), 10);
   detail::writeVector<uint16_t>(authorities.authorities, appender);
+  return ext;
+}
+
+template <>
+inline Extension encodeExtension(const CertificateCompressionAlgorithms& cca) {
+  Extension ext;
+  ext.extension_type = ExtensionType::compress_certificate;
+  ext.extension_data = folly::IOBuf::create(0);
+  folly::io::Appender appender(ext.extension_data.get(), 10);
+  detail::writeVector<uint8_t>(cca.algorithms, appender);
   return ext;
 }
 

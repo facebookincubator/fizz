@@ -139,6 +139,12 @@ struct CertificateAuthorities {
       ExtensionType::certificate_authorities;
 };
 
+struct CertificateCompressionAlgorithms {
+  std::vector<CertificateCompressionAlgorithm> algorithms;
+  static constexpr ExtensionType extension_type =
+      ExtensionType::compress_certificate;
+};
+
 template <class T>
 folly::Optional<T> getExtension(const std::vector<Extension>& extension);
 template <class T>

@@ -25,6 +25,8 @@ folly::StringPiece toString(Event event) {
       return "CertificateRequest";
     case Event::Certificate:
       return "Certificate";
+    case Event::CompressedCertificate:
+      return "CompressedCertificate";
     case Event::CertificateVerify:
       return "CertificateVerify";
     case Event::Finished:

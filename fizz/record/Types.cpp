@@ -110,6 +110,8 @@ std::string toString(ExtensionType extType) {
       return "signature_algorithms_cert";
     case ExtensionType::key_share:
       return "key_share";
+    case ExtensionType::compress_certificate:
+      return "compress_certificate";
   }
   return enumToHex(extType);
 }
@@ -236,5 +238,13 @@ std::string toString(NamedGroup group) {
       return "x25519";
   }
   return enumToHex(group);
+}
+
+std::string toString(CertificateCompressionAlgorithm algo) {
+  switch (algo) {
+    case CertificateCompressionAlgorithm::zlib:
+      return "zlib";
+  }
+  return enumToHex(algo);
 }
 } // namespace fizz

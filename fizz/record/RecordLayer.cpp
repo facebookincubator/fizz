@@ -132,6 +132,9 @@ folly::Optional<Param> ReadRecordLayer::decodeHandshakeMessage(
     case HandshakeType::certificate:
       return parse<CertificateMsg>(
           std::move(handshakeMsg), std::move(original));
+    case HandshakeType::compressed_certificate:
+      return parse<CompressedCertificate>(
+          std::move(handshakeMsg), std::move(original));
     case HandshakeType::certificate_request:
       return parse<CertificateRequest>(
           std::move(handshakeMsg), std::move(original));

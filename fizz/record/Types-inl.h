@@ -399,6 +399,16 @@ inline Buf encode<CertificateMsg>(CertificateMsg&& cert) {
 }
 
 template <>
+inline Buf encode<CompressedCertificate>(CompressedCertificate&& cc) {
+  auto buf = folly::IOBuf::create(20);
+  folly::io::Appender appender(buf.get(), 20);
+  detail::write(cc.algorithm, appender);
+  detail::writeBits24(cc.uncompressed_length, appender);
+  detail::writeBuf<detail::bits24>(cc.compressed_certificate_message, appender);
+  return buf;
+}
+
+template <>
 inline Buf encode<CertificateVerify>(CertificateVerify&& certVerify) {
   auto buf = folly::IOBuf::create(20);
   folly::io::Appender appender(buf.get(), 20);
@@ -553,6 +563,15 @@ inline CertificateMsg decode(folly::io::Cursor& cursor) {
   detail::readBuf<uint8_t>(cert.certificate_request_context, cursor);
   detail::readVector<detail::bits24>(cert.certificate_list, cursor);
   return cert;
+}
+
+template <>
+inline CompressedCertificate decode(folly::io::Cursor& cursor) {
+  CompressedCertificate cc;
+  detail::read(cc.algorithm, cursor);
+  cc.uncompressed_length = detail::readBits24(cursor);
+  detail::readBuf<detail::bits24>(cc.compressed_certificate_message, cursor);
+  return cc;
 }
 
 template <>
