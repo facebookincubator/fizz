@@ -9,6 +9,7 @@
 #pragma once
 
 #include <fizz/client/PskCache.h>
+#include <fizz/protocol/CertDecompressionManager.h>
 #include <fizz/protocol/Certificate.h>
 #include <fizz/protocol/Factory.h>
 #include <fizz/record/Types.h>
@@ -169,6 +170,40 @@ class FizzClientContext {
     return factory_.get();
   }
 
+  /**
+   * Sets the certificate decompression manager for server certs.
+   */
+  void setCertDecompressionManager(
+      std::shared_ptr<CertDecompressionManager> mgr) {
+    certDecompressionManager_ = mgr;
+  }
+
+  /**
+   * Returns a vector representing the compression algorithms the manager has
+   * decompressors for.
+   */
+  std::vector<CertificateCompressionAlgorithm>
+  getSupportedCertDecompressionAlgorithms() const {
+    if (certDecompressionManager_) {
+      return certDecompressionManager_->getSupportedAlgorithms();
+    } else {
+      return {};
+    }
+  }
+
+  /**
+   * Given a compression algorithm, returns the decompressor to decompress
+   * certs. If the algorithm isn't found, returns nullptr.
+   */
+  std::shared_ptr<CertificateDecompressor> getCertDecompressorForAlgorithm(
+      CertificateCompressionAlgorithm algo) const {
+    if (certDecompressionManager_) {
+      return certDecompressionManager_->getDecompressor(algo);
+    } else {
+      return nullptr;
+    }
+  }
+
  private:
   std::unique_ptr<Factory> factory_;
 
@@ -196,6 +231,7 @@ class FizzClientContext {
 
   std::shared_ptr<PskCache> pskCache_;
   std::shared_ptr<const SelfCert> clientCert_;
+  std::shared_ptr<CertDecompressionManager> certDecompressionManager_;
 };
 } // namespace client
 } // namespace fizz

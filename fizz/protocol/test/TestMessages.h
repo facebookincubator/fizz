@@ -162,6 +162,16 @@ struct TestMessages {
     return certificate;
   }
 
+  static CompressedCertificate compressedCertificate() {
+    CompressedCertificate cc;
+    cc.algorithm = CertificateCompressionAlgorithm::zlib;
+    cc.uncompressed_length = 0x111111;
+    cc.compressed_certificate_message =
+        folly::IOBuf::copyBuffer("compressedcerts");
+    cc.originalEncoding = folly::IOBuf::copyBuffer("compcertencoding");
+    return cc;
+  }
+
   static CertificateVerify certificateVerify() {
     CertificateVerify verify;
     verify.algorithm = SignatureScheme::ecdsa_secp256r1_sha256;

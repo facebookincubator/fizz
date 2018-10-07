@@ -179,6 +179,14 @@ class State {
   }
 
   /**
+   * Compression algorithm used for server certificates (if any).
+   */
+  const folly::Optional<CertificateCompressionAlgorithm>& serverCertCompAlgo()
+      const {
+    return serverCertCompAlgo_;
+  }
+
+  /**
    * Certificate verifier to be used to verify server certificates on this
    * connection.
    */
@@ -433,6 +441,10 @@ class State {
     return sni_;
   }
 
+  auto& serverCertCompAlgo() {
+    return serverCertCompAlgo_;
+  }
+
   auto& clientRandom() {
     return clientRandom_;
   }
@@ -517,6 +529,7 @@ class State {
   folly::Optional<EarlyDataType> earlyDataType_;
   folly::Optional<std::string> alpn_;
   folly::Optional<std::string> sni_;
+  folly::Optional<CertificateCompressionAlgorithm> serverCertCompAlgo_;
 
   folly::Optional<EarlyDataParams> earlyDataParams_;
 

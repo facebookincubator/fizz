@@ -75,6 +75,12 @@ FIZZ_DECLARE_EVENT_HANDLER(
 FIZZ_DECLARE_EVENT_HANDLER(
     ClientTypes,
     StateEnum::ExpectingCertificate,
+    Event::CompressedCertificate,
+    StateEnum::ExpectingCertificateVerify);
+
+FIZZ_DECLARE_EVENT_HANDLER(
+    ClientTypes,
+    StateEnum::ExpectingCertificate,
     Event::EarlyAppWrite,
     StateEnum::Error);
 
@@ -335,6 +341,7 @@ static ClientHello getClientHello(
     const std::vector<PskKeyExchangeMode>& supportedPskModes,
     const folly::Optional<std::string>& hostname,
     const std::vector<std::string>& supportedAlpns,
+    const std::vector<CertificateCompressionAlgorithm>& compressionAlgos,
     const Optional<EarlyDataParams>& earlyDataParams,
     const Buf& legacySessionId,
     ClientExtensions* extensions,
@@ -399,6 +406,12 @@ static ClientHello getClientHello(
     Cookie monster;
     monster.cookie = std::move(cookie);
     chlo.extensions.push_back(encodeExtension(std::move(monster)));
+  }
+
+  if (!compressionAlgos.empty()) {
+    CertificateCompressionAlgorithms algos;
+    algos.algorithms = compressionAlgos;
+    chlo.extensions.push_back(encodeExtension(std::move(algos)));
   }
 
   if (extensions) {
@@ -563,6 +576,7 @@ EventHandler<ClientTypes, StateEnum::Uninitialized, Event::Connect>::handle(
       context->getSupportedPskModes(),
       connect.sni,
       context->getSupportedAlpns(),
+      context->getSupportedCertDecompressionAlgorithms(),
       earlyDataParams,
       legacySessionId,
       connect.extensions.get());
@@ -1081,6 +1095,7 @@ Actions EventHandler<
       state.context()->getSupportedPskModes(),
       state.sni(),
       state.context()->getSupportedAlpns(),
+      state.context()->getSupportedCertDecompressionAlgorithms(),
       folly::none,
       state.legacySessionId(),
       state.extensions(),
@@ -1335,13 +1350,10 @@ Actions EventHandler<
       std::move(mutateState), &Transition<StateEnum::ExpectingCertificate>);
 }
 
-Actions
-EventHandler<ClientTypes, StateEnum::ExpectingCertificate, Event::Certificate>::
-    handle(const State& state, Param param) {
-  auto certMsg = std::move(boost::get<CertificateMsg>(param));
-
-  state.handshakeContext()->appendToTranscript(*certMsg.originalEncoding);
-
+static MutateState handleCertMsg(
+    const State& state,
+    CertificateMsg certMsg,
+    folly::Optional<CertificateCompressionAlgorithm> algo) {
   if (!certMsg.certificate_request_context->empty()) {
     throw FizzException(
         "certificate request context must be empty",
@@ -1369,12 +1381,65 @@ EventHandler<ClientTypes, StateEnum::ExpectingCertificate, Event::Certificate>::
   ClientAuthType authType =
       state.clientAuthRequested().value_or(ClientAuthType::NotRequested);
 
+  return [unverifiedCertChain = std::move(serverCerts),
+          authType,
+          compAlgo = std::move(algo)](State& newState) mutable {
+    newState.unverifiedCertChain() = std::move(unverifiedCertChain);
+    newState.clientAuthRequested() = authType;
+    newState.serverCertCompAlgo() = std::move(compAlgo);
+  };
+}
+
+Actions EventHandler<
+    ClientTypes,
+    StateEnum::ExpectingCertificate,
+    Event::CompressedCertificate>::handle(const State& state, Param param) {
+  if (state.context()->getSupportedCertDecompressionAlgorithms().empty()) {
+    throw FizzException(
+        "compressed certificate received unexpectedly",
+        AlertDescription::unexpected_message);
+  }
+
+  auto compCert = std::move(boost::get<CompressedCertificate>(param));
+  state.handshakeContext()->appendToTranscript(*compCert.originalEncoding);
+
+  auto algos = state.context()->getSupportedCertDecompressionAlgorithms();
+  if (std::find(algos.begin(),
+                algos.end(),
+                compCert.algorithm) == algos.end()) {
+    throw FizzException(
+        "certificate compressed with unsupported algorithm: " +
+            toString(compCert.algorithm),
+        AlertDescription::bad_certificate);
+  }
+
+  auto decompressor =
+      state.context()->getCertDecompressorForAlgorithm(compCert.algorithm);
+  DCHECK(decompressor);
+
+  CertificateMsg msg;
+  try {
+    msg = decompressor->decompress(compCert);
+  } catch (const std::exception& e) {
+    throw FizzException(
+        folly::to<std::string>("certificate decompression failed: ", e.what()),
+        AlertDescription::bad_certificate);
+  }
+
   return actions(
-      [unverifiedCertChain = std::move(serverCerts),
-       authType](State& newState) mutable {
-        newState.unverifiedCertChain() = std::move(unverifiedCertChain);
-        newState.clientAuthRequested() = authType;
-      },
+      handleCertMsg(state, std::move(msg), compCert.algorithm),
+      &Transition<StateEnum::ExpectingCertificateVerify>);
+}
+
+Actions
+EventHandler<ClientTypes, StateEnum::ExpectingCertificate, Event::Certificate>::
+    handle(const State& state, Param param) {
+  auto certMsg = std::move(boost::get<CertificateMsg>(param));
+
+  state.handshakeContext()->appendToTranscript(*certMsg.originalEncoding);
+
+  return actions(
+      handleCertMsg(state, std::move(certMsg), folly::none),
       &Transition<StateEnum::ExpectingCertificateVerify>);
 }
 

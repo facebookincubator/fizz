@@ -12,6 +12,7 @@
 #include <fizz/crypto/exchange/test/Mocks.h>
 #include <fizz/crypto/test/Mocks.h>
 #include <fizz/protocol/Certificate.h>
+#include <fizz/protocol/CertificateCompressor.h>
 #include <fizz/protocol/CertificateVerifier.h>
 #include <fizz/protocol/Factory.h>
 #include <fizz/protocol/HandshakeContext.h>
@@ -227,5 +228,28 @@ class MockFactory : public Factory {
     }));
   }
 };
+
+class MockCertificateDecompressor : public CertificateDecompressor {
+ public:
+  MOCK_CONST_METHOD0(getAlgorithm, CertificateCompressionAlgorithm());
+  MOCK_METHOD1(decompress, CertificateMsg(const CompressedCertificate&));
+  void setDefaults() {
+    ON_CALL(*this, getAlgorithm()).WillByDefault(InvokeWithoutArgs([]() {
+      return CertificateCompressionAlgorithm::zlib;
+    }));
+  }
+};
+
+class MockCertificateCompressor : public CertificateCompressor {
+ public:
+  MOCK_CONST_METHOD0(getAlgorithm, CertificateCompressionAlgorithm());
+  MOCK_METHOD1(compress, CompressedCertificate(const CertificateMsg&));
+  void setDefaults() {
+    ON_CALL(*this, getAlgorithm()).WillByDefault(InvokeWithoutArgs([]() {
+      return CertificateCompressionAlgorithm::zlib;
+    }));
+  }
+};
+
 } // namespace test
 } // namespace fizz

@@ -2064,6 +2064,164 @@ TEST_F(ClientProtocolTest, TestCertificateEmpty) {
       actions, AlertDescription::illegal_parameter, "no cert");
 }
 
+TEST_F(ClientProtocolTest, TestCompressedCertificateFlow) {
+  setupExpectingCertificate();
+  EXPECT_CALL(
+      *mockHandshakeContext_,
+      appendToTranscript(BufMatches("compcertencoding")));
+  mockLeaf_ = std::make_shared<MockPeerCert>();
+  mockIntermediate_ = std::make_shared<MockPeerCert>();
+  EXPECT_CALL(*factory_, _makePeerCert(BufMatches("cert1")))
+      .WillOnce(Return(mockLeaf_));
+  EXPECT_CALL(*factory_, _makePeerCert(BufMatches("cert2")))
+      .WillOnce(Return(mockIntermediate_));
+
+  auto decompressor = std::make_shared<MockCertificateDecompressor>();
+  decompressor->setDefaults();
+  auto decompressionMgr = std::make_shared<CertDecompressionManager>();
+  decompressionMgr->setDecompressors(
+      {std::static_pointer_cast<CertificateDecompressor>(decompressor)});
+  context_->setCertDecompressionManager(std::move(decompressionMgr));
+  EXPECT_CALL(*decompressor, decompress(_))
+      .WillOnce(Invoke([](const CompressedCertificate& cc) {
+        EXPECT_TRUE(IOBufEqualTo()(
+            cc.compressed_certificate_message,
+            folly::IOBuf::copyBuffer("compressedcerts")));
+        EXPECT_EQ(cc.algorithm, CertificateCompressionAlgorithm::zlib);
+        EXPECT_EQ(cc.uncompressed_length, 0x111111);
+        auto certificate = TestMessages::certificate();
+        CertificateEntry entry1;
+        entry1.cert_data = folly::IOBuf::copyBuffer("cert1");
+        certificate.certificate_list.push_back(std::move(entry1));
+        CertificateEntry entry2;
+        entry2.cert_data = folly::IOBuf::copyBuffer("cert2");
+        certificate.certificate_list.push_back(std::move(entry2));
+        return certificate;
+      }));
+
+  auto compressedCert = TestMessages::compressedCertificate();
+  auto actions = detail::processEvent(state_, std::move(compressedCert));
+
+  expectActions<MutateState>(actions);
+  processStateMutations(actions);
+  EXPECT_EQ(state_.unverifiedCertChain()->size(), 2);
+  EXPECT_EQ(state_.unverifiedCertChain()->at(0), mockLeaf_);
+  EXPECT_EQ(state_.unverifiedCertChain()->at(1), mockIntermediate_);
+  EXPECT_EQ(state_.serverCertCompAlgo(), CertificateCompressionAlgorithm::zlib);
+  EXPECT_EQ(state_.state(), StateEnum::ExpectingCertificateVerify);
+}
+
+TEST_F(ClientProtocolTest, TestCompressedCertificate) {
+  setupExpectingCertificate();
+  auto decompressor = std::make_shared<MockCertificateDecompressor>();
+  decompressor->setDefaults();
+  auto decompressionMgr = std::make_shared<CertDecompressionManager>();
+  decompressionMgr->setDecompressors(
+      {std::static_pointer_cast<CertificateDecompressor>(decompressor)});
+  context_->setCertDecompressionManager(std::move(decompressionMgr));
+  EXPECT_CALL(*decompressor, decompress(_))
+      .WillOnce(Invoke([](const CompressedCertificate& cc) {
+        auto certificate = TestMessages::certificate();
+        CertificateEntry entry;
+        entry.cert_data = folly::IOBuf::copyBuffer("cert");
+        certificate.certificate_list.push_back(std::move(entry));
+        return certificate;
+      }));
+
+  auto compressedCert = TestMessages::compressedCertificate();
+  auto actions = detail::processEvent(state_, std::move(compressedCert));
+  expectActions<MutateState>(actions);
+  processStateMutations(actions);
+  EXPECT_EQ(state_.unverifiedCertChain()->size(), 1);
+  EXPECT_EQ(state_.serverCertCompAlgo(), CertificateCompressionAlgorithm::zlib);
+  EXPECT_EQ(state_.state(), StateEnum::ExpectingCertificateVerify);
+}
+
+TEST_F(ClientProtocolTest, TestCompressedCertificateUnknownAlgo) {
+  setupExpectingCertificate();
+  auto decompressor = std::make_shared<MockCertificateDecompressor>();
+  decompressor->setDefaults();
+  auto decompressionMgr = std::make_shared<CertDecompressionManager>();
+  decompressionMgr->setDecompressors(
+      {std::static_pointer_cast<CertificateDecompressor>(decompressor)});
+  context_->setCertDecompressionManager(std::move(decompressionMgr));
+
+  auto compressedCert = TestMessages::compressedCertificate();
+  compressedCert.algorithm = static_cast<CertificateCompressionAlgorithm>(0xff);
+  auto actions = detail::processEvent(state_, std::move(compressedCert));
+  expectError<FizzException>(
+      actions, AlertDescription::bad_certificate, "unsupported algorithm");
+}
+
+TEST_F(ClientProtocolTest, TestCompressedCertificateDecompressionFailed) {
+  setupExpectingCertificate();
+  auto decompressor = std::make_shared<MockCertificateDecompressor>();
+  decompressor->setDefaults();
+  EXPECT_CALL(*decompressor, decompress(_))
+      .WillOnce(Invoke([](const CompressedCertificate& cc) -> CertificateMsg {
+            throw std::runtime_error("foo");
+      }));
+  auto decompressionMgr = std::make_shared<CertDecompressionManager>();
+  decompressionMgr->setDecompressors(
+      {std::static_pointer_cast<CertificateDecompressor>(decompressor)});
+  context_->setCertDecompressionManager(std::move(decompressionMgr));
+  auto compressedCert = TestMessages::compressedCertificate();
+  auto actions = detail::processEvent(state_, std::move(compressedCert));
+  expectError<FizzException>(
+      actions, AlertDescription::bad_certificate, "decompression failed: foo");
+}
+
+TEST_F(ClientProtocolTest, TestCompressedCertificateWithRequestContext) {
+  setupExpectingCertificate();
+  auto decompressor = std::make_shared<MockCertificateDecompressor>();
+  decompressor->setDefaults();
+  auto decompressionMgr = std::make_shared<CertDecompressionManager>();
+  decompressionMgr->setDecompressors(
+      {std::static_pointer_cast<CertificateDecompressor>(decompressor)});
+  context_->setCertDecompressionManager(std::move(decompressionMgr));
+  EXPECT_CALL(*decompressor, decompress(_))
+      .WillOnce(Invoke([](const CompressedCertificate& cc) {
+        auto certificate = TestMessages::certificate();
+        certificate.certificate_request_context =
+            IOBuf::copyBuffer("something");
+        CertificateEntry entry;
+        entry.cert_data = folly::IOBuf::copyBuffer("cert");
+        certificate.certificate_list.push_back(std::move(entry));
+        return certificate;
+      }));
+
+  auto compressedCert = TestMessages::compressedCertificate();
+  auto actions = detail::processEvent(state_, std::move(compressedCert));
+  expectError<FizzException>(
+      actions, AlertDescription::illegal_parameter, "context must be empty");
+}
+
+TEST_F(ClientProtocolTest, TestCompressedCertificateEmpty) {
+  setupExpectingCertificate();
+  auto decompressor = std::make_shared<MockCertificateDecompressor>();
+  decompressor->setDefaults();
+  EXPECT_CALL(*decompressor, decompress(_))
+      .WillOnce(Invoke([](const CompressedCertificate& cc) {
+        return TestMessages::certificate();
+      }));
+  auto decompressionMgr = std::make_shared<CertDecompressionManager>();
+  decompressionMgr->setDecompressors(
+      {std::static_pointer_cast<CertificateDecompressor>(decompressor)});
+  context_->setCertDecompressionManager(std::move(decompressionMgr));
+  auto compressedCert = TestMessages::compressedCertificate();
+  auto actions = detail::processEvent(state_, std::move(compressedCert));
+  expectError<FizzException>(
+      actions, AlertDescription::illegal_parameter, "no cert");
+}
+
+TEST_F(ClientProtocolTest, TestUnexpectedCompressedCertificate) {
+  setupExpectingCertificate();
+  auto compressedCert = TestMessages::compressedCertificate();
+  auto actions = detail::processEvent(state_, std::move(compressedCert));
+  expectError<FizzException>(
+      actions, AlertDescription::unexpected_message, "received unexpectedly");
+}
+
 TEST_F(ClientProtocolTest, TestCertificateVerifyFlow) {
   setupExpectingCertificateVerify();
   Sequence contextSeq;

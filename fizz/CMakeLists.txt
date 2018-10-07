@@ -118,6 +118,7 @@ set(FIZZ_SOURCES
   protocol/Events.cpp
   protocol/KeyScheduler.cpp
   protocol/Certificate.cpp
+  protocol/CertDecompressionManager.cpp
   protocol/ZlibCertificateCompressor.cpp
   protocol/ZlibCertificateDecompressor.cpp
   extensions/exportedauth/ExportedAuthenticator.cpp
@@ -319,6 +320,7 @@ if(BUILD_TESTS)
   add_gtest(protocol/test/DefaultCertificateVerifierTest.cpp DefaultCertificateVerifierTest)
   add_gtest(protocol/test/HandshakeContextTest.cpp HandshakeContextTest)
   add_gtest(protocol/test/ExporterTest.cpp ExporterTest)
+  add_gtest(protocol/test/CertDecompressionManagerTest.cpp CertDecompressionManagerTest)
   add_gtest(protocol/test/ZlibCertificateCompressorTest.cpp ZlibCertificateCompressorTest)
   add_gtest(record/test/ExtensionsTest.cpp ExtensionsTest)
   add_gtest(record/test/EncryptedRecordTest.cpp EncryptedRecordTest)
