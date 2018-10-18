@@ -27,7 +27,7 @@ class Protocol {
     auto trafficKey =
         scheduler.getTrafficKey(secret, aead->keyLength(), aead->ivLength());
     aead->setKey(std::move(trafficKey));
-    recordLayer.setAead(std::move(aead));
+    recordLayer.setAead(secret, std::move(aead));
   }
 
   static Buf getFinished(

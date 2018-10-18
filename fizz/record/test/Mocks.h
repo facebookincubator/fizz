@@ -55,9 +55,10 @@ class MockEncryptedReadRecordLayer : public EncryptedReadRecordLayer {
   MOCK_METHOD1(read, folly::Optional<TLSMessage>(folly::IOBufQueue& buf));
   MOCK_CONST_METHOD0(hasUnparsedHandshakeData, bool());
 
-  MOCK_METHOD1(_setAead, void(Aead*));
-  void setAead(std::unique_ptr<Aead> aead) override {
-    _setAead(aead.get());
+  MOCK_METHOD2(_setAead, void(folly::ByteRange, Aead*));
+  void setAead(folly::ByteRange baseSecret, std::unique_ptr<Aead> aead)
+      override {
+    _setAead(baseSecret, aead.get());
   }
 
   MOCK_METHOD1(setSkipFailedDecryption, void(bool));
@@ -98,9 +99,10 @@ class MockEncryptedWriteRecordLayer : public EncryptedWriteRecordLayer {
     return _write(msg);
   }
 
-  MOCK_METHOD1(_setAead, void(Aead*));
-  void setAead(std::unique_ptr<Aead> aead) override {
-    _setAead(aead.get());
+  MOCK_METHOD2(_setAead, void(folly::ByteRange, Aead*));
+  void setAead(folly::ByteRange baseSecret, std::unique_ptr<Aead> aead)
+      override {
+    _setAead(baseSecret, aead.get());
   }
 
   void setDefaults() {

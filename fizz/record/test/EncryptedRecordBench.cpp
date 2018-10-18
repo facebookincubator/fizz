@@ -47,7 +47,7 @@ void encryptGCM(uint32_t n, size_t size) {
   BENCHMARK_SUSPEND {
     aead = std::make_unique<OpenSSLEVPCipher<AESGCM128>>();
     aead->setKey(getKey());
-    write.setAead(std::move(aead));
+    write.setAead(folly::ByteRange(), std::move(aead));
     for (size_t i = 0; i < n; ++i) {
       TLSMessage msg{ContentType::application_data, makeRandom(size)};
       msgs.push_back(std::move(msg));
@@ -75,7 +75,7 @@ void encryptOCB(uint32_t n, size_t size) {
   BENCHMARK_SUSPEND {
     aead = std::make_unique<OpenSSLEVPCipher<AESOCB128>>();
     aead->setKey(getKey());
-    write.setAead(std::move(aead));
+    write.setAead(folly::ByteRange(), std::move(aead));
     for (size_t i = 0; i < n; ++i) {
       TLSMessage msg{ContentType::application_data, makeRandom(size)};
       msgs.push_back(std::move(msg));

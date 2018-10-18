@@ -25,7 +25,9 @@ class EncryptedReadRecordLayer : public ReadRecordLayer {
 
   folly::Optional<TLSMessage> read(folly::IOBufQueue& buf) override;
 
-  virtual void setAead(std::unique_ptr<Aead> aead) {
+  virtual void setAead(
+      folly::ByteRange /* baseSecret */,
+      std::unique_ptr<Aead> aead) {
     if (seqNum_ != 0) {
       throw std::runtime_error("aead set after read");
     }
@@ -70,7 +72,9 @@ class EncryptedWriteRecordLayer : public WriteRecordLayer {
 
   TLSContent write(TLSMessage&& msg) const override;
 
-  virtual void setAead(std::unique_ptr<Aead> aead) {
+  virtual void setAead(
+      folly::ByteRange /* baseSecret */,
+      std::unique_ptr<Aead> aead) {
     if (seqNum_ != 0) {
       throw std::runtime_error("aead set after write");
     }

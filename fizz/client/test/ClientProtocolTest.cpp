@@ -533,7 +533,8 @@ TEST_F(ClientProtocolTest, TestConnectPskEarlyFlow) {
   MockAead* earlyAead;
   MockEncryptedWriteRecordLayer* earlyRecordLayer;
   expectAeadCreation({{"clientearlykey", &earlyAead}});
-  expectEncryptedWriteRecordLayerCreation(&earlyRecordLayer, &earlyAead);
+  expectEncryptedWriteRecordLayerCreation(
+      &earlyRecordLayer, &earlyAead, StringPiece("cet"));
 
   Connect connect;
   connect.context = context_;
@@ -924,8 +925,8 @@ TEST_F(ClientProtocolTest, TestServerHelloFlow) {
   MockEncryptedReadRecordLayer* rrl;
   MockEncryptedWriteRecordLayer* wrl;
   expectAeadCreation(&waead, &raead);
-  expectEncryptedReadRecordLayerCreation(&rrl, &raead);
-  expectEncryptedWriteRecordLayerCreation(&wrl, &waead);
+  expectEncryptedReadRecordLayerCreation(&rrl, &raead, StringPiece("sht"));
+  expectEncryptedWriteRecordLayerCreation(&wrl, &waead, StringPiece("cht"));
 
   auto actions = detail::processEvent(state_, TestMessages::serverHello());
   expectActions<MutateState>(actions);
@@ -1000,8 +1001,8 @@ TEST_F(ClientProtocolTest, TestServerHelloAfterHrrFlow) {
   MockEncryptedReadRecordLayer* rrl;
   MockEncryptedWriteRecordLayer* wrl;
   expectAeadCreation(&waead, &raead);
-  expectEncryptedReadRecordLayerCreation(&rrl, &raead);
-  expectEncryptedWriteRecordLayerCreation(&wrl, &waead);
+  expectEncryptedReadRecordLayerCreation(&rrl, &raead, StringPiece("sht"));
+  expectEncryptedWriteRecordLayerCreation(&wrl, &waead, StringPiece("cht"));
 
   auto actions = detail::processEvent(state_, TestMessages::serverHello());
   expectActions<MutateState>(actions);
@@ -1087,8 +1088,8 @@ TEST_F(ClientProtocolTest, TestServerHelloPskFlow) {
   MockEncryptedReadRecordLayer* rrl;
   MockEncryptedWriteRecordLayer* wrl;
   expectAeadCreation(&waead, &raead);
-  expectEncryptedReadRecordLayerCreation(&rrl, &raead);
-  expectEncryptedWriteRecordLayerCreation(&wrl, &waead);
+  expectEncryptedReadRecordLayerCreation(&rrl, &raead, StringPiece("sht"));
+  expectEncryptedWriteRecordLayerCreation(&wrl, &waead, StringPiece("cht"));
 
   auto actions = detail::processEvent(state_, TestMessages::serverHelloPsk());
   expectActions<MutateState>(actions);
@@ -1171,8 +1172,8 @@ TEST_F(ClientProtocolTest, TestServerHelloPskNoDhFlow) {
   MockEncryptedReadRecordLayer* rrl;
   MockEncryptedWriteRecordLayer* wrl;
   expectAeadCreation(&waead, &raead);
-  expectEncryptedReadRecordLayerCreation(&rrl, &raead);
-  expectEncryptedWriteRecordLayerCreation(&wrl, &waead);
+  expectEncryptedReadRecordLayerCreation(&rrl, &raead, StringPiece("sht"));
+  expectEncryptedWriteRecordLayerCreation(&wrl, &waead, StringPiece("cht"));
 
   auto shlo = TestMessages::serverHelloPsk();
   TestMessages::removeExtension(shlo, ExtensionType::key_share);
@@ -1250,8 +1251,8 @@ TEST_F(ClientProtocolTest, TestServerHelloPskAfterHrrFlow) {
   MockEncryptedReadRecordLayer* rrl;
   MockEncryptedWriteRecordLayer* wrl;
   expectAeadCreation(&waead, &raead);
-  expectEncryptedReadRecordLayerCreation(&rrl, &raead);
-  expectEncryptedWriteRecordLayerCreation(&wrl, &waead);
+  expectEncryptedReadRecordLayerCreation(&rrl, &raead, StringPiece("sht"));
+  expectEncryptedWriteRecordLayerCreation(&wrl, &waead, StringPiece("cht"));
 
   auto actions = detail::processEvent(state_, TestMessages::serverHelloPsk());
   expectActions<MutateState>(actions);
@@ -2159,7 +2160,7 @@ TEST_F(ClientProtocolTest, TestCompressedCertificateDecompressionFailed) {
   decompressor->setDefaults();
   EXPECT_CALL(*decompressor, decompress(_))
       .WillOnce(Invoke([](const CompressedCertificate& cc) -> CertificateMsg {
-            throw std::runtime_error("foo");
+        throw std::runtime_error("foo");
       }));
   auto decompressionMgr = std::make_shared<CertDecompressionManager>();
   decompressionMgr->setDecompressors(
@@ -2553,8 +2554,8 @@ TEST_F(ClientProtocolTest, TestFinishedEarlyFlow) {
   MockEncryptedReadRecordLayer* rrl;
   MockEncryptedWriteRecordLayer* wrl;
   expectAeadCreation(&waead, &raead);
-  expectEncryptedReadRecordLayerCreation(&rrl, &raead);
-  expectEncryptedWriteRecordLayerCreation(&wrl, &waead);
+  expectEncryptedReadRecordLayerCreation(&rrl, &raead, StringPiece("sat"));
+  expectEncryptedWriteRecordLayerCreation(&wrl, &waead, StringPiece("cat"));
   EXPECT_CALL(*mockKeyScheduler_, clearMasterSecret());
 
   auto actions = detail::processEvent(state_, TestMessages::finished());
@@ -2720,8 +2721,8 @@ void ClientProtocolTest::doFinishedFlow(ClientAuthType authType) {
   MockEncryptedReadRecordLayer* rrl;
   MockEncryptedWriteRecordLayer* wrl;
   expectAeadCreation(&waead, &raead);
-  expectEncryptedReadRecordLayerCreation(&rrl, &raead);
-  expectEncryptedWriteRecordLayerCreation(&wrl, &waead);
+  expectEncryptedReadRecordLayerCreation(&rrl, &raead, StringPiece("sat"));
+  expectEncryptedWriteRecordLayerCreation(&wrl, &waead, StringPiece("cat"));
   EXPECT_CALL(*mockKeyScheduler_, clearMasterSecret());
 
   auto actions = detail::processEvent(state_, TestMessages::finished());
@@ -2961,8 +2962,8 @@ TEST_F(ClientProtocolTest, TestKeyUpdateRequestFlow) {
   MockEncryptedWriteRecordLayer* wrl;
 
   expectAeadCreation(&waead, &raead);
-  expectEncryptedReadRecordLayerCreation(&rrl, &raead);
-  expectEncryptedWriteRecordLayerCreation(&wrl, &waead);
+  expectEncryptedReadRecordLayerCreation(&rrl, &raead, StringPiece("sat"));
+  expectEncryptedWriteRecordLayerCreation(&wrl, &waead, StringPiece("cat"));
 
   auto actions = detail::processEvent(state_, TestMessages::keyUpdate(true));
   expectActions<MutateState, WriteToSocket>(actions);

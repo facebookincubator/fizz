@@ -128,6 +128,7 @@ class ProtocolTest : public testing::Test {
   void expectEncryptedReadRecordLayerCreation(
       MockEncryptedReadRecordLayer** recordLayer,
       MockAead** readAead,
+      folly::ByteRange expectedBaseSecret,
       folly::Optional<bool> skipFailedDecryption = folly::none,
       Sequence* s = nullptr) {
     EXPECT_CALL(*factory_, makeEncryptedReadRecordLayer(_))
@@ -136,9 +137,11 @@ class ProtocolTest : public testing::Test {
           auto ret =
               std::make_unique<MockEncryptedReadRecordLayer>(encryptionLevel);
           *recordLayer = ret.get();
-          EXPECT_CALL(*ret, _setAead(_)).WillOnce(Invoke([=](Aead* aead) {
-            EXPECT_EQ(aead, *readAead);
-          }));
+          EXPECT_CALL(*ret, _setAead(_, _))
+              .WillOnce(Invoke([=](folly::ByteRange baseSecret, Aead* aead) {
+                EXPECT_TRUE(baseSecret == expectedBaseSecret);
+                EXPECT_EQ(aead, *readAead);
+              }));
           if (skipFailedDecryption.hasValue()) {
             EXPECT_CALL(
                 *ret, setSkipFailedDecryption(skipFailedDecryption.value()));
@@ -150,6 +153,7 @@ class ProtocolTest : public testing::Test {
   void expectEncryptedWriteRecordLayerCreation(
       MockEncryptedWriteRecordLayer** recordLayer,
       MockAead** writeAead,
+      folly::ByteRange expectedBaseSecret,
       std::function<TLSContent(TLSMessage&, MockEncryptedWriteRecordLayer*)>
           expectedWrite = nullptr,
       Sequence* s = nullptr) {
@@ -160,9 +164,11 @@ class ProtocolTest : public testing::Test {
               std::make_unique<MockEncryptedWriteRecordLayer>(encryptionLevel);
           ret->setDefaults();
           *recordLayer = ret.get();
-          EXPECT_CALL(*ret, _setAead(_)).WillOnce(Invoke([=](Aead* aead) {
-            EXPECT_EQ(aead, *writeAead);
-          }));
+          EXPECT_CALL(*ret, _setAead(_, _))
+              .WillOnce(Invoke([=](folly::ByteRange baseSecret, Aead* aead) {
+                EXPECT_TRUE(baseSecret == expectedBaseSecret);
+                EXPECT_EQ(aead, *writeAead);
+              }));
           if (expectedWrite) {
             EXPECT_CALL(*ret, _write(_))
                 .WillOnce(

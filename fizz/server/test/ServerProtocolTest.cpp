@@ -491,11 +491,13 @@ TEST_F(ServerProtocolTest, TestClientHelloFullHandshakeFlow) {
   expectAeadCreation({{"clientkey", &raead},
                       {"serverkey", &waead},
                       {"serverappkey", &appwaead}});
-  expectEncryptedReadRecordLayerCreation(&rrl, &raead, false);
+  expectEncryptedReadRecordLayerCreation(
+      &rrl, &raead, StringPiece("cht"), false);
   Sequence recSeq;
   expectEncryptedWriteRecordLayerCreation(
       &wrl,
       &waead,
+      StringPiece("sht"),
       [](TLSMessage& msg, auto writeRecord) {
         EXPECT_EQ(msg.type, ContentType::handshake);
 
@@ -518,7 +520,8 @@ TEST_F(ServerProtocolTest, TestClientHelloFullHandshakeFlow) {
         return content;
       },
       &recSeq);
-  expectEncryptedWriteRecordLayerCreation(&appwrl, &appwaead, nullptr, &recSeq);
+  expectEncryptedWriteRecordLayerCreation(
+      &appwrl, &appwaead, StringPiece("sat"), nullptr, &recSeq);
   EXPECT_CALL(*mockHandshakeContext_, appendToTranscript(_))
       .InSequence(contextSeq);
   EXPECT_CALL(*certManager_, getCert(_, _, _))
@@ -724,11 +727,13 @@ TEST_F(ServerProtocolTest, TestClientHelloCompressedCertFlow) {
   expectAeadCreation({{"clientkey", &raead},
                       {"serverkey", &waead},
                       {"serverappkey", &appwaead}});
-  expectEncryptedReadRecordLayerCreation(&rrl, &raead, false);
+  expectEncryptedReadRecordLayerCreation(
+      &rrl, &raead, StringPiece("cht"), false);
   Sequence recSeq;
   expectEncryptedWriteRecordLayerCreation(
       &wrl,
       &waead,
+      StringPiece("sht"),
       [](TLSMessage& msg, auto writeRecord) {
         EXPECT_EQ(msg.type, ContentType::handshake);
 
@@ -751,7 +756,8 @@ TEST_F(ServerProtocolTest, TestClientHelloCompressedCertFlow) {
         return content;
       },
       &recSeq);
-  expectEncryptedWriteRecordLayerCreation(&appwrl, &appwaead, nullptr, &recSeq);
+  expectEncryptedWriteRecordLayerCreation(
+      &appwrl, &appwaead, StringPiece("sat"), nullptr, &recSeq);
   EXPECT_CALL(*mockHandshakeContext_, appendToTranscript(_))
       .InSequence(contextSeq);
   EXPECT_CALL(*certManager_, getCert(_, _, _))
@@ -960,11 +966,13 @@ TEST_F(ServerProtocolTest, TestClientHelloCertRequestFlow) {
   expectAeadCreation({{"clientkey", &raead},
                       {"serverkey", &waead},
                       {"serverappkey", &appwaead}});
-  expectEncryptedReadRecordLayerCreation(&rrl, &raead, false);
+  expectEncryptedReadRecordLayerCreation(
+      &rrl, &raead, StringPiece("cht"), false);
   Sequence recSeq;
   expectEncryptedWriteRecordLayerCreation(
       &wrl,
       &waead,
+      StringPiece("sht"),
       [](TLSMessage& msg, auto writeRecord) {
         EXPECT_EQ(msg.type, ContentType::handshake);
         auto modifiedEncryptedExt = TestMessages::encryptedExt();
@@ -987,7 +995,8 @@ TEST_F(ServerProtocolTest, TestClientHelloCertRequestFlow) {
         return content;
       },
       &recSeq);
-  expectEncryptedWriteRecordLayerCreation(&appwrl, &appwaead, nullptr, &recSeq);
+  expectEncryptedWriteRecordLayerCreation(
+      &appwrl, &appwaead, StringPiece("sat"), nullptr, &recSeq);
   EXPECT_CALL(*mockHandshakeContext_, appendToTranscript(_))
       .InSequence(contextSeq);
   EXPECT_CALL(*mockHandshakeContext_, appendToTranscript(_))
@@ -1193,11 +1202,13 @@ TEST_F(ServerProtocolTest, TestClientHelloPskFlow) {
   expectAeadCreation({{"clientkey", &raead},
                       {"serverkey", &waead},
                       {"serverappkey", &appwaead}});
-  expectEncryptedReadRecordLayerCreation(&rrl, &raead, false);
+  expectEncryptedReadRecordLayerCreation(
+      &rrl, &raead, StringPiece("cht"), false);
   Sequence recSeq;
   expectEncryptedWriteRecordLayerCreation(
       &wrl,
       &waead,
+      StringPiece("sht"),
       [](TLSMessage& msg, auto writeRecord) {
         EXPECT_EQ(msg.type, ContentType::handshake);
         EXPECT_TRUE(IOBufEqualTo()(
@@ -1211,7 +1222,8 @@ TEST_F(ServerProtocolTest, TestClientHelloPskFlow) {
         return content;
       },
       &recSeq);
-  expectEncryptedWriteRecordLayerCreation(&appwrl, &appwaead, nullptr, &recSeq);
+  expectEncryptedWriteRecordLayerCreation(
+      &appwrl, &appwaead, StringPiece("sat"), nullptr, &recSeq);
   EXPECT_CALL(*mockHandshakeContext_, appendToTranscript(_))
       .InSequence(contextSeq);
   EXPECT_CALL(*mockHandshakeContext_, getFinishedData(RangeMatches("sht")))
@@ -1400,11 +1412,13 @@ TEST_F(ServerProtocolTest, TestClientHelloPskDheFlow) {
   expectAeadCreation({{"clientkey", &raead},
                       {"serverkey", &waead},
                       {"serverappkey", &appwaead}});
-  expectEncryptedReadRecordLayerCreation(&rrl, &raead, false);
+  expectEncryptedReadRecordLayerCreation(
+      &rrl, &raead, StringPiece("cht"), false);
   Sequence recSeq;
   expectEncryptedWriteRecordLayerCreation(
       &wrl,
       &waead,
+      StringPiece("sht"),
       [](TLSMessage& msg, auto writeRecord) {
         EXPECT_EQ(msg.type, ContentType::handshake);
         EXPECT_TRUE(IOBufEqualTo()(
@@ -1418,7 +1432,8 @@ TEST_F(ServerProtocolTest, TestClientHelloPskDheFlow) {
         return content;
       },
       &recSeq);
-  expectEncryptedWriteRecordLayerCreation(&appwrl, &appwaead, nullptr, &recSeq);
+  expectEncryptedWriteRecordLayerCreation(
+      &appwrl, &appwaead, StringPiece("sat"), nullptr, &recSeq);
   EXPECT_CALL(*mockHandshakeContext_, appendToTranscript(_))
       .InSequence(contextSeq);
   EXPECT_CALL(*mockHandshakeContext_, getFinishedData(RangeMatches("sht")))
@@ -1649,11 +1664,13 @@ TEST_F(ServerProtocolTest, TestRetryClientHelloFullHandshakeFlow) {
   expectAeadCreation({{"clientkey", &raead},
                       {"serverkey", &waead},
                       {"serverappkey", &appwaead}});
-  expectEncryptedReadRecordLayerCreation(&rrl, &raead, false);
+  expectEncryptedReadRecordLayerCreation(
+      &rrl, &raead, StringPiece("cht"), false);
   Sequence recSeq;
   expectEncryptedWriteRecordLayerCreation(
       &wrl,
       &waead,
+      StringPiece("sht"),
       [](TLSMessage& msg, auto writeRecord) {
         EXPECT_EQ(msg.type, ContentType::handshake);
         EXPECT_TRUE(IOBufEqualTo()(
@@ -1670,7 +1687,8 @@ TEST_F(ServerProtocolTest, TestRetryClientHelloFullHandshakeFlow) {
         return content;
       },
       &recSeq);
-  expectEncryptedWriteRecordLayerCreation(&appwrl, &appwaead, nullptr, &recSeq);
+  expectEncryptedWriteRecordLayerCreation(
+      &appwrl, &appwaead, StringPiece("sat"), nullptr, &recSeq);
   EXPECT_CALL(*mockHandshakeContext_, appendToTranscript(_))
       .InSequence(contextSeq);
   EXPECT_CALL(*certManager_, getCert(_, _, _))
@@ -1880,11 +1898,13 @@ TEST_F(ServerProtocolTest, TestRetryClientHelloPskDheFlow) {
   expectAeadCreation({{"clientkey", &raead},
                       {"serverkey", &waead},
                       {"serverappkey", &appwaead}});
-  expectEncryptedReadRecordLayerCreation(&rrl, &raead, false);
+  expectEncryptedReadRecordLayerCreation(
+      &rrl, &raead, StringPiece("cht"), false);
   Sequence recSeq;
   expectEncryptedWriteRecordLayerCreation(
       &wrl,
       &waead,
+      StringPiece("sht"),
       [](TLSMessage& msg, auto writeRecord) {
         EXPECT_EQ(msg.type, ContentType::handshake);
         EXPECT_TRUE(IOBufEqualTo()(
@@ -1898,7 +1918,8 @@ TEST_F(ServerProtocolTest, TestRetryClientHelloPskDheFlow) {
         return content;
       },
       &recSeq);
-  expectEncryptedWriteRecordLayerCreation(&appwrl, &appwaead, nullptr, &recSeq);
+  expectEncryptedWriteRecordLayerCreation(
+      &appwrl, &appwaead, StringPiece("sat"), nullptr, &recSeq);
   EXPECT_CALL(*mockHandshakeContext_, appendToTranscript(_))
       .InSequence(contextSeq);
   EXPECT_CALL(*mockHandshakeContext_, getFinishedData(RangeMatches("sht")))
@@ -2111,13 +2132,14 @@ TEST_F(ServerProtocolTest, TestClientHelloPskDheEarlyFlow) {
                       {"serverappkey", &appwaead}});
   Sequence readRecSeq;
   expectEncryptedReadRecordLayerCreation(
-      &earlyrrl, &earlyaead, folly::none, &readRecSeq);
+      &earlyrrl, &earlyaead, StringPiece("cet"), folly::none, &readRecSeq);
   expectEncryptedReadRecordLayerCreation(
-      &handshakerrl, &raead, false, &readRecSeq);
+      &handshakerrl, &raead, StringPiece("cht"), false, &readRecSeq);
   Sequence recSeq;
   expectEncryptedWriteRecordLayerCreation(
       &wrl,
       &waead,
+      StringPiece("sht"),
       [](TLSMessage& msg, auto writeRecord) {
         EXPECT_EQ(msg.type, ContentType::handshake);
         EXPECT_TRUE(IOBufEqualTo()(
@@ -2131,7 +2153,8 @@ TEST_F(ServerProtocolTest, TestClientHelloPskDheEarlyFlow) {
         return content;
       },
       &recSeq);
-  expectEncryptedWriteRecordLayerCreation(&appwrl, &appwaead, nullptr, &recSeq);
+  expectEncryptedWriteRecordLayerCreation(
+      &appwrl, &appwaead, StringPiece("sat"), nullptr, &recSeq);
   EXPECT_CALL(*mockHandshakeContext_, appendToTranscript(_))
       .InSequence(contextSeq);
   EXPECT_CALL(*mockHandshakeContext_, getFinishedData(RangeMatches("sht")))
@@ -2341,13 +2364,14 @@ TEST_F(ServerProtocolTest, TestClientHelloPskEarlyFlow) {
                       {"serverappkey", &appwaead}});
   Sequence readRecSeq;
   expectEncryptedReadRecordLayerCreation(
-      &earlyrrl, &earlyaead, folly::none, &readRecSeq);
+      &earlyrrl, &earlyaead, StringPiece("cet"), folly::none, &readRecSeq);
   expectEncryptedReadRecordLayerCreation(
-      &handshakerrl, &raead, false, &readRecSeq);
+      &handshakerrl, &raead, StringPiece("cht"), false, &readRecSeq);
   Sequence recSeq;
   expectEncryptedWriteRecordLayerCreation(
       &wrl,
       &waead,
+      StringPiece("sht"),
       [](TLSMessage& msg, auto writeRecord) {
         EXPECT_EQ(msg.type, ContentType::handshake);
         EXPECT_TRUE(IOBufEqualTo()(
@@ -2361,7 +2385,8 @@ TEST_F(ServerProtocolTest, TestClientHelloPskEarlyFlow) {
         return content;
       },
       &recSeq);
-  expectEncryptedWriteRecordLayerCreation(&appwrl, &appwaead, nullptr, &recSeq);
+  expectEncryptedWriteRecordLayerCreation(
+      &appwrl, &appwaead, StringPiece("sat"), nullptr, &recSeq);
   EXPECT_CALL(*mockHandshakeContext_, appendToTranscript(_))
       .InSequence(contextSeq);
   EXPECT_CALL(*mockHandshakeContext_, getFinishedData(RangeMatches("sht")))
@@ -3579,7 +3604,7 @@ TEST_F(ServerProtocolTest, TestFullHandshakeFinished) {
   MockAead* raead;
   MockEncryptedReadRecordLayer* rrl;
   expectAeadCreation(&raead, nullptr);
-  expectEncryptedReadRecordLayerCreation(&rrl, &raead);
+  expectEncryptedReadRecordLayerCreation(&rrl, &raead, StringPiece("cat"));
   EXPECT_CALL(*factory_, makeTicketAgeAdd()).WillOnce(Return(0x44444444));
   EXPECT_CALL(*mockTicketCipher_, _encrypt(_))
       .WillOnce(Invoke([=](ResumptionState& resState) {
@@ -3983,8 +4008,8 @@ TEST_F(ServerProtocolTest, TestKeyUpdateRequest) {
   MockEncryptedWriteRecordLayer* wrl;
 
   expectAeadCreation(&raead, &waead);
-  expectEncryptedReadRecordLayerCreation(&rrl, &raead);
-  expectEncryptedWriteRecordLayerCreation(&wrl, &waead);
+  expectEncryptedReadRecordLayerCreation(&rrl, &raead, StringPiece("cat"));
+  expectEncryptedWriteRecordLayerCreation(&wrl, &waead, StringPiece("sat"));
   auto actions =
       getActions(detail::processEvent(state_, TestMessages::keyUpdate(true)));
   expectActions<MutateState, WriteToSocket>(actions);
