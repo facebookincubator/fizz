@@ -3,7 +3,7 @@
 
 cmake_minimum_required(VERSION 3.1)
 
-project("fizz" VERSION 1.0.0 LANGUAGES CXX)
+project("fizz" VERSION 1.0.0 LANGUAGES CXX C)
 
 add_compile_options(-std=c++14)
 
@@ -347,9 +347,9 @@ option(BUILD_EXAMPLES "BUILD_EXAMPLES" ON)
 
 if(BUILD_EXAMPLES)
   add_executable(ClientSocket client/test/ClientSocket.cpp)
-  target_link_libraries(ClientSocket fizz)
+  target_link_libraries(ClientSocket fizz sodium)
   add_executable(ServerSocket server/test/ServerSocket.cpp)
-  target_link_libraries(ServerSocket fizz)
+  target_link_libraries(ServerSocket fizz sodium)
   add_executable(BogoShim test/BogoShim.cpp)
-  target_link_libraries(BogoShim fizz)
+  target_link_libraries(BogoShim fizz sodium)
 endif()
