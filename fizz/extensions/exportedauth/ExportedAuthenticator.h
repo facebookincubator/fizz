@@ -8,17 +8,20 @@
 
 #pragma once
 
-#include <fizz/client/AsyncFizzClient.h>
-#include <fizz/client/State.h>
+#include <fizz/protocol/AsyncFizzBase.h>
 #include <fizz/protocol/Certificate.h>
 #include <fizz/protocol/Exporter.h>
 #include <fizz/protocol/Protocol.h>
+#include <fizz/record/Extensions.h>
 #include <fizz/record/RecordLayer.h>
 #include <fizz/record/Types.h>
-#include <fizz/server/AsyncFizzServer.h>
-#include <fizz/server/State.h>
 
 namespace fizz {
+
+enum class Direction : uint8_t {
+  UPSTREAM, // toward the server
+  DOWNSTREAM // toward the client
+};
 
 /**
  * Public facing interface for Exported Authenticators
@@ -49,12 +52,8 @@ class ExportedAuthenticator {
    * in |cert|.
    */
   static Buf getAuthenticator(
-      const fizz::server::AsyncFizzServer& transport,
-      const SelfCert& cert,
-      Buf authenticatorRequest);
-
-  static Buf getAuthenticator(
-      const fizz::client::AsyncFizzClient& transport,
+      const fizz::AsyncFizzBase& transport,
+      Direction dir,
       const SelfCert& cert,
       Buf authenticatorRequest);
 
@@ -81,12 +80,8 @@ class ExportedAuthenticator {
    * empty, the certificate chain will contain no certificates.
    **/
   static folly::Optional<std::vector<CertificateEntry>> validateAuthenticator(
-      const fizz::server::AsyncFizzServer& transport,
-      Buf authenticatorRequest,
-      Buf authenticator);
-
-  static folly::Optional<std::vector<CertificateEntry>> validateAuthenticator(
-      const fizz::client::AsyncFizzClient& transport,
+      const fizz::AsyncFizzBase& transport,
+      Direction dir,
       Buf authenticatorRequest,
       Buf authenticator);
 

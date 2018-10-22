@@ -150,6 +150,17 @@ void AsyncFizzServerT<SM>::closeNow() {
 }
 
 template <typename SM>
+folly::Optional<CipherSuite> AsyncFizzServerT<SM>::getCipher() const {
+  return getState().cipher();
+}
+
+template <typename SM>
+const std::vector<SignatureScheme>&
+AsyncFizzServerT<SM>::getSupportedSigSchemes() const {
+  return getState().context()->getSupportedSigSchemes();
+}
+
+template <typename SM>
 Buf AsyncFizzServerT<SM>::getEkm(
     folly::StringPiece label,
     const Buf& context,

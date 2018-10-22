@@ -57,6 +57,12 @@ class AsyncFizzBaseTest : public testing::Test, public AsyncFizzBase {
     return getApplicationProtocol_();
   }
 
+  MOCK_CONST_METHOD0(getCipher, folly::Optional<CipherSuite>());
+  MOCK_CONST_METHOD0(
+      getSupportedSigSchemes,
+      const std::vector<SignatureScheme>&());
+  MOCK_CONST_METHOD3(getEkm, Buf(folly::StringPiece, const Buf&, uint16_t));
+
   MOCK_METHOD3(
       writeAppDataInternal,
       void(

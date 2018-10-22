@@ -29,41 +29,27 @@ Buf ExportedAuthenticator::getAuthenticatorRequest(
 }
 
 Buf ExportedAuthenticator::getAuthenticator(
-    const fizz::server::AsyncFizzServer& transport,
+    const fizz::AsyncFizzBase& transport,
+    Direction dir,
     const SelfCert& cert,
     Buf authenticatorRequest) {
-  const auto& state = transport.getState();
-  const auto& cipher = *(state.cipher());
-  auto deriver = Factory().makeKeyDeriver(cipher);
+  auto cipher = transport.getCipher();
+  auto deriver = Factory().makeKeyDeriver(*cipher);
   auto hashLength = deriver->hashLength();
-  auto supportedSchemes = state.context()->getSupportedSigSchemes();
-  auto handshakeContext = transport.getEkm(
-      "EXPORTER-server authenticator handshake context", nullptr, hashLength);
-  auto finishedMacKey = transport.getEkm(
-      "EXPORTER-server authenticator finished key", nullptr, hashLength);
-  return makeAuthenticator(
-      deriver,
-      supportedSchemes,
-      cert,
-      std::move(authenticatorRequest),
-      std::move(handshakeContext),
-      std::move(finishedMacKey),
-      CertificateVerifyContext::Authenticator);
-}
-
-Buf ExportedAuthenticator::getAuthenticator(
-    const fizz::client::AsyncFizzClient& transport,
-    const SelfCert& cert,
-    Buf authenticatorRequest) {
-  const auto& state = transport.getState();
-  const auto& cipher = *(state.cipher());
-  auto deriver = Factory().makeKeyDeriver(cipher);
-  auto hashLength = deriver->hashLength();
-  auto supportedSchemes = state.context()->getSupportedSigSchemes();
-  auto handshakeContext = transport.getEkm(
-      "EXPORTER-client authenticator handshake context", nullptr, hashLength);
-  auto finishedMacKey = transport.getEkm(
-      "EXPORTER-client authenticator finished key", nullptr, hashLength);
+  auto supportedSchemes = transport.getSupportedSigSchemes();
+  Buf handshakeContext;
+  Buf finishedMacKey;
+  if (dir == Direction::UPSTREAM) {
+    handshakeContext = transport.getEkm(
+        "EXPORTER-client authenticator handshake context", nullptr, hashLength);
+    finishedMacKey = transport.getEkm(
+        "EXPORTER-client authenticator finished key", nullptr, hashLength);
+  } else {
+    handshakeContext = transport.getEkm(
+        "EXPORTER-server authenticator handshake context", nullptr, hashLength);
+    finishedMacKey = transport.getEkm(
+        "EXPORTER-server authenticator finished key", nullptr, hashLength);
+  }
   return makeAuthenticator(
       deriver,
       supportedSchemes,
@@ -84,42 +70,26 @@ Buf ExportedAuthenticator::getAuthenticatorContext(Buf authenticator) {
 
 folly::Optional<std::vector<CertificateEntry>>
 ExportedAuthenticator::validateAuthenticator(
-    const fizz::server::AsyncFizzServer& transport,
+    const fizz::AsyncFizzBase& transport,
+    Direction dir,
     Buf authenticatorRequest,
     Buf authenticator) {
-  const auto& state = transport.getState();
-  const auto& cipher = *(state.cipher());
-  auto deriver = Factory().makeKeyDeriver(cipher);
+  auto cipher = transport.getCipher();
+  auto deriver = Factory().makeKeyDeriver(*cipher);
   auto hashLength = deriver->hashLength();
-  auto supportedSchemes = state.context()->getSupportedSigSchemes();
-  auto handshakeContext = transport.getEkm(
-      "EXPORTER-client authenticator handshake context", nullptr, hashLength);
-  auto finishedMacKey = transport.getEkm(
-      "EXPORTER-client authenticator finished key", nullptr, hashLength);
-  auto certs = validate(
-      deriver,
-      std::move(authenticatorRequest),
-      std::move(authenticator),
-      std::move(handshakeContext),
-      std::move(finishedMacKey),
-      CertificateVerifyContext::Authenticator);
-  return certs;
-}
-
-folly::Optional<std::vector<CertificateEntry>>
-ExportedAuthenticator::validateAuthenticator(
-    const fizz::client::AsyncFizzClient& transport,
-    Buf authenticatorRequest,
-    Buf authenticator) {
-  const auto& state = transport.getState();
-  const auto& cipher = *(state.cipher());
-  auto deriver = Factory().makeKeyDeriver(cipher);
-  auto hashLength = deriver->hashLength();
-  auto supportedSchemes = state.context()->getSupportedSigSchemes();
-  auto handshakeContext = transport.getEkm(
-      "EXPORTER-server authenticator handshake context", nullptr, hashLength);
-  auto finishedMacKey = transport.getEkm(
-      "EXPORTER-server authenticator finished key", nullptr, hashLength);
+  Buf handshakeContext;
+  Buf finishedMacKey;
+  if (dir == Direction::UPSTREAM) {
+    handshakeContext = transport.getEkm(
+        "EXPORTER-server authenticator handshake context", nullptr, hashLength);
+    finishedMacKey = transport.getEkm(
+        "EXPORTER-server authenticator finished key", nullptr, hashLength);
+  } else {
+    handshakeContext = transport.getEkm(
+        "EXPORTER-client authenticator handshake context", nullptr, hashLength);
+    finishedMacKey = transport.getEkm(
+        "EXPORTER-client authenticator finished key", nullptr, hashLength);
+  }
   auto certs = validate(
       deriver,
       std::move(authenticatorRequest),

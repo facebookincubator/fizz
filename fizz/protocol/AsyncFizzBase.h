@@ -8,6 +8,7 @@
 
 #pragma once
 
+#include <fizz/record/Types.h>
 #include <folly/io/IOBufQueue.h>
 #include <folly/io/async/AsyncSocket.h>
 #include <folly/io/async/WriteChainAsyncTransportWrapper.h>
@@ -91,6 +92,25 @@ class AsyncFizzBase : public folly::WriteChainAsyncTransportWrapper<
   void setReplaySafetyCallback(
       folly::AsyncTransport::ReplaySafetyCallback* callback) override = 0;
   std::string getApplicationProtocol() const noexcept override = 0;
+
+  /**
+   * Get the CipherSuite negotiated in this transport.
+   */
+  virtual folly::Optional<CipherSuite> getCipher() const = 0;
+
+  /**
+   * Get the supported signature schemes in this transport.
+   */
+  virtual const std::vector<SignatureScheme>& getSupportedSigSchemes()
+      const = 0;
+
+  /**
+   * Get the exported material.
+   */
+  virtual Buf getEkm(
+      folly::StringPiece label,
+      const Buf& context,
+      uint16_t length) const = 0;
 
   /**
    * Clean up transport on destruction

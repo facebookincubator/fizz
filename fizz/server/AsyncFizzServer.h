@@ -69,10 +69,14 @@ class AsyncFizzServerT : public AsyncFizzBase {
     return state_;
   }
 
-  virtual Buf getEkm(
+  folly::Optional<CipherSuite> getCipher() const override;
+
+  const std::vector<SignatureScheme>& getSupportedSigSchemes() const override;
+
+  Buf getEkm(
       folly::StringPiece label,
       const Buf& hashedContext,
-      uint16_t length) const;
+      uint16_t length) const override;
 
   virtual Buf getEarlyEkm(
       folly::StringPiece label,

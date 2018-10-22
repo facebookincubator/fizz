@@ -545,6 +545,17 @@ void AsyncFizzClientT<SM>::ActionMoveVisitor::operator()(
 }
 
 template <typename SM>
+folly::Optional<CipherSuite> AsyncFizzClientT<SM>::getCipher() const {
+  return getState().cipher();
+}
+
+template <typename SM>
+const std::vector<SignatureScheme>&
+AsyncFizzClientT<SM>::getSupportedSigSchemes() const {
+  return getState().context()->getSupportedSigSchemes();
+}
+
+template <typename SM>
 Buf AsyncFizzClientT<SM>::getEkm(
     folly::StringPiece label,
     const Buf& context,
