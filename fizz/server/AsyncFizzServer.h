@@ -71,7 +71,7 @@ class AsyncFizzServerT : public AsyncFizzBase {
 
   folly::Optional<CipherSuite> getCipher() const override;
 
-  const std::vector<SignatureScheme>& getSupportedSigSchemes() const override;
+  std::vector<SignatureScheme> getSupportedSigSchemes() const override;
 
   Buf getEkm(
       folly::StringPiece label,

@@ -101,8 +101,7 @@ class AsyncFizzBase : public folly::WriteChainAsyncTransportWrapper<
   /**
    * Get the supported signature schemes in this transport.
    */
-  virtual const std::vector<SignatureScheme>& getSupportedSigSchemes()
-      const = 0;
+  virtual std::vector<SignatureScheme> getSupportedSigSchemes() const = 0;
 
   /**
    * Get the exported material.

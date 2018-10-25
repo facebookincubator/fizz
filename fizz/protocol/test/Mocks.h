@@ -11,6 +11,7 @@
 #include <fizz/crypto/aead/test/Mocks.h>
 #include <fizz/crypto/exchange/test/Mocks.h>
 #include <fizz/crypto/test/Mocks.h>
+#include <fizz/protocol/AsyncFizzBase.h>
 #include <fizz/protocol/Certificate.h>
 #include <fizz/protocol/CertificateCompressor.h>
 #include <fizz/protocol/CertificateVerifier.h>
@@ -19,6 +20,8 @@
 #include <fizz/protocol/KeyScheduler.h>
 #include <fizz/protocol/Types.h>
 #include <fizz/record/test/Mocks.h>
+
+#include <folly/io/async/test/MockAsyncTransport.h>
 
 /* using override */
 using namespace testing;
@@ -252,6 +255,53 @@ class MockCertificateCompressor : public CertificateCompressor {
       return CertificateCompressionAlgorithm::zlib;
     }));
   }
+};
+
+class MockAsyncFizzBase : public AsyncFizzBase {
+ public:
+  MockAsyncFizzBase()
+      : AsyncFizzBase(AsyncTransportWrapper::UniquePtr(
+            new folly::test::MockAsyncTransport())) {}
+  MOCK_CONST_METHOD0(good, bool());
+  MOCK_CONST_METHOD0(readable, bool());
+  MOCK_CONST_METHOD0(connecting, bool());
+  MOCK_CONST_METHOD0(error, bool());
+  MOCK_CONST_METHOD0(getPeerCert, folly::ssl::X509UniquePtr());
+  MOCK_CONST_METHOD0(getSelfCert, const X509*());
+  MOCK_CONST_METHOD0(isReplaySafe, bool());
+  MOCK_METHOD1(
+      setReplaySafetyCallback,
+      void(folly::AsyncTransport::ReplaySafetyCallback* callback));
+  MOCK_CONST_METHOD0(getSelfCertificate, const Cert*());
+  MOCK_CONST_METHOD0(getPeerCertificate, const Cert*());
+  MOCK_CONST_METHOD0(getApplicationProtocol_, std::string());
+
+  std::string getApplicationProtocol() const noexcept override {
+    return getApplicationProtocol_();
+  }
+
+  MOCK_CONST_METHOD0(getCipher, folly::Optional<CipherSuite>());
+  MOCK_CONST_METHOD0(getSupportedSigSchemes, std::vector<SignatureScheme>());
+  MOCK_CONST_METHOD3(getEkm, Buf(folly::StringPiece, const Buf&, uint16_t));
+
+  MOCK_METHOD3(
+      writeAppDataInternal,
+      void(
+          folly::AsyncTransportWrapper::WriteCallback*,
+          std::shared_ptr<folly::IOBuf>,
+          folly::WriteFlags));
+
+  void writeAppData(
+      folly::AsyncTransportWrapper::WriteCallback* callback,
+      std::unique_ptr<folly::IOBuf>&& buf,
+      folly::WriteFlags flags = folly::WriteFlags::NONE) override {
+    writeAppDataInternal(
+        callback, std::shared_ptr<folly::IOBuf>(buf.release()), flags);
+  }
+
+  MOCK_METHOD1(transportError, void(const folly::AsyncSocketException&));
+
+  MOCK_METHOD0(transportDataAvailable, void());
 };
 
 } // namespace test

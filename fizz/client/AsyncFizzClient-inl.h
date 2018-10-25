@@ -550,8 +550,8 @@ folly::Optional<CipherSuite> AsyncFizzClientT<SM>::getCipher() const {
 }
 
 template <typename SM>
-const std::vector<SignatureScheme>&
-AsyncFizzClientT<SM>::getSupportedSigSchemes() const {
+std::vector<SignatureScheme> AsyncFizzClientT<SM>::getSupportedSigSchemes()
+    const {
   return getState().context()->getSupportedSigSchemes();
 }
 

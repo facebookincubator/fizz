@@ -130,7 +130,7 @@ class AsyncFizzClientT : public AsyncFizzBase,
 
   folly::Optional<CipherSuite> getCipher() const override;
 
-  const std::vector<SignatureScheme>& getSupportedSigSchemes() const override;
+  std::vector<SignatureScheme> getSupportedSigSchemes() const override;
 
   Buf getEkm(folly::StringPiece label, const Buf& context, uint16_t length)
       const override;
