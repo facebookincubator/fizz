@@ -8,6 +8,7 @@
 
 #include <fizz/client/AsyncFizzClient.h>
 #include <fizz/crypto/Utils.h>
+#include <folly/portability/GFlags.h>
 #include <folly/ssl/Init.h>
 
 DEFINE_string(host, "localhost", "host to connect to");
