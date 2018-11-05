@@ -1039,14 +1039,14 @@ EventHandler<ServerTypes, StateEnum::ExpectingClientHello, Event::ClientHello>::
       folly::Try<std::pair<PskType, Optional<ResumptionState>>>,
       folly::Try<ReplayCacheResult>>;
   return results.via(state.executor())
-      .then([&state,
-             chlo = std::move(chlo),
-             cookieState = std::move(cookieState),
-             version = *version,
-             cipher,
-             pskMode = resStateResult.pskMode,
-             obfuscatedAge = resStateResult.obfuscatedAge](
-                FutureResultType result) mutable {
+      .thenValue([&state,
+                  chlo = std::move(chlo),
+                  cookieState = std::move(cookieState),
+                  version = *version,
+                  cipher,
+                  pskMode = resStateResult.pskMode,
+                  obfuscatedAge = resStateResult.obfuscatedAge](
+                     FutureResultType result) mutable {
         auto& resumption = *std::get<0>(result);
         auto pskType = resumption.first;
         auto resState = std::move(resumption.second);
