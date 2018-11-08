@@ -25,6 +25,7 @@ Fizz largely depends on three libraries: [folly](https://www.github.com/facebook
 - `fizz/protocol`: Common protocol code shared between client and server
 - `fizz/client`:   Client protocol implementation
 - `fizz/server`:   Server protocol implementation
+- `fizz/tool`:     Example CLI app source
 
 ## Design
 
@@ -75,22 +76,25 @@ helps us move fast.
 
 ## Sample Applications
 
-`ClientSocket` and `ServerSocket` provide sample usage of `AsyncFizzClient` and
-`AsyncFizzServer` and can be used to start up a simple TLS 1.3 client or server
-over a TCP connection.
+Fizz includes an example program that showcases the basic client/server functionality
+supported by Fizz. The binary is called `fizz` and it has similar usage to the
+`openssl` or `bssl` commands.
 
-For example, to start ServerSocket on port 443 with a specified cert:
+For example, to start a TLS server on port 443 with a specified cert:
 ```
-ServerSocket -port 443 -cert foo.pem -key foo.key
+fizz server -accept 443 -cert foo.pem -key foo.key
 ```
 
 Then, on the same host, you can connect with:
 
 ```
-ClientSocket -host localhost -port 443
+fizz client -connect localhost:443
 ```
-ClientSocket will dump the data it gets and both will remain running until
-interrupted via CTRL+C.
+
+Both ends will echo whatever data they receive and send any terminal input to the
+peer. Hitting CTRL+D on either end will terminate the connection.
+
+The source code for this program can be found under `fizz/tool`.
 
 ## Building
 
