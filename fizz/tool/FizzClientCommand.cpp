@@ -1,0 +1,383 @@
+/*
+ *  Copyright (c) 2018-present, Facebook, Inc.
+ *  All rights reserved.
+ *
+ *  This source code is licensed under the BSD-style license found in the
+ *  LICENSE file in the root directory of this source tree.
+ */
+
+#include <fizz/client/AsyncFizzClient.h>
+#include <fizz/tool/FizzCommandCommon.h>
+#include <folly/FileUtil.h>
+#include <folly/io/async/SSLContext.h>
+
+#include <iostream>
+#include <string>
+#include <vector>
+
+using namespace fizz::client;
+using namespace folly;
+
+namespace fizz {
+namespace tool {
+namespace {
+
+void printUsage() {
+  // clang-format off
+  std::cerr
+    << "Usage: s_client args\n"
+    << "\n"
+    << "Supported arguments:\n"
+    << " -host host         (use connect instead)\n"
+    << " -port port         (use connect instead)\n"
+    << " -connect host:port (set the address to connect to. Default: localhost:4433)\n"
+    << " -verify            (enable server cert verification. Default: false)\n"
+    << " -cert cert         (PEM format client certificate to send if requested. Default: none)\n"
+    << " -key key           (PEM format private key for client certificate. Default: none)\n"
+    << " -pass password     (private key password. Default: none)\n"
+    << " -capaths d1:...    (colon-separated paths to directories of CA certs used for verification)\n"
+    << " -cafile file       (path to bundle of CA certs used for verification)\n"
+    << " -reconnect         (after connecting, open another connection using a psk. Default: false)\n"
+    << " -servername name   (server name to send in SNI. Default: same as host)\n"
+    << " -alpn alpn1,...    (comma-separated list of ALPNs to send. Default: none)\n"
+    << " -early             (enables sending early data during resumption. Default: false)\n"
+    << " -quiet             (hide informational logging. Default: false)\n";
+  // clang-format on
+}
+
+class Connection : public AsyncSocket::ConnectCallback,
+                   public AsyncFizzClient::HandshakeCallback,
+                   public AsyncTransportWrapper::ReadCallback,
+                   public AsyncTransport::ReplaySafetyCallback,
+                   public InputHandlerCallback {
+ public:
+  Connection(
+      EventBase* evb,
+      std::shared_ptr<FizzClientContext> clientContext,
+      Optional<std::string> sni,
+      std::shared_ptr<const CertificateVerifier> verifier,
+      bool willResume)
+      : evb_(evb),
+        clientContext_(clientContext),
+        sni_(sni),
+        verifier_(std::move(verifier)),
+        willResume_(willResume) {}
+
+  void connect(const SocketAddress& addr) {
+    sock_ = AsyncSocket::UniquePtr(new AsyncSocket(evb_));
+    sock_->connect(this, addr);
+  }
+
+  void close() override {
+    if (transport_) {
+      transport_->close();
+    } else if (sock_) {
+      sock_->close();
+    }
+  }
+
+  void connectErr(const AsyncSocketException& ex) noexcept override {
+    LOG(ERROR) << "Connect error: " << ex.what();
+    evb_->terminateLoopSoon();
+  }
+
+  void connectSuccess() noexcept override {
+    LOG(INFO) << (willResume_ ? "Initial connection" : "Connection")
+              << " established.";
+    transport_ = AsyncFizzClient::UniquePtr(
+        new AsyncFizzClient(std::move(sock_), clientContext_));
+    transport_->connect(this, verifier_, sni_, sni_);
+  }
+
+  void fizzHandshakeSuccess(AsyncFizzClient* /*client*/) noexcept override {
+    if (transport_->isReplaySafe()) {
+      printHandshakeSuccess();
+    } else {
+      LOG(INFO) << "Early handshake success.";
+      transport_->setReplaySafetyCallback(this);
+    }
+    transport_->setReadCB(this);
+  }
+
+  void fizzHandshakeError(
+      AsyncFizzClient* /*client*/,
+      exception_wrapper ex) noexcept override {
+    LOG(ERROR) << "Handshake error: " << ex.what();
+    evb_->terminateLoopSoon();
+  }
+
+  void getReadBuffer(void** /* bufReturn */, size_t* /* lenReturn */) override {
+    throw std::runtime_error("getReadBuffer not implemented");
+  }
+
+  void readDataAvailable(size_t /* len */) noexcept override {
+    throw std::runtime_error("readDataAvailable not implemented");
+  }
+
+  bool isBufferMovable() noexcept override {
+    return true;
+  }
+
+  void readBufferAvailable(std::unique_ptr<IOBuf> buf) noexcept override {
+    std::cout << StringPiece(buf->coalesce()).str();
+  }
+
+  void readEOF() noexcept override {
+    LOG(INFO) << (willResume_ ? "Initial EOF" : "EOF");
+    if (!willResume_) {
+      evb_->terminateLoopSoon();
+    }
+  }
+
+  void readErr(const AsyncSocketException& ex) noexcept override {
+    LOG(ERROR) << "Read error: " << ex.what();
+    evb_->terminateLoopSoon();
+  }
+
+  void onReplaySafe() override {
+    printHandshakeSuccess();
+  }
+
+  bool connected() const override {
+    return transport_ && !transport_->connecting() && transport_->good();
+  }
+
+  void write(std::unique_ptr<IOBuf> msg) override {
+    if (transport_) {
+      transport_->writeChain(nullptr, std::move(msg));
+    }
+  }
+
+ private:
+  void printHandshakeSuccess() {
+    auto& state = transport_->getState();
+    auto serverCert = state.serverCert();
+    auto clientCert = state.clientCert();
+    LOG(INFO) << (willResume_ ? "Initial handshake" : "Handshake")
+              << " succeeded.";
+    LOG(INFO) << "  TLS Version: " << toString(*state.version());
+    LOG(INFO) << "  Cipher Suite:  " << toString(*state.cipher());
+    LOG(INFO) << "  Named Group: "
+              << (state.group() ? toString(*state.group()) : "(none)");
+    LOG(INFO) << "  Signature Scheme: "
+              << (state.sigScheme() ? toString(*state.sigScheme()) : "(none)");
+    LOG(INFO) << "  PSK: " << toString(*state.pskType());
+    LOG(INFO) << "  PSK Mode: "
+              << (state.pskMode() ? toString(*state.pskMode()) : "(none)");
+    LOG(INFO) << "  Key Exchange Type: " << toString(*state.keyExchangeType());
+    LOG(INFO) << "  Early: " << toString(*state.earlyDataType());
+    LOG(INFO) << "  Server Identity: "
+              << (serverCert ? serverCert->getIdentity() : "(none)");
+    LOG(INFO) << "  Client Identity: "
+              << (clientCert ? clientCert->getIdentity() : "(none)");
+    if (serverCert) {
+      folly::ssl::BioUniquePtr bio(BIO_new(BIO_s_mem()));
+      if (!PEM_write_bio_X509(bio.get(), serverCert->getX509().get())) {
+        LOG(ERROR) << "  Couldn't convert server certificate to PEM: "
+                   << SSLContext::getErrors();
+      } else {
+        BUF_MEM* bptr = nullptr;
+        BIO_get_mem_ptr(bio.get(), &bptr);
+        LOG(INFO) << "  Server Certificate:\n"
+                  << std::string(bptr->data, bptr->length);
+      }
+    }
+
+    if (clientCert) {
+      folly::ssl::BioUniquePtr bio(BIO_new(BIO_s_mem()));
+      if (!PEM_write_bio_X509(bio.get(), clientCert->getX509().get())) {
+        LOG(ERROR) << "  Couldn't convert client certificate to PEM: "
+                   << SSLContext::getErrors();
+      } else {
+        BUF_MEM* bptr = nullptr;
+        BIO_get_mem_ptr(bio.get(), &bptr);
+        LOG(INFO) << "  Client Certificate:\n"
+                  << std::string(bptr->data, bptr->length);
+      }
+    }
+    LOG(INFO) << "  ALPN: " << state.alpn().value_or("(none)");
+  }
+
+  EventBase* evb_;
+  std::shared_ptr<FizzClientContext> clientContext_;
+  Optional<std::string> sni_;
+  std::shared_ptr<const CertificateVerifier> verifier_;
+  AsyncSocket::UniquePtr sock_;
+  AsyncFizzClient::UniquePtr transport_;
+  bool willResume_{false};
+};
+
+class ResumptionPskCache : public BasicPskCache {
+ public:
+  ResumptionPskCache(folly::EventBase* evb, folly::Function<void()> callback)
+      : evb_(evb), callback_(std::move(callback)) {}
+
+  void putPsk(const std::string& identity, CachedPsk psk) override {
+    BasicPskCache::putPsk(identity, std::move(psk));
+    if (callback_) {
+      evb_->runInLoop(std::move(callback_));
+      callback_ = nullptr;
+    }
+  }
+
+ private:
+  folly::EventBase* evb_;
+  folly::Function<void()> callback_;
+};
+
+} // namespace
+
+int fizzClientCommand(const std::vector<std::string>& args) {
+  std::string host = "localhost";
+  uint16_t port = 4433;
+  bool verify = false;
+  std::string certPath;
+  std::string keyPath;
+  std::string keyPass;
+  std::string caPath;
+  std::string caFile;
+  bool reconnect = false;
+  std::string customSNI;
+  std::vector<std::string> alpns;
+  bool early = false;
+
+  // clang-format off
+  FizzArgHandlerMap handlers = {
+    {"-host", {true, [&host](const std::string& arg) { host = arg; }}},
+    {"-port", {true, [&port](const std::string& arg) {
+        port = portFromString(arg, false);
+    }}},
+    {"-connect", {true, [&host, &port](const std::string& arg) {
+        size_t colonIdx = arg.find(':');
+        if (colonIdx == std::string::npos) {
+          throw std::runtime_error("-connect requires a host:port pair.");
+        }
+        host = arg.substr(0, colonIdx);
+        port = portFromString(arg.substr(colonIdx+1), false);
+     }}},
+    {"-verify", {false, [&verify](const std::string&) { verify = true; }}},
+    {"-cert", {true, [&certPath](const std::string& arg) { certPath = arg; }}},
+    {"-key", {true, [&keyPath](const std::string& arg) { keyPath = arg; }}},
+    {"-pass", {true, [&keyPass](const std::string& arg) { keyPass = arg; }}},
+    {"-capath", {true, [&caPath](const std::string& arg) { caPath = arg; }}},
+    {"-cafile", {true, [&caFile](const std::string& arg) { caFile = arg; }}},
+    {"-reconnect", {false, [&reconnect](const std::string&) {
+        reconnect = true;
+    }}},
+    {"-servername", {true, [&customSNI](const std::string& arg) {
+        customSNI = arg;
+    }}},
+    {"-alpn", {true, [&alpns](const std::string& arg) {
+        alpns.clear();
+        auto remainder = arg;
+        for (auto commaPos = remainder.find(',');
+             commaPos != std::string::npos;
+             commaPos = remainder.find(',')) {
+          alpns.push_back(remainder.substr(0, commaPos));
+          remainder = remainder.substr(commaPos+1);
+        }
+
+        alpns.push_back(remainder);
+    }}},
+    {"-early", {false, [&early](const std::string&) { early = true; }}},
+    {"-quiet", {false, [](const std::string&) {
+        FLAGS_minloglevel = google::GLOG_ERROR;
+    }}}
+  };
+  // clang-format on
+
+  try {
+    if (parseArguments(args, handlers, printUsage)) {
+      // Parsing failed, return
+      return 1;
+    }
+  } catch (const std::exception& e) {
+    LOG(ERROR) << "Error: " << e.what();
+    return 1;
+  }
+
+  // Sanity check input.
+  if (certPath.empty() != keyPath.empty()) {
+    LOG(ERROR) << "-cert and -key are both required when specified";
+    return 1;
+  }
+
+  EventBase evb;
+  std::shared_ptr<const CertificateVerifier> verifier;
+  auto clientContext = std::make_shared<FizzClientContext>();
+
+  if (!alpns.empty()) {
+    clientContext->setSupportedAlpns(std::move(alpns));
+  }
+
+  clientContext->setSupportedVersions(
+      {ProtocolVersion::tls_1_3, ProtocolVersion::tls_1_3_28});
+  clientContext->setSendEarlyData(early);
+
+  if (verify) {
+    // Initialize CA store first, if given.
+    folly::ssl::X509StoreUniquePtr storePtr;
+    if (!caPath.empty() || !caFile.empty()) {
+      storePtr.reset(X509_STORE_new());
+      auto caFilePtr = caFile.empty() ? nullptr : caFile.c_str();
+      auto caPathPtr = caPath.empty() ? nullptr : caPath.c_str();
+
+      if (X509_STORE_load_locations(storePtr.get(), caFilePtr, caPathPtr) ==
+          0) {
+        LOG(ERROR) << "Failed to load CA certificates";
+        return 1;
+      }
+    }
+
+    verifier = std::make_shared<const DefaultCertificateVerifier>(
+        VerificationContext::Client, std::move(storePtr));
+  }
+
+  if (!certPath.empty()) {
+    std::string certData;
+    std::string keyData;
+    if (!readFile(certPath.c_str(), certData)) {
+      LOG(ERROR) << "Failed to read certificate";
+      return 1;
+    } else if (!readFile(keyPath.c_str(), keyData)) {
+      LOG(ERROR) << "Failed to read private key";
+      return 1;
+    }
+
+    std::unique_ptr<SelfCert> cert;
+    if (!keyPass.empty()) {
+      cert = CertUtils::makeSelfCert(certData, keyData, keyPass);
+    } else {
+      cert = CertUtils::makeSelfCert(certData, keyData);
+    }
+    clientContext->setClientCertificate(std::move(cert));
+  }
+
+  try {
+    SocketAddress addr(host, port, true);
+    auto sni = customSNI.empty() ? host : customSNI;
+    Connection conn(&evb, clientContext, sni, verifier, reconnect);
+    Connection resumptionConn(&evb, clientContext, sni, verifier, false);
+    Connection* inputTarget = &conn;
+    if (reconnect) {
+      auto pskCache = std::make_shared<ResumptionPskCache>(
+          &evb, [&conn, &resumptionConn, addr]() {
+            conn.close();
+            resumptionConn.connect(addr);
+          });
+      clientContext->setPskCache(pskCache);
+      inputTarget = &resumptionConn;
+    }
+    TerminalInputHandler input(&evb, inputTarget);
+    conn.connect(addr);
+    evb.loop();
+  } catch (const std::exception& e) {
+    LOG(ERROR) << "Error: " << e.what();
+    return 1;
+  }
+
+  return 0;
+}
+
+} // namespace tool
+} // namespace fizz

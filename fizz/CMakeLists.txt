@@ -63,6 +63,7 @@ set(FIZZ_HEADER_DIRS
   record
   server
   util
+  tool
 )
 
 set(FIZZ_TEST_HEADER_DIRS
@@ -352,4 +353,7 @@ if(BUILD_EXAMPLES)
   target_link_libraries(ServerSocket fizz sodium)
   add_executable(BogoShim test/BogoShim.cpp)
   target_link_libraries(BogoShim fizz sodium)
+  add_executable(FizzTool tool/Main.cpp tool/FizzClientCommand.cpp tool/FizzCommandCommon.cpp tool/FizzServerCommand.cpp)
+  target_link_libraries(FizzTool fizz sodium)
+  set_target_properties(FizzTool PROPERTIES OUTPUT_NAME fizz)
 endif()
