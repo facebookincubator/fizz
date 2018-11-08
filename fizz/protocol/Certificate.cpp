@@ -120,9 +120,12 @@ std::unique_ptr<PeerCert> CertUtils::makePeerCert(Buf certData) {
   throw std::runtime_error("unknown peer cert type");
 }
 
-std::unique_ptr<SelfCert> CertUtils::makeSelfCert(
+namespace {
+
+std::unique_ptr<SelfCert> selfCertFromDataInternal(
     std::string certData,
     std::string keyData,
+    char* password,
     const std::vector<std::shared_ptr<CertificateCompressor>>& compressors) {
   auto certs = folly::ssl::OpenSSLCertUtils::readCertsFromBuffer(
       folly::StringPiece(certData));
@@ -135,14 +138,34 @@ std::unique_ptr<SelfCert> CertUtils::makeSelfCert(
   if (!b) {
     throw std::runtime_error("failed to create BIO");
   }
+
   folly::ssl::EvpPkeyUniquePtr key(
-      PEM_read_bio_PrivateKey(b.get(), nullptr, nullptr, nullptr));
+      PEM_read_bio_PrivateKey(b.get(), nullptr, nullptr, password));
 
   if (!key) {
     throw std::runtime_error("Failed to read key");
   }
 
-  return makeSelfCert(std::move(certs), std::move(key), compressors);
+  return CertUtils::makeSelfCert(std::move(certs), std::move(key), compressors);
+}
+
+} // namespace
+
+std::unique_ptr<SelfCert> CertUtils::makeSelfCert(
+    std::string certData,
+    std::string keyData,
+    const std::vector<std::shared_ptr<CertificateCompressor>>& compressors) {
+  return selfCertFromDataInternal(
+      std::move(certData), std::move(keyData), nullptr, compressors);
+}
+
+std::unique_ptr<SelfCert> CertUtils::makeSelfCert(
+    std::string certData,
+    std::string encryptedKeyData,
+    std::string password,
+    const std::vector<std::shared_ptr<CertificateCompressor>>& compressors) {
+  return selfCertFromDataInternal(
+      std::move(certData), std::move(encryptedKeyData), &password[0], compressors);
 }
 
 std::unique_ptr<SelfCert> CertUtils::makeSelfCert(
