@@ -11,6 +11,7 @@
 #include <fizz/protocol/DefaultCertificateVerifier.h>
 #include <fizz/protocol/test/Utilities.h>
 #include <fizz/server/AsyncFizzServer.h>
+#include <fizz/server/SlidingBloomReplayCache.h>
 #include <fizz/server/TicketTypes.h>
 #include <fizz/tool/FizzCommandCommon.h>
 #include <fizz/util/Parse.h>
@@ -430,7 +431,7 @@ int fizzServerCommand(const std::vector<std::string>& args) {
     serverContext->setEarlyDataSettings(
         true,
         {std::chrono::seconds(-10), std::chrono::seconds(10)},
-        std::make_shared<AllowAllReplayReplayCache>());
+        std::make_shared<SlidingBloomReplayCache>(240, 140000, 0.0005, &evb));
   }
 
   std::shared_ptr<SSLContext> sslContext;

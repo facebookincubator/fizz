@@ -112,6 +112,7 @@ set(FIZZ_SOURCES
   server/TicketCodec.cpp
   server/CookieCipher.cpp
   server/ReplayCache.cpp
+  server/SlidingBloomReplayCache.cpp
   protocol/AsyncFizzBase.cpp
   protocol/Types.cpp
   protocol/Exporter.cpp
@@ -339,6 +340,7 @@ if(BUILD_TESTS)
   add_gtest(server/test/ServerProtocolTest.cpp ServerProtocolTest)
   add_gtest(server/test/NegotiatorTest.cpp NegotiatorTest)
   add_gtest(server/test/FizzServerTest.cpp FizzServerTest)
+  add_gtest(server/test/SlidingBloomReplayCacheTest.cpp SlidingBloomReplayCacheTest)
   add_gtest(util/test/FizzUtilTest.cpp FizzUtilTest)
   add_gtest(test/AsyncFizzBaseTest.cpp AsyncFizzBaseTest)
   add_gtest(test/HandshakeTest.cpp HandshakeTest)
