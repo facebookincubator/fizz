@@ -73,15 +73,15 @@ TEST(UtilTest, CreateTickerCipher) {
 TEST(UtilTest, ReadPKey) {
   {
     folly::test::TemporaryFile testFile("test");
-    folly::writeFileAtomic(testFile.path().native(), kP256Key);
-    FizzUtil::readPrivateKey(testFile.path().native(), "");
+    folly::writeFileAtomic(testFile.path().string(), kP256Key);
+    FizzUtil::readPrivateKey(testFile.path().string(), "");
   }
   {
     folly::test::TemporaryFile testFile("test");
     folly::writeFileAtomic(
-        testFile.path().native(), folly::StringPiece("test"));
+        testFile.path().string(), folly::StringPiece("test"));
     EXPECT_THROW(
-        FizzUtil::readPrivateKey(testFile.path().native(), ""),
+        FizzUtil::readPrivateKey(testFile.path().string(), ""),
         std::runtime_error);
   }
 }
@@ -89,14 +89,14 @@ TEST(UtilTest, ReadPKey) {
 TEST(UtilTest, ReadChainFile) {
   {
     folly::test::TemporaryFile testFile("test");
-    folly::writeFileAtomic(testFile.path().native(), kP256Certificate);
-    EXPECT_EQ(FizzUtil::readChainFile(testFile.path().native()).size(), 1);
+    folly::writeFileAtomic(testFile.path().string(), kP256Certificate);
+    EXPECT_EQ(FizzUtil::readChainFile(testFile.path().string()).size(), 1);
   }
   {
     folly::test::TemporaryFile testFile("test");
-    folly::writeFileAtomic(testFile.path().native(), kP384Key);
+    folly::writeFileAtomic(testFile.path().string(), kP384Key);
     EXPECT_THROW(
-        FizzUtil::readChainFile(testFile.path().native()), std::runtime_error);
+        FizzUtil::readChainFile(testFile.path().string()), std::runtime_error);
   }
   {
     EXPECT_THROW(
