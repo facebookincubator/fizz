@@ -8,8 +8,8 @@
 
 #pragma once
 
-#include <gmock/gmock.h>
-#include <gtest/gtest.h>
+#include <folly/portability/GMock.h>
+#include <folly/portability/GTest.h>
 
 #include <fizz/protocol/Actions.h>
 #include <fizz/protocol/test/Matchers.h>

@@ -9,7 +9,7 @@
 #pragma once
 
 #include <fizz/crypto/aead/Aead.h>
-#include <gmock/gmock.h>
+#include <folly/portability/GMock.h>
 
 /* using override */
 using namespace testing;

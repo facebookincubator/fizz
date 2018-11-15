@@ -8,7 +8,7 @@
 
 #pragma once
 
-#include <gmock/gmock.h>
+#include <folly/portability/GMock.h>
 
 #include <fizz/crypto/KeyDerivation.h>
 
