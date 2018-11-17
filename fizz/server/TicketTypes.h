@@ -24,5 +24,7 @@ using AES128TicketIdentityOnlyCipher = AeadTicketCipher<
     OpenSSLEVPCipher<AESGCM128>,
     TicketCodec<CertificateStorage::IdentityOnly>,
     HkdfImpl<Sha256>>;
-}
+using AES128TokenCipher =
+    AeadTokenCipher<OpenSSLEVPCipher<AESGCM128>, HkdfImpl<Sha256>>;
+} // namespace server
 } // namespace fizz

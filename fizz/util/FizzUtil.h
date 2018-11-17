@@ -38,14 +38,51 @@ class FizzUtil {
       const std::string& data,
       folly::PasswordInFile* pf);
 
-  // Creates a TicketCipher with given params
-  template <class TicketCipher>
-  static std::unique_ptr<TicketCipher> createTicketCipher(
+  // Creates a TicketCipherT with given params
+  template <class TicketCipherT>
+  static std::unique_ptr<TicketCipherT> createTicketCipher(
       const std::vector<std::string>& oldSecrets,
       const std::string& currentSecret,
       const std::vector<std::string>& newSecrets,
       std::chrono::seconds validity,
       folly::Optional<std::string> pskContext) {
+    std::unique_ptr<TicketCipherT> cipher;
+    if (pskContext.hasValue()) {
+      cipher = std::make_unique<TicketCipherT>(std::move(*pskContext));
+    } else {
+      cipher = std::make_unique<TicketCipherT>();
+    }
+    cipher->setTicketSecrets(
+        compileSecrets(oldSecrets, currentSecret, newSecrets));
+    cipher->setValidity(validity);
+    return cipher;
+  }
+
+  // Creates a TokenCipher with given params
+  template <class TokenCipherT>
+  static std::unique_ptr<TokenCipherT> createTokenCipher(
+      const std::vector<std::string>& oldSecrets,
+      const std::string& currentSecret,
+      const std::vector<std::string>& newSecrets,
+      folly::Optional<std::string> pskContext,
+      const std::string& codecContext) {
+    std::unique_ptr<TokenCipherT> cipher;
+    if (pskContext.hasValue()) {
+      cipher = std::make_unique<TokenCipherT>(std::vector<std::string>(
+          {codecContext, std::move(pskContext.value())}));
+    } else {
+      cipher = std::make_unique<TokenCipherT>(
+          std::vector<std::string>({codecContext}));
+    }
+    cipher->setSecrets(compileSecrets(oldSecrets, currentSecret, newSecrets));
+    return cipher;
+  }
+
+ private:
+  static std::vector<folly::ByteRange> compileSecrets(
+      const std::vector<std::string>& oldSecrets,
+      const std::string& currentSecret,
+      const std::vector<std::string>& newSecrets) {
     std::vector<folly::ByteRange> ticketSecrets;
     if (!currentSecret.empty()) {
       ticketSecrets.push_back(folly::StringPiece(currentSecret));
@@ -56,15 +93,7 @@ class FizzUtil {
     for (const auto& secret : newSecrets) {
       ticketSecrets.push_back(folly::StringPiece(secret));
     }
-    std::unique_ptr<TicketCipher> cipher;
-    if (pskContext.hasValue()) {
-      cipher = std::make_unique<TicketCipher>(std::move(*pskContext));
-    } else {
-      cipher = std::make_unique<TicketCipher>();
-    }
-    cipher->setTicketSecrets(std::move(ticketSecrets));
-    cipher->setValidity(validity);
-    return cipher;
+    return ticketSecrets;
   }
 };
 

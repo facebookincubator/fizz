@@ -40,7 +40,7 @@ TEST(UtilTest, GetAlpnFromNpn) {
   }
 }
 
-TEST(UtilTest, CreateTickerCipher) {
+TEST(UtilTest, CreateTicketCipher) {
   auto cipher = FizzUtil::createTicketCipher<server::AES128TicketCipher>(
       std::vector<std::string>(),
       "fakeSecretttttttttttttttttttttttttt",
@@ -67,6 +67,37 @@ TEST(UtilTest, CreateTickerCipher) {
     EXPECT_EQ(
         std::get<0>(newCipher->decrypt(std::move(std::get<0>(*blob))).get()),
         PskType::Rejected);
+  }
+}
+
+TEST(UtilTest, CreateTokenCipher) {
+  auto cipher = FizzUtil::createTokenCipher<server::AES128TokenCipher>(
+      std::vector<std::string>(),
+      "fakeSecrettttttttttttttttttttttttt3",
+      std::vector<std::string>(),
+      folly::Optional<std::string>("fakePskContext"),
+      std::string("fakeCodecContext"));
+  {
+    auto inMessage = "Secret message";
+    auto inPlaintextBuf = folly::IOBuf::copyBuffer(inMessage);
+    auto cipherTextBuf = cipher->encrypt(std::move(inPlaintextBuf)).value();
+    auto outPlaintextBuf = cipher->decrypt(std::move(cipherTextBuf)).value();
+    auto outMessage = outPlaintextBuf->moveToFbString().toStdString();
+    EXPECT_EQ(inMessage, outMessage);
+  }
+  {
+    auto newCipher = FizzUtil::createTokenCipher<server::AES128TokenCipher>(
+        std::vector<std::string>(),
+        "fakeSecrettttttttttttttttttttttttt4",
+        std::vector<std::string>(),
+        folly::Optional<std::string>("fakePskContext"),
+        std::string("fakeCodecContext"));
+    auto inMessage = "Brand new secret message";
+    auto inPlaintextBuf = folly::IOBuf::copyBuffer(inMessage);
+    auto cipherTextBuf = newCipher->encrypt(std::move(inPlaintextBuf)).value();
+    auto outPlaintextBuf = newCipher->decrypt(std::move(cipherTextBuf)).value();
+    auto outMessage = outPlaintextBuf->moveToFbString().toStdString();
+    EXPECT_EQ(inMessage, outMessage);
   }
 }
 
