@@ -9,6 +9,7 @@
 #include <fizz/client/ClientProtocol.h>
 
 #include <fizz/client/PskCache.h>
+#include <fizz/client/State.h>
 #include <fizz/crypto/Utils.h>
 #include <fizz/protocol/CertificateVerifier.h>
 #include <fizz/protocol/Protocol.h>

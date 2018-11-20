@@ -8,6 +8,8 @@
 
 #pragma once
 
+#include <folly/portability/GMock.h>
+
 #include <fizz/protocol/Types.h>
 #include <fizz/record/EncryptedRecordLayer.h>
 #include <fizz/record/PlaintextRecordLayer.h>

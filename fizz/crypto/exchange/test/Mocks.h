@@ -8,6 +8,8 @@
 
 #pragma once
 
+#include <folly/portability/GMock.h>
+
 #include <fizz/crypto/exchange/KeyExchange.h>
 
 /* using override */

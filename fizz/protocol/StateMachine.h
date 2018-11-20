@@ -8,6 +8,10 @@
 
 #pragma once
 
+#include <array>
+#include <cstdlib>
+#include <utility>
+
 namespace fizz {
 namespace sm {
 

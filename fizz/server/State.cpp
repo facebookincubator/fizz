@@ -11,6 +11,7 @@
 using fizz::server::StateEnum;
 
 namespace fizz {
+namespace server {
 
 folly::StringPiece toString(StateEnum state) {
   switch (state) {
@@ -37,4 +38,5 @@ folly::StringPiece toString(StateEnum state) {
   }
   return "Invalid state";
 }
+} // namespace server
 } // namespace fizz

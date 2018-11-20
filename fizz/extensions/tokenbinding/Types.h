@@ -65,14 +65,13 @@ struct TokenBinding {
 struct TokenBindingMessage {
   std::vector<TokenBinding> tokenbindings;
 };
+
+Extension encodeExtension(const extensions::TokenBindingParameters& params);
 } // namespace extensions
 
 template <>
 folly::Optional<extensions::TokenBindingParameters> getExtension(
     const std::vector<Extension>& extensions);
-
-template <>
-Extension encodeExtension(const extensions::TokenBindingParameters& params);
 
 template <>
 Buf encode(extensions::TokenBindingMessage&& message);

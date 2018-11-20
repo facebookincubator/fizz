@@ -12,6 +12,7 @@ using fizz::client::ClientAuthType;
 using fizz::client::StateEnum;
 
 namespace fizz {
+namespace client {
 
 folly::StringPiece toString(StateEnum state) {
   switch (state) {
@@ -50,4 +51,5 @@ folly::StringPiece toString(ClientAuthType auth) {
   }
   return "Invalid client auth type";
 }
+} // namespace client
 } // namespace fizz

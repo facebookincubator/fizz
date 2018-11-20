@@ -7,6 +7,9 @@
  */
 
 #pragma once
+
+#include <folly/portability/GTest.h>
+
 #include <fizz/client/PskCache.h>
 
 namespace fizz {

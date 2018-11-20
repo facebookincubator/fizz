@@ -6,6 +6,10 @@
  *  LICENSE file in the root directory of this source tree.
  */
 
+#include <cstdlib>
+
+#include <glog/logging.h>
+
 namespace fizz {
 namespace sm {
 

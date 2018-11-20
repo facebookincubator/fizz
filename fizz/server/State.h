@@ -421,11 +421,9 @@ class State {
   folly::Optional<Buf> earlyExporterMasterSecret_;
   folly::Optional<Buf> exporterMasterSecret_;
 };
-} // namespace server
 
 folly::StringPiece toString(server::StateEnum state);
 
-namespace server {
 inline std::ostream& operator<<(std::ostream& os, StateEnum state) {
   os << toString(state);
   return os;

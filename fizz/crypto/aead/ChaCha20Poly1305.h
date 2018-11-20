@@ -8,6 +8,8 @@
 
 #pragma once
 
+#include <stdexcept>
+
 #include <folly/portability/OpenSSL.h>
 #include <openssl/evp.h>
 

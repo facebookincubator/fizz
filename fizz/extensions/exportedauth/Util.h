@@ -6,6 +6,12 @@
  *  LICENSE file in the root directory of this source tree.
  */
 
+#include <tuple>
+
+#include <fizz/crypto/KeyDerivation.h>
+#include <fizz/protocol/Certificate.h>
+#include <fizz/record/Types.h>
+
 namespace fizz {
 namespace detail {
 

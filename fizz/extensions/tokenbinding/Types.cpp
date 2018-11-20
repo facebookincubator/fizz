@@ -109,7 +109,8 @@ folly::Optional<TokenBindingParameters> getExtension(
   return std::move(params);
 }
 
-template <>
+namespace extensions {
+
 Extension encodeExtension(const TokenBindingParameters& params) {
   Extension ext;
   ext.extension_type = ExtensionType::token_binding;
@@ -119,6 +120,7 @@ Extension encodeExtension(const TokenBindingParameters& params) {
   detail::writeVector<uint8_t>(params.key_parameters_list, appender);
   return ext;
 }
+} // namespace extensions
 
 template <>
 Buf encode(TokenBindingMessage&& message) {

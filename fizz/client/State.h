@@ -551,12 +551,10 @@ class State {
   folly::Optional<Buf> exporterMasterSecret_;
   std::shared_ptr<ClientExtensions> extensions_;
 };
-} // namespace client
 
 folly::StringPiece toString(client::StateEnum);
 folly::StringPiece toString(client::ClientAuthType);
 
-namespace client {
 inline std::ostream& operator<<(std::ostream& os, StateEnum state) {
   os << toString(state);
   return os;
