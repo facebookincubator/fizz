@@ -1,0 +1,36 @@
+cpp_library(
+    name = "hacl",
+    srcs = [
+        "Hacl.cpp",
+        "Hacl_AesGCM_NI.cpp",
+    ],
+    headers = [
+        "endianness.h",
+        "vec128.h",
+    ],
+    compiler_flags = [
+        "-maes -mpclmul -mavx",
+    ],
+    deps = [
+        "//fizz/crypto/aead:evpcipher",
+    ],
+)
+
+cpp_unittest(
+    name = "hacltest",
+    srcs = [
+        "test/HaclCipherTest.cpp",
+    ],
+    deps = [
+        ":hacl",
+        "//fizz/crypto/aead:evpcipher",
+        "//fizz/crypto/aead:iobuf",
+        "//fizz/crypto/aead/test:test_util",
+        "//fizz/record:record",
+        "//folly:exception_wrapper",
+        "//folly/portability:openssl",
+    ],
+    external_deps = [
+        "glog",
+    ],
+)

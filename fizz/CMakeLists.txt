@@ -5,7 +5,7 @@ cmake_minimum_required(VERSION 3.1)
 
 project("fizz" VERSION 1.0.0 LANGUAGES CXX C)
 
-add_compile_options(-std=c++14)
+add_compile_options(-std=c++14 -maes -mpclmul -mavx)
 
 set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 set(CMAKE_MODULE_PATH ${CMAKE_SOURCE_DIR}/cmake/)
@@ -64,6 +64,9 @@ set(FIZZ_HEADER_DIRS
   server
   util
   tool
+
+  # hacl
+  crypto/experimental/hacl
 )
 
 set(FIZZ_TEST_HEADER_DIRS
@@ -134,6 +137,10 @@ set(FIZZ_SOURCES
   client/SynchronizedLruPskCache.cpp
   client/EarlyDataRejectionPolicy.cpp
   util/FizzUtil.cpp
+
+  # hacl
+  crypto/experimental/hacl/Hacl_AesGCM_NI.cpp
+  crypto/experimental/hacl/Hacl.cpp
 )
 
 add_library(fizz
@@ -344,6 +351,9 @@ if(BUILD_TESTS)
   add_gtest(util/test/FizzUtilTest.cpp FizzUtilTest)
   add_gtest(test/AsyncFizzBaseTest.cpp AsyncFizzBaseTest)
   add_gtest(test/HandshakeTest.cpp HandshakeTest)
+
+  # Hacl
+  add_gtest(crypto/experimental/hacl/test/HaclCipherTest HaclCipherTest)
 endif()
 
 option(BUILD_EXAMPLES "BUILD_EXAMPLES" ON)
