@@ -24,7 +24,7 @@ using Cert = folly::AsyncTransportCertificate;
 class AsyncFizzBase : public folly::WriteChainAsyncTransportWrapper<
                           folly::AsyncTransportWrapper>,
                       protected folly::AsyncTransportWrapper::WriteCallback,
-                      private folly::AsyncTransportWrapper::ReadCallback {
+                      protected folly::AsyncTransportWrapper::ReadCallback {
  public:
   using UniquePtr =
       std::unique_ptr<AsyncFizzBase, folly::DelayedDestruction::Destructor>;
