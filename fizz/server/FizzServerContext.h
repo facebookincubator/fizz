@@ -168,7 +168,7 @@ class FizzServerContext {
   /**
    * Sets the CertManager to use.
    */
-  void setCertManager(std::unique_ptr<CertManager> manager) {
+  void setCertManager(std::shared_ptr<CertManager> manager) {
     certManager_ = std::move(manager);
   }
 
@@ -292,7 +292,7 @@ class FizzServerContext {
   std::shared_ptr<TicketCipher> ticketCipher_;
   std::shared_ptr<CookieCipher> cookieCipher_;
 
-  std::unique_ptr<CertManager> certManager_;
+  std::shared_ptr<CertManager> certManager_;
   std::shared_ptr<const CertificateVerifier> clientCertVerifier_;
 
   std::vector<ProtocolVersion> supportedVersions_ = {ProtocolVersion::tls_1_3};

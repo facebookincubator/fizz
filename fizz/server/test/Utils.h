@@ -39,6 +39,7 @@ class FizzTestServer : public folly::AsyncServerSocket::AcceptCallback {
     certManager->addCert(std::move(fizzCert), true);
     ctx_ = std::make_shared<FizzServerContext>();
     ctx_->setCertManager(std::move(certManager));
+
     socket_ = folly::AsyncServerSocket::UniquePtr(
         new folly::AsyncServerSocket(&evb_));
     socket_->bind(port);
