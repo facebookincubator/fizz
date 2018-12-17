@@ -141,6 +141,7 @@ class AsyncFizzClientT : public AsyncFizzBase,
   bool pskResumed() const;
 
  protected:
+  ~AsyncFizzClientT() override = default;
   void writeAppData(
       folly::AsyncTransportWrapper::WriteCallback* callback,
       std::unique_ptr<folly::IOBuf>&& buf,

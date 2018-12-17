@@ -87,6 +87,7 @@ class AsyncFizzServerT : public AsyncFizzBase {
   const Cert* getSelfCertificate() const override;
 
  protected:
+  ~AsyncFizzServerT() override = default;
   void writeAppData(
       folly::AsyncTransportWrapper::WriteCallback* callback,
       std::unique_ptr<folly::IOBuf>&& buf,

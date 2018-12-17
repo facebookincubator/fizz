@@ -976,6 +976,18 @@ TEST_F(AsyncFizzClientTest, TestNewCachedPskActionsWithEmptyPskIdentity) {
       IOBuf::copyBuffer("NewSessionTicket"));
 }
 
+TEST_F(AsyncFizzClientTest, TestAsyncFizzClientDestructor) {
+  socket_ = new MockAsyncTransport();
+  auto transport = AsyncTransportWrapper::UniquePtr(socket_);
+  auto fizzClient = new AsyncFizzClientT<MockClientStateMachineInstance>(
+      std::move(transport), context_);
+  bool destructible = std::is_destructible<
+      AsyncFizzClientT<MockClientStateMachineInstance>>::value;
+  EXPECT_FALSE(destructible);
+  std::shared_ptr<AsyncTransportWrapper> client{
+      fizzClient, folly::DelayedDestruction::Destructor()};
+}
+
 } // namespace test
 } // namespace client
 } // namespace fizz
