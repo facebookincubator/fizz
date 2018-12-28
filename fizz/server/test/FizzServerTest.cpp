@@ -136,6 +136,12 @@ TEST_F(FizzServerTest, TestSSLV2AfterData) {
       }));
   fizzServer_->fizzServer_.newTransportData();
 }
+
+TEST(FizzServerContextTest, TestCopy) {
+  FizzServerContext ctx;
+  auto ctx2 = ctx;
+  (void) ctx2;
+}
 } // namespace test
 } // namespace server
 } // namespace fizz

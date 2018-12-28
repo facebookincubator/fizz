@@ -19,7 +19,7 @@ namespace client {
 
 class FizzClientContext {
  public:
-  FizzClientContext() : factory_(std::make_unique<Factory>()) {}
+  FizzClientContext() : factory_(std::make_shared<Factory>()) {}
   virtual ~FizzClientContext() = default;
 
   /**
@@ -162,7 +162,7 @@ class FizzClientContext {
   /**
    * Set the factory to use. Should generally only be changed for testing.
    */
-  void setFactory(std::unique_ptr<Factory> factory) {
+  void setFactory(std::shared_ptr<Factory> factory) {
     factory_ = std::move(factory);
   }
 
@@ -205,7 +205,7 @@ class FizzClientContext {
   }
 
  private:
-  std::unique_ptr<Factory> factory_;
+  std::shared_ptr<Factory> factory_;
 
   std::vector<ProtocolVersion> supportedVersions_ = {ProtocolVersion::tls_1_3};
   std::vector<CipherSuite> supportedCiphers_ = {

@@ -44,7 +44,7 @@ enum class ClientAuthMode { None, Optional, Required };
 
 class FizzServerContext {
  public:
-  FizzServerContext() : factory_(std::make_unique<Factory>()) {}
+  FizzServerContext() : factory_(std::make_shared<Factory>()) {}
   virtual ~FizzServerContext() = default;
 
   /**
@@ -252,7 +252,7 @@ class FizzServerContext {
   /**
    * Set the factory to use. Should generally only be changed for testing.
    */
-  void setFactory(std::unique_ptr<Factory> factory) {
+  void setFactory(std::shared_ptr<Factory> factory) {
     factory_ = std::move(factory);
   }
   const Factory* getFactory() const {
@@ -287,7 +287,7 @@ class FizzServerContext {
   }
 
  private:
-  std::unique_ptr<Factory> factory_;
+  std::shared_ptr<Factory> factory_;
 
   std::shared_ptr<TicketCipher> ticketCipher_;
   std::shared_ptr<CookieCipher> cookieCipher_;
