@@ -111,7 +111,7 @@ uint32_t KeyScheduler::serverKeyUpdate() {
   return ++appTrafficSecret.serverGeneration;
 }
 
-std::vector<uint8_t> KeyScheduler::getSecret(
+DerivedSecret KeyScheduler::getSecret(
     EarlySecrets s,
     folly::ByteRange transcript) const {
   StringPiece label;
@@ -133,11 +133,13 @@ std::vector<uint8_t> KeyScheduler::getSecret(
   }
 
   auto& earlySecret = boost::get<EarlySecret>(*secret_);
-  return deriver_->deriveSecret(
-      folly::range(earlySecret.secret), label, transcript);
+  return DerivedSecret(
+      deriver_->deriveSecret(
+          folly::range(earlySecret.secret), label, transcript),
+      SecretType(s));
 }
 
-std::vector<uint8_t> KeyScheduler::getSecret(
+DerivedSecret KeyScheduler::getSecret(
     HandshakeSecrets s,
     folly::ByteRange transcript) const {
   StringPiece label;
@@ -153,11 +155,13 @@ std::vector<uint8_t> KeyScheduler::getSecret(
   }
 
   auto& handshakeSecret = boost::get<HandshakeSecret>(*secret_);
-  return deriver_->deriveSecret(
-      folly::range(handshakeSecret.secret), label, transcript);
+  return DerivedSecret(
+      deriver_->deriveSecret(
+          folly::range(handshakeSecret.secret), label, transcript),
+      SecretType(s));
 }
 
-std::vector<uint8_t> KeyScheduler::getSecret(
+DerivedSecret KeyScheduler::getSecret(
     MasterSecrets s,
     folly::ByteRange transcript) const {
   StringPiece label;
@@ -173,17 +177,23 @@ std::vector<uint8_t> KeyScheduler::getSecret(
   }
 
   auto& masterSecret = boost::get<MasterSecret>(*secret_);
-  return deriver_->deriveSecret(
-      folly::range(masterSecret.secret), label, transcript);
+  return DerivedSecret(
+      deriver_->deriveSecret(
+          folly::range(masterSecret.secret), label, transcript),
+      SecretType(s));
 }
 
-std::vector<uint8_t> KeyScheduler::getSecret(AppTrafficSecrets s) const {
+DerivedSecret KeyScheduler::getSecret(AppTrafficSecrets s) const {
   auto& appTrafficSecret = *appTrafficSecret_;
   switch (s) {
     case AppTrafficSecrets::ClientAppTraffic:
-      return appTrafficSecret.client;
+      return DerivedSecret(
+          appTrafficSecret.client,
+          SecretType(AppTrafficSecrets::ClientAppTraffic));
     case AppTrafficSecrets::ServerAppTraffic:
-      return appTrafficSecret.server;
+      return DerivedSecret(
+          appTrafficSecret.server,
+          SecretType(AppTrafficSecrets::ServerAppTraffic));
     default:
       LOG(FATAL) << "unknown secret";
   }

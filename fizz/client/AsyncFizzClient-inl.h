@@ -545,6 +545,9 @@ void AsyncFizzClientT<SM>::ActionMoveVisitor::operator()(
 }
 
 template <typename SM>
+void AsyncFizzClientT<SM>::ActionMoveVisitor::operator()(SecretAvailable&) {}
+
+template <typename SM>
 folly::Optional<CipherSuite> AsyncFizzClientT<SM>::getCipher() const {
   return getState().cipher();
 }

@@ -42,6 +42,25 @@ class ProtocolTest : public testing::Test {
     throw std::runtime_error("did not find expected action");
   }
 
+  template <class T>
+  void expectSecret(
+      Actions& actions,
+      T secretType,
+      folly::ByteRange expectedSecret) {
+    DerivedSecret expectedDerivedSecret(expectedSecret, SecretType(secretType));
+    for (auto& action : actions) {
+      auto trySecret = boost::get<SecretAvailable>(&action);
+      if (trySecret) {
+        bool match = trySecret->secret.secret == expectedDerivedSecret.secret &&
+            trySecret->secret.type == expectedDerivedSecret.type;
+        if (match) {
+          return;
+        }
+      }
+    }
+    FAIL() << "Did not get expected secret";
+  }
+
   template <typename T>
   T expectSingleAction(Actions actions) {
     EXPECT_EQ(actions.size(), 1);

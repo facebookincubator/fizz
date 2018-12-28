@@ -116,6 +116,7 @@ class AsyncFizzServerT : public AsyncFizzBase {
     void operator()(WaitForData&);
     void operator()(MutateState&);
     void operator()(AttemptVersionFallback&);
+    void operator()(SecretAvailable&);
 
    private:
     AsyncFizzServerT<SM>& server_;

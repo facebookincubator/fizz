@@ -43,14 +43,14 @@ class MockKeyScheduler : public KeyScheduler {
   MOCK_METHOD0(serverKeyUpdate, uint32_t());
   MOCK_CONST_METHOD2(
       getSecret,
-      std::vector<uint8_t>(EarlySecrets s, folly::ByteRange transcript));
+      DerivedSecret(EarlySecrets s, folly::ByteRange transcript));
   MOCK_CONST_METHOD2(
       getSecret,
-      std::vector<uint8_t>(HandshakeSecrets s, folly::ByteRange transcript));
+      DerivedSecret(HandshakeSecrets s, folly::ByteRange transcript));
   MOCK_CONST_METHOD2(
       getSecret,
-      std::vector<uint8_t>(MasterSecrets s, folly::ByteRange transcript));
-  MOCK_CONST_METHOD1(getSecret, std::vector<uint8_t>(AppTrafficSecrets s));
+      DerivedSecret(MasterSecrets s, folly::ByteRange transcript));
+  MOCK_CONST_METHOD1(getSecret, DerivedSecret(AppTrafficSecrets s));
   MOCK_CONST_METHOD3(
       getTrafficKey,
       TrafficKey(
@@ -70,6 +70,22 @@ class MockKeyScheduler : public KeyScheduler {
     ON_CALL(*this, getResumptionSecret(_, _))
         .WillByDefault(InvokeWithoutArgs(
             []() { return folly::IOBuf::copyBuffer("resumesecret"); }));
+    ON_CALL(*this, getSecret(An<EarlySecrets>(), _))
+        .WillByDefault(Invoke([](EarlySecrets type, folly::ByteRange) {
+          return DerivedSecret(std::vector<uint8_t>(), type);
+        }));
+    ON_CALL(*this, getSecret(An<HandshakeSecrets>(), _))
+        .WillByDefault(Invoke([](HandshakeSecrets type, folly::ByteRange) {
+          return DerivedSecret(std::vector<uint8_t>(), type);
+        }));
+    ON_CALL(*this, getSecret(An<MasterSecrets>(), _))
+        .WillByDefault(Invoke([](MasterSecrets type, folly::ByteRange) {
+          return DerivedSecret(std::vector<uint8_t>(), type);
+        }));
+    ON_CALL(*this, getSecret(_))
+        .WillByDefault(Invoke([](AppTrafficSecrets type) {
+          return DerivedSecret(std::vector<uint8_t>(), type);
+        }));
   }
 };
 

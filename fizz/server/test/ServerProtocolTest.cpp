@@ -454,14 +454,18 @@ TEST_F(ServerProtocolTest, TestClientHelloFullHandshakeFlow) {
       getSecret(
           HandshakeSecrets::ServerHandshakeTraffic, RangeMatches("chlo_shlo")))
       .WillOnce(InvokeWithoutArgs([]() {
-        return std::vector<uint8_t>({'s', 'h', 't'});
+        return DerivedSecret(
+            std::vector<uint8_t>({'s', 'h', 't'}),
+            HandshakeSecrets::ServerHandshakeTraffic);
       }));
   EXPECT_CALL(
       *mockKeyScheduler_,
       getSecret(
           HandshakeSecrets::ClientHandshakeTraffic, RangeMatches("chlo_shlo")))
       .WillOnce(InvokeWithoutArgs([]() {
-        return std::vector<uint8_t>({'c', 'h', 't'});
+        return DerivedSecret(
+            std::vector<uint8_t>({'c', 'h', 't'}),
+            HandshakeSecrets::ClientHandshakeTraffic);
       }));
   EXPECT_CALL(*mockKeyScheduler_, getTrafficKey(RangeMatches("sht"), _, _))
       .WillOnce(InvokeWithoutArgs([]() {
@@ -571,7 +575,9 @@ TEST_F(ServerProtocolTest, TestClientHelloFullHandshakeFlow) {
           MasterSecrets::ExporterMaster,
           RangeMatches("chlo_shlo_ee_cert_sfin")))
       .WillOnce(InvokeWithoutArgs([]() {
-        return std::vector<uint8_t>({'e', 'x', 'p', 'm'});
+        return DerivedSecret(
+            std::vector<uint8_t>({'e', 'x', 'p', 'm'}),
+            MasterSecrets::ExporterMaster);
       }));
   EXPECT_CALL(
       *mockKeyScheduler_,
@@ -579,7 +585,9 @@ TEST_F(ServerProtocolTest, TestClientHelloFullHandshakeFlow) {
   EXPECT_CALL(
       *mockKeyScheduler_, getSecret(AppTrafficSecrets::ServerAppTraffic))
       .WillOnce(InvokeWithoutArgs([]() {
-        return std::vector<uint8_t>({'s', 'a', 't'});
+        return DerivedSecret(
+            std::vector<uint8_t>({'s', 'a', 't'}),
+            AppTrafficSecrets::ServerAppTraffic);
       }));
   EXPECT_CALL(*mockKeyScheduler_, getTrafficKey(RangeMatches("sat"), _, _))
       .WillOnce(InvokeWithoutArgs([]() {
@@ -590,7 +598,7 @@ TEST_F(ServerProtocolTest, TestClientHelloFullHandshakeFlow) {
   auto actions =
       getActions(detail::processEvent(state_, TestMessages::clientHello()));
 
-  expectActions<MutateState, WriteToSocket>(actions);
+  expectActions<MutateState, WriteToSocket, SecretAvailable>(actions);
   auto write = expectAction<WriteToSocket>(actions);
   ASSERT_EQ(write.contents.size(), 2);
 
@@ -603,6 +611,13 @@ TEST_F(ServerProtocolTest, TestClientHelloFullHandshakeFlow) {
   EXPECT_EQ(write.contents[1].contentType, ContentType::handshake);
   EXPECT_TRUE(
       IOBufEqualTo()(write.contents[1].data, IOBuf::copyBuffer("handshake")));
+
+  expectSecret(
+      actions, HandshakeSecrets::ClientHandshakeTraffic, StringPiece("cht"));
+  expectSecret(
+      actions, HandshakeSecrets::ServerHandshakeTraffic, StringPiece("sht"));
+  expectSecret(
+      actions, AppTrafficSecrets::ServerAppTraffic, StringPiece("sat"));
   processStateMutations(actions);
   EXPECT_EQ(state_.state(), StateEnum::ExpectingFinished);
   EXPECT_EQ(state_.readRecordLayer().get(), rrl);
@@ -690,14 +705,18 @@ TEST_F(ServerProtocolTest, TestClientHelloCompressedCertFlow) {
       getSecret(
           HandshakeSecrets::ServerHandshakeTraffic, RangeMatches("chlo_shlo")))
       .WillOnce(InvokeWithoutArgs([]() {
-        return std::vector<uint8_t>({'s', 'h', 't'});
+        return DerivedSecret(
+            std::vector<uint8_t>({'s', 'h', 't'}),
+            HandshakeSecrets::ServerHandshakeTraffic);
       }));
   EXPECT_CALL(
       *mockKeyScheduler_,
       getSecret(
           HandshakeSecrets::ClientHandshakeTraffic, RangeMatches("chlo_shlo")))
       .WillOnce(InvokeWithoutArgs([]() {
-        return std::vector<uint8_t>({'c', 'h', 't'});
+        return DerivedSecret(
+            std::vector<uint8_t>({'c', 'h', 't'}),
+            HandshakeSecrets::ClientHandshakeTraffic);
       }));
   EXPECT_CALL(*mockKeyScheduler_, getTrafficKey(RangeMatches("sht"), _, _))
       .WillOnce(InvokeWithoutArgs([]() {
@@ -811,7 +830,9 @@ TEST_F(ServerProtocolTest, TestClientHelloCompressedCertFlow) {
           MasterSecrets::ExporterMaster,
           RangeMatches("chlo_shlo_ee_compcert_sfin")))
       .WillOnce(InvokeWithoutArgs([]() {
-        return std::vector<uint8_t>({'e', 'x', 'p', 'm'});
+        return DerivedSecret(
+            std::vector<uint8_t>({'e', 'x', 'p', 'm'}),
+            MasterSecrets::ExporterMaster);
       }));
   EXPECT_CALL(
       *mockKeyScheduler_,
@@ -819,7 +840,9 @@ TEST_F(ServerProtocolTest, TestClientHelloCompressedCertFlow) {
   EXPECT_CALL(
       *mockKeyScheduler_, getSecret(AppTrafficSecrets::ServerAppTraffic))
       .WillOnce(InvokeWithoutArgs([]() {
-        return std::vector<uint8_t>({'s', 'a', 't'});
+        return DerivedSecret(
+            std::vector<uint8_t>({'s', 'a', 't'}),
+            AppTrafficSecrets::ServerAppTraffic);
       }));
   EXPECT_CALL(*mockKeyScheduler_, getTrafficKey(RangeMatches("sat"), _, _))
       .WillOnce(InvokeWithoutArgs([]() {
@@ -833,10 +856,9 @@ TEST_F(ServerProtocolTest, TestClientHelloCompressedCertFlow) {
   chlo.extensions.push_back(encodeExtension(algos));
   auto actions = getActions(detail::processEvent(state_, std::move(chlo)));
 
-  expectActions<MutateState, WriteToSocket>(actions);
+  expectActions<MutateState, WriteToSocket, SecretAvailable>(actions);
   auto write = expectAction<WriteToSocket>(actions);
   ASSERT_EQ(write.contents.size(), 2);
-
   EXPECT_EQ(write.contents[0].encryptionLevel, EncryptionLevel::Plaintext);
   EXPECT_EQ(write.contents[0].contentType, ContentType::handshake);
   EXPECT_TRUE(
@@ -846,6 +868,13 @@ TEST_F(ServerProtocolTest, TestClientHelloCompressedCertFlow) {
   EXPECT_EQ(write.contents[1].contentType, ContentType::handshake);
   EXPECT_TRUE(
       IOBufEqualTo()(write.contents[1].data, IOBuf::copyBuffer("handshake")));
+
+  expectSecret(
+      actions, HandshakeSecrets::ClientHandshakeTraffic, StringPiece("cht"));
+  expectSecret(
+      actions, HandshakeSecrets::ServerHandshakeTraffic, StringPiece("sht"));
+  expectSecret(
+      actions, AppTrafficSecrets::ServerAppTraffic, StringPiece("sat"));
   processStateMutations(actions);
   EXPECT_EQ(state_.state(), StateEnum::ExpectingFinished);
   EXPECT_EQ(state_.readRecordLayer().get(), rrl);
@@ -929,14 +958,18 @@ TEST_F(ServerProtocolTest, TestClientHelloCertRequestFlow) {
       getSecret(
           HandshakeSecrets::ServerHandshakeTraffic, RangeMatches("chlo_shlo")))
       .WillOnce(InvokeWithoutArgs([]() {
-        return std::vector<uint8_t>({'s', 'h', 't'});
+        return DerivedSecret(
+            std::vector<uint8_t>({'s', 'h', 't'}),
+            HandshakeSecrets::ServerHandshakeTraffic);
       }));
   EXPECT_CALL(
       *mockKeyScheduler_,
       getSecret(
           HandshakeSecrets::ClientHandshakeTraffic, RangeMatches("chlo_shlo")))
       .WillOnce(InvokeWithoutArgs([]() {
-        return std::vector<uint8_t>({'c', 'h', 't'});
+        return DerivedSecret(
+            std::vector<uint8_t>({'c', 'h', 't'}),
+            HandshakeSecrets::ClientHandshakeTraffic);
       }));
   EXPECT_CALL(*mockKeyScheduler_, getTrafficKey(RangeMatches("sht"), _, _))
       .WillOnce(InvokeWithoutArgs([]() {
@@ -1048,7 +1081,9 @@ TEST_F(ServerProtocolTest, TestClientHelloCertRequestFlow) {
           MasterSecrets::ExporterMaster,
           RangeMatches("chlo_shlo_ee_cert_sfin")))
       .WillOnce(InvokeWithoutArgs([]() {
-        return std::vector<uint8_t>({'e', 'x', 'p', 'm'});
+        return DerivedSecret(
+            std::vector<uint8_t>({'e', 'x', 'p', 'm'}),
+            MasterSecrets::ExporterMaster);
       }));
   EXPECT_CALL(
       *mockKeyScheduler_,
@@ -1056,7 +1091,9 @@ TEST_F(ServerProtocolTest, TestClientHelloCertRequestFlow) {
   EXPECT_CALL(
       *mockKeyScheduler_, getSecret(AppTrafficSecrets::ServerAppTraffic))
       .WillOnce(InvokeWithoutArgs([]() {
-        return std::vector<uint8_t>({'s', 'a', 't'});
+        return DerivedSecret(
+            std::vector<uint8_t>({'s', 'a', 't'}),
+            AppTrafficSecrets::ServerAppTraffic);
       }));
   EXPECT_CALL(*mockKeyScheduler_, getTrafficKey(RangeMatches("sat"), _, _))
       .WillOnce(InvokeWithoutArgs([]() {
@@ -1067,7 +1104,7 @@ TEST_F(ServerProtocolTest, TestClientHelloCertRequestFlow) {
   auto actions =
       getActions(detail::processEvent(state_, TestMessages::clientHello()));
 
-  expectActions<MutateState, WriteToSocket>(actions);
+  expectActions<MutateState, WriteToSocket, SecretAvailable>(actions);
   auto write = expectAction<WriteToSocket>(actions);
   ASSERT_EQ(write.contents.size(), 2);
   EXPECT_EQ(write.contents[0].encryptionLevel, EncryptionLevel::Plaintext);
@@ -1079,6 +1116,12 @@ TEST_F(ServerProtocolTest, TestClientHelloCertRequestFlow) {
   EXPECT_EQ(write.contents[1].contentType, ContentType::handshake);
   EXPECT_TRUE(
       IOBufEqualTo()(write.contents[1].data, IOBuf::copyBuffer("handshake")));
+  expectSecret(
+      actions, HandshakeSecrets::ClientHandshakeTraffic, StringPiece("cht"));
+  expectSecret(
+      actions, HandshakeSecrets::ServerHandshakeTraffic, StringPiece("sht"));
+  expectSecret(
+      actions, AppTrafficSecrets::ServerAppTraffic, StringPiece("sat"));
   processStateMutations(actions);
   EXPECT_EQ(state_.state(), StateEnum::ExpectingCertificate);
   EXPECT_EQ(state_.readRecordLayer().get(), rrl);
@@ -1142,7 +1185,9 @@ TEST_F(ServerProtocolTest, TestClientHelloPskFlow) {
       *mockKeyScheduler_,
       getSecret(EarlySecrets::ResumptionPskBinder, RangeMatches("")))
       .WillOnce(InvokeWithoutArgs([]() {
-        return std::vector<uint8_t>({'b', 'd', 'r'});
+        return DerivedSecret(
+            std::vector<uint8_t>({'b', 'd', 'r'}),
+            EarlySecrets::ResumptionPskBinder);
       }));
   EXPECT_CALL(*mockHandshakeContext_, appendToTranscript(_))
       .InSequence(contextSeq);
@@ -1174,14 +1219,18 @@ TEST_F(ServerProtocolTest, TestClientHelloPskFlow) {
       getSecret(
           HandshakeSecrets::ServerHandshakeTraffic, RangeMatches("chlo_shlo")))
       .WillOnce(InvokeWithoutArgs([]() {
-        return std::vector<uint8_t>({'s', 'h', 't'});
+        return DerivedSecret(
+            std::vector<uint8_t>({'s', 'h', 't'}),
+            HandshakeSecrets::ServerHandshakeTraffic);
       }));
   EXPECT_CALL(
       *mockKeyScheduler_,
       getSecret(
           HandshakeSecrets::ClientHandshakeTraffic, RangeMatches("chlo_shlo")))
       .WillOnce(InvokeWithoutArgs([]() {
-        return std::vector<uint8_t>({'c', 'h', 't'});
+        return DerivedSecret(
+            std::vector<uint8_t>({'c', 'h', 't'}),
+            HandshakeSecrets::ClientHandshakeTraffic);
       }));
   EXPECT_CALL(*mockKeyScheduler_, getTrafficKey(RangeMatches("sht"), _, _))
       .WillOnce(InvokeWithoutArgs([]() {
@@ -1241,7 +1290,9 @@ TEST_F(ServerProtocolTest, TestClientHelloPskFlow) {
       *mockKeyScheduler_,
       getSecret(MasterSecrets::ExporterMaster, RangeMatches("chlo_shlo_sfin")))
       .WillOnce(InvokeWithoutArgs([]() {
-        return std::vector<uint8_t>({'e', 'x', 'p', 'm'});
+        return DerivedSecret(
+            std::vector<uint8_t>({'e', 'x', 'p', 'm'}),
+            MasterSecrets::ExporterMaster);
       }));
   EXPECT_CALL(
       *mockKeyScheduler_,
@@ -1249,7 +1300,9 @@ TEST_F(ServerProtocolTest, TestClientHelloPskFlow) {
   EXPECT_CALL(
       *mockKeyScheduler_, getSecret(AppTrafficSecrets::ServerAppTraffic))
       .WillOnce(InvokeWithoutArgs([]() {
-        return std::vector<uint8_t>({'s', 'a', 't'});
+        return DerivedSecret(
+            std::vector<uint8_t>({'s', 'a', 't'}),
+            AppTrafficSecrets::ServerAppTraffic);
       }));
   EXPECT_CALL(*mockKeyScheduler_, getTrafficKey(RangeMatches("sat"), _, _))
       .WillOnce(InvokeWithoutArgs([]() {
@@ -1260,7 +1313,7 @@ TEST_F(ServerProtocolTest, TestClientHelloPskFlow) {
   auto actions =
       getActions(detail::processEvent(state_, TestMessages::clientHelloPsk()));
 
-  expectActions<MutateState, WriteToSocket>(actions);
+  expectActions<MutateState, WriteToSocket, SecretAvailable>(actions);
   auto write = expectAction<WriteToSocket>(actions);
   ASSERT_EQ(write.contents.size(), 2);
   EXPECT_EQ(write.contents[0].encryptionLevel, EncryptionLevel::Plaintext);
@@ -1271,6 +1324,13 @@ TEST_F(ServerProtocolTest, TestClientHelloPskFlow) {
   EXPECT_EQ(write.contents[1].contentType, ContentType::handshake);
   EXPECT_TRUE(
       IOBufEqualTo()(write.contents[1].data, IOBuf::copyBuffer("handshake")));
+
+  expectSecret(
+      actions, HandshakeSecrets::ClientHandshakeTraffic, StringPiece("cht"));
+  expectSecret(
+      actions, HandshakeSecrets::ServerHandshakeTraffic, StringPiece("sht"));
+  expectSecret(
+      actions, AppTrafficSecrets::ServerAppTraffic, StringPiece("sat"));
   processStateMutations(actions);
   EXPECT_EQ(state_.state(), StateEnum::ExpectingFinished);
   EXPECT_EQ(state_.readRecordLayer().get(), rrl);
@@ -1340,7 +1400,9 @@ TEST_F(ServerProtocolTest, TestClientHelloPskDheFlow) {
       *mockKeyScheduler_,
       getSecret(EarlySecrets::ResumptionPskBinder, RangeMatches("")))
       .WillOnce(InvokeWithoutArgs([]() {
-        return std::vector<uint8_t>({'b', 'd', 'r'});
+        return DerivedSecret(
+            std::vector<uint8_t>({'b', 'd', 'r'}),
+            EarlySecrets::ResumptionPskBinder);
       }));
   EXPECT_CALL(*factory_, makeKeyExchange(NamedGroup::x25519))
       .WillOnce(InvokeWithoutArgs([]() {
@@ -1384,14 +1446,18 @@ TEST_F(ServerProtocolTest, TestClientHelloPskDheFlow) {
       getSecret(
           HandshakeSecrets::ServerHandshakeTraffic, RangeMatches("chlo_shlo")))
       .WillOnce(InvokeWithoutArgs([]() {
-        return std::vector<uint8_t>({'s', 'h', 't'});
+        return DerivedSecret(
+            std::vector<uint8_t>({'s', 'h', 't'}),
+            HandshakeSecrets::ServerHandshakeTraffic);
       }));
   EXPECT_CALL(
       *mockKeyScheduler_,
       getSecret(
           HandshakeSecrets::ClientHandshakeTraffic, RangeMatches("chlo_shlo")))
       .WillOnce(InvokeWithoutArgs([]() {
-        return std::vector<uint8_t>({'c', 'h', 't'});
+        return DerivedSecret(
+            std::vector<uint8_t>({'c', 'h', 't'}),
+            HandshakeSecrets::ClientHandshakeTraffic);
       }));
   EXPECT_CALL(*mockKeyScheduler_, getTrafficKey(RangeMatches("sht"), _, _))
       .WillOnce(InvokeWithoutArgs([]() {
@@ -1451,7 +1517,9 @@ TEST_F(ServerProtocolTest, TestClientHelloPskDheFlow) {
       *mockKeyScheduler_,
       getSecret(MasterSecrets::ExporterMaster, RangeMatches("chlo_shlo_sfin")))
       .WillOnce(InvokeWithoutArgs([]() {
-        return std::vector<uint8_t>({'e', 'x', 'p', 'm'});
+        return DerivedSecret(
+            std::vector<uint8_t>({'e', 'x', 'p', 'm'}),
+            MasterSecrets::ExporterMaster);
       }));
   EXPECT_CALL(
       *mockKeyScheduler_,
@@ -1459,7 +1527,9 @@ TEST_F(ServerProtocolTest, TestClientHelloPskDheFlow) {
   EXPECT_CALL(
       *mockKeyScheduler_, getSecret(AppTrafficSecrets::ServerAppTraffic))
       .WillOnce(InvokeWithoutArgs([]() {
-        return std::vector<uint8_t>({'s', 'a', 't'});
+        return DerivedSecret(
+            std::vector<uint8_t>({'s', 'a', 't'}),
+            AppTrafficSecrets::ServerAppTraffic);
       }));
   EXPECT_CALL(*mockKeyScheduler_, getTrafficKey(RangeMatches("sat"), _, _))
       .WillOnce(InvokeWithoutArgs([]() {
@@ -1470,7 +1540,7 @@ TEST_F(ServerProtocolTest, TestClientHelloPskDheFlow) {
   auto actions =
       getActions(detail::processEvent(state_, TestMessages::clientHelloPsk()));
 
-  expectActions<MutateState, WriteToSocket>(actions);
+  expectActions<MutateState, WriteToSocket, SecretAvailable>(actions);
   auto write = expectAction<WriteToSocket>(actions);
   ASSERT_EQ(write.contents.size(), 2);
   EXPECT_EQ(write.contents[0].encryptionLevel, EncryptionLevel::Plaintext);
@@ -1482,6 +1552,12 @@ TEST_F(ServerProtocolTest, TestClientHelloPskDheFlow) {
   EXPECT_EQ(write.contents[1].contentType, ContentType::handshake);
   EXPECT_TRUE(
       IOBufEqualTo()(write.contents[1].data, IOBuf::copyBuffer("handshake")));
+  expectSecret(
+      actions, HandshakeSecrets::ClientHandshakeTraffic, StringPiece("cht"));
+  expectSecret(
+      actions, HandshakeSecrets::ServerHandshakeTraffic, StringPiece("sht"));
+  expectSecret(
+      actions, AppTrafficSecrets::ServerAppTraffic, StringPiece("sat"));
   processStateMutations(actions);
   EXPECT_EQ(state_.state(), StateEnum::ExpectingFinished);
   EXPECT_EQ(state_.readRecordLayer().get(), rrl);
@@ -1636,14 +1712,18 @@ TEST_F(ServerProtocolTest, TestRetryClientHelloFullHandshakeFlow) {
       getSecret(
           HandshakeSecrets::ServerHandshakeTraffic, RangeMatches("chlo_shlo")))
       .WillOnce(InvokeWithoutArgs([]() {
-        return std::vector<uint8_t>({'s', 'h', 't'});
+        return DerivedSecret(
+            std::vector<uint8_t>({'s', 'h', 't'}),
+            HandshakeSecrets::ServerHandshakeTraffic);
       }));
   EXPECT_CALL(
       *mockKeyScheduler_,
       getSecret(
           HandshakeSecrets::ClientHandshakeTraffic, RangeMatches("chlo_shlo")))
       .WillOnce(InvokeWithoutArgs([]() {
-        return std::vector<uint8_t>({'c', 'h', 't'});
+        return DerivedSecret(
+            std::vector<uint8_t>({'c', 'h', 't'}),
+            HandshakeSecrets::ClientHandshakeTraffic);
       }));
   EXPECT_CALL(*mockKeyScheduler_, getTrafficKey(RangeMatches("sht"), _, _))
       .WillOnce(InvokeWithoutArgs([]() {
@@ -1738,7 +1818,9 @@ TEST_F(ServerProtocolTest, TestRetryClientHelloFullHandshakeFlow) {
           MasterSecrets::ExporterMaster,
           RangeMatches("chlo_shlo_ee_cert_sfin")))
       .WillOnce(InvokeWithoutArgs([]() {
-        return std::vector<uint8_t>({'e', 'x', 'p', 'm'});
+        return DerivedSecret(
+            std::vector<uint8_t>({'e', 'x', 'p', 'm'}),
+            MasterSecrets::ExporterMaster);
       }));
   EXPECT_CALL(
       *mockKeyScheduler_,
@@ -1746,7 +1828,9 @@ TEST_F(ServerProtocolTest, TestRetryClientHelloFullHandshakeFlow) {
   EXPECT_CALL(
       *mockKeyScheduler_, getSecret(AppTrafficSecrets::ServerAppTraffic))
       .WillOnce(InvokeWithoutArgs([]() {
-        return std::vector<uint8_t>({'s', 'a', 't'});
+        return DerivedSecret(
+            std::vector<uint8_t>({'s', 'a', 't'}),
+            AppTrafficSecrets::ServerAppTraffic);
       }));
   EXPECT_CALL(*mockKeyScheduler_, getTrafficKey(RangeMatches("sat"), _, _))
       .WillOnce(InvokeWithoutArgs([]() {
@@ -1757,7 +1841,7 @@ TEST_F(ServerProtocolTest, TestRetryClientHelloFullHandshakeFlow) {
   auto actions =
       getActions(detail::processEvent(state_, TestMessages::clientHello()));
 
-  expectActions<MutateState, WriteToSocket>(actions);
+  expectActions<MutateState, WriteToSocket, SecretAvailable>(actions);
   auto write = expectAction<WriteToSocket>(actions);
   ASSERT_EQ(write.contents.size(), 2);
   EXPECT_EQ(write.contents[0].encryptionLevel, EncryptionLevel::Plaintext);
@@ -1769,6 +1853,12 @@ TEST_F(ServerProtocolTest, TestRetryClientHelloFullHandshakeFlow) {
   EXPECT_EQ(write.contents[1].contentType, ContentType::handshake);
   EXPECT_TRUE(
       IOBufEqualTo()(write.contents[1].data, IOBuf::copyBuffer("handshake")));
+  expectSecret(
+      actions, HandshakeSecrets::ClientHandshakeTraffic, StringPiece("cht"));
+  expectSecret(
+      actions, HandshakeSecrets::ServerHandshakeTraffic, StringPiece("sht"));
+  expectSecret(
+      actions, AppTrafficSecrets::ServerAppTraffic, StringPiece("sat"));
   processStateMutations(actions);
   EXPECT_EQ(state_.state(), StateEnum::ExpectingFinished);
   EXPECT_EQ(state_.readRecordLayer().get(), rrl);
@@ -1826,7 +1916,9 @@ TEST_F(ServerProtocolTest, TestRetryClientHelloPskDheFlow) {
       *mockKeyScheduler_,
       getSecret(EarlySecrets::ResumptionPskBinder, RangeMatches("")))
       .WillOnce(InvokeWithoutArgs([]() {
-        return std::vector<uint8_t>({'b', 'd', 'r'});
+        return DerivedSecret(
+            std::vector<uint8_t>({'b', 'd', 'r'}),
+            EarlySecrets::ResumptionPskBinder);
       }));
   EXPECT_CALL(*factory_, makeKeyExchange(NamedGroup::x25519))
       .WillOnce(InvokeWithoutArgs([]() {
@@ -1870,14 +1962,18 @@ TEST_F(ServerProtocolTest, TestRetryClientHelloPskDheFlow) {
       getSecret(
           HandshakeSecrets::ServerHandshakeTraffic, RangeMatches("chlo_shlo")))
       .WillOnce(InvokeWithoutArgs([]() {
-        return std::vector<uint8_t>({'s', 'h', 't'});
+        return DerivedSecret(
+            std::vector<uint8_t>({'s', 'h', 't'}),
+            HandshakeSecrets::ServerHandshakeTraffic);
       }));
   EXPECT_CALL(
       *mockKeyScheduler_,
       getSecret(
           HandshakeSecrets::ClientHandshakeTraffic, RangeMatches("chlo_shlo")))
       .WillOnce(InvokeWithoutArgs([]() {
-        return std::vector<uint8_t>({'c', 'h', 't'});
+        return DerivedSecret(
+            std::vector<uint8_t>({'c', 'h', 't'}),
+            HandshakeSecrets::ClientHandshakeTraffic);
       }));
   EXPECT_CALL(*mockKeyScheduler_, getTrafficKey(RangeMatches("sht"), _, _))
       .WillOnce(InvokeWithoutArgs([]() {
@@ -1937,7 +2033,9 @@ TEST_F(ServerProtocolTest, TestRetryClientHelloPskDheFlow) {
       *mockKeyScheduler_,
       getSecret(MasterSecrets::ExporterMaster, RangeMatches("chlo_shlo_sfin")))
       .WillOnce(InvokeWithoutArgs([]() {
-        return std::vector<uint8_t>({'e', 'x', 'p', 'm'});
+        return DerivedSecret(
+            std::vector<uint8_t>({'e', 'x', 'p', 'm'}),
+            MasterSecrets::ExporterMaster);
       }));
   EXPECT_CALL(
       *mockKeyScheduler_,
@@ -1945,7 +2043,9 @@ TEST_F(ServerProtocolTest, TestRetryClientHelloPskDheFlow) {
   EXPECT_CALL(
       *mockKeyScheduler_, getSecret(AppTrafficSecrets::ServerAppTraffic))
       .WillOnce(InvokeWithoutArgs([]() {
-        return std::vector<uint8_t>({'s', 'a', 't'});
+        return DerivedSecret(
+            std::vector<uint8_t>({'s', 'a', 't'}),
+            AppTrafficSecrets::ServerAppTraffic);
       }));
   EXPECT_CALL(*mockKeyScheduler_, getTrafficKey(RangeMatches("sat"), _, _))
       .WillOnce(InvokeWithoutArgs([]() {
@@ -1956,7 +2056,7 @@ TEST_F(ServerProtocolTest, TestRetryClientHelloPskDheFlow) {
   auto actions =
       getActions(detail::processEvent(state_, TestMessages::clientHelloPsk()));
 
-  expectActions<MutateState, WriteToSocket>(actions);
+  expectActions<MutateState, WriteToSocket, SecretAvailable>(actions);
   auto write = expectAction<WriteToSocket>(actions);
   ASSERT_EQ(write.contents.size(), 2);
   EXPECT_EQ(write.contents[0].encryptionLevel, EncryptionLevel::Plaintext);
@@ -1968,6 +2068,12 @@ TEST_F(ServerProtocolTest, TestRetryClientHelloPskDheFlow) {
   EXPECT_EQ(write.contents[1].contentType, ContentType::handshake);
   EXPECT_TRUE(
       IOBufEqualTo()(write.contents[1].data, IOBuf::copyBuffer("handshake")));
+  expectSecret(
+      actions, HandshakeSecrets::ClientHandshakeTraffic, StringPiece("cht"));
+  expectSecret(
+      actions, HandshakeSecrets::ServerHandshakeTraffic, StringPiece("sht"));
+  expectSecret(
+      actions, AppTrafficSecrets::ServerAppTraffic, StringPiece("sat"));
   processStateMutations(actions);
   EXPECT_EQ(state_.state(), StateEnum::ExpectingFinished);
   EXPECT_EQ(state_.readRecordLayer().get(), rrl);
@@ -2038,19 +2144,24 @@ TEST_F(ServerProtocolTest, TestClientHelloPskDheEarlyFlow) {
       *mockKeyScheduler_,
       getSecret(EarlySecrets::ResumptionPskBinder, RangeMatches("")))
       .WillOnce(InvokeWithoutArgs([]() {
-        return std::vector<uint8_t>({'b', 'd', 'r'});
+        return DerivedSecret(
+            std::vector<uint8_t>({'b', 'd', 'r'}),
+            EarlySecrets::ResumptionPskBinder);
       }));
   EXPECT_CALL(
       *mockKeyScheduler_,
       getSecret(EarlySecrets::ClientEarlyTraffic, RangeMatches("chlo")))
       .WillOnce(InvokeWithoutArgs([]() {
-        return std::vector<uint8_t>({'c', 'e', 't'});
+        return DerivedSecret(
+            std::vector<uint8_t>({'c', 'e', 't'}),
+            EarlySecrets::ClientEarlyTraffic);
       }));
   EXPECT_CALL(
       *mockKeyScheduler_,
       getSecret(EarlySecrets::EarlyExporter, RangeMatches("chlo")))
       .WillOnce(InvokeWithoutArgs([]() {
-        return std::vector<uint8_t>({'e', 'e', 'm'});
+        return DerivedSecret(
+            std::vector<uint8_t>({'e', 'e', 'm'}), EarlySecrets::EarlyExporter);
       }));
   EXPECT_CALL(*factory_, makeKeyExchange(NamedGroup::x25519))
       .WillOnce(InvokeWithoutArgs([]() {
@@ -2094,14 +2205,18 @@ TEST_F(ServerProtocolTest, TestClientHelloPskDheEarlyFlow) {
       getSecret(
           HandshakeSecrets::ServerHandshakeTraffic, RangeMatches("chlo_shlo")))
       .WillOnce(InvokeWithoutArgs([]() {
-        return std::vector<uint8_t>({'s', 'h', 't'});
+        return DerivedSecret(
+            std::vector<uint8_t>({'s', 'h', 't'}),
+            HandshakeSecrets::ServerHandshakeTraffic);
       }));
   EXPECT_CALL(
       *mockKeyScheduler_,
       getSecret(
           HandshakeSecrets::ClientHandshakeTraffic, RangeMatches("chlo_shlo")))
       .WillOnce(InvokeWithoutArgs([]() {
-        return std::vector<uint8_t>({'c', 'h', 't'});
+        return DerivedSecret(
+            std::vector<uint8_t>({'c', 'h', 't'}),
+            HandshakeSecrets::ClientHandshakeTraffic);
       }));
   EXPECT_CALL(*mockKeyScheduler_, getTrafficKey(RangeMatches("cet"), _, _))
       .WillOnce(InvokeWithoutArgs([]() {
@@ -2172,7 +2287,9 @@ TEST_F(ServerProtocolTest, TestClientHelloPskDheEarlyFlow) {
       *mockKeyScheduler_,
       getSecret(MasterSecrets::ExporterMaster, RangeMatches("chlo_shlo_sfin")))
       .WillOnce(InvokeWithoutArgs([]() {
-        return std::vector<uint8_t>({'e', 'x', 'p', 'm'});
+        return DerivedSecret(
+            std::vector<uint8_t>({'e', 'x', 'p', 'm'}),
+            MasterSecrets::ExporterMaster);
       }));
   EXPECT_CALL(
       *mockKeyScheduler_,
@@ -2180,7 +2297,9 @@ TEST_F(ServerProtocolTest, TestClientHelloPskDheEarlyFlow) {
   EXPECT_CALL(
       *mockKeyScheduler_, getSecret(AppTrafficSecrets::ServerAppTraffic))
       .WillOnce(InvokeWithoutArgs([]() {
-        return std::vector<uint8_t>({'s', 'a', 't'});
+        return DerivedSecret(
+            std::vector<uint8_t>({'s', 'a', 't'}),
+            AppTrafficSecrets::ServerAppTraffic);
       }));
   EXPECT_CALL(*mockKeyScheduler_, getTrafficKey(RangeMatches("sat"), _, _))
       .WillOnce(InvokeWithoutArgs([]() {
@@ -2191,8 +2310,11 @@ TEST_F(ServerProtocolTest, TestClientHelloPskDheEarlyFlow) {
   auto actions = getActions(
       detail::processEvent(state_, TestMessages::clientHelloPskEarly()));
 
-  expectActions<MutateState, WriteToSocket, ReportEarlyHandshakeSuccess>(
-      actions);
+  expectActions<
+      MutateState,
+      WriteToSocket,
+      ReportEarlyHandshakeSuccess,
+      SecretAvailable>(actions);
   auto write = expectAction<WriteToSocket>(actions);
   ASSERT_EQ(write.contents.size(), 2);
   EXPECT_EQ(write.contents[0].encryptionLevel, EncryptionLevel::Plaintext);
@@ -2204,6 +2326,14 @@ TEST_F(ServerProtocolTest, TestClientHelloPskDheEarlyFlow) {
   EXPECT_EQ(write.contents[1].contentType, ContentType::handshake);
   EXPECT_TRUE(
       IOBufEqualTo()(write.contents[1].data, IOBuf::copyBuffer("handshake")));
+  expectSecret(
+      actions, EarlySecrets::ClientEarlyTraffic, folly::StringPiece("cet"));
+  expectSecret(
+      actions, HandshakeSecrets::ClientHandshakeTraffic, StringPiece("cht"));
+  expectSecret(
+      actions, HandshakeSecrets::ServerHandshakeTraffic, StringPiece("sht"));
+  expectSecret(
+      actions, AppTrafficSecrets::ServerAppTraffic, StringPiece("sat"));
   processStateMutations(actions);
   EXPECT_EQ(state_.state(), StateEnum::AcceptingEarlyData);
   EXPECT_EQ(state_.handshakeReadRecordLayer().get(), handshakerrl);
@@ -2282,19 +2412,24 @@ TEST_F(ServerProtocolTest, TestClientHelloPskEarlyFlow) {
       *mockKeyScheduler_,
       getSecret(EarlySecrets::ResumptionPskBinder, RangeMatches("")))
       .WillOnce(InvokeWithoutArgs([]() {
-        return std::vector<uint8_t>({'b', 'd', 'r'});
+        return DerivedSecret(
+            std::vector<uint8_t>({'b', 'd', 'r'}),
+            EarlySecrets::ResumptionPskBinder);
       }));
   EXPECT_CALL(
       *mockKeyScheduler_,
       getSecret(EarlySecrets::ClientEarlyTraffic, RangeMatches("chlo")))
       .WillOnce(InvokeWithoutArgs([]() {
-        return std::vector<uint8_t>({'c', 'e', 't'});
+        return DerivedSecret(
+            std::vector<uint8_t>({'c', 'e', 't'}),
+            EarlySecrets::ClientEarlyTraffic);
       }));
   EXPECT_CALL(
       *mockKeyScheduler_,
       getSecret(EarlySecrets::EarlyExporter, RangeMatches("chlo")))
       .WillOnce(InvokeWithoutArgs([]() {
-        return std::vector<uint8_t>({'e', 'e', 'm'});
+        return DerivedSecret(
+            std::vector<uint8_t>({'e', 'e', 'm'}), EarlySecrets::EarlyExporter);
       }));
   EXPECT_CALL(*mockHandshakeContext_, appendToTranscript(_))
       .InSequence(contextSeq);
@@ -2326,14 +2461,18 @@ TEST_F(ServerProtocolTest, TestClientHelloPskEarlyFlow) {
       getSecret(
           HandshakeSecrets::ServerHandshakeTraffic, RangeMatches("chlo_shlo")))
       .WillOnce(InvokeWithoutArgs([]() {
-        return std::vector<uint8_t>({'s', 'h', 't'});
+        return DerivedSecret(
+            std::vector<uint8_t>({'s', 'h', 't'}),
+            HandshakeSecrets::ServerHandshakeTraffic);
       }));
   EXPECT_CALL(
       *mockKeyScheduler_,
       getSecret(
           HandshakeSecrets::ClientHandshakeTraffic, RangeMatches("chlo_shlo")))
       .WillOnce(InvokeWithoutArgs([]() {
-        return std::vector<uint8_t>({'c', 'h', 't'});
+        return DerivedSecret(
+            std::vector<uint8_t>({'c', 'h', 't'}),
+            HandshakeSecrets::ClientHandshakeTraffic);
       }));
   EXPECT_CALL(*mockKeyScheduler_, getTrafficKey(RangeMatches("cet"), _, _))
       .WillOnce(InvokeWithoutArgs([]() {
@@ -2404,7 +2543,9 @@ TEST_F(ServerProtocolTest, TestClientHelloPskEarlyFlow) {
       *mockKeyScheduler_,
       getSecret(MasterSecrets::ExporterMaster, RangeMatches("chlo_shlo_sfin")))
       .WillOnce(InvokeWithoutArgs([]() {
-        return std::vector<uint8_t>({'e', 'x', 'p', 'm'});
+        return DerivedSecret(
+            std::vector<uint8_t>({'e', 'x', 'p', 'm'}),
+            MasterSecrets::ExporterMaster);
       }));
   EXPECT_CALL(
       *mockKeyScheduler_,
@@ -2412,7 +2553,9 @@ TEST_F(ServerProtocolTest, TestClientHelloPskEarlyFlow) {
   EXPECT_CALL(
       *mockKeyScheduler_, getSecret(AppTrafficSecrets::ServerAppTraffic))
       .WillOnce(InvokeWithoutArgs([]() {
-        return std::vector<uint8_t>({'s', 'a', 't'});
+        return DerivedSecret(
+            std::vector<uint8_t>({'s', 'a', 't'}),
+            AppTrafficSecrets::ServerAppTraffic);
       }));
   EXPECT_CALL(*mockKeyScheduler_, getTrafficKey(RangeMatches("sat"), _, _))
       .WillOnce(InvokeWithoutArgs([]() {
@@ -2423,9 +2566,20 @@ TEST_F(ServerProtocolTest, TestClientHelloPskEarlyFlow) {
   auto actions = getActions(
       detail::processEvent(state_, TestMessages::clientHelloPskEarly()));
 
-  expectActions<MutateState, WriteToSocket, ReportEarlyHandshakeSuccess>(
-      actions);
+  expectActions<
+      MutateState,
+      WriteToSocket,
+      ReportEarlyHandshakeSuccess,
+      SecretAvailable>(actions);
   auto write = expectAction<WriteToSocket>(actions);
+  expectSecret(
+      actions, EarlySecrets::ClientEarlyTraffic, folly::StringPiece("cet"));
+  expectSecret(
+      actions, HandshakeSecrets::ClientHandshakeTraffic, StringPiece("cht"));
+  expectSecret(
+      actions, HandshakeSecrets::ServerHandshakeTraffic, StringPiece("sht"));
+  expectSecret(
+      actions, AppTrafficSecrets::ServerAppTraffic, StringPiece("sat"));
   ASSERT_EQ(write.contents.size(), 2);
   EXPECT_TRUE(
       IOBufEqualTo()(write.contents[0].data, IOBuf::copyBuffer("writtenshlo")));
@@ -2475,7 +2629,7 @@ TEST_F(ServerProtocolTest, TestClientHelloNullExtensions) {
   setUpExpectingClientHello();
   auto actions =
       getActions(detail::processEvent(state_, TestMessages::clientHello()));
-  expectActions<MutateState, WriteToSocket>(actions);
+  expectActions<MutateState, WriteToSocket, SecretAvailable>(actions);
   processStateMutations(actions);
   EXPECT_CALL(*extensions_, getExtensions(_)).Times(0);
 }
@@ -2486,7 +2640,7 @@ TEST_F(ServerProtocolTest, TestClientHelloLegacySessionId) {
   chloWithLegacy.legacy_session_id = IOBuf::copyBuffer("middleboxes");
   auto actions =
       getActions(detail::processEvent(state_, std::move(chloWithLegacy)));
-  expectActions<MutateState, WriteToSocket>(actions);
+  expectActions<MutateState, WriteToSocket, SecretAvailable>(actions);
   auto write = expectAction<WriteToSocket>(actions);
   EXPECT_EQ(write.contents.size(), 3);
   EXPECT_EQ(write.contents[0].contentType, ContentType::handshake);
@@ -2519,7 +2673,7 @@ TEST_F(ServerProtocolTest, TestClientHelloFullHandshake) {
   setUpExpectingClientHello();
   auto actions =
       getActions(detail::processEvent(state_, TestMessages::clientHello()));
-  expectActions<MutateState, WriteToSocket>(actions);
+  expectActions<MutateState, WriteToSocket, SecretAvailable>(actions);
 }
 
 TEST_F(ServerProtocolTest, TestClientHelloPsk) {
@@ -2527,7 +2681,7 @@ TEST_F(ServerProtocolTest, TestClientHelloPsk) {
   setUpExpectingClientHello();
   auto actions =
       getActions(detail::processEvent(state_, TestMessages::clientHelloPsk()));
-  expectActions<MutateState, WriteToSocket>(actions);
+  expectActions<MutateState, WriteToSocket, SecretAvailable>(actions);
 }
 
 TEST_F(ServerProtocolTest, TestClientHelloPskDhe) {
@@ -2535,7 +2689,7 @@ TEST_F(ServerProtocolTest, TestClientHelloPskDhe) {
   setUpExpectingClientHello();
   auto actions =
       getActions(detail::processEvent(state_, TestMessages::clientHelloPsk()));
-  expectActions<MutateState, WriteToSocket>(actions);
+  expectActions<MutateState, WriteToSocket, SecretAvailable>(actions);
 }
 
 TEST_F(ServerProtocolTest, TestClientHelloPskModeMismatch) {
@@ -2546,7 +2700,7 @@ TEST_F(ServerProtocolTest, TestClientHelloPskModeMismatch) {
   chlo.extensions.push_back(encodeExtension(std::move(modes)));
   TestMessages::addPsk(chlo);
   auto actions = getActions(detail::processEvent(state_, std::move(chlo)));
-  expectActions<MutateState, WriteToSocket>(actions);
+  expectActions<MutateState, WriteToSocket, SecretAvailable>(actions);
 }
 
 TEST_F(ServerProtocolTest, TestClientHelloNoSni) {
@@ -2554,7 +2708,7 @@ TEST_F(ServerProtocolTest, TestClientHelloNoSni) {
   auto chlo = TestMessages::clientHello();
   TestMessages::removeExtension(chlo, ExtensionType::server_name);
   auto actions = getActions(detail::processEvent(state_, std::move(chlo)));
-  expectActions<MutateState, WriteToSocket>(actions);
+  expectActions<MutateState, WriteToSocket, SecretAvailable>(actions);
 }
 
 TEST_F(ServerProtocolTest, TestClientHelloFullHandshakeRejectedPsk) {
@@ -2565,7 +2719,7 @@ TEST_F(ServerProtocolTest, TestClientHelloFullHandshakeRejectedPsk) {
 
   auto actions =
       getActions(detail::processEvent(state_, TestMessages::clientHelloPsk()));
-  expectActions<MutateState, WriteToSocket>(actions);
+  expectActions<MutateState, WriteToSocket, SecretAvailable>(actions);
   processStateMutations(actions);
   EXPECT_EQ(state_.state(), StateEnum::ExpectingFinished);
   EXPECT_EQ(state_.pskType(), PskType::Rejected);
@@ -2585,7 +2739,7 @@ TEST_F(ServerProtocolTest, TestClientHelloPskNotSupported) {
   auto chlo = TestMessages::clientHello();
   TestMessages::removeExtension(chlo, ExtensionType::psk_key_exchange_modes);
   auto actions = getActions(detail::processEvent(state_, std::move(chlo)));
-  expectActions<MutateState, WriteToSocket>(actions);
+  expectActions<MutateState, WriteToSocket, SecretAvailable>(actions);
   processStateMutations(actions);
   EXPECT_EQ(state_.state(), StateEnum::ExpectingFinished);
   EXPECT_EQ(state_.pskType(), PskType::NotSupported);
@@ -2726,7 +2880,7 @@ TEST_F(ServerProtocolTest, TestClientHelloNoAlpn) {
   TestMessages::removeExtension(
       chlo, ExtensionType::application_layer_protocol_negotiation);
   auto actions = getActions(detail::processEvent(state_, std::move(chlo)));
-  expectActions<MutateState, WriteToSocket>(actions);
+  expectActions<MutateState, WriteToSocket, SecretAvailable>(actions);
   processStateMutations(actions);
   EXPECT_FALSE(state_.alpn().hasValue());
 }
@@ -2742,7 +2896,7 @@ TEST_F(ServerProtocolTest, TestClientHelloAlpnMismatch) {
   alpn.protocol_name_list.push_back(std::move(gopher));
   chlo.extensions.push_back(encodeExtension(std::move(alpn)));
   auto actions = getActions(detail::processEvent(state_, std::move(chlo)));
-  expectActions<MutateState, WriteToSocket>(actions);
+  expectActions<MutateState, WriteToSocket, SecretAvailable>(actions);
   processStateMutations(actions);
   EXPECT_FALSE(state_.alpn().hasValue());
 }
@@ -2761,7 +2915,7 @@ TEST_F(ServerProtocolTest, TestClientHelloServerPref) {
   alpn.protocol_name_list.push_back(std::move(h2));
   chlo.extensions.push_back(encodeExtension(std::move(alpn)));
   auto actions = getActions(detail::processEvent(state_, std::move(chlo)));
-  expectActions<MutateState, WriteToSocket>(actions);
+  expectActions<MutateState, WriteToSocket, SecretAvailable>(actions);
   processStateMutations(actions);
   EXPECT_EQ(*state_.alpn(), "h2");
 }
@@ -2772,8 +2926,11 @@ TEST_F(ServerProtocolTest, TestClientHelloAcceptEarlyData) {
 
   auto actions = getActions(
       detail::processEvent(state_, TestMessages::clientHelloPskEarly()));
-  expectActions<MutateState, WriteToSocket, ReportEarlyHandshakeSuccess>(
-      actions);
+  expectActions<
+      MutateState,
+      WriteToSocket,
+      ReportEarlyHandshakeSuccess,
+      SecretAvailable>(actions);
   processStateMutations(actions);
   EXPECT_EQ(state_.state(), StateEnum::AcceptingEarlyData);
   EXPECT_EQ(state_.pskType(), PskType::Resumption);
@@ -2800,7 +2957,7 @@ TEST_F(
   }));
   auto actions =
       getActions(detail::processEvent(state_, TestMessages::clientHelloPsk()));
-  expectActions<MutateState, WriteToSocket>(actions);
+  expectActions<MutateState, WriteToSocket, SecretAvailable>(actions);
   processStateMutations(actions);
   EXPECT_EQ(state_.state(), StateEnum::ExpectingFinished);
   EXPECT_EQ(state_.pskType(), PskType::Resumption);
@@ -2838,8 +2995,11 @@ TEST_F(ServerProtocolTest, TestClientHelloAcceptEarlyDataWithValidAppToken) {
 
   auto actions = getActions(
       detail::processEvent(state_, TestMessages::clientHelloPskEarly()));
-  expectActions<MutateState, WriteToSocket, ReportEarlyHandshakeSuccess>(
-      actions);
+  expectActions<
+      MutateState,
+      WriteToSocket,
+      ReportEarlyHandshakeSuccess,
+      SecretAvailable>(actions);
   processStateMutations(actions);
   EXPECT_EQ(state_.state(), StateEnum::AcceptingEarlyData);
   EXPECT_EQ(state_.pskType(), PskType::Resumption);
@@ -2858,7 +3018,7 @@ TEST_F(ServerProtocolTest, TestClientHelloRejectEarlyData) {
 
   auto actions = getActions(
       detail::processEvent(state_, TestMessages::clientHelloPskEarly()));
-  expectActions<MutateState, WriteToSocket>(actions);
+  expectActions<MutateState, WriteToSocket, SecretAvailable>(actions);
   processStateMutations(actions);
   EXPECT_EQ(state_.state(), StateEnum::ExpectingFinished);
   EXPECT_EQ(state_.readRecordLayer().get(), rrl);
@@ -2910,8 +3070,9 @@ TEST_F(ServerProtocolTest, TestClientHelloCookieRejectEarlyData) {
   TestMessages::addPsk(chlo);
 
   auto actions = getActions(detail::processEvent(state_, std::move(chlo)));
-  expectActions<MutateState, WriteToSocket>(actions);
+  expectActions<MutateState, WriteToSocket, SecretAvailable>(actions);
   processStateMutations(actions);
+
   EXPECT_EQ(state_.state(), StateEnum::ExpectingFinished);
   EXPECT_EQ(state_.pskType(), PskType::Resumption);
   EXPECT_EQ(state_.earlyDataType(), EarlyDataType::Rejected);
@@ -2933,7 +3094,7 @@ TEST_F(ServerProtocolTest, TestClientHelloRejectEarlyDataPskRejected) {
 
   auto actions = getActions(
       detail::processEvent(state_, TestMessages::clientHelloPskEarly()));
-  expectActions<MutateState, WriteToSocket>(actions);
+  expectActions<MutateState, WriteToSocket, SecretAvailable>(actions);
   processStateMutations(actions);
   EXPECT_EQ(state_.state(), StateEnum::ExpectingFinished);
   EXPECT_EQ(state_.pskType(), PskType::Rejected);
@@ -2956,7 +3117,7 @@ TEST_F(ServerProtocolTest, TestClientHelloRejectEarlyDataReplayCache) {
 
   auto actions = getActions(
       detail::processEvent(state_, TestMessages::clientHelloPskEarly()));
-  expectActions<MutateState, WriteToSocket>(actions);
+  expectActions<MutateState, WriteToSocket, SecretAvailable>(actions);
   processStateMutations(actions);
   EXPECT_EQ(state_.state(), StateEnum::ExpectingFinished);
   EXPECT_EQ(state_.pskType(), PskType::Resumption);
@@ -2973,7 +3134,7 @@ TEST_F(ServerProtocolTest, TestClientHelloRejectEarlyDataNoAlpn) {
       chlo, ExtensionType::application_layer_protocol_negotiation);
 
   auto actions = getActions(detail::processEvent(state_, std::move(chlo)));
-  expectActions<MutateState, WriteToSocket>(actions);
+  expectActions<MutateState, WriteToSocket, SecretAvailable>(actions);
   processStateMutations(actions);
   EXPECT_EQ(state_.state(), StateEnum::ExpectingFinished);
   EXPECT_EQ(state_.pskType(), PskType::Resumption);
@@ -2996,7 +3157,7 @@ TEST_F(ServerProtocolTest, TestClientHelloRejectEarlyDataDiffAlpn) {
   TestMessages::addPsk(chlo);
 
   auto actions = getActions(detail::processEvent(state_, std::move(chlo)));
-  expectActions<MutateState, WriteToSocket>(actions);
+  expectActions<MutateState, WriteToSocket, SecretAvailable>(actions);
   processStateMutations(actions);
   EXPECT_EQ(state_.state(), StateEnum::ExpectingFinished);
   EXPECT_EQ(state_.pskType(), PskType::Resumption);
@@ -3009,7 +3170,7 @@ TEST_F(ServerProtocolTest, TestClientHelloRejectEarlyDataAfterHrr) {
 
   auto actions = getActions(
       detail::processEvent(state_, TestMessages::clientHelloPskEarly()));
-  expectActions<MutateState, WriteToSocket>(actions);
+  expectActions<MutateState, WriteToSocket, SecretAvailable>(actions);
   processStateMutations(actions);
   EXPECT_EQ(state_.state(), StateEnum::ExpectingFinished);
   EXPECT_EQ(state_.pskType(), PskType::Resumption);
@@ -3028,7 +3189,7 @@ TEST_F(ServerProtocolTest, TestClientHelloRejectEarlyDataClockBehind) {
   TestMessages::addPsk(chlo, 1000);
 
   auto actions = getActions(detail::processEvent(state_, std::move(chlo)));
-  expectActions<MutateState, WriteToSocket>(actions);
+  expectActions<MutateState, WriteToSocket, SecretAvailable>(actions);
   processStateMutations(actions);
   EXPECT_EQ(state_.state(), StateEnum::ExpectingFinished);
   EXPECT_EQ(state_.pskType(), PskType::Resumption);
@@ -3048,7 +3209,7 @@ TEST_F(ServerProtocolTest, TestClientHelloRejectEarlyDataClockAhead) {
   TestMessages::addPsk(chlo, 200000);
 
   auto actions = getActions(detail::processEvent(state_, std::move(chlo)));
-  expectActions<MutateState, WriteToSocket>(actions);
+  expectActions<MutateState, WriteToSocket, SecretAvailable>(actions);
   processStateMutations(actions);
   EXPECT_EQ(state_.state(), StateEnum::ExpectingFinished);
   EXPECT_EQ(state_.pskType(), PskType::Resumption);
@@ -3078,7 +3239,7 @@ TEST_F(ServerProtocolTest, TestClientHelloRejectEarlyDataTicketAgeOverflow) {
   TestMessages::addPsk(chlo, 2000000);
 
   auto actions = getActions(detail::processEvent(state_, std::move(chlo)));
-  expectActions<MutateState, WriteToSocket>(actions);
+  expectActions<MutateState, WriteToSocket, SecretAvailable>(actions);
   processStateMutations(actions);
   EXPECT_EQ(state_.state(), StateEnum::ExpectingFinished);
   EXPECT_EQ(state_.pskType(), PskType::Resumption);
@@ -3108,7 +3269,7 @@ TEST_F(ServerProtocolTest, TestClientHelloRejectEarlyDataNegativeExpectedAge) {
   TestMessages::addPsk(chlo, 2000000);
 
   auto actions = getActions(detail::processEvent(state_, std::move(chlo)));
-  expectActions<MutateState, WriteToSocket>(actions);
+  expectActions<MutateState, WriteToSocket, SecretAvailable>(actions);
   processStateMutations(actions);
   EXPECT_EQ(state_.state(), StateEnum::ExpectingFinished);
   EXPECT_EQ(state_.pskType(), PskType::Resumption);
@@ -3148,7 +3309,7 @@ TEST_F(ServerProtocolTest, TestClientHelloRejectEarlyDataInvalidAppToken) {
 
   auto actions = getActions(
       detail::processEvent(state_, TestMessages::clientHelloPskEarly()));
-  expectActions<MutateState, WriteToSocket>(actions);
+  expectActions<MutateState, WriteToSocket, SecretAvailable>(actions);
   processStateMutations(actions);
   EXPECT_EQ(state_.state(), StateEnum::ExpectingFinished);
   EXPECT_EQ(state_.pskType(), PskType::Resumption);
@@ -3300,7 +3461,7 @@ TEST_F(ServerProtocolTest, TestClientHelloRenegotiatePskCipher) {
 
   auto actions =
       getActions(detail::processEvent(state_, TestMessages::clientHelloPsk()));
-  expectActions<MutateState, WriteToSocket>(actions);
+  expectActions<MutateState, WriteToSocket, SecretAvailable>(actions);
   processStateMutations(actions);
   EXPECT_EQ(state_.state(), StateEnum::ExpectingFinished);
   EXPECT_EQ(state_.pskType(), PskType::Resumption);
@@ -3325,7 +3486,7 @@ TEST_F(ServerProtocolTest, TestClientHelloRenegotiatePskCipherIncompatible) {
 
   auto actions =
       getActions(detail::processEvent(state_, TestMessages::clientHelloPsk()));
-  expectActions<MutateState, WriteToSocket>(actions);
+  expectActions<MutateState, WriteToSocket, SecretAvailable>(actions);
   processStateMutations(actions);
   EXPECT_EQ(state_.state(), StateEnum::ExpectingFinished);
   EXPECT_EQ(state_.pskType(), PskType::Rejected);
@@ -3342,7 +3503,7 @@ TEST_F(ServerProtocolTest, TestClientHelloCookie) {
   chlo.extensions.push_back(encodeExtension(std::move(c)));
 
   auto actions = getActions(detail::processEvent(state_, std::move(chlo)));
-  expectActions<MutateState, WriteToSocket>(actions);
+  expectActions<MutateState, WriteToSocket, SecretAvailable>(actions);
   processStateMutations(actions);
   EXPECT_EQ(state_.state(), StateEnum::ExpectingFinished);
   EXPECT_EQ(state_.cipher(), CipherSuite::TLS_AES_128_GCM_SHA256);
@@ -3480,7 +3641,7 @@ TEST_F(ServerProtocolTest, TestNoCertCompressionAlgorithmMatch) {
   algos.algorithms = {static_cast<CertificateCompressionAlgorithm>(0xfb)};
   chlo.extensions.push_back(encodeExtension(algos));
   auto actions = getActions(detail::processEvent(state_, std::move(chlo)));
-  expectActions<MutateState, WriteToSocket>(actions);
+  expectActions<MutateState, WriteToSocket, SecretAvailable>(actions);
   processStateMutations(actions);
   EXPECT_EQ(state_.state(), StateEnum::ExpectingFinished);
   EXPECT_EQ(state_.serverCertCompAlgo(), folly::none);
@@ -3493,7 +3654,7 @@ TEST_F(ServerProtocolTest, TestCertCompressionRequestedNotSupported) {
   algos.algorithms = {static_cast<CertificateCompressionAlgorithm>(0xfb)};
   chlo.extensions.push_back(encodeExtension(algos));
   auto actions = getActions(detail::processEvent(state_, std::move(chlo)));
-  expectActions<MutateState, WriteToSocket>(actions);
+  expectActions<MutateState, WriteToSocket, SecretAvailable>(actions);
   processStateMutations(actions);
   EXPECT_EQ(state_.state(), StateEnum::ExpectingFinished);
   EXPECT_EQ(state_.serverCertCompAlgo(), folly::none);
@@ -3583,12 +3744,16 @@ TEST_F(ServerProtocolTest, TestFullHandshakeFinished) {
       *mockKeyScheduler_,
       getSecret(MasterSecrets::ResumptionMaster, RangeMatches("clifincontext")))
       .WillOnce(InvokeWithoutArgs([]() {
-        return std::vector<uint8_t>({'r', 's', 'e', 'c'});
+        return DerivedSecret(
+            std::vector<uint8_t>({'r', 's', 'e', 'c'}),
+            MasterSecrets::ResumptionMaster);
       }));
   EXPECT_CALL(
       *mockKeyScheduler_, getSecret(AppTrafficSecrets::ClientAppTraffic))
       .WillOnce(InvokeWithoutArgs([]() {
-        return std::vector<uint8_t>({'c', 'a', 't'});
+        return DerivedSecret(
+            std::vector<uint8_t>({'c', 'a', 't'}),
+            AppTrafficSecrets::ClientAppTraffic);
       }));
   EXPECT_CALL(*mockKeyScheduler_, getTrafficKey(RangeMatches("cat"), _, _))
       .WillOnce(InvokeWithoutArgs([]() {
@@ -3633,7 +3798,14 @@ TEST_F(ServerProtocolTest, TestFullHandshakeFinished) {
   auto actions =
       getActions(detail::processEvent(state_, TestMessages::finished()));
 
-  expectActions<MutateState, ReportHandshakeSuccess, WriteToSocket>(actions);
+  expectActions<
+      MutateState,
+      ReportHandshakeSuccess,
+      WriteToSocket,
+      SecretAvailable>(actions);
+
+  expectSecret(
+      actions, AppTrafficSecrets::ClientAppTraffic, StringPiece("cat"));
   processStateMutations(actions);
   EXPECT_EQ(state_.state(), StateEnum::AcceptingData);
   EXPECT_EQ(state_.readRecordLayer().get(), rrl);
@@ -3652,7 +3824,7 @@ TEST_F(ServerProtocolTest, TestFinishedNoTicket) {
 
   auto actions =
       getActions(detail::processEvent(state_, TestMessages::finished()));
-  expectActions<MutateState, ReportHandshakeSuccess>(actions);
+  expectActions<MutateState, ReportHandshakeSuccess, SecretAvailable>(actions);
   processStateMutations(actions);
   EXPECT_EQ(state_.state(), StateEnum::AcceptingData);
 }
@@ -3678,7 +3850,11 @@ TEST_F(ServerProtocolTest, TestFinishedTicketEarly) {
 
   auto actions =
       getActions(detail::processEvent(state_, TestMessages::finished()));
-  expectActions<MutateState, ReportHandshakeSuccess, WriteToSocket>(actions);
+  expectActions<
+      MutateState,
+      ReportHandshakeSuccess,
+      WriteToSocket,
+      SecretAvailable>(actions);
   processStateMutations(actions);
   EXPECT_EQ(state_.state(), StateEnum::AcceptingData);
 }
@@ -3689,7 +3865,7 @@ TEST_F(ServerProtocolTest, TestFinishedPskNotSupported) {
 
   auto actions =
       getActions(detail::processEvent(state_, TestMessages::finished()));
-  expectActions<MutateState, ReportHandshakeSuccess>(actions);
+  expectActions<MutateState, ReportHandshakeSuccess, SecretAvailable>(actions);
   processStateMutations(actions);
   EXPECT_EQ(state_.state(), StateEnum::AcceptingData);
 }
@@ -3701,7 +3877,7 @@ TEST_F(ServerProtocolTest, TestFinishedNoAutomaticNewSessionTicket) {
   EXPECT_CALL(*mockKeyScheduler_, clearMasterSecret());
   auto actions =
       getActions(detail::processEvent(state_, TestMessages::finished()));
-  expectActions<MutateState, ReportHandshakeSuccess>(actions);
+  expectActions<MutateState, ReportHandshakeSuccess, SecretAvailable>(actions);
   processStateMutations(actions);
   EXPECT_EQ(state_.state(), StateEnum::AcceptingData);
 }
@@ -3865,7 +4041,11 @@ TEST_F(
       }));
   auto actions =
       getActions(detail::processEvent(state_, TestMessages::finished()));
-  expectActions<MutateState, ReportHandshakeSuccess, WriteToSocket>(actions);
+  expectActions<
+      MutateState,
+      ReportHandshakeSuccess,
+      WriteToSocket,
+      SecretAvailable>(actions);
   processStateMutations(actions);
   EXPECT_EQ(state_.state(), StateEnum::AcceptingData);
 
@@ -3969,7 +4149,9 @@ TEST_F(ServerProtocolTest, TestKeyUpdateRequest) {
   EXPECT_CALL(
       *mockKeyScheduler_, getSecret(AppTrafficSecrets::ClientAppTraffic))
       .WillOnce(InvokeWithoutArgs([]() {
-        return std::vector<uint8_t>({'c', 'a', 't'});
+        return DerivedSecret(
+            std::vector<uint8_t>({'c', 'a', 't'}),
+            AppTrafficSecrets::ClientAppTraffic);
       }));
 
   EXPECT_CALL(*appWrite_, _write(_)).WillOnce(Invoke([&](TLSMessage& msg) {
@@ -3987,7 +4169,9 @@ TEST_F(ServerProtocolTest, TestKeyUpdateRequest) {
   EXPECT_CALL(
       *mockKeyScheduler_, getSecret(AppTrafficSecrets::ServerAppTraffic))
       .WillOnce(InvokeWithoutArgs([]() {
-        return std::vector<uint8_t>({'s', 'a', 't'});
+        return DerivedSecret(
+            std::vector<uint8_t>({'s', 'a', 't'}),
+            AppTrafficSecrets::ServerAppTraffic);
       }));
 
   EXPECT_CALL(*mockKeyScheduler_, getTrafficKey(RangeMatches("cat"), _, _))
@@ -4012,10 +4196,15 @@ TEST_F(ServerProtocolTest, TestKeyUpdateRequest) {
   expectEncryptedWriteRecordLayerCreation(&wrl, &waead, StringPiece("sat"));
   auto actions =
       getActions(detail::processEvent(state_, TestMessages::keyUpdate(true)));
-  expectActions<MutateState, WriteToSocket>(actions);
+  expectActions<MutateState, WriteToSocket, SecretAvailable>(actions);
   auto write = expectAction<WriteToSocket>(actions);
   EXPECT_TRUE(
       IOBufEqualTo()(write.contents[0].data, IOBuf::copyBuffer("keyupdated")));
+
+  expectSecret(
+      actions, AppTrafficSecrets::ClientAppTraffic, StringPiece("cat"));
+  expectSecret(
+      actions, AppTrafficSecrets::ServerAppTraffic, StringPiece("sat"));
   processStateMutations(actions);
   EXPECT_EQ(state_.readRecordLayer().get(), rrl);
   EXPECT_EQ(state_.writeRecordLayer().get(), wrl);

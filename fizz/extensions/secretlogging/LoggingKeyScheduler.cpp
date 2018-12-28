@@ -10,10 +10,10 @@
 
 namespace fizz {
 
-std::vector<uint8_t> LoggingKeyScheduler::getSecret(
+DerivedSecret LoggingKeyScheduler::getSecret(
     EarlySecrets s,
     folly::ByteRange transcript) const {
-  std::vector<uint8_t> secret = KeyScheduler::getSecret(s, transcript);
+  auto secret = KeyScheduler::getSecret(s, transcript);
   switch (s) {
     case EarlySecrets::ClientEarlyTraffic:
       clientEarlyTrafficSecret_ = secret;
@@ -24,10 +24,10 @@ std::vector<uint8_t> LoggingKeyScheduler::getSecret(
   return secret;
 }
 
-std::vector<uint8_t> LoggingKeyScheduler::getSecret(
+DerivedSecret LoggingKeyScheduler::getSecret(
     HandshakeSecrets s,
     folly::ByteRange transcript) const {
-  std::vector<uint8_t> secret = KeyScheduler::getSecret(s, transcript);
+  auto secret = KeyScheduler::getSecret(s, transcript);
   switch (s) {
     case HandshakeSecrets::ClientHandshakeTraffic:
       clientHandshakeTrafficSecret_ = secret;
@@ -39,8 +39,8 @@ std::vector<uint8_t> LoggingKeyScheduler::getSecret(
   return secret;
 }
 
-std::vector<uint8_t> LoggingKeyScheduler::getSecret(AppTrafficSecrets s) const {
-  std::vector<uint8_t> secret = KeyScheduler::getSecret(s);
+DerivedSecret LoggingKeyScheduler::getSecret(AppTrafficSecrets s) const {
+  auto secret = KeyScheduler::getSecret(s);
   switch (s) {
     case AppTrafficSecrets::ClientAppTraffic:
       clientTrafficSecret_ = secret;

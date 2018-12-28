@@ -478,7 +478,8 @@ static Buf encodeAndAddBinders(
   }
 
   PskBinder binder;
-  binder.binder = handshakeContext.getFinishedData(folly::range(binderKey));
+  binder.binder =
+      handshakeContext.getFinishedData(folly::range(binderKey.secret));
   pskExt.binders.clear();
   pskExt.binders.push_back(std::move(binder));
 
@@ -590,6 +591,7 @@ EventHandler<ClientTypes, StateEnum::Uninitialized, Event::Connect>::handle(
   Buf encodedClientHello;
   std::unique_ptr<EncryptedWriteRecordLayer> earlyWriteRecordLayer;
   Optional<ReportEarlyHandshakeSuccess> reportEarlySuccess;
+  Optional<SecretAvailable> earlyWriteSecretAvailable;
   if (psk) {
     requestedExtensions.push_back(ExtensionType::pre_shared_key);
     auto keyScheduler = context->getFactory()->makeKeyScheduler(psk->cipher);
@@ -610,15 +612,16 @@ EventHandler<ClientTypes, StateEnum::Uninitialized, Event::Connect>::handle(
       Protocol::setAead(
           *earlyWriteRecordLayer,
           psk->cipher,
-          folly::range(earlyWriteSecret),
+          folly::range(earlyWriteSecret.secret),
           *context->getFactory(),
           *keyScheduler);
+      earlyWriteSecretAvailable = SecretAvailable(std::move(earlyWriteSecret));
 
       auto earlyExporterVector = keyScheduler->getSecret(
           EarlySecrets::EarlyExporter,
           handshakeContext->getHandshakeContext()->coalesce());
       earlyDataParams->earlyExporterSecret =
-          folly::IOBuf::copyBuffer(folly::range(earlyExporterVector));
+          folly::IOBuf::copyBuffer(folly::range(earlyExporterVector.secret));
 
       reportEarlySuccess = ReportEarlyHandshakeSuccess();
       reportEarlySuccess->maxEarlyDataSize = psk->maxEarlyDataSize;
@@ -676,6 +679,7 @@ EventHandler<ClientTypes, StateEnum::Uninitialized, Event::Connect>::handle(
           newState.earlyWriteRecordLayer() = std::move(earlyWriteRecordLayer);
         },
         std::move(write),
+        std::move(*earlyWriteSecretAvailable),
         std::move(*reportEarlySuccess),
         &Transition<StateEnum::ExpectingServerHello>);
   } else {
@@ -934,7 +938,7 @@ EventHandler<ClientTypes, StateEnum::ExpectingServerHello, Event::ServerHello>::
   Protocol::setAead(
       *handshakeWriteRecordLayer,
       cipher,
-      folly::range(handshakeWriteSecret),
+      folly::range(handshakeWriteSecret.secret),
       *state.context()->getFactory(),
       *scheduler);
 
@@ -948,14 +952,14 @@ EventHandler<ClientTypes, StateEnum::ExpectingServerHello, Event::ServerHello>::
   Protocol::setAead(
       *handshakeReadRecordLayer,
       cipher,
-      folly::range(handshakeReadSecret),
+      folly::range(handshakeReadSecret.secret),
       *state.context()->getFactory(),
       *scheduler);
 
   auto clientHandshakeSecret =
-      folly::IOBuf::copyBuffer(folly::range(handshakeWriteSecret));
+      folly::IOBuf::copyBuffer(folly::range(handshakeWriteSecret.secret));
   auto serverHandshakeSecret =
-      folly::IOBuf::copyBuffer(folly::range(handshakeReadSecret));
+      folly::IOBuf::copyBuffer(folly::range(handshakeReadSecret.secret));
 
   folly::Optional<ClientAuthType> authType;
   if (negotiatedPsk.clientCert) {
@@ -998,6 +1002,8 @@ EventHandler<ClientTypes, StateEnum::ExpectingServerHello, Event::ServerHello>::
         newState.clientCert() = std::move(clientCert);
         newState.clientAuthRequested() = std::move(authType);
       },
+      SecretAvailable(std::move(handshakeReadSecret)),
+      SecretAvailable(std::move(handshakeWriteSecret)),
       &Transition<StateEnum::ExpectingEncryptedExtensions>);
 }
 
@@ -1405,9 +1411,8 @@ Actions EventHandler<
   state.handshakeContext()->appendToTranscript(*compCert.originalEncoding);
 
   auto algos = state.context()->getSupportedCertDecompressionAlgorithms();
-  if (std::find(algos.begin(),
-                algos.end(),
-                compCert.algorithm) == algos.end()) {
+  if (std::find(algos.begin(), algos.end(), compCert.algorithm) ==
+      algos.end()) {
     throw FizzException(
         "certificate compressed with unsupported algorithm: " +
             toString(compCert.algorithm),
@@ -1564,14 +1569,16 @@ EventHandler<ClientTypes, StateEnum::ExpectingFinished, Event::Finished>::
   auto exporterMasterVector = state.keyScheduler()->getSecret(
       MasterSecrets::ExporterMaster, clientFinishedContext->coalesce());
   auto exporterMaster =
-      folly::IOBuf::copyBuffer(folly::range(exporterMasterVector));
+      folly::IOBuf::copyBuffer(folly::range(exporterMasterVector.secret));
 
   auto encodedFinished = Protocol::getFinished(
       state.clientHandshakeSecret()->coalesce(), *state.handshakeContext());
-  auto resumptionSecret =
-      folly::IOBuf::copyBuffer(folly::range(state.keyScheduler()->getSecret(
-          MasterSecrets::ResumptionMaster,
-          state.handshakeContext()->getHandshakeContext()->coalesce())));
+  auto resumptionSecret = folly::IOBuf::copyBuffer(folly::range(
+      state.keyScheduler()
+          ->getSecret(
+              MasterSecrets::ResumptionMaster,
+              state.handshakeContext()->getHandshakeContext()->coalesce())
+          .secret));
 
   WriteToSocket clientFlight;
 
@@ -1615,7 +1622,7 @@ EventHandler<ClientTypes, StateEnum::ExpectingFinished, Event::Finished>::
   Protocol::setAead(
       *writeRecordLayer,
       *state.cipher(),
-      folly::range(writeSecret),
+      folly::range(writeSecret.secret),
       *state.context()->getFactory(),
       *state.keyScheduler());
 
@@ -1628,7 +1635,7 @@ EventHandler<ClientTypes, StateEnum::ExpectingFinished, Event::Finished>::
   Protocol::setAead(
       *readRecordLayer,
       *state.cipher(),
-      folly::range(readSecret),
+      folly::range(readSecret.secret),
       *state.context()->getFactory(),
       *state.keyScheduler());
 
@@ -1655,6 +1662,8 @@ EventHandler<ClientTypes, StateEnum::ExpectingFinished, Event::Finished>::
         newState.sentCCS() = sentCCS;
       },
       &Transition<StateEnum::Established>,
+      SecretAvailable(std::move(readSecret)),
+      SecretAvailable(std::move(writeSecret)),
       std::move(clientFlight),
       std::move(reportSuccess));
 }
@@ -1742,7 +1751,7 @@ EventHandler<ClientTypes, StateEnum::Established, Event::KeyUpdate>::handle(
   Protocol::setAead(
       *readRecordLayer,
       *state.cipher(),
-      folly::range(readSecret),
+      folly::range(readSecret.secret),
       *state.context()->getFactory(),
       *state.keyScheduler());
 
@@ -1770,7 +1779,7 @@ EventHandler<ClientTypes, StateEnum::Established, Event::KeyUpdate>::handle(
   Protocol::setAead(
       *writeRecordLayer,
       *state.cipher(),
-      folly::range(writeSecret),
+      folly::range(writeSecret.secret),
       *state.context()->getFactory(),
       *state.keyScheduler());
 
@@ -1780,6 +1789,8 @@ EventHandler<ClientTypes, StateEnum::Established, Event::KeyUpdate>::handle(
         newState.readRecordLayer() = std::move(rRecordLayer);
         newState.writeRecordLayer() = std::move(wRecordLayer);
       },
+      SecretAvailable(std::move(readSecret)),
+      SecretAvailable(std::move(writeSecret)),
       std::move(write));
 }
 

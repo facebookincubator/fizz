@@ -301,5 +301,8 @@ void AsyncFizzServerT<SM>::ActionMoveVisitor::operator()(
   }
   callback->fizzHandshakeAttemptFallback(std::move(fallback.clientHello));
 }
+
+template <typename SM>
+void AsyncFizzServerT<SM>::ActionMoveVisitor::operator()(SecretAvailable&) {}
 } // namespace server
 } // namespace fizz

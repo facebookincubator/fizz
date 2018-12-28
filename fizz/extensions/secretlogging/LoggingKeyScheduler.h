@@ -21,39 +21,53 @@ class LoggingKeyScheduler : public KeyScheduler {
   using KeyScheduler::KeyScheduler;
   virtual ~LoggingKeyScheduler() = default;
 
-  std::vector<uint8_t> getSecret(EarlySecrets s, folly::ByteRange transcript)
+  DerivedSecret getSecret(EarlySecrets s, folly::ByteRange transcript)
       const override;
-  std::vector<uint8_t> getSecret(
-      HandshakeSecrets s,
-      folly::ByteRange transcript) const override;
-  std::vector<uint8_t> getSecret(AppTrafficSecrets s) const override;
+  DerivedSecret getSecret(HandshakeSecrets s, folly::ByteRange transcript)
+      const override;
+  DerivedSecret getSecret(AppTrafficSecrets s) const override;
 
   std::vector<uint8_t> getClientEarlyTrafficSecret() const {
-    return clientEarlyTrafficSecret_;
+    if (!clientEarlyTrafficSecret_) {
+      return std::vector<uint8_t>();
+    }
+    return clientEarlyTrafficSecret_->secret;
   }
 
   std::vector<uint8_t> getClientHandshakeTrafficSecret() const {
-    return clientHandshakeTrafficSecret_;
+    if (!clientHandshakeTrafficSecret_) {
+      return std::vector<uint8_t>();
+    }
+    return clientHandshakeTrafficSecret_->secret;
   }
 
   std::vector<uint8_t> getServerHandshakeTrafficSecret() const {
-    return serverHandshakeTrafficSecret_;
+    if (!serverHandshakeTrafficSecret_) {
+      return std::vector<uint8_t>();
+    }
+    return serverHandshakeTrafficSecret_->secret;
   }
 
   std::vector<uint8_t> getClientTrafficSecret() const {
-    return clientTrafficSecret_;
+    if (!clientTrafficSecret_) {
+      return std::vector<uint8_t>();
+    }
+    return clientTrafficSecret_->secret;
   }
 
   std::vector<uint8_t> getServerTrafficSecret() const {
-    return serverTrafficSecret_;
+    if (!serverTrafficSecret_) {
+      return std::vector<uint8_t>();
+    }
+    return serverTrafficSecret_->secret;
   }
 
  private:
-  mutable std::vector<uint8_t> clientEarlyTrafficSecret_;
-  mutable std::vector<uint8_t> clientHandshakeTrafficSecret_;
-  mutable std::vector<uint8_t> serverHandshakeTrafficSecret_;
-  mutable std::vector<uint8_t> clientTrafficSecret_;
-  mutable std::vector<uint8_t> serverTrafficSecret_;
+  mutable folly::Optional<DerivedSecret> clientEarlyTrafficSecret_;
+  mutable folly::Optional<DerivedSecret> clientHandshakeTrafficSecret_;
+  mutable folly::Optional<DerivedSecret> serverHandshakeTrafficSecret_;
+  mutable folly::Optional<DerivedSecret> clientTrafficSecret_;
+  mutable folly::Optional<DerivedSecret> serverTrafficSecret_;
 };
 
 } // namespace fizz

@@ -76,7 +76,8 @@ using Action = boost::variant<
     ReportError,
     MutateState,
     WaitForData,
-    NewCachedPsk>;
+    NewCachedPsk,
+    SecretAvailable>;
 // TODO use small_vector once we are sure it is portable.
 using Actions = std::vector<Action>;
 

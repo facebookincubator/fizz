@@ -27,6 +27,20 @@ enum class MasterSecrets { ExporterMaster, ResumptionMaster };
 
 enum class AppTrafficSecrets { ClientAppTraffic, ServerAppTraffic };
 
+using SecretType = boost::
+    variant<EarlySecrets, HandshakeSecrets, MasterSecrets, AppTrafficSecrets>;
+
+struct DerivedSecret {
+  std::vector<uint8_t> secret;
+  SecretType type;
+
+  DerivedSecret(std::vector<uint8_t> secretIn, SecretType typeIn)
+      : secret(std::move(secretIn)), type(typeIn) {}
+
+  DerivedSecret(folly::ByteRange secretIn, SecretType typeIn)
+      : secret(secretIn.begin(), secretIn.end()), type(typeIn) {}
+};
+
 /**
  * Keeps track of the TLS 1.3 key derivation schedule.
  */
@@ -83,16 +97,14 @@ class KeyScheduler {
   /**
    * Retreive a secret from the scheduler. Must be in the appropriate state.
    */
-  virtual std::vector<uint8_t> getSecret(
-      EarlySecrets s,
-      folly::ByteRange transcript) const;
-  virtual std::vector<uint8_t> getSecret(
+  virtual DerivedSecret getSecret(EarlySecrets s, folly::ByteRange transcript)
+      const;
+  virtual DerivedSecret getSecret(
       HandshakeSecrets s,
       folly::ByteRange transcript) const;
-  virtual std::vector<uint8_t> getSecret(
-      MasterSecrets s,
-      folly::ByteRange transcript) const;
-  virtual std::vector<uint8_t> getSecret(AppTrafficSecrets s) const;
+  virtual DerivedSecret getSecret(MasterSecrets s, folly::ByteRange transcript)
+      const;
+  virtual DerivedSecret getSecret(AppTrafficSecrets s) const;
 
   /**
    * Derive a traffic key and iv from a traffic secret.

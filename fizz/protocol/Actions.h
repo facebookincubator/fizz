@@ -8,11 +8,14 @@
 
 #pragma once
 
+#include <fizz/protocol/KeyScheduler.h>
+#include <fizz/protocol/Types.h>
 #include <fizz/record/RecordLayer.h>
 #include <folly/ExceptionWrapper.h>
 #include <folly/io/IOBuf.h>
 #include <folly/io/async/AsyncTransport.h>
 #include <folly/small_vector.h>
+#include <vector>
 
 namespace fizz {
 
@@ -61,8 +64,18 @@ struct ReportError {
  */
 struct WaitForData {};
 
-namespace detail {
+/**
+ * New secret available. This event is triggered whenever the TLS layer derives
+ * new keys. This should not normally be used unless logging keys or not using
+ * the TLS record layer.
+ */
+struct SecretAvailable {
+  DerivedSecret secret;
 
+  SecretAvailable(DerivedSecret secretIn) : secret(std::move(secretIn)) {}
+};
+
+namespace detail {
 template <typename ActionsType>
 void addAction(ActionsType& /*acts*/) {}
 
