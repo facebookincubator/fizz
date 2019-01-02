@@ -9,6 +9,7 @@
 #include <fizz/crypto/aead/AESGCM128.h>
 #include <fizz/crypto/aead/OpenSSLEVPCipher.h>
 #include <fizz/protocol/DefaultCertificateVerifier.h>
+#include <fizz/protocol/ZlibCertificateCompressor.h>
 #include <fizz/protocol/test/Utilities.h>
 #include <fizz/server/AsyncFizzServer.h>
 #include <fizz/server/SlidingBloomReplayCache.h>
@@ -35,20 +36,21 @@ void printUsage() {
     << "Usage: s_server args\n"
     << "\n"
     << "Supported arguments:\n"
-    << " -accept port       (set port to accept connections on. Default: 8443)\n"
-    << " -ciphers c1,...    (comma-separated custom list of ciphers to use in order of preference)\n"
-    << " -cert cert         (PEM format server certificate. Default: none, generates a self-signed cert)\n"
-    << " -key key           (PEM format private key for server certificate. Default: none)\n"
-    << " -pass password     (private key password. Default: none)\n"
-    << " -requestcert       (request an optional client certificate from clients. Default: false)\n"
-    << " -requirecert       (require a client certificate from clients. Default: false)\n"
-    << " -capaths d1:...    (colon-separated paths to directories of CA certs used for verification)\n"
-    << " -cafile file       (path to bundle of CA certs used for verification)\n"
-    << " -early             (enables sending early data during resumption. Default: false)\n"
-    << " -alpn alpn1,...    (comma-separated list of ALPNs to support. Default: none)\n"
-    << " -fallback          (enables falling back to OpenSSL for pre-1.3 connections. Default: false)\n"
-    << " -loop              (don't exit after client disconnect. Default: false)\n"
-    << " -quiet             (hide informational logging. Default: false)\n";
+    << " -accept port             (set port to accept connections on. Default: 8443)\n"
+    << " -ciphers c1,...          (comma-separated custom list of ciphers to use in order of preference)\n"
+    << " -cert cert               (PEM format server certificate. Default: none, generates a self-signed cert)\n"
+    << " -key key                 (PEM format private key for server certificate. Default: none)\n"
+    << " -pass password           (private key password. Default: none)\n"
+    << " -requestcert             (request an optional client certificate from clients. Default: false)\n"
+    << " -requirecert             (require a client certificate from clients. Default: false)\n"
+    << " -capaths d1:...          (colon-separated paths to directories of CA certs used for verification)\n"
+    << " -cafile file             (path to bundle of CA certs used for verification)\n"
+    << " -early                   (enables sending early data during resumption. Default: false)\n"
+    << " -alpn alpn1,.. .         (comma-separated list of ALPNs to support. Default: none)\n"
+    << " -certcompression a1,...  (enables certificate compression support for given algorithms. Default: None)\n"
+    << " -fallback                (enables falling back to OpenSSL for pre-1.3 connections. Default: false)\n"
+    << " -loop                    (don't exit after client disconnect. Default: false)\n"
+    << " -quiet                   (hide informational logging. Default: false)\n";
   // clang-format on
 }
 
@@ -192,6 +194,10 @@ class FizzExampleServer : public AsyncFizzServer::HandshakeCallback,
               << (serverCert ? serverCert->getIdentity() : "(none)");
     LOG(INFO) << "  Client Identity: "
               << (clientCert ? clientCert->getIdentity() : "(none)");
+    LOG(INFO) << "  Server Certificate Compression: "
+              << (state.serverCertCompAlgo()
+                      ? toString(*state.serverCertCompAlgo())
+                      : "(none)");
     LOG(INFO) << "  ALPN: " << state.alpn().value_or("(none)");
   }
 
@@ -285,6 +291,7 @@ int fizzServerCommand(const std::vector<std::string>& args) {
   std::string caFile;
   bool early = false;
   std::vector<std::string> alpns;
+  folly::Optional<std::vector<CertificateCompressionAlgorithm>> compAlgos;
   bool loop = false;
   bool fallback = false;
 
@@ -294,22 +301,12 @@ int fizzServerCommand(const std::vector<std::string>& args) {
         port = portFromString(arg, true);
     }}},
     {"-ciphers", {true, [&ciphers](const std::string& arg) {
-        std::vector<CipherSuite> newCiphers;
-        auto remainder = arg;
         try {
-          for (auto commaPos = remainder.find(',');
-               commaPos != std::string::npos;
-               commaPos = remainder.find(',')) {
-            auto cipher = parse<CipherSuite>(remainder.substr(0, commaPos));
-            remainder = remainder.substr(commaPos+1);
-            newCiphers.push_back(cipher);
-          }
-
-          newCiphers.push_back(parse<CipherSuite>(remainder));
-          ciphers = std::move(newCiphers);
+          ciphers = fromCSV<CipherSuite>(arg);
         }
         catch (const std::exception& e) {
           LOG(ERROR) << "Error parsing cipher suites: " << e.what();
+          throw;
         }
     }}},
     {"-cert", {true, [&certPath](const std::string& arg) { certPath = arg; }}},
@@ -326,15 +323,15 @@ int fizzServerCommand(const std::vector<std::string>& args) {
     {"-early", {false, [&early](const std::string&) { early = true; }}},
     {"-alpn", {true, [&alpns](const std::string& arg) {
         alpns.clear();
-        auto remainder = arg;
-        for (auto commaPos = remainder.find(',');
-             commaPos != std::string::npos;
-             commaPos = remainder.find(',')) {
-          alpns.push_back(remainder.substr(0, commaPos));
-          remainder = remainder.substr(commaPos+1);
+        folly::split(",", arg, alpns);
+    }}},
+    {"-certcompression", {true, [&compAlgos](const std::string& arg) {
+        try {
+          compAlgos = fromCSV<CertificateCompressionAlgorithm>(arg);
+        } catch (const std::exception& e) {
+          LOG(ERROR) << "Error parsing certificate compression algorithms: " << e.what();
+          throw;
         }
-
-        alpns.push_back(remainder);
     }}},
     {"-loop", {false, [&loop](const std::string&) { loop = true; }}},
     {"-quiet", {false, [](const std::string&) {
@@ -399,7 +396,27 @@ int fizzServerCommand(const std::vector<std::string>& args) {
   ticketCipher->setTicketSecrets({{range(ticketSeed)}});
   serverContext->setTicketCipher(ticketCipher);
 
+  // Store a vector of compressors and algorithms for which there are
+  // compressors.
   auto certManager = std::make_unique<CertManager>();
+  std::vector<std::shared_ptr<CertificateCompressor>> compressors;
+  std::vector<CertificateCompressionAlgorithm> finalAlgos;
+  if (compAlgos) {
+    for (const auto& algo : *compAlgos) {
+      switch (algo) {
+        case CertificateCompressionAlgorithm::zlib:
+          compressors.push_back(std::make_shared<ZlibCertificateCompressor>(9));
+          finalAlgos.push_back(algo);
+          break;
+        default:
+          LOG(WARNING) << "Don't know what compressor to use for "
+                       << toString(algo) << ", ignoring.";
+          break;
+      }
+    }
+  }
+  serverContext->setSupportedCompressionAlgorithms(finalAlgos);
+
   if (!certPath.empty()) {
     std::string certData;
     std::string keyData;
@@ -412,9 +429,9 @@ int fizzServerCommand(const std::vector<std::string>& args) {
     }
     std::unique_ptr<SelfCert> cert;
     if (!keyPass.empty()) {
-      cert = CertUtils::makeSelfCert(certData, keyData, keyPass);
+      cert = CertUtils::makeSelfCert(certData, keyData, keyPass, compressors);
     } else {
-      cert = CertUtils::makeSelfCert(certData, keyData);
+      cert = CertUtils::makeSelfCert(certData, keyData, compressors);
     }
     certManager->addCert(std::move(cert), true);
   } else {
@@ -422,7 +439,7 @@ int fizzServerCommand(const std::vector<std::string>& args) {
     std::vector<folly::ssl::X509UniquePtr> certChain;
     certChain.push_back(std::move(certData.cert));
     auto cert = std::make_unique<SelfCertImpl<KeyType::P256>>(
-        std::move(certData.key), std::move(certChain));
+        std::move(certData.key), std::move(certChain), compressors);
     certManager->addCert(std::move(cert), true);
   }
   serverContext->setCertManager(std::move(certManager));

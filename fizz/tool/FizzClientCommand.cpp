@@ -7,7 +7,9 @@
  */
 
 #include <fizz/client/AsyncFizzClient.h>
+#include <fizz/protocol/ZlibCertificateDecompressor.h>
 #include <fizz/tool/FizzCommandCommon.h>
+#include <fizz/util/Parse.h>
 #include <folly/FileUtil.h>
 #include <folly/io/async/SSLContext.h>
 
@@ -28,20 +30,21 @@ void printUsage() {
     << "Usage: s_client args\n"
     << "\n"
     << "Supported arguments:\n"
-    << " -host host         (use connect instead)\n"
-    << " -port port         (use connect instead)\n"
-    << " -connect host:port (set the address to connect to. Default: localhost:4433)\n"
-    << " -verify            (enable server cert verification. Default: false)\n"
-    << " -cert cert         (PEM format client certificate to send if requested. Default: none)\n"
-    << " -key key           (PEM format private key for client certificate. Default: none)\n"
-    << " -pass password     (private key password. Default: none)\n"
-    << " -capaths d1:...    (colon-separated paths to directories of CA certs used for verification)\n"
-    << " -cafile file       (path to bundle of CA certs used for verification)\n"
-    << " -reconnect         (after connecting, open another connection using a psk. Default: false)\n"
-    << " -servername name   (server name to send in SNI. Default: same as host)\n"
-    << " -alpn alpn1,...    (comma-separated list of ALPNs to send. Default: none)\n"
-    << " -early             (enables sending early data during resumption. Default: false)\n"
-    << " -quiet             (hide informational logging. Default: false)\n";
+    << " -host host               (use connect instead)\n"
+    << " -port port               (use connect instead)\n"
+    << " -connect host:port       (set the address to connect to. Default: localhost:4433)\n"
+    << " -verify                  (enable server cert verification. Default: false)\n"
+    << " -cert cert               (PEM format client certificate to send if requested. Default: none)\n"
+    << " -key key                 (PEM format private key for client certificate. Default: none)\n"
+    << " -pass password           (private key password. Default: none)\n"
+    << " -capaths d1:...          (colon-separated paths to directories of CA certs used for verification)\n"
+    << " -cafile file             (path to bundle of CA certs used for verification)\n"
+    << " -reconnect               (after connecting, open another connection using a psk. Default: false)\n"
+    << " -servername name         (server name to send in SNI. Default: same as host)\n"
+    << " -alpn alpn1,...          (comma-separated list of ALPNs to send. Default: none)\n"
+    << " -certcompression a1,...  (enables certificate compression support for given algorithms. Default: None)\n"
+    << " -early                   (enables sending early data during resumption. Default: false)\n"
+    << " -quiet                   (hide informational logging. Default: false)\n";
   // clang-format on
 }
 
@@ -195,6 +198,10 @@ class Connection : public AsyncSocket::ConnectCallback,
                   << std::string(bptr->data, bptr->length);
       }
     }
+    LOG(INFO) << "  Server Certificate Compression: "
+              << (state.serverCertCompAlgo()
+                      ? toString(*state.serverCertCompAlgo())
+                      : "(none)");
     LOG(INFO) << "  ALPN: " << state.alpn().value_or("(none)");
   }
 
@@ -239,6 +246,7 @@ int fizzClientCommand(const std::vector<std::string>& args) {
   bool reconnect = false;
   std::string customSNI;
   std::vector<std::string> alpns;
+  folly::Optional<std::vector<CertificateCompressionAlgorithm>> compAlgos;
   bool early = false;
 
   // clang-format off
@@ -269,15 +277,15 @@ int fizzClientCommand(const std::vector<std::string>& args) {
     }}},
     {"-alpn", {true, [&alpns](const std::string& arg) {
         alpns.clear();
-        auto remainder = arg;
-        for (auto commaPos = remainder.find(',');
-             commaPos != std::string::npos;
-             commaPos = remainder.find(',')) {
-          alpns.push_back(remainder.substr(0, commaPos));
-          remainder = remainder.substr(commaPos+1);
+        folly::split(",", arg, alpns);
+    }}},
+    {"-certcompression", {true, [&compAlgos](const std::string& arg) {
+        try {
+          compAlgos = fromCSV<CertificateCompressionAlgorithm>(arg);
+        } catch (const std::exception& e) {
+          LOG(ERROR) << "Error parsing certificate compression algorithms: " << e.what();
+          throw;
         }
-
-        alpns.push_back(remainder);
     }}},
     {"-early", {false, [&early](const std::string&) { early = true; }}},
     {"-quiet", {false, [](const std::string&) {
@@ -313,6 +321,25 @@ int fizzClientCommand(const std::vector<std::string>& args) {
   clientContext->setSupportedVersions(
       {ProtocolVersion::tls_1_3, ProtocolVersion::tls_1_3_28});
   clientContext->setSendEarlyData(early);
+
+  if (compAlgos) {
+    auto mgr = std::make_shared<CertDecompressionManager>();
+    std::vector<std::shared_ptr<CertificateDecompressor>> decompressors;
+    for (const auto& algo : *compAlgos) {
+      switch (algo) {
+        case CertificateCompressionAlgorithm::zlib:
+          decompressors.push_back(
+              std::make_shared<ZlibCertificateDecompressor>());
+          break;
+        default:
+          LOG(WARNING) << "Don't know what decompressor to use for "
+                       << toString(algo) << ", ignoring...";
+          break;
+      }
+    }
+    mgr->setDecompressors(decompressors);
+    clientContext->setCertDecompressionManager(std::move(mgr));
+  }
 
   if (verify) {
     // Initialize CA store first, if given.

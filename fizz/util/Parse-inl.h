@@ -32,4 +32,18 @@ inline NamedGroup parse(folly::StringPiece s) {
 
   throw std::runtime_error(folly::to<std::string>("Unknown named group: ", s));
 }
+
+template <>
+inline CertificateCompressionAlgorithm parse(folly::StringPiece s) {
+  static const std::map<folly::StringPiece, CertificateCompressionAlgorithm>
+      stringToAlgos = {{"zlib", CertificateCompressionAlgorithm::zlib}};
+
+  auto location = stringToAlgos.find(s);
+  if (location != stringToAlgos.end()) {
+    return location->second;
+  }
+
+  throw std::runtime_error(
+      folly::to<std::string>("Unknown compression algorithm: ", s));
+}
 } // namespace fizz

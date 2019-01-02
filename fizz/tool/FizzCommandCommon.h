@@ -8,10 +8,12 @@
 
 #pragma once
 
+#include <fizz/util/Parse.h>
 #include <folly/io/IOBuf.h>
 #include <folly/io/async/EventBase.h>
 #include <folly/io/async/EventHandler.h>
 
+#include <algorithm>
 #include <cstdint>
 #include <functional>
 #include <iostream>
@@ -56,6 +58,18 @@ int parseArguments(
     std::vector<std::string> argv,
     FizzArgHandlerMap handlers,
     std::function<void()> usageFunc);
+
+// Utility to convert from comma-separated string to vector of T that has
+// a parse() implementation in util/Parse.h
+template <typename T>
+inline std::vector<T> fromCSV(const std::string& arg) {
+  std::vector<folly::StringPiece> pieces;
+  std::vector<T> output;
+  folly::split(",", arg, pieces);
+  std::transform(
+      pieces.begin(), pieces.end(), std::back_inserter(output), parse<T>);
+  return output;
+}
 
 // Echo client/server classes
 
