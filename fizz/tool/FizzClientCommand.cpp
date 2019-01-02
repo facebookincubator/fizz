@@ -44,7 +44,9 @@ void printUsage() {
     << " -alpn alpn1,...          (comma-separated list of ALPNs to send. Default: none)\n"
     << " -certcompression a1,...  (enables certificate compression support for given algorithms. Default: None)\n"
     << " -early                   (enables sending early data during resumption. Default: false)\n"
-    << " -quiet                   (hide informational logging. Default: false)\n";
+    << " -quiet                   (hide informational logging. Default: false)\n"
+    << " -v verbosity             (set verbose log level for VLOG macros. Default: 0)\n"
+    << " -vmodule m1=N,...        (set per-module verbose log level for VLOG macros. Default: none)\n";
   // clang-format on
 }
 

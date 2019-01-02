@@ -50,7 +50,9 @@ void printUsage() {
     << " -certcompression a1,...  (enables certificate compression support for given algorithms. Default: None)\n"
     << " -fallback                (enables falling back to OpenSSL for pre-1.3 connections. Default: false)\n"
     << " -loop                    (don't exit after client disconnect. Default: false)\n"
-    << " -quiet                   (hide informational logging. Default: false)\n";
+    << " -quiet                   (hide informational logging. Default: false)\n"
+    << " -v verbosity             (set verbose log level for VLOG macros. Default: 0)\n"
+    << " -vmodule m1=N,...        (set per-module verbose log level for VLOG macros. Default: none)\n";
   // clang-format on
 }
 

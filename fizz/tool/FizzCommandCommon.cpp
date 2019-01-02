@@ -22,6 +22,12 @@ int parseArguments(
     auto& argument = argv[idx];
     auto handlerIter = handlers.find(argument);
 
+    // Ignore these.
+    if (argument == "-v" || argument == "-vmodule") {
+      idx++;
+      continue;
+    }
+
     if (handlerIter != handlers.end()) {
       auto& handlerInfo = handlerIter->second;
       std::string variable;
