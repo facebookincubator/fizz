@@ -8,6 +8,7 @@
 
 #include <fizz/tool/Commands.h>
 #include <folly/Conv.h>
+#include <folly/portability/GFlags.h>
 #include <folly/ssl/Init.h>
 #include <glog/logging.h>
 
