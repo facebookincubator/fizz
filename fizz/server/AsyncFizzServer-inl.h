@@ -247,6 +247,15 @@ void AsyncFizzServerT<SM>::ActionMoveVisitor::operator()(WriteToSocket& data) {
 template <typename SM>
 void AsyncFizzServerT<SM>::ActionMoveVisitor::operator()(
     ReportEarlyHandshakeSuccess&) {
+  // Since the server can handle async events, it is possible for the
+  // transport to become not good once we return from processing async events.
+  // We want to error out the connection in this case.
+  if (!server_.good()) {
+    folly::AsyncSocketException ase(
+        folly::AsyncSocketException::NOT_OPEN, "Transport is not good");
+    server_.transportError(ase);
+    return;
+  }
   if (server_.handshakeCallback_) {
     auto callback = server_.handshakeCallback_;
     server_.handshakeCallback_ = nullptr;
@@ -257,6 +266,15 @@ void AsyncFizzServerT<SM>::ActionMoveVisitor::operator()(
 template <typename SM>
 void AsyncFizzServerT<SM>::ActionMoveVisitor::operator()(
     ReportHandshakeSuccess&) {
+  // Since the server can handle async events, it is possible for the
+  // transport to become not good once we return from processing async events.
+  // We want to error out the connection in this case.
+  if (!server_.good()) {
+    folly::AsyncSocketException ase(
+        folly::AsyncSocketException::NOT_OPEN, "Transport is not good");
+    server_.transportError(ase);
+    return;
+  }
   if (server_.handshakeCallback_) {
     auto callback = server_.handshakeCallback_;
     server_.handshakeCallback_ = nullptr;

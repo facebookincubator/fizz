@@ -414,6 +414,32 @@ TEST_F(AsyncFizzServerTest, TestGetCerts) {
   EXPECT_CALL(*clientCert, getX509());
   EXPECT_EQ(server_->getPeerCert(), nullptr);
 }
+
+TEST_F(AsyncFizzServerTest, TestTransportNotGoodOnSuccess) {
+  accept();
+  EXPECT_CALL(handshakeCallback_, _fizzHandshakeError(_));
+  EXPECT_CALL(*machine_, _processSocketData(_, _))
+      .WillOnce(InvokeWithoutArgs([&]() {
+        // Make the socket return not good
+        EXPECT_CALL(*socket_, good()).WillOnce(Return(false));
+        return actions(ReportHandshakeSuccess());
+      }));
+  socketReadCallback_->readBufferAvailable(IOBuf::copyBuffer("ClientHello"));
+  EXPECT_TRUE(server_->error());
+}
+
+TEST_F(AsyncFizzServerTest, TestTransportNotGoodOnEarlySuccess) {
+  accept();
+  EXPECT_CALL(handshakeCallback_, _fizzHandshakeError(_));
+  EXPECT_CALL(*machine_, _processSocketData(_, _))
+      .WillOnce(InvokeWithoutArgs([&]() {
+        // Make the socket return not good
+        EXPECT_CALL(*socket_, good()).WillOnce(Return(false));
+        return actions(ReportEarlyHandshakeSuccess());
+      }));
+  socketReadCallback_->readBufferAvailable(IOBuf::copyBuffer("ClientHello"));
+  EXPECT_TRUE(server_->error());
+}
 } // namespace test
 } // namespace server
 } // namespace fizz

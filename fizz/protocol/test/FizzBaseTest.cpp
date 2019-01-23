@@ -459,5 +459,31 @@ TEST_F(FizzBaseTest, TestManyActions) {
       }));
   testFizz_->newTransportData();
 }
+
+TEST_F(FizzBaseTest, TestMoveToErrorStateOnVisit) {
+  EXPECT_CALL(*TestStateMachine::instance, processSocketData(_, _))
+      .WillOnce(InvokeWithoutArgs([]() {
+        return Actions{A1(), A2()};
+      }));
+  EXPECT_CALL(testFizz_->visitor_, a1()).WillOnce(Invoke([this]() {
+    testFizz_->moveToErrorState(folly::AsyncSocketException(
+        folly::AsyncSocketException::NOT_OPEN, "Transport is not good"));
+  }));
+  EXPECT_CALL(testFizz_->visitor_, a2());
+  testFizz_->newTransportData();
+}
+
+TEST_F(FizzBaseTest, TestActionProcessedAfterError) {
+  EXPECT_CALL(testFizz_->visitor_, a1());
+  EXPECT_CALL(testFizz_->visitor_, a2());
+  EXPECT_CALL(*TestStateMachine::instance, processSocketData(_, _))
+      .WillOnce(InvokeWithoutArgs([&]() {
+        testFizz_->state_.state_ = StateEnum::Error;
+        return Actions{A1(), A2()};
+      }));
+  EXPECT_FALSE(testFizz_->inErrorState());
+  testFizz_->newTransportData();
+  EXPECT_TRUE(testFizz_->inErrorState());
+}
 } // namespace test
 } // namespace fizz
