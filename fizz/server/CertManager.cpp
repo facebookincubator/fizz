@@ -119,7 +119,7 @@ void CertManager::addCertIdentity(
   auto& schemeMap = certs_[key];
   for (auto sigScheme : sigSchemes) {
     if (schemeMap.find(sigScheme) != schemeMap.end()) {
-      LOG(INFO) << "Skipping duplicate certificate for " << key;
+      VLOG(8) << "Skipping duplicate certificate for " << key;
     } else {
       schemeMap[sigScheme] = cert;
     }
