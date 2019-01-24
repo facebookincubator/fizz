@@ -17,9 +17,16 @@ namespace fizz {
 
 /**
  * Trims trimmed.size() bytes at the end of a chained IOBuf and fills in
- * trimmed.
+ * trimmed. The caller is responsible for making sure that buf has enough
+ * bytes to trim trimmed.size().
  */
 void trimBytes(folly::IOBuf& buf, folly::MutableByteRange trimmed);
+
+/**
+ * Trim bytes from the start of an IOBuf potentially spanning multiple
+ * buffers in the chain.
+ */
+void trimStart(folly::IOBuf& buf, size_t toTrim);
 
 /**
  * XOR first and second and store the result in second.
@@ -36,18 +43,21 @@ void XOR(folly::ByteRange first, folly::MutableByteRange second);
  */
 template <typename Func>
 void transformBuffer(const folly::IOBuf& in, folly::IOBuf& out, Func func) {
+  auto current = &in;
   folly::IOBuf* currentOut = &out;
   size_t offset = 0;
 
-  for (auto current : in) {
-    size_t currentLength = current.size();
+  // Iterate using the buffers instead of iterating with
+  // the iobuf iterators.
+  do {
+    size_t currentLength = current->length();
 
     while (currentLength != 0) {
       size_t selected = std::min(
           static_cast<size_t>(currentOut->length() - offset), currentLength);
       func(
           currentOut->writableData() + offset,
-          current.data() + (current.size() - currentLength),
+          current->data() + (current->length() - currentLength),
           selected);
       currentLength -= selected;
       offset += selected;
@@ -56,7 +66,8 @@ void transformBuffer(const folly::IOBuf& in, folly::IOBuf& out, Func func) {
         currentOut = currentOut->next();
       }
     }
-  }
+    current = current->next();
+  } while (current != &in);
 }
 
 /**

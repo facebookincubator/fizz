@@ -16,8 +16,8 @@ void trimBytes(IOBuf& buf, folly::MutableByteRange trimmed) {
   auto trim = trimmed.size();
   size_t currentTrim = trim;
   IOBuf* current = buf.prev();
-  size_t chainElements = buf.countChainElements();
-  for (size_t i = 0; i < chainElements && currentTrim != 0; ++i) {
+  // Iterate using the buffer.
+  do {
     size_t toTrim =
         std::min(currentTrim, static_cast<size_t>(current->length()));
     memcpy(
@@ -26,8 +26,21 @@ void trimBytes(IOBuf& buf, folly::MutableByteRange trimmed) {
         toTrim);
     current->trimEnd(toTrim);
     currentTrim -= toTrim;
+    DCHECK(current != &buf || currentTrim == 0);
     current = current->prev();
-  }
+  } while (currentTrim != 0);
+}
+
+void trimStart(IOBuf& buf, size_t toTrim) {
+  // Trimming on the IOBufQueue is slow, it does a bunch of
+  // pop operations, trimming manually is faster.
+  auto currentBuffer = &buf;
+  do {
+    auto amtTrim = std::min(currentBuffer->length(), toTrim);
+    currentBuffer->trimStart(amtTrim);
+    toTrim -= amtTrim;
+    currentBuffer = currentBuffer->next();
+  } while (toTrim > 0 && currentBuffer != &buf);
 }
 
 void XOR(ByteRange first, MutableByteRange second) {

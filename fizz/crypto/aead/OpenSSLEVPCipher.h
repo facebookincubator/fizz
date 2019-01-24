@@ -80,6 +80,7 @@ class OpenSSLEVPCipher : public Aead {
   std::array<uint8_t, EVPImpl::kIVLength> createIV(uint64_t seqNum) const;
 
   TrafficKey trafficKey_;
+  folly::ByteRange trafficIvKey_;
   size_t headroom_{5};
 
   folly::ssl::EvpCipherCtxUniquePtr encryptCtx_;

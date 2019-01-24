@@ -7,6 +7,7 @@
  */
 
 #include <fizz/record/EncryptedRecordLayer.h>
+#include <fizz/crypto/aead/IOBufUtil.h>
 
 namespace fizz {
 
@@ -25,7 +26,10 @@ EncryptedReadRecordLayer::EncryptedReadRecordLayer(
 folly::Optional<Buf> EncryptedReadRecordLayer::getDecryptedBuf(
     folly::IOBufQueue& buf) {
   while (true) {
-    folly::io::Cursor cursor(buf.front());
+    // Cache the front buffer, calling front may invoke and update
+    // of the tail cache.
+    auto frontBuf = buf.front();
+    folly::io::Cursor cursor(frontBuf);
 
     if (buf.empty() || !cursor.canAdvance(kEncryptedHeaderSize)) {
       return folly::none;
@@ -47,7 +51,8 @@ folly::Optional<Buf> EncryptedReadRecordLayer::getDecryptedBuf(
     if (length > kMaxEncryptedRecordSize) {
       throw std::runtime_error("received too long encrypted record");
     }
-    if (buf.chainLength() < (cursor - buf.front()) + length) {
+    auto consumedBytes = cursor - frontBuf;
+    if (buf.chainLength() < consumedBytes + length) {
       return folly::none;
     }
 
@@ -58,9 +63,15 @@ folly::Optional<Buf> EncryptedReadRecordLayer::getDecryptedBuf(
           toString(alert.description)));
     }
 
+    // If we already know that the length of the buffer is the
+    // same as the number of bytes we need, move the entire buffer.
     std::unique_ptr<folly::IOBuf> encrypted;
-    cursor.clone(encrypted, length);
-    buf.trimStart(cursor - buf.front());
+    if (buf.chainLength() == consumedBytes + length) {
+      encrypted = buf.move();
+    } else {
+      encrypted = buf.split(consumedBytes + length);
+    }
+    trimStart(*encrypted, consumedBytes);
 
     if (contentType == ContentType::change_cipher_spec) {
       encrypted->coalesce();
@@ -102,17 +113,28 @@ folly::Optional<TLSMessage> EncryptedReadRecordLayer::read(
     return folly::none;
   }
 
-  folly::IOBufQueue decrypted;
-  decrypted.append(std::move(*decryptedBuf));
-
-  folly::io::Cursor paddingCursor(decrypted.front());
-  paddingCursor.advanceToEnd();
-  while (!*(paddingCursor -= 1).data()) {
-  }
   TLSMessage msg;
-  msg.type = static_cast<ContentType>(paddingCursor.readBE<ContentTypeType>());
-  decrypted.trimEnd(paddingCursor.totalLength() + sizeof(ContentType));
-  msg.fragment = decrypted.move();
+  // Iterate over the buffers while trying to find
+  // the first non-zero octet. This is much faster than
+  // first iterating and then trimming.
+  auto currentBuf = decryptedBuf->get();
+  bool nonZeroFound = false;
+  do {
+    currentBuf = currentBuf->prev();
+    size_t i = currentBuf->length();
+    while (i > 0 && !nonZeroFound) {
+      nonZeroFound = (currentBuf->data()[i - 1] != 0);
+      i--;
+    }
+    if (nonZeroFound) {
+      msg.type = static_cast<ContentType>(currentBuf->data()[i]);
+    }
+    currentBuf->trimEnd(currentBuf->length() - i);
+  } while (!nonZeroFound && currentBuf != decryptedBuf->get());
+  if (!nonZeroFound) {
+    throw std::runtime_error("No content type found");
+  }
+  msg.fragment = std::move(*decryptedBuf);
 
   switch (msg.type) {
     case ContentType::handshake:
@@ -133,7 +155,7 @@ folly::Optional<TLSMessage> EncryptedReadRecordLayer::read(
     }
   }
 
-  return std::move(msg);
+  return msg;
 }
 
 EncryptionLevel EncryptedReadRecordLayer::getEncryptionLevel() const {

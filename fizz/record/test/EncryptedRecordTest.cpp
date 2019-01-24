@@ -180,7 +180,7 @@ TEST_F(EncryptedRecordTest, TestAllPaddingHandshake) {
         expectSame(buf, "0123456789");
         return getBuf("16000000");
       }));
-  EXPECT_ANY_THROW(read_.read(queue_));
+  EXPECT_NO_THROW(read_.read(queue_));
 }
 
 TEST_F(EncryptedRecordTest, TestNoContentType) {

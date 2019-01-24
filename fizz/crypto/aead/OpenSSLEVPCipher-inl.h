@@ -91,6 +91,8 @@ void OpenSSLEVPCipher<EVPImpl>::setKey(TrafficKey trafficKey) {
     throw std::runtime_error("Invalid IV");
   }
   trafficKey_ = std::move(trafficKey);
+  // Cache the IV key. calling coalesce() is not free.
+  trafficIvKey_ = trafficKey_.iv->coalesce();
   if (EVP_EncryptInit_ex(
           encryptCtx_.get(),
           nullptr,
@@ -157,7 +159,7 @@ std::array<uint8_t, EVPImpl::kIVLength> OpenSSLEVPCipher<EVPImpl>::createIV(
   const size_t prefixLength = EVPImpl::kIVLength - sizeof(uint64_t);
   memset(iv.data(), 0, prefixLength);
   memcpy(iv.data() + prefixLength, &bigEndianSeqNum, 8);
-  XOR(trafficKey_.iv->coalesce(), folly::range(iv));
+  XOR(trafficIvKey_, folly::range(iv));
   return iv;
 }
 } // namespace fizz
