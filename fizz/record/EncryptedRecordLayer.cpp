@@ -109,7 +109,7 @@ folly::Optional<Buf> EncryptedReadRecordLayer::getDecryptedBuf(
 folly::Optional<TLSMessage> EncryptedReadRecordLayer::read(
     folly::IOBufQueue& buf) {
   auto decryptedBuf = getDecryptedBuf(buf);
-  if (!decryptedBuf) {
+  if (!decryptedBuf.hasValue() || !decryptedBuf.value()) {
     return folly::none;
   }
 

@@ -90,6 +90,55 @@ void decryptGCM(uint32_t n, size_t size) {
   folly::doNotOptimizeAway(msg);
 }
 
+void decryptGCMMultipleRecords(uint32_t n, size_t size) {
+  size_t numRecordsPerBuf = 2;
+  std::vector<folly::IOBufQueue> contents;
+  EncryptedReadRecordLayer read{EncryptionLevel::AppTraffic};
+  BENCHMARK_SUSPEND {
+    EncryptedWriteRecordLayer write{EncryptionLevel::AppTraffic};
+    auto writeAead = std::make_unique<OpenSSLEVPCipher<AESGCM128>>();
+    auto readAead = std::make_unique<OpenSSLEVPCipher<AESGCM128>>();
+    writeAead->setKey(getKey());
+    readAead->setKey(getKey());
+    write.setAead(folly::ByteRange(), std::move(writeAead));
+    read.setAead(folly::ByteRange(), std::move(readAead));
+    for (size_t i = 0; i < n; i += numRecordsPerBuf) {
+      folly::Optional<uint8_t> lastByte;
+      folly::IOBufQueue queue{folly::IOBufQueue::cacheChainLength()};
+      for (size_t j = 0; j < numRecordsPerBuf; ++j) {
+        TLSMessage msg{ContentType::application_data, makeRandom(size)};
+        auto content = write.write(std::move(msg));
+        auto toAppend = std::move(content.data);
+        toAppend->coalesce();
+        if (lastByte) {
+          // reallocate the iobuf
+          auto newBuf = folly::IOBuf::create(1 + toAppend->length());
+          newBuf->writableData()[0] = *lastByte;
+          memcpy(
+              newBuf->writableData() + 1, toAppend->data(), toAppend->length());
+          newBuf->append(1 + toAppend->length());
+          toAppend = std::move(newBuf);
+        }
+        if (j != numRecordsPerBuf - 1) {
+          lastByte = toAppend->data()[toAppend->length() - 1];
+          toAppend->trimEnd(1);
+        }
+        queue.append(std::move(toAppend));
+      }
+      contents.push_back(std::move(queue));
+    }
+  }
+
+  folly::Optional<TLSMessage> msg1;
+  folly::Optional<TLSMessage> msg2;
+  for (auto& buf : contents) {
+    msg1 = read.read(buf);
+    msg2 = read.read(buf);
+  }
+  folly::doNotOptimizeAway(msg1);
+  folly::doNotOptimizeAway(msg2);
+}
+
 void decryptGCMNoRecord(uint32_t n, size_t size) {
   std::unique_ptr<Aead> readAead;
   folly::IOBufQueue queue{folly::IOBufQueue::cacheChainLength()};
@@ -140,6 +189,10 @@ BENCHMARK_PARAM(decryptGCM, 10);
 BENCHMARK_PARAM(decryptGCM, 1000);
 BENCHMARK_PARAM(decryptGCM, 8000);
 
+BENCHMARK_PARAM(decryptGCMMultipleRecords, 10);
+BENCHMARK_PARAM(decryptGCMMultipleRecords, 1000);
+BENCHMARK_PARAM(decryptGCMMultipleRecords, 8000);
+
 BENCHMARK_PARAM(decryptGCMNoRecord, 10);
 BENCHMARK_PARAM(decryptGCMNoRecord, 1000);
 BENCHMARK_PARAM(decryptGCMNoRecord, 8000);
@@ -180,6 +233,13 @@ BENCHMARK_PARAM(encryptOCB, 8000);
 int main(int argc, char** argv) {
   folly::init(&argc, &argv);
   CryptoUtils::init();
+  size_t originalAlloc = 0;
+  size_t newAlloc = 0;
+  size_t sz = sizeof(originalAlloc);
+  mallctl("thread.allocated", (void*)&originalAlloc, &sz, nullptr, 0);
   folly::runBenchmarks();
+  mallctl("thread.allocated", (void*)&newAlloc, &sz, nullptr, 0);
+  LOG(INFO) << "original=" << originalAlloc << " new=" << newAlloc
+            << " diff=" << (newAlloc - originalAlloc);
   return 0;
 }

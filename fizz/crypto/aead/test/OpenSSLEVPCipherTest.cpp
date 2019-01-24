@@ -249,6 +249,37 @@ TEST_P(OpenSSLEVPCipherTest, TestDecryptWithChunkedSharedInput) {
   callDecrypt(cipher, GetParam(), chunkedOutput->clone());
 }
 
+TEST_P(OpenSSLEVPCipherTest, TestDecryptWithLessSharedBuffers) {
+  auto cipher = getCipher(GetParam());
+  auto output = toIOBuf(GetParam().ciphertext);
+  ASSERT_GE(output->computeChainDataLength(), detail::kMaxSharedInChain + 1);
+  auto chunkedOutput =
+      chunkIOBuf(std::move(output), detail::kMaxSharedInChain + 1);
+  std::vector<std::unique_ptr<folly::IOBuf>> bufs;
+  auto currBuf = chunkedOutput.get();
+  for (size_t i = 0; i < detail::kMaxSharedInChain; ++i) {
+    bufs.push_back(currBuf->cloneOne());
+    currBuf = currBuf->next();
+  }
+  callDecrypt(cipher, GetParam(), std::move(chunkedOutput));
+}
+
+TEST_P(OpenSSLEVPCipherTest, TestDecryptWithMoreSharedBuffers) {
+  auto cipher = getCipher(GetParam());
+  auto output = toIOBuf(GetParam().ciphertext);
+
+  ASSERT_GE(output->computeChainDataLength(), detail::kMaxSharedInChain + 1);
+  auto chunkedOutput =
+      chunkIOBuf(std::move(output), detail::kMaxSharedInChain + 1);
+  std::vector<std::unique_ptr<folly::IOBuf>> bufs;
+  auto currBuf = chunkedOutput.get();
+  for (size_t i = 0; i < detail::kMaxSharedInChain + 1; ++i) {
+    bufs.push_back(currBuf->cloneOne());
+    currBuf = currBuf->next();
+  }
+  callDecrypt(cipher, GetParam(), std::move(chunkedOutput));
+}
+
 TEST_P(OpenSSLEVPCipherTest, TestDecryptWithVeryChunkedInput) {
   auto cipher = getCipher(GetParam());
   auto output = toIOBuf(GetParam().ciphertext);

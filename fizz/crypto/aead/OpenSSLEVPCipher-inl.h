@@ -8,6 +8,9 @@
 
 namespace fizz {
 namespace detail {
+
+static constexpr size_t kMaxSharedInChain = 1;
+
 folly::Optional<std::unique_ptr<folly::IOBuf>> evpDecrypt(
     std::unique_ptr<folly::IOBuf>&& ciphertext,
     const folly::IOBuf* associatedData,

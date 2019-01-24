@@ -103,6 +103,48 @@ TEST_F(EncryptedRecordTest, TestReadAppData) {
   EXPECT_TRUE(queue_.empty());
 }
 
+TEST_F(EncryptedRecordTest, TestReadMultipleRecords) {
+  addToQueue("17030100050123456789");
+  addToQueue("17030100050123456789");
+  addToQueue("170301000501234567");
+  addToQueue("8917030100050123456789");
+  addToQueue("1703010005012345678917030100050123456789");
+  auto buf0 = IOBuf::copyBuffer(folly::unhexlify("170301000501"));
+  auto buf1 = IOBuf::copyBuffer(folly::unhexlify("23"));
+  auto buf2 = IOBuf::copyBuffer(folly::unhexlify("456789"));
+  queue_.append(buf0->clone());
+  queue_.append(buf1->clone());
+  queue_.append(buf2->clone());
+  EXPECT_CALL(*readAead_, _decrypt(_, _, _))
+      .Times(7)
+      .WillRepeatedly(
+          Invoke([&](std::unique_ptr<IOBuf>& buf, const IOBuf*, uint64_t) {
+            expectSame(buf, "0123456789");
+            return getBuf("1234abcd17");
+          }));
+  auto msg = read_.read(queue_);
+  auto msg1 = read_.read(queue_);
+  auto msg2 = read_.read(queue_);
+  auto msg3 = read_.read(queue_);
+  auto msg4 = read_.read(queue_);
+  auto msg5 = read_.read(queue_);
+  auto msg6 = read_.read(queue_);
+  EXPECT_EQ(msg->type, ContentType::application_data);
+  expectSame(msg->fragment, "1234abcd");
+  EXPECT_EQ(msg1->type, ContentType::application_data);
+  expectSame(msg1->fragment, "1234abcd");
+  EXPECT_EQ(msg2->type, ContentType::application_data);
+  expectSame(msg2->fragment, "1234abcd");
+  EXPECT_EQ(msg3->type, ContentType::application_data);
+  expectSame(msg3->fragment, "1234abcd");
+  EXPECT_EQ(msg4->type, ContentType::application_data);
+  expectSame(msg4->fragment, "1234abcd");
+  EXPECT_EQ(msg5->type, ContentType::application_data);
+  expectSame(msg5->fragment, "1234abcd");
+  EXPECT_EQ(msg6->type, ContentType::application_data);
+  expectSame(msg6->fragment, "1234abcd");
+}
+
 TEST_F(EncryptedRecordTest, TestReadUnknown) {
   addToQueue("17030100050123456789");
   EXPECT_CALL(*readAead_, _decrypt(_, _, 0))
