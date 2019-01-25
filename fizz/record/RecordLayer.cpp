@@ -40,8 +40,14 @@ folly::Optional<Param> ReadRecordLayer::readEvent(
     }
 
     switch (message->type) {
-      case ContentType::alert:
-        return Param(decode<Alert>(std::move(message->fragment)));
+      case ContentType::alert: {
+        auto alert = decode<Alert>(std::move(message->fragment));
+        if (alert.description == AlertDescription::close_notify) {
+          return Param(CloseNotify(socketBuf.move()));
+        } else {
+          return Param(std::move(alert));
+        }
+      }
       case ContentType::handshake: {
         unparsedHandshakeData_.append(std::move(message->fragment));
         auto param = decodeHandshakeMessage(unparsedHandshakeData_);

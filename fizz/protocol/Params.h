@@ -82,6 +82,7 @@ using Param = boost::variant<
     NewSessionTicket,
     KeyUpdate,
     Alert,
+    CloseNotify,
     Accept,
     Connect,
     AppData,
@@ -98,6 +99,12 @@ class EventVisitor : public boost::static_visitor<Event> {
 };
 
 // App closes bypass the state machine so aren't in the Param variant.
-struct AppClose {};
+struct AppClose {
+  enum ClosePolicy { IMMEDIATE, WAIT };
+
+  /*implicit */ constexpr AppClose(ClosePolicy pol) : policy(pol) {}
+
+  ClosePolicy policy;
+};
 
 } // namespace fizz

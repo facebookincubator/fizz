@@ -138,6 +138,18 @@ FIZZ_DECLARE_EVENT_HANDLER(
     StateEnum::Established,
     Event::KeyUpdate,
     StateEnum::Error);
+
+FIZZ_DECLARE_EVENT_HANDLER(
+    ClientTypes,
+    StateEnum::Established,
+    Event::CloseNotify,
+    StateEnum::Closed);
+
+FIZZ_DECLARE_EVENT_HANDLER(
+    ClientTypes,
+    StateEnum::ExpectingCloseNotify,
+    Event::CloseNotify,
+    StateEnum::Closed);
 } // namespace sm
 
 namespace client {
@@ -203,6 +215,10 @@ Actions ClientStateMachine::processAppClose(const State& state) {
   return detail::handleAppClose(state);
 }
 
+Actions ClientStateMachine::processAppCloseImmediate(const State& state) {
+  return detail::handleAppCloseImmediate(state);
+}
+
 namespace detail {
 
 Actions processEvent(const State& state, Param param) {
@@ -246,9 +262,9 @@ Actions handleError(
   }
 }
 
-Actions handleAppClose(const State& state) {
+Actions handleAppCloseImmediate(const State& state) {
   auto transition = [](State& newState) {
-    newState.state() = StateEnum::Error;
+    newState.state() = StateEnum::Closed;
     newState.writeRecordLayer() = nullptr;
     newState.readRecordLayer() = nullptr;
   };
@@ -259,6 +275,28 @@ Actions handleAppClose(const State& state) {
         state.writeRecordLayer()->writeAlert(std::move(alert)));
     return actions(std::move(transition), std::move(write));
   } else {
+    return actions(std::move(transition));
+  }
+}
+
+Actions handleAppClose(const State& state) {
+  if (state.writeRecordLayer()) {
+    auto transition = [](State& newState) {
+      newState.state() = StateEnum::ExpectingCloseNotify;
+      newState.writeRecordLayer() = nullptr;
+    };
+
+    Alert alert(AlertDescription::close_notify);
+    WriteToSocket write;
+    write.contents.emplace_back(
+        state.writeRecordLayer()->writeAlert(std::move(alert)));
+    return actions(std::move(transition), std::move(write));
+  } else {
+    auto transition = [](State& newState) {
+      newState.state() = StateEnum::Closed;
+      newState.writeRecordLayer() = nullptr;
+      newState.readRecordLayer() = nullptr;
+    };
     return actions(std::move(transition));
   }
 }
@@ -283,10 +321,23 @@ Actions handleInvalidEvent(const State& state, Event event, Param param) {
         AlertDescription::unexpected_message);
   }
 }
+
 } // namespace detail
 } // namespace client
 
 namespace sm {
+
+static void ensureNoUnparsedHandshakeData(const State& state, Event event) {
+  if (state.readRecordLayer()->hasUnparsedHandshakeData()) {
+    throw FizzException(
+        folly::to<std::string>(
+            "unprocessed handshake data while handling event ",
+            toString(event),
+            " in state ",
+            toString(state.state())),
+        AlertDescription::unexpected_message);
+  }
+}
 
 static folly::Optional<CachedPsk> validatePsk(
     const FizzClientContext& context,
@@ -1902,5 +1953,46 @@ EventHandler<ClientTypes, StateEnum::Established, Event::EarlyAppWrite>::handle(
     return ignoreEarlyAppWrite(state, std::move(appWrite));
   }
 }
+
+Actions
+EventHandler<ClientTypes, StateEnum::Established, Event::CloseNotify>::handle(
+    const State& state,
+    Param param) {
+  ensureNoUnparsedHandshakeData(state, Event::CloseNotify);
+  auto& closenotify = boost::get<CloseNotify>(param);
+  auto eod = EndOfData(std::move(closenotify.ignoredPostCloseData));
+
+  auto clearRecordLayers = [](State& newState) {
+    newState.writeRecordLayer() = nullptr;
+    newState.readRecordLayer() = nullptr;
+  };
+
+  WriteToSocket write;
+  write.contents.emplace_back(state.writeRecordLayer()->writeAlert(
+      Alert(AlertDescription::close_notify)));
+  return actions(
+      std::move(write),
+      std::move(clearRecordLayers),
+      &Transition<StateEnum::Closed>,
+      std::move(eod));
+}
+
+Actions
+EventHandler<ClientTypes, StateEnum::ExpectingCloseNotify, Event::CloseNotify>::
+    handle(const State& state, Param param) {
+  ensureNoUnparsedHandshakeData(state, Event::CloseNotify);
+  auto& closenotify = boost::get<CloseNotify>(param);
+  auto eod = EndOfData(std::move(closenotify.ignoredPostCloseData));
+
+  auto clearRecordLayers = [](State& newState) {
+    newState.readRecordLayer() = nullptr;
+    newState.writeRecordLayer() = nullptr;
+  };
+  return actions(
+      std::move(clearRecordLayers),
+      &Transition<StateEnum::Closed>,
+      std::move(eod));
+}
+
 } // namespace sm
 } // namespace fizz

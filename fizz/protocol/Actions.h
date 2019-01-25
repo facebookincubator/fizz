@@ -71,8 +71,21 @@ struct WaitForData {};
  */
 struct SecretAvailable {
   DerivedSecret secret;
-
   SecretAvailable(DerivedSecret secretIn) : secret(std::move(secretIn)) {}
+};
+
+/**
+ * Reports that end of the TLS session. While the end of a TLS session
+ * typically implies the termination of a network transport, this is not
+ * mandatory, and it is possible to continue reusing the transport afterwards.
+ */
+struct EndOfData {
+  EndOfData() = default;
+  explicit EndOfData(std::unique_ptr<folly::IOBuf> postData)
+      : postTlsData(std::move(postData)) {}
+
+  // Any data we read from the connection after the end of the TLS session.
+  std::unique_ptr<folly::IOBuf> postTlsData;
 };
 
 namespace detail {

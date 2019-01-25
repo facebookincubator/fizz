@@ -32,7 +32,7 @@ void AsyncFizzServerT<SM>::accept(HandshakeCallback* callback) {
 
 template <typename SM>
 bool AsyncFizzServerT<SM>::good() const {
-  return !error() && transport_->good();
+  return !error() && !fizzServer_.inTerminalState() && transport_->good();
 }
 
 template <typename SM>
@@ -115,7 +115,7 @@ std::string AsyncFizzServerT<SM>::getApplicationProtocol() const noexcept {
 template <typename SM>
 void AsyncFizzServerT<SM>::close() {
   if (transport_->good()) {
-    fizzServer_.appClose();
+    fizzServer_.appCloseImmediate();
   } else {
     DelayedDestruction::DestructorGuard dg(this);
     folly::AsyncSocketException ase(
@@ -129,7 +129,7 @@ template <typename SM>
 void AsyncFizzServerT<SM>::closeWithReset() {
   DelayedDestruction::DestructorGuard dg(this);
   if (transport_->good()) {
-    fizzServer_.appClose();
+    fizzServer_.appCloseImmediate();
   }
   folly::AsyncSocketException ase(
       folly::AsyncSocketException::END_OF_FILE, "socket closed locally");
@@ -141,7 +141,7 @@ template <typename SM>
 void AsyncFizzServerT<SM>::closeNow() {
   DelayedDestruction::DestructorGuard dg(this);
   if (transport_->good()) {
-    fizzServer_.appClose();
+    fizzServer_.appCloseImmediate();
   }
   folly::AsyncSocketException ase(
       folly::AsyncSocketException::END_OF_FILE, "socket closed locally");
@@ -322,5 +322,13 @@ void AsyncFizzServerT<SM>::ActionMoveVisitor::operator()(
 
 template <typename SM>
 void AsyncFizzServerT<SM>::ActionMoveVisitor::operator()(SecretAvailable&) {}
+
+template <typename SM>
+void AsyncFizzServerT<SM>::ActionMoveVisitor::operator()(EndOfData&) {
+  folly::AsyncSocketException ase(
+      folly::AsyncSocketException::END_OF_FILE,
+      "remote peer shutdown TLS connection");
+  server_.deliverError(std::move(ase), server_.closeTransportOnCloseNotify());
+}
 } // namespace server
 } // namespace fizz

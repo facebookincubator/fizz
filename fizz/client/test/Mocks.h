@@ -66,6 +66,13 @@ class MockClientStateMachine : public ClientStateMachine {
   Actions processAppClose(const State& state) override {
     return *_processAppClose(state);
   }
+
+  MOCK_METHOD1(
+      _processAppCloseImmediate,
+      folly::Optional<Actions>(const State&));
+  Actions processAppCloseImmediate(const State& state) override {
+    return *_processAppCloseImmediate(state);
+  }
 };
 
 template <typename SM>

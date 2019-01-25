@@ -74,6 +74,7 @@ using Action = boost::variant<
     ReportEarlyHandshakeSuccess,
     ReportEarlyWriteFailed,
     ReportError,
+    EndOfData,
     MutateState,
     WaitForData,
     NewCachedPsk,

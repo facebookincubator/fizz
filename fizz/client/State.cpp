@@ -30,6 +30,10 @@ folly::StringPiece toString(StateEnum state) {
       return "ExpectingFinished";
     case StateEnum::Established:
       return "Established";
+    case StateEnum::ExpectingCloseNotify:
+      return "ExpectingCloseNotify";
+    case StateEnum::Closed:
+      return "Closed";
     case StateEnum::Error:
       return "Error";
     case StateEnum::NUM_STATES:

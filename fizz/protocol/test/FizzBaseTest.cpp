@@ -41,7 +41,7 @@ MATCHER_P(WriteMatches, expected, "") {
   return IOBufEqualTo()(IOBuf::copyBuffer(expected), arg.data);
 }
 
-enum class StateEnum { NotError, Error };
+enum class StateEnum { NotError, Closed, Error };
 
 struct State {
   StateEnum state() const {
@@ -91,6 +91,7 @@ class TestStateMachine {
       processEarlyAppWrite_,
       Future<Actions>(const State&, EarlyAppWrite&));
   MOCK_METHOD1(processAppClose, Future<Actions>(const State&));
+  MOCK_METHOD1(processAppCloseImmediate, Future<Actions>(const State&));
 
   static TestStateMachine* instance;
 };

@@ -3344,6 +3344,81 @@ TEST_F(ClientProtocolTest, TestEstablishedEarlyWriteRejected) {
   EXPECT_TRUE(
       IOBufEqualTo()(failedWrite.write.data, IOBuf::copyBuffer("appdata")));
 }
+
+TEST_F(ClientProtocolTest, TestEstablishedCloseNotifyReceived) {
+  setupAcceptingData();
+  auto actions = detail::processEvent(state_, CloseNotify());
+  expectActions<MutateState, WriteToSocket, EndOfData>(actions);
+  processStateMutations(actions);
+  EXPECT_EQ(state_.state(), StateEnum::Closed);
+  EXPECT_EQ(state_.readRecordLayer().get(), nullptr);
+  EXPECT_EQ(state_.writeRecordLayer().get(), nullptr);
+}
+
+TEST_F(
+    ClientProtocolTest,
+    TestEstablishedCloseNotifyReceivedWithUnparsedHandshakeData) {
+  setupAcceptingData();
+  EXPECT_CALL(*mockRead_, hasUnparsedHandshakeData())
+      .WillRepeatedly(Return(true));
+  auto actions = detail::processEvent(state_, CloseNotify());
+  expectError<FizzException>(actions, AlertDescription::unexpected_message);
+}
+
+TEST_F(ClientProtocolTest, TestEstablishedAppClose) {
+  setupAcceptingData();
+  EXPECT_CALL(*mockWrite_, _write(_)).WillOnce(Invoke([&](TLSMessage& msg) {
+    TLSContent content;
+    content.contentType = msg.type;
+    EXPECT_EQ(msg.type, ContentType::alert);
+    EXPECT_TRUE(IOBufEqualTo()(
+        msg.fragment, encode(Alert(AlertDescription::close_notify))));
+    content.data = IOBuf::copyBuffer("closenotify");
+    return content;
+  }));
+  auto actions = ClientStateMachine().processAppClose(state_);
+  expectActions<MutateState, WriteToSocket>(actions);
+  auto write = expectAction<WriteToSocket>(actions);
+  EXPECT_EQ(write.contents[0].contentType, ContentType::alert);
+  processStateMutations(actions);
+  EXPECT_EQ(state_.state(), StateEnum::ExpectingCloseNotify);
+  EXPECT_NE(state_.readRecordLayer().get(), nullptr);
+  EXPECT_EQ(state_.writeRecordLayer().get(), nullptr);
+
+  EXPECT_CALL(*mockRead_, mockReadEvent()).WillOnce(InvokeWithoutArgs([]() {
+    Param p = CloseNotify();
+    return p;
+  }));
+
+  mockRead_->useMockReadEvent(true);
+  folly::IOBufQueue queue;
+  actions = ClientStateMachine().processSocketData(state_, queue);
+  expectActions<MutateState, EndOfData>(actions);
+  processStateMutations(actions);
+  expectAction<EndOfData>(actions);
+  EXPECT_EQ(state_.state(), StateEnum::Closed);
+}
+
+TEST_F(ClientProtocolTest, TestEstablishedAppCloseImmediate) {
+  setupAcceptingData();
+  EXPECT_CALL(*mockWrite_, _write(_)).WillOnce(Invoke([&](TLSMessage& msg) {
+    TLSContent content;
+    content.contentType = msg.type;
+    EXPECT_EQ(msg.type, ContentType::alert);
+    EXPECT_TRUE(IOBufEqualTo()(
+        msg.fragment, encode(Alert(AlertDescription::close_notify))));
+    content.data = IOBuf::copyBuffer("closenotify");
+    return content;
+  }));
+  auto actions = ClientStateMachine().processAppCloseImmediate(state_);
+  expectActions<MutateState, WriteToSocket>(actions);
+  auto write = expectAction<WriteToSocket>(actions);
+  EXPECT_EQ(write.contents[0].contentType, ContentType::alert);
+  processStateMutations(actions);
+  EXPECT_EQ(state_.state(), StateEnum::Closed);
+  EXPECT_EQ(state_.readRecordLayer().get(), nullptr);
+  EXPECT_EQ(state_.writeRecordLayer().get(), nullptr);
+}
 } // namespace test
 } // namespace client
 } // namespace fizz

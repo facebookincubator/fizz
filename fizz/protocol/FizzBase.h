@@ -51,9 +51,16 @@ class FizzBase {
   void earlyAppWrite(EarlyAppWrite appWrite);
 
   /**
-   * Called when the application wants to close the connection.
+   * Called when the application wants to close the connection, and wait for
+   * the corresponding peer's acknowledgement.
    */
   void appClose();
+
+  /**
+   * Called when the application wants to immediately close the connection
+   * without waiting for the corresponding peer's acknowledgement.
+   */
+  void appCloseImmediate();
 
   /**
    * Called to pause processing of transportReadBuf until new data is available.
@@ -79,6 +86,12 @@ class FizzBase {
    * Returns true if in error state where no further events will be processed.
    */
   bool inErrorState() const;
+
+  /**
+   * Returns true if in a terminal state where no further events will be
+   * processed.
+   */
+  bool inTerminalState() const;
 
   /**
    * Returns true if the state machine is actively processing an event or

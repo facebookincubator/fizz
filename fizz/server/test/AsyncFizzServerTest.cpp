@@ -74,6 +74,21 @@ class AsyncFizzServerTest : public Test {
         }));
   }
 
+  void expectAppCloseImmediate() {
+    EXPECT_CALL(*machine_, _processAppCloseImmediate(_))
+        .WillOnce(InvokeWithoutArgs([]() {
+          WriteToSocket write;
+          TLSContent record;
+          record.contentType = ContentType::alert;
+          record.encryptionLevel = EncryptionLevel::Handshake;
+          record.data = IOBuf::copyBuffer("closenotify");
+          write.contents.emplace_back(std::move(record));
+          return detail::actions(
+              [](State& newState) { newState.state() = StateEnum::Error; },
+              std::move(write));
+        }));
+  }
+
   void accept() {
     expectTransportReadCallback();
     EXPECT_CALL(*socket_, getEventBase()).WillOnce(Return(&evb_));
@@ -281,7 +296,7 @@ TEST_F(AsyncFizzServerTest, TestDeleteAsyncEvent) {
 
 TEST_F(AsyncFizzServerTest, TestCloseHandshake) {
   accept();
-  expectAppClose();
+  expectAppCloseImmediate();
   EXPECT_CALL(handshakeCallback_, _fizzHandshakeError(_));
   EXPECT_CALL(*socket_, closeNow()).Times(AtLeast(1));
   server_->closeNow();
@@ -316,7 +331,7 @@ TEST_F(AsyncFizzServerTest, TestCloseInFlightAction) {
 
   EXPECT_CALL(*machine_, _processAppWrite(_, _))
       .WillOnce(InvokeWithoutArgs([]() { return actions(); }));
-  expectAppClose();
+  expectAppCloseImmediate();
   p.setValue(detail::actions(WaitForData()));
 }
 
@@ -440,6 +455,22 @@ TEST_F(AsyncFizzServerTest, TestTransportNotGoodOnEarlySuccess) {
   socketReadCallback_->readBufferAvailable(IOBuf::copyBuffer("ClientHello"));
   EXPECT_TRUE(server_->error());
 }
+
+TEST_F(AsyncFizzServerTest, TestRemoteClosed) {
+  completeHandshake();
+  server_->setReadCB(&readCallback_);
+  EXPECT_CALL(readCallback_, readEOF_());
+  EXPECT_CALL(*machine_, _processSocketData(_, _))
+      .WillOnce(InvokeWithoutArgs([]() {
+        return actions(
+            [](State& s) { s.state() = StateEnum::Closed; }, EndOfData());
+      }));
+  EXPECT_CALL(*socket_, closeNow());
+  EXPECT_TRUE(server_->good());
+  socketReadCallback_->readBufferAvailable(IOBuf::copyBuffer("Data"));
+  EXPECT_FALSE(server_->good());
+}
+
 } // namespace test
 } // namespace server
 } // namespace fizz

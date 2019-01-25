@@ -133,7 +133,7 @@ void AsyncFizzClientT<SM>::connect(
 
 template <typename SM>
 bool AsyncFizzClientT<SM>::good() const {
-  return !error() && transport_->good();
+  return !error() && !fizzClient_.inTerminalState() && transport_->good();
 }
 
 template <typename SM>
@@ -215,7 +215,7 @@ std::string AsyncFizzClientT<SM>::getApplicationProtocol() const noexcept {
 template <typename SM>
 void AsyncFizzClientT<SM>::close() {
   if (transport_->good()) {
-    fizzClient_.appClose();
+    fizzClient_.appCloseImmediate();
   } else {
     DelayedDestruction::DestructorGuard dg(this);
     folly::AsyncSocketException ase(
@@ -229,7 +229,7 @@ template <typename SM>
 void AsyncFizzClientT<SM>::closeWithReset() {
   DelayedDestruction::DestructorGuard dg(this);
   if (transport_->good()) {
-    fizzClient_.appClose();
+    fizzClient_.appCloseImmediate();
   }
   folly::AsyncSocketException ase(
       folly::AsyncSocketException::END_OF_FILE, "socket closed locally");
@@ -241,7 +241,7 @@ template <typename SM>
 void AsyncFizzClientT<SM>::closeNow() {
   DelayedDestruction::DestructorGuard dg(this);
   if (transport_->good()) {
-    fizzClient_.appClose();
+    fizzClient_.appCloseImmediate();
   }
   folly::AsyncSocketException ase(
       folly::AsyncSocketException::END_OF_FILE, "socket closed locally");
@@ -546,6 +546,14 @@ void AsyncFizzClientT<SM>::ActionMoveVisitor::operator()(
 
 template <typename SM>
 void AsyncFizzClientT<SM>::ActionMoveVisitor::operator()(SecretAvailable&) {}
+
+template <typename SM>
+void AsyncFizzClientT<SM>::ActionMoveVisitor::operator()(EndOfData&) {
+  folly::AsyncSocketException ase(
+      folly::AsyncSocketException::END_OF_FILE,
+      "remote peer shutdown TLS connection");
+  client_.deliverError(std::move(ase), client_.closeTransportOnCloseNotify());
+}
 
 template <typename SM>
 folly::Optional<CipherSuite> AsyncFizzClientT<SM>::getCipher() const {

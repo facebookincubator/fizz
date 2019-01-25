@@ -44,6 +44,8 @@ class ClientStateMachine {
   virtual Actions processEarlyAppWrite(const State&, EarlyAppWrite);
 
   virtual Actions processAppClose(const State&);
+
+  virtual Actions processAppCloseImmediate(const State&);
 };
 
 namespace detail {
@@ -55,6 +57,7 @@ Actions handleError(
     ReportError error,
     folly::Optional<AlertDescription> alertDesc);
 
+Actions handleAppCloseImmediate(const State& state);
 Actions handleAppClose(const State& state);
 
 Actions handleInvalidEvent(const State& state, Event event, Param param);

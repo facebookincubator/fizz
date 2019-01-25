@@ -177,6 +177,7 @@ class AsyncFizzClientT : public AsyncFizzBase,
     void operator()(MutateState&);
     void operator()(NewCachedPsk&);
     void operator()(SecretAvailable&);
+    void operator()(EndOfData&);
 
    private:
     AsyncFizzClientT<SM>& client_;

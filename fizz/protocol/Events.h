@@ -33,6 +33,7 @@ enum class Event {
   AppWrite,
   AppClose,
   WriteNewSessionTicket,
+  CloseNotify,
   NUM_EVENTS
 };
 

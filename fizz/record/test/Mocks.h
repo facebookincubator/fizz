@@ -47,6 +47,22 @@ class MockPlaintextReadRecordLayer : public PlaintextReadRecordLayer {
   MOCK_METHOD1(read, folly::Optional<TLSMessage>(folly::IOBufQueue& buf));
   MOCK_CONST_METHOD0(hasUnparsedHandshakeData, bool());
   MOCK_METHOD1(setSkipEncryptedRecords, void(bool));
+  MOCK_METHOD0(mockReadEvent, folly::Optional<Param>());
+
+  folly::Optional<Param> readEvent(folly::IOBufQueue& buf) override {
+    if (useMockReadEvent_) {
+      return mockReadEvent();
+    } else {
+      return PlaintextReadRecordLayer::readEvent(buf);
+    }
+  }
+
+  void useMockReadEvent(bool b) {
+    useMockReadEvent_ = b;
+  }
+
+ private:
+  bool useMockReadEvent_{false};
 };
 
 class MockEncryptedReadRecordLayer : public EncryptedReadRecordLayer {
@@ -64,6 +80,22 @@ class MockEncryptedReadRecordLayer : public EncryptedReadRecordLayer {
   }
 
   MOCK_METHOD1(setSkipFailedDecryption, void(bool));
+  MOCK_METHOD0(mockReadEvent, folly::Optional<Param>());
+
+  folly::Optional<Param> readEvent(folly::IOBufQueue& buf) override {
+    if (useMockReadEvent_) {
+      return mockReadEvent();
+    } else {
+      return EncryptedReadRecordLayer::readEvent(buf);
+    }
+  }
+
+  void useMockReadEvent(bool b) {
+    useMockReadEvent_ = b;
+  }
+
+ private:
+  bool useMockReadEvent_{false};
 };
 
 class MockPlaintextWriteRecordLayer : public PlaintextWriteRecordLayer {

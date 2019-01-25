@@ -45,6 +45,7 @@ using Action = boost::variant<
     ReportHandshakeSuccess,
     ReportEarlyHandshakeSuccess,
     ReportError,
+    EndOfData,
     MutateState,
     WaitForData,
     AttemptVersionFallback,

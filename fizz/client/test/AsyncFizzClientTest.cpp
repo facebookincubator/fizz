@@ -72,7 +72,7 @@ class AsyncFizzClientTest : public Test {
   }
 
   void expectAppClose() {
-    EXPECT_CALL(*machine_, _processAppClose(_))
+    EXPECT_CALL(*machine_, _processAppCloseImmediate(_))
         .WillOnce(InvokeWithoutArgs([]() {
           TLSContent record;
           record.contentType = ContentType::handshake;

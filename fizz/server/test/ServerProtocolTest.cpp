@@ -334,6 +334,24 @@ TEST_F(ServerProtocolTest, TestAlertReceived) {
   expectError<FizzException>(actions, folly::none, "received alert");
 }
 
+TEST_F(ServerProtocolTest, TestCloseNotifyReceived) {
+  setUpAcceptingData();
+  auto actions = getActions(detail::processEvent(state_, CloseNotify()));
+  expectActions<MutateState, WriteToSocket, EndOfData>(actions);
+  processStateMutations(actions);
+  EXPECT_EQ(state_.state(), StateEnum::Closed);
+  EXPECT_EQ(state_.readRecordLayer().get(), nullptr);
+  EXPECT_EQ(state_.writeRecordLayer().get(), nullptr);
+}
+
+TEST_F(ServerProtocolTest, TestCloseNotifyReceivedWithUnparsedHandshakeData) {
+  setUpAcceptingData();
+  EXPECT_CALL(*appRead_, hasUnparsedHandshakeData())
+      .WillRepeatedly(Return(true));
+  auto actions = getActions(detail::processEvent(state_, CloseNotify()));
+  expectError<FizzException>(actions, AlertDescription::unexpected_message);
+}
+
 TEST_F(ServerProtocolTest, TestAccept) {
   ReadRecordLayer* rrl;
   WriteRecordLayer* wrl;
@@ -384,16 +402,69 @@ TEST_F(ServerProtocolTest, TestAppClose) {
   EXPECT_EQ(write.contents[0].contentType, ContentType::alert);
   EXPECT_EQ(write.contents[0].encryptionLevel, EncryptionLevel::AppTraffic);
   processStateMutations(actions);
-  EXPECT_EQ(state_.state(), StateEnum::Error);
-  EXPECT_EQ(state_.readRecordLayer().get(), nullptr);
+  EXPECT_EQ(state_.state(), StateEnum::ExpectingCloseNotify);
+  EXPECT_NE(state_.readRecordLayer().get(), nullptr);
   EXPECT_EQ(state_.writeRecordLayer().get(), nullptr);
+
+  EXPECT_CALL(*appRead_, mockReadEvent()).WillOnce(InvokeWithoutArgs([]() {
+    Param p = CloseNotify(IOBuf::copyBuffer("ignoreddata"));
+    return p;
+  }));
+
+  appRead_->useMockReadEvent(true);
+  folly::IOBufQueue queue;
+  auto actions2 = ServerStateMachine().processSocketData(state_, queue);
+  folly::variant_match(
+      actions2,
+      [this](Actions& actions) {
+        expectActions<MutateState, EndOfData>(actions);
+        processStateMutations(actions);
+        auto eod = expectAction<EndOfData>(actions);
+        EXPECT_NE(eod.postTlsData, nullptr);
+        auto expected = IOBuf::copyBuffer("ignoreddata");
+        EXPECT_EQ(eod.postTlsData->coalesce(), expected->coalesce());
+        EXPECT_EQ(state_.state(), StateEnum::Closed);
+      },
+      [](folly::Future<Actions>& futActions) { FAIL(); });
 }
 
 TEST_F(ServerProtocolTest, TestAppCloseNoWrite) {
   auto actions = ServerStateMachine().processAppClose(state_);
   expectActions<MutateState>(actions);
   processStateMutations(actions);
-  EXPECT_EQ(state_.state(), StateEnum::Error);
+  EXPECT_EQ(state_.state(), StateEnum::Closed);
+  EXPECT_EQ(state_.readRecordLayer().get(), nullptr);
+  EXPECT_EQ(state_.writeRecordLayer().get(), nullptr);
+}
+
+TEST_F(ServerProtocolTest, TestAppCloseImmediate) {
+  setUpAcceptingData();
+  EXPECT_CALL(*appWrite_, _write(_)).WillOnce(Invoke([&](TLSMessage& msg) {
+    TLSContent content;
+    content.contentType = msg.type;
+    content.encryptionLevel = appWrite_->getEncryptionLevel();
+    EXPECT_EQ(msg.type, ContentType::alert);
+    EXPECT_TRUE(IOBufEqualTo()(
+        msg.fragment, encode(Alert(AlertDescription::close_notify))));
+    content.data = IOBuf::copyBuffer("closenotify");
+    return content;
+  }));
+  auto actions = ServerStateMachine().processAppCloseImmediate(state_);
+  expectActions<MutateState, WriteToSocket>(actions);
+  auto write = expectAction<WriteToSocket>(actions);
+  EXPECT_EQ(write.contents[0].contentType, ContentType::alert);
+  EXPECT_EQ(write.contents[0].encryptionLevel, EncryptionLevel::AppTraffic);
+  processStateMutations(actions);
+  EXPECT_EQ(state_.state(), StateEnum::Closed);
+  EXPECT_EQ(state_.readRecordLayer().get(), nullptr);
+  EXPECT_EQ(state_.writeRecordLayer().get(), nullptr);
+}
+
+TEST_F(ServerProtocolTest, TestAppCloseImmediateNoWrite) {
+  auto actions = ServerStateMachine().processAppCloseImmediate(state_);
+  expectActions<MutateState>(actions);
+  processStateMutations(actions);
+  EXPECT_EQ(state_.state(), StateEnum::Closed);
   EXPECT_EQ(state_.readRecordLayer().get(), nullptr);
   EXPECT_EQ(state_.writeRecordLayer().get(), nullptr);
 }

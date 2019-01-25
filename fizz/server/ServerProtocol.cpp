@@ -114,6 +114,18 @@ FIZZ_DECLARE_EVENT_HANDLER(
     StateEnum::AcceptingData,
     Event::KeyUpdate,
     StateEnum::AcceptingData);
+
+FIZZ_DECLARE_EVENT_HANDLER(
+    ServerTypes,
+    StateEnum::AcceptingData,
+    Event::CloseNotify,
+    StateEnum::Closed);
+
+FIZZ_DECLARE_EVENT_HANDLER(
+    ServerTypes,
+    StateEnum::ExpectingCloseNotify,
+    Event::CloseNotify,
+    StateEnum::Closed);
 } // namespace sm
 
 namespace server {
@@ -173,6 +185,10 @@ AsyncActions ServerStateMachine::processEarlyAppWrite(
 
 Actions ServerStateMachine::processAppClose(const State& state) {
   return detail::handleAppClose(state);
+}
+
+Actions ServerStateMachine::processAppCloseImmediate(const State& state) {
+  return detail::handleAppCloseImmediate(state);
 }
 
 namespace detail {
@@ -240,12 +256,13 @@ Actions handleError(
   }
 }
 
-Actions handleAppClose(const State& state) {
+Actions handleAppCloseImmediate(const State& state) {
   auto transition = [](State& newState) {
-    newState.state() = StateEnum::Error;
-    newState.writeRecordLayer() = nullptr;
+    newState.state() = StateEnum::Closed;
     newState.readRecordLayer() = nullptr;
+    newState.writeRecordLayer() = nullptr;
   };
+
   if (state.writeRecordLayer()) {
     Alert alert(AlertDescription::close_notify);
     WriteToSocket write;
@@ -253,6 +270,28 @@ Actions handleAppClose(const State& state) {
         state.writeRecordLayer()->writeAlert(std::move(alert)));
     return actions(std::move(transition), std::move(write));
   } else {
+    return actions(std::move(transition));
+  }
+}
+
+Actions handleAppClose(const State& state) {
+  if (state.writeRecordLayer()) {
+    auto transition = [](State& newState) {
+      newState.state() = StateEnum::ExpectingCloseNotify;
+      newState.writeRecordLayer() = nullptr;
+    };
+
+    Alert alert(AlertDescription::close_notify);
+    WriteToSocket write;
+    write.contents.emplace_back(
+        state.writeRecordLayer()->writeAlert(std::move(alert)));
+    return actions(std::move(transition), std::move(write));
+  } else {
+    auto transition = [](State& newState) {
+      newState.state() = StateEnum::Closed;
+      newState.writeRecordLayer() = nullptr;
+      newState.readRecordLayer() = nullptr;
+    };
     return actions(std::move(transition));
   }
 }
@@ -277,10 +316,23 @@ Actions handleInvalidEvent(const State& state, Event event, Param param) {
         AlertDescription::unexpected_message);
   }
 }
+
 } // namespace detail
 } // namespace server
 
 namespace sm {
+
+static void ensureNoUnparsedHandshakeData(const State& state, Event event) {
+  if (state.readRecordLayer()->hasUnparsedHandshakeData()) {
+    throw FizzException(
+        folly::to<std::string>(
+            "unprocessed handshake data while handling event ",
+            toString(event),
+            " in state ",
+            toString(state.state())),
+        AlertDescription::unexpected_message);
+  }
+}
 
 AsyncActions
 EventHandler<ServerTypes, StateEnum::Uninitialized, Event::Accept>::handle(
@@ -1993,6 +2045,46 @@ EventHandler<ServerTypes, StateEnum::AcceptingData, Event::KeyUpdate>::handle(
       SecretAvailable(std::move(writeSecret)),
       SecretAvailable(std::move(readSecret)),
       std::move(write));
+}
+
+AsyncActions
+EventHandler<ServerTypes, StateEnum::AcceptingData, Event::CloseNotify>::handle(
+    const State& state,
+    Param param) {
+  ensureNoUnparsedHandshakeData(state, Event::CloseNotify);
+  auto& closenotify = boost::get<CloseNotify>(param);
+  auto eod = EndOfData(std::move(closenotify.ignoredPostCloseData));
+
+  auto clearRecordLayers = [](State& newState) {
+    newState.writeRecordLayer() = nullptr;
+    newState.readRecordLayer() = nullptr;
+  };
+
+  WriteToSocket write;
+  write.contents.emplace_back(state.writeRecordLayer()->writeAlert(
+      Alert(AlertDescription::close_notify)));
+  return actions(
+      std::move(write),
+      std::move(clearRecordLayers),
+      &Transition<StateEnum::Closed>,
+      std::move(eod));
+}
+
+AsyncActions
+EventHandler<ServerTypes, StateEnum::ExpectingCloseNotify, Event::CloseNotify>::
+    handle(const State& state, Param param) {
+  ensureNoUnparsedHandshakeData(state, Event::CloseNotify);
+  auto& closenotify = boost::get<CloseNotify>(param);
+  auto eod = EndOfData(std::move(closenotify.ignoredPostCloseData));
+
+  auto clearRecordLayers = [](State& newState) {
+    newState.readRecordLayer() = nullptr;
+    newState.writeRecordLayer() = nullptr;
+  };
+  return actions(
+      std::move(clearRecordLayers),
+      &Transition<StateEnum::Closed>,
+      std::move(eod));
 }
 
 } // namespace sm

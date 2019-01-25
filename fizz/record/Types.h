@@ -316,6 +316,13 @@ struct Alert : EventType<Event::Alert> {
   explicit Alert(AlertDescription desc) : description(desc) {}
 };
 
+struct CloseNotify : EventType<Event::CloseNotify> {
+  CloseNotify() = default;
+  explicit CloseNotify(std::unique_ptr<folly::IOBuf> data)
+      : ignoredPostCloseData(std::move(data)) {}
+  std::unique_ptr<folly::IOBuf> ignoredPostCloseData;
+};
+
 class FizzException : public std::runtime_error {
  public:
   FizzException(const std::string& msg, folly::Optional<AlertDescription> alert)

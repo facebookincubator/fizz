@@ -160,6 +160,26 @@ class AsyncFizzBase : public folly::WriteChainAsyncTransportWrapper<
     return result;
   }
 
+  /**
+   * Behavior tunables
+   */
+
+  /**
+   * setCloseTransportOnCloseNotify() defines the behavior taken when the remote
+   * peer sends us a close_notify alert, signaling their intention to tear
+   * down the TLS session.
+   *
+   * By default, upon receipt of a close_notify alert, we will immediately
+   * tear down the transport without responding with our own close_notify.
+   */
+  void setCloseTransportOnCloseNotify(bool flag) {
+    closeTransportOnCloseNotify_ = flag;
+  }
+
+  bool closeTransportOnCloseNotify() const {
+    return closeTransportOnCloseNotify_;
+  }
+
  protected:
   /**
    * Start reading raw data from the transport.
@@ -236,5 +256,7 @@ class AsyncFizzBase : public folly::WriteChainAsyncTransportWrapper<
   size_t appBytesReceived_{0};
 
   HandshakeTimeout handshakeTimeout_;
+
+  bool closeTransportOnCloseNotify_{true};
 };
 } // namespace fizz

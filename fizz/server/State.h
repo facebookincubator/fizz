@@ -31,6 +31,7 @@ enum class StateEnum {
   AcceptingEarlyData,
   ExpectingFinished,
   AcceptingData,
+  ExpectingCloseNotify,
   Closed,
   Error,
   NUM_STATES

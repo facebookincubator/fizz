@@ -32,7 +32,13 @@ void FizzBase<Derived, ActionMoveVisitor, StateMachine>::earlyAppWrite(
 
 template <typename Derived, typename ActionMoveVisitor, typename StateMachine>
 void FizzBase<Derived, ActionMoveVisitor, StateMachine>::appClose() {
-  pendingEvents_.push_back(AppClose());
+  pendingEvents_.push_back(AppClose::WAIT);
+  processPendingEvents();
+}
+
+template <typename Derived, typename ActionMoveVisitor, typename StateMachine>
+void FizzBase<Derived, ActionMoveVisitor, StateMachine>::appCloseImmediate() {
+  pendingEvents_.push_back(AppClose::IMMEDIATE);
   processPendingEvents();
 }
 
@@ -75,6 +81,12 @@ void FizzBase<Derived, ActionMoveVisitor, StateMachine>::moveToErrorState(
 template <typename Derived, typename ActionMoveVisitor, typename StateMachine>
 bool FizzBase<Derived, ActionMoveVisitor, StateMachine>::inErrorState() const {
   return inErrorState_ || state_.state() == decltype(state_.state())::Error;
+}
+
+template <typename Derived, typename ActionMoveVisitor, typename StateMachine>
+bool FizzBase<Derived, ActionMoveVisitor, StateMachine>::inTerminalState()
+    const {
+  return inErrorState() || state_.state() == decltype(state_.state())::Closed;
 }
 
 template <typename Derived, typename ActionMoveVisitor, typename StateMachine>
@@ -123,7 +135,7 @@ void FizzBase<Derived, ActionMoveVisitor, StateMachine>::
     inProcessPendingEvents_ = false;
   };
 
-  while (!actionGuard_ && !inErrorState()) {
+  while (!actionGuard_ && !inTerminalState()) {
     folly::Optional<typename StateMachine::ProcessingActions> actions;
     actionGuard_ = folly::DelayedDestruction::DestructorGuard(owner_);
     if (!waitForData_) {
@@ -143,8 +155,12 @@ void FizzBase<Derived, ActionMoveVisitor, StateMachine>::
           [&actions, this](EarlyAppWrite& write) {
             actions = machine_.processEarlyAppWrite(state_, std::move(write));
           },
-          [&actions, this](AppClose&) {
-            actions = machine_.processAppClose(state_);
+          [&actions, this](AppClose& close) {
+            if (close.policy == AppClose::WAIT) {
+              actions = machine_.processAppClose(state_);
+            } else {
+              actions = machine_.processAppCloseImmediate(state_);
+            }
           });
     } else {
       actionGuard_.clear();
