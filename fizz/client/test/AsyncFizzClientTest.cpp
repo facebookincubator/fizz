@@ -946,11 +946,47 @@ TEST_F(AsyncFizzClientTest, TestErrorStopsActions) {
   completeHandshake();
   client_->setReadCB(&readCallback_);
   EXPECT_CALL(*machine_, _processSocketData(_, _))
-      .WillOnce(InvokeWithoutArgs(
-          []() { return detail::actions(ReportError("unit test")); }));
+      .WillOnce(InvokeWithoutArgs([]() {
+        return detail::actions(
+            [](State& newState) { newState.state() = StateEnum::Error; },
+            ReportError("unit test"));
+      }));
   EXPECT_FALSE(client_->error());
+  EXPECT_TRUE(client_->good());
   socketReadCallback_->readBufferAvailable(IOBuf::copyBuffer("Data"));
   EXPECT_TRUE(client_->error());
+  EXPECT_FALSE(client_->good());
+}
+
+TEST_F(AsyncFizzClientTest, TestTransportError) {
+  completeHandshake();
+  client_->setReadCB(&readCallback_);
+  EXPECT_CALL(*machine_, _processSocketData(_, _)).Times(0);
+  EXPECT_FALSE(client_->error());
+  EXPECT_TRUE(client_->good());
+  ON_CALL(*socket_, error()).WillByDefault(Return(true));
+  AsyncSocketException ase(AsyncSocketException::UNKNOWN, "unit test");
+  socketReadCallback_->readErr(ase);
+  EXPECT_TRUE(client_->error());
+  EXPECT_FALSE(client_->good());
+  socketReadCallback_->readBufferAvailable(IOBuf::copyBuffer("Data"));
+  EXPECT_TRUE(client_->error());
+  EXPECT_FALSE(client_->good());
+}
+
+TEST_F(AsyncFizzClientTest, TestTransportEof) {
+  completeHandshake();
+  client_->setReadCB(&readCallback_);
+  EXPECT_CALL(*machine_, _processSocketData(_, _)).Times(0);
+  EXPECT_FALSE(client_->error());
+  EXPECT_TRUE(client_->good());
+  ON_CALL(*socket_, good()).WillByDefault(Return(false));
+  socketReadCallback_->readEOF();
+  EXPECT_FALSE(client_->error());
+  EXPECT_FALSE(client_->good());
+  socketReadCallback_->readBufferAvailable(IOBuf::copyBuffer("Data"));
+  EXPECT_FALSE(client_->error());
+  EXPECT_FALSE(client_->good());
 }
 
 TEST_F(AsyncFizzClientTest, TestNewCachedPskActions) {

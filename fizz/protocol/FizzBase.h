@@ -127,7 +127,7 @@ class FizzBase {
   bool waitForData_{true};
   folly::Optional<folly::DelayedDestruction::DestructorGuard> actionGuard_;
   bool inProcessPendingEvents_{false};
-  bool inErrorState_{false};
+  bool externalError_{false};
 };
 } // namespace fizz
 

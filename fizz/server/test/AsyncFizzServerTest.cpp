@@ -405,11 +405,47 @@ TEST_F(AsyncFizzServerTest, TestErrorStopsActions) {
   completeHandshake();
   server_->setReadCB(&readCallback_);
   EXPECT_CALL(*machine_, _processSocketData(_, _))
-      .WillOnce(InvokeWithoutArgs(
-          []() { return actions(ReportError("unit test")); }));
+      .WillOnce(InvokeWithoutArgs([]() {
+        return actions(
+            [](State& newState) { newState.state() = StateEnum::Error; },
+            ReportError("unit test"));
+      }));
   EXPECT_FALSE(server_->error());
+  EXPECT_TRUE(server_->good());
   socketReadCallback_->readBufferAvailable(IOBuf::copyBuffer("Data"));
   EXPECT_TRUE(server_->error());
+  EXPECT_FALSE(server_->good());
+}
+
+TEST_F(AsyncFizzServerTest, TestTransportError) {
+  completeHandshake();
+  server_->setReadCB(&readCallback_);
+  EXPECT_CALL(*machine_, _processSocketData(_, _)).Times(0);
+  EXPECT_FALSE(server_->error());
+  EXPECT_TRUE(server_->good());
+  ON_CALL(*socket_, error()).WillByDefault(Return(true));
+  AsyncSocketException ase(AsyncSocketException::UNKNOWN, "unit test");
+  socketReadCallback_->readErr(ase);
+  EXPECT_TRUE(server_->error());
+  EXPECT_FALSE(server_->good());
+  socketReadCallback_->readBufferAvailable(IOBuf::copyBuffer("Data"));
+  EXPECT_TRUE(server_->error());
+  EXPECT_FALSE(server_->good());
+}
+
+TEST_F(AsyncFizzServerTest, TestTransportEof) {
+  completeHandshake();
+  server_->setReadCB(&readCallback_);
+  EXPECT_CALL(*machine_, _processSocketData(_, _)).Times(0);
+  EXPECT_FALSE(server_->error());
+  EXPECT_TRUE(server_->good());
+  ON_CALL(*socket_, good()).WillByDefault(Return(false));
+  socketReadCallback_->readEOF();
+  EXPECT_FALSE(server_->error());
+  EXPECT_FALSE(server_->good());
+  socketReadCallback_->readBufferAvailable(IOBuf::copyBuffer("Data"));
+  EXPECT_FALSE(server_->error());
+  EXPECT_FALSE(server_->good());
 }
 
 TEST_F(AsyncFizzServerTest, TestGetCertsNone) {
@@ -440,7 +476,7 @@ TEST_F(AsyncFizzServerTest, TestTransportNotGoodOnSuccess) {
         return actions(ReportHandshakeSuccess());
       }));
   socketReadCallback_->readBufferAvailable(IOBuf::copyBuffer("ClientHello"));
-  EXPECT_TRUE(server_->error());
+  EXPECT_FALSE(server_->good());
 }
 
 TEST_F(AsyncFizzServerTest, TestTransportNotGoodOnEarlySuccess) {
@@ -453,7 +489,7 @@ TEST_F(AsyncFizzServerTest, TestTransportNotGoodOnEarlySuccess) {
         return actions(ReportEarlyHandshakeSuccess());
       }));
   socketReadCallback_->readBufferAvailable(IOBuf::copyBuffer("ClientHello"));
-  EXPECT_TRUE(server_->error());
+  EXPECT_FALSE(server_->good());
 }
 
 TEST_F(AsyncFizzServerTest, TestRemoteClosed) {

@@ -58,7 +58,7 @@ void FizzBase<Derived, ActionMoveVisitor, StateMachine>::moveToErrorState(
     const folly::AsyncSocketException& ex) {
   // We use a separate flag here rather than just moving the state to Error
   // since there may be a currently processing action.
-  inErrorState_ = true;
+  externalError_ = true;
   while (!pendingEvents_.empty()) {
     auto event = std::move(pendingEvents_.front());
     pendingEvents_.pop_front();
@@ -80,13 +80,14 @@ void FizzBase<Derived, ActionMoveVisitor, StateMachine>::moveToErrorState(
 
 template <typename Derived, typename ActionMoveVisitor, typename StateMachine>
 bool FizzBase<Derived, ActionMoveVisitor, StateMachine>::inErrorState() const {
-  return inErrorState_ || state_.state() == decltype(state_.state())::Error;
+  return state_.state() == decltype(state_.state())::Error;
 }
 
 template <typename Derived, typename ActionMoveVisitor, typename StateMachine>
 bool FizzBase<Derived, ActionMoveVisitor, StateMachine>::inTerminalState()
     const {
-  return inErrorState() || state_.state() == decltype(state_.state())::Closed;
+  return inErrorState() || externalError_ ||
+      state_.state() == decltype(state_.state())::Closed;
 }
 
 template <typename Derived, typename ActionMoveVisitor, typename StateMachine>

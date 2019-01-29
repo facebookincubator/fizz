@@ -433,8 +433,10 @@ TEST_F(FizzBaseTest, TestErrorPendingEvents) {
   EXPECT_CALL(earlyWriteCallback_, writeErr_(0, _));
   EXPECT_CALL(writeCallback_, writeErr_(0, _));
   EXPECT_FALSE(testFizz_->inErrorState());
+  EXPECT_FALSE(testFizz_->inTerminalState());
   testFizz_->appWrite(appWrite("write1"));
-  EXPECT_TRUE(testFizz_->inErrorState());
+  EXPECT_FALSE(testFizz_->inErrorState());
+  EXPECT_TRUE(testFizz_->inTerminalState());
 }
 
 TEST_F(FizzBaseTest, EventAfterErrorState) {
@@ -445,8 +447,10 @@ TEST_F(FizzBaseTest, EventAfterErrorState) {
         return Actions{};
       }));
   EXPECT_FALSE(testFizz_->inErrorState());
+  EXPECT_FALSE(testFizz_->inTerminalState());
   testFizz_->newTransportData();
-  EXPECT_TRUE(testFizz_->inErrorState());
+  EXPECT_FALSE(testFizz_->inErrorState());
+  EXPECT_TRUE(testFizz_->inTerminalState());
 }
 
 TEST_F(FizzBaseTest, TestManyActions) {
