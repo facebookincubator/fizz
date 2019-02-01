@@ -189,6 +189,13 @@ TEST_F(AsyncFizzServerTest, TestWriteErrorState) {
   server_->writeChain(&writeCallback_, IOBuf::copyBuffer("test"));
 }
 
+TEST_F(AsyncFizzServerTest, TestWriteNotGoodState) {
+  accept();
+  ON_CALL(*socket_, good()).WillByDefault(Return(false));
+  EXPECT_CALL(writeCallback_, writeErr_(0, _));
+  server_->writeChain(&writeCallback_, IOBuf::copyBuffer("test"));
+}
+
 TEST_F(AsyncFizzServerTest, TestHandshake) {
   completeHandshake();
 }

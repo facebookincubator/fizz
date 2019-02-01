@@ -276,7 +276,7 @@ void AsyncFizzClientT<SM>::writeAppData(
     folly::AsyncTransportWrapper::WriteCallback* callback,
     std::unique_ptr<folly::IOBuf>&& buf,
     folly::WriteFlags flags) {
-  if (error()) {
+  if (!good()) {
     if (callback) {
       callback->writeErr(
           0,
