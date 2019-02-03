@@ -27,13 +27,6 @@ bool decFuncBlocks(
     folly::IOBuf&,
     folly::MutableByteRange);
 
-void fixupSharedBuffer(
-    std::unique_ptr<folly::IOBuf>& encrypted,
-    folly::IOBuf** input,
-    std::unique_ptr<folly::IOBuf>& output,
-    size_t inputLength);
-
-
 void encFuncBlocks(
     EVP_CIPHER_CTX* encryptCtx,
     const folly::IOBuf& plaintext,
@@ -268,69 +261,6 @@ std::unique_ptr<folly::IOBuf> evpEncrypt(
   return output;
 }
 
-/**
- * Fixes up a buffer that might be shared.
- * We might receive several TLS records in 1 IOBuf.
- * This means that the entire IOBuf will report as
- * shared, however only one of them is. This function
- * checks whether or not we can reallocate part of the
- * IOBuf instead of the entire IOBuf chain and does it.
- */
-void fixupSharedBuffer(
-    std::unique_ptr<folly::IOBuf>& encrypted,
-    folly::IOBuf** input,
-    std::unique_ptr<folly::IOBuf>& output,
-    size_t inputLength) {
-  size_t numShared = 0;
-  std::array<folly::IOBuf*, kMaxSharedInChain> chainedBufs;
-  auto currBuf = encrypted.get();
-  do {
-    if (currBuf->isSharedOne()) {
-      numShared++;
-      if (numShared > kMaxSharedInChain) {
-        break;
-      }
-      chainedBufs[numShared - 1] = currBuf;
-    }
-    currBuf = currBuf->next();
-  } while (currBuf != encrypted.get());
-  if (numShared == 0) {
-    output = std::move(encrypted);
-    *input = output.get();
-  } else if (numShared <= kMaxSharedInChain) {
-    for (size_t i = 0; i < chainedBufs.size(); ++i) {
-      // calling unshare creates a buffer the size of the capacity
-      // of the underlying buffer, we'd rather just create one the size
-      // of the buffer we need to unshare.
-      auto chainedBuf = chainedBufs[i];
-      auto chainedCopy =
-          folly::IOBuf::copyBuffer(chainedBuf->data(), chainedBuf->length());
-      if (chainedBuf == encrypted.get()) {
-        // we just removed the head
-        // so we have to modify the head.
-        auto tmp = chainedBuf->pop();
-        encrypted = std::move(chainedCopy);
-        if (tmp) {
-          encrypted->prependChain(std::move(tmp));
-        }
-      } else {
-        // We add the buffer that we copied to the chain and then
-        // remove the original buffer from the chain.
-        chainedBuf->prependChain(std::move(chainedCopy));
-        chainedBuf->unlink();
-      }
-    }
-    output = std::move(encrypted);
-    *input = output.get();
-  } else {
-    // If the buffer has more than > kMaxSharedInChain shared elements, then we
-    // have to make a copy of it.
-    output = folly::IOBuf::create(inputLength);
-    output->append(inputLength);
-    *input = encrypted.get();
-  }
-}
-
 folly::Optional<std::unique_ptr<folly::IOBuf>> evpDecrypt(
     std::unique_ptr<folly::IOBuf>&& ciphertext,
     const folly::IOBuf* associatedData,
@@ -345,13 +275,19 @@ folly::Optional<std::unique_ptr<folly::IOBuf>> evpDecrypt(
   }
   inputLength -= tagLen;
 
-  folly::IOBuf* input{nullptr};
+  folly::IOBuf* input;
   std::unique_ptr<folly::IOBuf> output;
   trimBytes(*ciphertext, tagOut);
-
-  fixupSharedBuffer(ciphertext, &input, output, inputLength);
-  DCHECK(input);
-  DCHECK(output.get());
+  if (ciphertext->isShared()) {
+    // If in is shared, then we have to make a copy of it.
+    output = folly::IOBuf::create(inputLength);
+    output->append(inputLength);
+    input = ciphertext.get();
+  } else {
+    // If in is not shared we can do decryption in-place.
+    output = std::move(ciphertext);
+    input = output.get();
+  }
 
   if (EVP_DecryptInit_ex(decryptCtx, nullptr, nullptr, nullptr, iv.data()) !=
       1) {
