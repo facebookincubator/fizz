@@ -40,10 +40,7 @@ class EncryptedReadRecordLayer : public ReadRecordLayer {
 
   void setProtocolVersion(ProtocolVersion version) {
     auto realVersion = getRealDraftVersion(version);
-    if (realVersion == ProtocolVersion::tls_1_3_23 ||
-        realVersion == ProtocolVersion::tls_1_3_22 ||
-        realVersion == ProtocolVersion::tls_1_3_21 ||
-        realVersion == ProtocolVersion::tls_1_3_20) {
+    if (realVersion == ProtocolVersion::tls_1_3_23) {
       useAdditionalData_ = false;
     } else {
       useAdditionalData_ = true;

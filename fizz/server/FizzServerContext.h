@@ -217,10 +217,7 @@ class FizzServerContext {
 
   bool getAcceptEarlyData(ProtocolVersion version) const {
     if (earlyDataFbOnly_ &&
-        (version != ProtocolVersion::tls_1_3_20_fb &&
-         version != ProtocolVersion::tls_1_3_21_fb &&
-         version != ProtocolVersion::tls_1_3_22_fb &&
-         version != ProtocolVersion::tls_1_3_23_fb &&
+        (version != ProtocolVersion::tls_1_3_23_fb &&
          version != ProtocolVersion::tls_1_3_26_fb)) {
       return false;
     }

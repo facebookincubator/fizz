@@ -55,7 +55,6 @@ class Protocol {
       switch (ext.extension_type) {
         case ExtensionType::signature_algorithms:
         case ExtensionType::key_share:
-        case ExtensionType::key_share_old:
         case ExtensionType::pre_shared_key:
         case ExtensionType::psk_key_exchange_modes:
         case ExtensionType::cookie:
@@ -87,7 +86,6 @@ class Protocol {
               requestedExtensions.end(),
               ext.extension_type) == requestedExtensions.end() ||
           (ext.extension_type != ExtensionType::key_share &&
-           ext.extension_type != ExtensionType::key_share_old &&
            ext.extension_type != ExtensionType::pre_shared_key &&
            ext.extension_type != ExtensionType::supported_versions)) {
         throw FizzException(
@@ -104,7 +102,6 @@ class Protocol {
     for (const auto& ext : hrr.extensions) {
       if (ext.extension_type != ExtensionType::cookie &&
           ext.extension_type != ExtensionType::key_share &&
-          ext.extension_type != ExtensionType::key_share_old &&
           ext.extension_type != ExtensionType::supported_versions) {
         throw FizzException(
             "unexpected extension in hrr: " + toString(ext.extension_type),

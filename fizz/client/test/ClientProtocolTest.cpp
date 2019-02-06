@@ -125,7 +125,6 @@ class ClientProtocolTest : public ProtocolTest<ClientTypes, Actions> {
     state_.requestedExtensions() = std::vector<ExtensionType>(
         {ExtensionType::supported_versions,
          ExtensionType::key_share,
-         ExtensionType::key_share_old,
          ExtensionType::server_name,
          ExtensionType::application_layer_protocol_negotiation,
          ExtensionType::pre_shared_key,
@@ -145,7 +144,6 @@ class ClientProtocolTest : public ProtocolTest<ClientTypes, Actions> {
     state_.requestedExtensions() = std::vector<ExtensionType>(
         {ExtensionType::supported_versions,
          ExtensionType::key_share,
-         ExtensionType::key_share_old,
          ExtensionType::server_name,
          ExtensionType::application_layer_protocol_negotiation,
          ExtensionType::pre_shared_key,
@@ -163,7 +161,6 @@ class ClientProtocolTest : public ProtocolTest<ClientTypes, Actions> {
     state_.requestedExtensions() = std::vector<ExtensionType>(
         {ExtensionType::supported_versions,
          ExtensionType::key_share,
-         ExtensionType::key_share_old,
          ExtensionType::server_name,
          ExtensionType::application_layer_protocol_negotiation,
          ExtensionType::pre_shared_key,
@@ -1460,7 +1457,6 @@ TEST_F(ClientProtocolTest, TestServerHelloPskAcceptedNotSent) {
   state_.requestedExtensions() = std::vector<ExtensionType>(
       {ExtensionType::supported_versions,
        ExtensionType::key_share,
-       ExtensionType::key_share_old,
        ExtensionType::server_name,
        ExtensionType::application_layer_protocol_negotiation});
   auto actions = detail::processEvent(state_, TestMessages::serverHelloPsk());

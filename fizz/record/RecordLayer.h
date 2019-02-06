@@ -79,17 +79,7 @@ class WriteRecordLayer {
 
   void setProtocolVersion(ProtocolVersion version) const {
     auto realVersion = getRealDraftVersion(version);
-    if (realVersion == ProtocolVersion::tls_1_3_21 ||
-        realVersion == ProtocolVersion::tls_1_3_20) {
-      recordVersion_ = ProtocolVersion::tls_1_0;
-    } else {
-      recordVersion_ = ProtocolVersion::tls_1_2;
-    }
-
-    if (realVersion == ProtocolVersion::tls_1_3_23 ||
-        realVersion == ProtocolVersion::tls_1_3_22 ||
-        realVersion == ProtocolVersion::tls_1_3_21 ||
-        realVersion == ProtocolVersion::tls_1_3_20) {
+    if (realVersion == ProtocolVersion::tls_1_3_23) {
       useAdditionalData_ = false;
     } else {
       useAdditionalData_ = true;
@@ -103,7 +93,6 @@ class WriteRecordLayer {
   virtual EncryptionLevel getEncryptionLevel() const = 0;
 
  protected:
-  mutable ProtocolVersion recordVersion_{ProtocolVersion::tls_1_2};
   mutable bool useAdditionalData_{true};
 
  private:

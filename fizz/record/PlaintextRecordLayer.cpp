@@ -99,7 +99,7 @@ EncryptionLevel PlaintextReadRecordLayer::getEncryptionLevel() const {
 }
 
 TLSContent PlaintextWriteRecordLayer::write(TLSMessage&& msg) const {
-  return write(std::move(msg), recordVersion_);
+  return write(std::move(msg), ProtocolVersion::tls_1_2);
 }
 
 TLSContent PlaintextWriteRecordLayer::writeInitialClientHello(

@@ -32,22 +32,16 @@ struct KeyShareEntry {
 
 struct ClientKeyShare {
   std::vector<KeyShareEntry> client_shares;
-
-  bool preDraft23{false};
   static constexpr ExtensionType extension_type = ExtensionType::key_share;
 };
 
 struct ServerKeyShare {
   KeyShareEntry server_share;
-
-  bool preDraft23{false};
   static constexpr ExtensionType extension_type = ExtensionType::key_share;
 };
 
 struct HelloRetryRequestKeyShare {
   NamedGroup selected_group;
-
-  bool preDraft23{false};
   static constexpr ExtensionType extension_type = ExtensionType::key_share;
 };
 
@@ -149,10 +143,6 @@ template <class T>
 folly::Optional<T> getExtension(const std::vector<Extension>& extension);
 template <class T>
 T getExtension(folly::io::Cursor& cursor);
-
-template <>
-folly::Optional<ClientKeyShare> getExtension(
-    const std::vector<Extension>& extensions);
 
 template <class T>
 Extension encodeExtension(const T& t);

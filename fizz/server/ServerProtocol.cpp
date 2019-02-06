@@ -687,21 +687,6 @@ static std::tuple<NamedGroup, Optional<Buf>> negotiateGroup(
         "no client shares", AlertDescription::missing_extension);
   }
 
-  auto realVersion = getRealDraftVersion(version);
-  if (realVersion == ProtocolVersion::tls_1_3_20 ||
-      realVersion == ProtocolVersion::tls_1_3_21 ||
-      realVersion == ProtocolVersion::tls_1_3_22) {
-    if (!clientShares->preDraft23) {
-      throw FizzException(
-          "post-23 client share", AlertDescription::illegal_parameter);
-    }
-  } else {
-    if (clientShares->preDraft23) {
-      throw FizzException(
-          "pre-23 client share", AlertDescription::illegal_parameter);
-    }
-  }
-
   validateGroups(clientShares->client_shares);
   for (const auto& share : clientShares->client_shares) {
     if (share.group == *group) {
@@ -729,13 +714,6 @@ static Buf getHelloRetryRequest(
     NamedGroup group,
     Buf legacySessionId,
     HandshakeContext& handshakeContext) {
-  Buf encodedHelloRetryRequest;
-  auto realVersion = getRealDraftVersion(version);
-  if (realVersion == ProtocolVersion::tls_1_3_20 ||
-      realVersion == ProtocolVersion::tls_1_3_21) {
-    throw std::runtime_error("pre-22 HRR");
-  }
-
   HelloRetryRequest hrr;
   hrr.legacy_version = ProtocolVersion::tls_1_2;
   hrr.legacy_session_id_echo = std::move(legacySessionId);
@@ -744,16 +722,9 @@ static Buf getHelloRetryRequest(
   versionExt.selected_version = version;
   hrr.extensions.push_back(encodeExtension(std::move(versionExt)));
   HelloRetryRequestKeyShare keyShare;
-
-  if (realVersion == ProtocolVersion::tls_1_3_20 ||
-      realVersion == ProtocolVersion::tls_1_3_21 ||
-      realVersion == ProtocolVersion::tls_1_3_22) {
-    keyShare.preDraft23 = true;
-  }
-
   keyShare.selected_group = group;
   hrr.extensions.push_back(encodeExtension(std::move(keyShare)));
-  encodedHelloRetryRequest = encodeHandshake(std::move(hrr));
+  auto encodedHelloRetryRequest = encodeHandshake(std::move(hrr));
 
   handshakeContext.appendToTranscript(encodedHelloRetryRequest);
   return encodedHelloRetryRequest;
@@ -766,21 +737,15 @@ static Buf getServerHello(
     bool psk,
     Optional<NamedGroup> group,
     Optional<Buf> serverShare,
-    Buf legacy_session_id,
+    Buf legacySessionId,
     HandshakeContext& handshakeContext) {
   ServerHello serverHello;
 
-  auto realVersion = getRealDraftVersion(version);
-  if (realVersion == ProtocolVersion::tls_1_3_20 ||
-      realVersion == ProtocolVersion::tls_1_3_21) {
-    serverHello.legacy_version = version;
-  } else {
-    serverHello.legacy_version = ProtocolVersion::tls_1_2;
-    ServerSupportedVersions versionExt;
-    versionExt.selected_version = version;
-    serverHello.extensions.push_back(encodeExtension(std::move(versionExt)));
-    serverHello.legacy_session_id_echo = std::move(legacy_session_id);
-  }
+  serverHello.legacy_version = ProtocolVersion::tls_1_2;
+  ServerSupportedVersions versionExt;
+  versionExt.selected_version = version;
+  serverHello.extensions.push_back(encodeExtension(std::move(versionExt)));
+  serverHello.legacy_session_id_echo = std::move(legacySessionId);
 
   serverHello.random = std::move(random);
   serverHello.cipher_suite = cipher;
@@ -788,12 +753,6 @@ static Buf getServerHello(
     ServerKeyShare serverKeyShare;
     serverKeyShare.server_share.group = *group;
     serverKeyShare.server_share.key_exchange = std::move(*serverShare);
-
-    if (realVersion == ProtocolVersion::tls_1_3_20 ||
-        realVersion == ProtocolVersion::tls_1_3_21 ||
-        realVersion == ProtocolVersion::tls_1_3_22) {
-      serverKeyShare.preDraft23 = true;
-    }
 
     serverHello.extensions.push_back(
         encodeExtension(std::move(serverKeyShare)));
@@ -1117,14 +1076,7 @@ EventHandler<ServerTypes, StateEnum::ExpectingClientHello, Event::ClientHello>::
           pskMode = folly::none;
         }
 
-        Buf legacySessionId;
-        auto realVersion = getRealDraftVersion(version);
-        if (realVersion == ProtocolVersion::tls_1_3_20 ||
-            realVersion == ProtocolVersion::tls_1_3_21) {
-          legacySessionId = nullptr;
-        } else {
-          legacySessionId = chlo.legacy_session_id->clone();
-        }
+        auto legacySessionId = chlo.legacy_session_id->clone();
 
         std::unique_ptr<KeyScheduler> scheduler;
         std::unique_ptr<HandshakeContext> handshakeContext;
@@ -1723,18 +1675,10 @@ static Future<Optional<WriteToSocket>> generateTicket(
     return folly::none;
   }
 
-  Buf ticketNonce;
   Buf resumptionSecret;
-  auto realDraftVersion = getRealDraftVersion(*state.version());
-  if (realDraftVersion == ProtocolVersion::tls_1_3_20) {
-    ticketNonce = nullptr;
-    resumptionSecret =
-        folly::IOBuf::copyBuffer(folly::range(resumptionMasterSecret));
-  } else {
-    ticketNonce = folly::IOBuf::create(0);
-    resumptionSecret = state.keyScheduler()->getResumptionSecret(
-        folly::range(resumptionMasterSecret), ticketNonce->coalesce());
-  }
+  auto ticketNonce = folly::IOBuf::create(0);
+  resumptionSecret = state.keyScheduler()->getResumptionSecret(
+      folly::range(resumptionMasterSecret), ticketNonce->coalesce());
 
   ResumptionState resState;
   resState.version = *state.version();

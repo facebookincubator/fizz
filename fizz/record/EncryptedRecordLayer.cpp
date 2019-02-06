@@ -203,7 +203,8 @@ TLSContent EncryptedWriteRecordLayer::write(TLSMessage&& msg) const {
     folly::io::Appender appender(&header, 0);
     appender.writeBE(
         static_cast<ContentTypeType>(ContentType::application_data));
-    appender.writeBE(static_cast<ProtocolVersionType>(recordVersion_));
+    appender.writeBE(
+        static_cast<ProtocolVersionType>(ProtocolVersion::tls_1_2));
     auto ciphertextLength =
         dataBuf->computeChainDataLength() + aead_->getCipherOverhead();
     appender.writeBE<uint16_t>(ciphertextLength);

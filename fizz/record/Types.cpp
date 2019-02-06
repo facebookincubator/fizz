@@ -17,15 +17,6 @@ ProtocolVersion getRealDraftVersion(ProtocolVersion version) {
   switch (version) {
     case ProtocolVersion::tls_1_3:
       return ProtocolVersion::tls_1_3;
-    case ProtocolVersion::tls_1_3_20:
-    case ProtocolVersion::tls_1_3_20_fb:
-      return ProtocolVersion::tls_1_3_20;
-    case ProtocolVersion::tls_1_3_21:
-    case ProtocolVersion::tls_1_3_21_fb:
-      return ProtocolVersion::tls_1_3_21;
-    case ProtocolVersion::tls_1_3_22:
-    case ProtocolVersion::tls_1_3_22_fb:
-      return ProtocolVersion::tls_1_3_22;
     case ProtocolVersion::tls_1_3_23:
     case ProtocolVersion::tls_1_3_23_fb:
       return ProtocolVersion::tls_1_3_23;
@@ -50,18 +41,6 @@ std::string toString(ProtocolVersion version) {
       return "TLSv1.2";
     case ProtocolVersion::tls_1_3:
       return "TLSv1.3";
-    case ProtocolVersion::tls_1_3_20:
-      return "TLSv1.3-draft-20";
-    case ProtocolVersion::tls_1_3_20_fb:
-      return "TLSv1.3-draft-20-fb";
-    case ProtocolVersion::tls_1_3_21:
-      return "TLSv1.3-draft-21";
-    case ProtocolVersion::tls_1_3_21_fb:
-      return "TLSv1.3-draft-21-fb";
-    case ProtocolVersion::tls_1_3_22:
-      return "TLSv1.3-draft-22";
-    case ProtocolVersion::tls_1_3_22_fb:
-      return "TLSv1.3-draft-22-fb";
     case ProtocolVersion::tls_1_3_23:
       return "TLSv1.3-draft-23";
     case ProtocolVersion::tls_1_3_23_fb:
@@ -90,8 +69,6 @@ std::string toString(ExtensionType extType) {
       return "token_binding";
     case ExtensionType::quic_transport_parameters:
       return "quic_transport_parameters";
-    case ExtensionType::key_share_old:
-      return "key_share_old";
     case ExtensionType::pre_shared_key:
       return "pre_shared_key";
     case ExtensionType::early_data:
