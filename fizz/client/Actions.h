@@ -79,8 +79,12 @@ using Action = boost::variant<
     WaitForData,
     NewCachedPsk,
     SecretAvailable>;
-// TODO use small_vector once we are sure it is portable.
+
+#if defined(__ANDROID__)
 using Actions = std::vector<Action>;
+#else
+using Actions = folly::small_vector<Action, 4>;
+#endif
 
 namespace detail {
 
