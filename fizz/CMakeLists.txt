@@ -182,6 +182,11 @@ target_link_libraries(fizz
     ${CMAKE_DL_LIBS}
     ${LIBRT_LIBRARIES})
 
+if (${CMAKE_CXX_COMPILER_ID} STREQUAL MSVC)
+  # Work around C1128: number of sections exceeded object file format limit.
+  target_compile_options(fizz PUBLIC /bigobj)
+endif()
+
 install(
   TARGETS fizz
   EXPORT fizz-exports
@@ -289,9 +294,11 @@ if(BUILD_TESTS)
     fizz_test_support
     ${LIBGMOCK_LIBRARIES})
 
-  # GMOCK_MOCK_METHOD() will complain otherwise
-  target_compile_options(${test_name}
-    PRIVATE "-Wno-inconsistent-missing-override")
+  if(NOT ${CMAKE_CXX_COMPILER_ID} STREQUAL MSVC)
+    # GMOCK_MOCK_METHOD() will complain otherwise
+    target_compile_options(${test_name}
+      PRIVATE "-Wno-inconsistent-missing-override")
+  endif()
 
   add_test(${test_name} bin/${test_name})
   endmacro(add_gtest)
