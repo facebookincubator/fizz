@@ -65,8 +65,8 @@ enum class HandshakeType : uint8_t {
   certificate_verify = 15,
   finished = 20,
   key_update = 24,
-  compressed_certificate = 240,
-  message_hash = 254
+  compressed_certificate = 25,
+  message_hash = 254,
 };
 
 constexpr size_t kMaxHandshakeSize = 0x20000; // 128k
@@ -93,6 +93,7 @@ enum class ExtensionType : uint16_t {
   application_layer_protocol_negotiation = 16,
   token_binding = 24,
   quic_transport_parameters = 26,
+  compress_certificate = 27,
   pre_shared_key = 41,
   early_data = 42,
   supported_versions = 43,
@@ -104,7 +105,6 @@ enum class ExtensionType : uint16_t {
   key_share = 51,
 
   // alternate_server_name = 0xfb00,
-  compress_certificate = 0xff02,
 };
 
 std::string toString(ExtensionType);

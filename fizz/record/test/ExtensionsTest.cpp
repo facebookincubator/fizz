@@ -28,7 +28,7 @@ StringPiece ticketEarlyData{"002a000400000005"};
 StringPiece cookie{"002c00080006636f6f6b6965"};
 StringPiece authorities{
     "002f005400520028434e3d4c696d696e616c6974792c204f553d46697a7a2c204f3d46616365626f6f6b2c20433d55530026434e3d457465726e6974792c204f553d46697a7a2c204f3d46616365626f6f6b2c20433d5553"};
-StringPiece certCompressionAlgorithms{"ff020003020001"};
+StringPiece certCompressionAlgorithms{"001b0003020001"};
 
 namespace fizz {
 namespace test {
