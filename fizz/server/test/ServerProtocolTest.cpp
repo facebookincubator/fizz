@@ -267,6 +267,7 @@ class ServerProtocolTest : public ProtocolTest<ServerTypes, Actions> {
     state_.cipher() = CipherSuite::TLS_AES_128_GCM_SHA256;
     state_.executor() = &executor_;
     state_.state() = StateEnum::AcceptingEarlyData;
+    state_.context() = context_;
   }
 
   void setUpAcceptingData() {
@@ -3010,6 +3011,29 @@ TEST_F(ServerProtocolTest, TestClientHelloAcceptEarlyData) {
   EXPECT_EQ(
       state_.readRecordLayer()->getEncryptionLevel(),
       EncryptionLevel::EarlyData);
+}
+
+TEST_F(ServerProtocolTest, TestClientHelloAcceptEarlyDataOmitEarlyRecort) {
+  context_->setOmitEarlyRecordLayer(true);
+  acceptEarlyData();
+  setUpExpectingClientHello();
+
+  auto actions = getActions(
+      detail::processEvent(state_, TestMessages::clientHelloPskEarly()));
+  expectActions<
+      MutateState,
+      WriteToSocket,
+      ReportEarlyHandshakeSuccess,
+      SecretAvailable>(actions);
+  processStateMutations(actions);
+  EXPECT_EQ(state_.state(), StateEnum::ExpectingFinished);
+  EXPECT_EQ(state_.pskType(), PskType::Resumption);
+  EXPECT_EQ(state_.earlyDataType(), EarlyDataType::Accepted);
+  EXPECT_EQ(state_.replayCacheResult(), ReplayCacheResult::NotReplay);
+  EXPECT_EQ(
+      state_.readRecordLayer()->getEncryptionLevel(),
+      EncryptionLevel::Handshake);
+  EXPECT_EQ(state_.handshakeReadRecordLayer().get(), nullptr);
 }
 
 TEST_F(

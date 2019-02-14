@@ -853,6 +853,26 @@ TEST_F(ClientProtocolTest, TestConnectPskEarlyAlpnMismatch) {
   EXPECT_FALSE(state_.earlyDataParams().hasValue());
 }
 
+TEST_F(ClientProtocolTest, TestConnectPskEarlyOmitEarlyRecord) {
+  context_->setOmitEarlyRecordLayer(true);
+  Connect connect;
+  connect.context = context_;
+  auto psk = getCachedPsk();
+  psk.maxEarlyDataSize = 1000;
+  connect.cachedPsk = psk;
+  auto actions = detail::processEvent(state_, std::move(connect));
+  expectActions<
+      MutateState,
+      WriteToSocket,
+      ReportEarlyHandshakeSuccess,
+      SecretAvailable>(actions);
+  processStateMutations(actions);
+  EXPECT_EQ(state_.state(), StateEnum::ExpectingServerHello);
+  EXPECT_EQ(*state_.earlyDataType(), EarlyDataType::Attempted);
+  EXPECT_TRUE(state_.earlyDataParams().hasValue());
+  EXPECT_EQ(state_.earlyWriteRecordLayer().get(), nullptr);
+}
+
 TEST_F(ClientProtocolTest, TestConnectCompat) {
   context_->setCompatibilityMode(true);
   Connect connect;
@@ -2663,6 +2683,124 @@ TEST_F(ClientProtocolTest, TestFinishedEarlyFlow) {
       IOBufEqualTo()(*state_.resumptionSecret(), IOBuf::copyBuffer("res")));
 }
 
+TEST_F(ClientProtocolTest, TestFinishedEarlyFlowOmitEarlyRecord) {
+  setupExpectingFinished();
+  state_.earlyDataType() = EarlyDataType::Accepted;
+  context_->setOmitEarlyRecordLayer(true);
+
+  Sequence contextSeq;
+  EXPECT_CALL(*mockHandshakeContext_, getFinishedData(RangeMatches("sht")))
+      .InSequence(contextSeq)
+      .WillOnce(
+          InvokeWithoutArgs([]() { return IOBuf::copyBuffer("verifydata"); }));
+  EXPECT_CALL(
+      *mockHandshakeContext_,
+      appendToTranscript(BufMatches("finishedencoding")))
+      .InSequence(contextSeq);
+  EXPECT_CALL(*mockHandshakeContext_, getHandshakeContext())
+      .InSequence(contextSeq)
+      .WillRepeatedly(Invoke([]() { return IOBuf::copyBuffer("sfin"); }));
+  EXPECT_CALL(*mockHandshakeContext_, getFinishedData(RangeMatches("cht")))
+      .InSequence(contextSeq)
+      .WillRepeatedly(
+          InvokeWithoutArgs([]() { return IOBuf::copyBuffer("verifydata"); }));
+  EXPECT_CALL(*mockHandshakeContext_, appendToTranscript(_))
+      .InSequence(contextSeq);
+  EXPECT_CALL(*mockHandshakeContext_, getHandshakeContext())
+      .InSequence(contextSeq)
+      .WillRepeatedly(Invoke([]() { return IOBuf::copyBuffer("fincontext"); }));
+  EXPECT_CALL(*mockHandshakeWrite_, _write(_))
+      .WillOnce(Invoke([&](TLSMessage& msg) {
+        TLSContent content;
+        content.contentType = msg.type;
+        content.encryptionLevel = mockHandshakeWrite_->getEncryptionLevel();
+        EXPECT_EQ(msg.type, ContentType::handshake);
+        EXPECT_TRUE(IOBufEqualTo()(
+            msg.fragment, encodeHandshake(TestMessages::finished())));
+        content.data = folly::IOBuf::copyBuffer("finwrite");
+        return content;
+      }));
+  EXPECT_CALL(*mockKeyScheduler_, deriveMasterSecret());
+  EXPECT_CALL(
+      *mockKeyScheduler_,
+      getSecret(MasterSecrets::ExporterMaster, RangeMatches("sfin")));
+  EXPECT_CALL(
+      *mockKeyScheduler_,
+      getSecret(MasterSecrets::ResumptionMaster, RangeMatches("fincontext")))
+      .WillOnce(InvokeWithoutArgs([]() {
+        return DerivedSecret(
+            std::vector<uint8_t>({'r', 'e', 's'}),
+            MasterSecrets::ResumptionMaster);
+      }));
+  EXPECT_CALL(
+      *mockKeyScheduler_, deriveAppTrafficSecrets(RangeMatches("sfin")));
+  EXPECT_CALL(
+      *mockKeyScheduler_, getSecret(AppTrafficSecrets::ServerAppTraffic))
+      .WillOnce(InvokeWithoutArgs([]() {
+        return DerivedSecret(
+            std::vector<uint8_t>({'s', 'a', 't'}),
+            AppTrafficSecrets::ServerAppTraffic);
+      }));
+  EXPECT_CALL(
+      *mockKeyScheduler_, getSecret(AppTrafficSecrets::ClientAppTraffic))
+      .WillOnce(InvokeWithoutArgs([]() {
+        return DerivedSecret(
+            std::vector<uint8_t>({'c', 'a', 't'}),
+            AppTrafficSecrets::ClientAppTraffic);
+      }));
+  EXPECT_CALL(*mockKeyScheduler_, getTrafficKey(RangeMatches("sat"), _, _))
+      .WillOnce(InvokeWithoutArgs([]() {
+        return TrafficKey{IOBuf::copyBuffer("serverkey"),
+                          IOBuf::copyBuffer("serveriv")};
+      }));
+  EXPECT_CALL(*mockKeyScheduler_, getTrafficKey(RangeMatches("cat"), _, _))
+      .WillOnce(InvokeWithoutArgs([]() {
+        return TrafficKey{IOBuf::copyBuffer("clientkey"),
+                          IOBuf::copyBuffer("clientiv")};
+      }));
+  MockAead* raead;
+  MockAead* waead;
+  MockEncryptedReadRecordLayer* rrl;
+  MockEncryptedWriteRecordLayer* wrl;
+  expectAeadCreation(&waead, &raead);
+  expectEncryptedReadRecordLayerCreation(&rrl, &raead, StringPiece("sat"));
+  expectEncryptedWriteRecordLayerCreation(&wrl, &waead, StringPiece("cat"));
+  EXPECT_CALL(*mockKeyScheduler_, clearMasterSecret());
+
+  auto actions = detail::processEvent(state_, TestMessages::finished());
+  expectActions<
+      MutateState,
+      ReportHandshakeSuccess,
+      WriteToSocket,
+      SecretAvailable>(actions);
+  auto write = expectAction<WriteToSocket>(actions);
+  EXPECT_EQ(write.contents.size(), 1);
+  EXPECT_EQ(write.contents[0].encryptionLevel, EncryptionLevel::Handshake);
+  EXPECT_EQ(write.contents[0].contentType, ContentType::handshake);
+  EXPECT_TRUE(
+      IOBufEqualTo()(write.contents[0].data, IOBuf::copyBuffer("finwrite")));
+  auto reportSuccess = expectAction<ReportHandshakeSuccess>(actions);
+  EXPECT_EQ(reportSuccess.earlyDataAccepted, true);
+
+  expectSecret(
+      actions, AppTrafficSecrets::ServerAppTraffic, StringPiece("sat"));
+  expectSecret(
+      actions, AppTrafficSecrets::ClientAppTraffic, StringPiece("cat"));
+  processStateMutations(actions);
+  EXPECT_EQ(state_.readRecordLayer().get(), rrl);
+  EXPECT_EQ(
+      state_.readRecordLayer()->getEncryptionLevel(),
+      EncryptionLevel::AppTraffic);
+  EXPECT_EQ(state_.writeRecordLayer().get(), wrl);
+  EXPECT_EQ(
+      state_.writeRecordLayer()->getEncryptionLevel(),
+      EncryptionLevel::AppTraffic);
+  EXPECT_EQ(state_.earlyWriteRecordLayer().get(), nullptr);
+  EXPECT_EQ(state_.state(), StateEnum::Established);
+  EXPECT_TRUE(
+      IOBufEqualTo()(*state_.resumptionSecret(), IOBuf::copyBuffer("res")));
+}
+
 void ClientProtocolTest::doFinishedFlow(ClientAuthType authType) {
   Sequence contextSeq;
   EXPECT_CALL(*mockHandshakeContext_, getFinishedData(RangeMatches("sht")))
@@ -3100,6 +3238,15 @@ TEST_F(ClientProtocolTest, TestInvalidEarlyWrite) {
 
   auto actions = detail::processEvent(state_, TestMessages::earlyAppWrite());
   expectError<FizzException>(actions, folly::none, "invalid early write");
+}
+
+TEST_F(ClientProtocolTest, TestEarlyWriteOmitRecord) {
+  setupExpectingServerHello();
+  state_.earlyDataType() = EarlyDataType::Attempted;
+  context_->setOmitEarlyRecordLayer(true);
+
+  auto actions = detail::processEvent(state_, TestMessages::earlyAppWrite());
+  expectError<FizzException>(actions, folly::none, "early app writes disabled");
 }
 
 TEST_F(ClientProtocolTest, TestExpectingSHEarlyWrite) {

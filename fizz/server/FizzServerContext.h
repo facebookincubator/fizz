@@ -283,6 +283,18 @@ class FizzServerContext {
     return supportedCompressionAlgos_;
   }
 
+  /**
+   * Whether to omit the early record layer when sending early data. This will
+   * also omit the EndOfEarlyData message.
+   * Default is false, and using this requires a custom record layer.
+   */
+  void setOmitEarlyRecordLayer(bool enabled) {
+    omitEarlyRecordLayer_ = enabled;
+  }
+  bool getOmitEarlyRecordLayer() const {
+    return omitEarlyRecordLayer_;
+  }
+
  private:
   std::shared_ptr<Factory> factory_;
 
@@ -325,6 +337,8 @@ class FizzServerContext {
   bool earlyDataFbOnly_{false};
 
   bool sendNewSessionTicket_{true};
+
+  bool omitEarlyRecordLayer_{false};
 };
 } // namespace server
 } // namespace fizz

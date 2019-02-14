@@ -1118,19 +1118,22 @@ EventHandler<ServerTypes, StateEnum::ExpectingClientHello, Event::ClientHello>::
         folly::Optional<SecretAvailable> earlyReadSecretAvailable;
         if (earlyDataType == EarlyDataType::Accepted) {
           auto earlyContext = handshakeContext->getHandshakeContext();
-
-          earlyReadRecordLayer =
-              state.context()->getFactory()->makeEncryptedReadRecordLayer(
-                  EncryptionLevel::EarlyData);
-          earlyReadRecordLayer->setProtocolVersion(version);
           auto earlyReadSecret = scheduler->getSecret(
               EarlySecrets::ClientEarlyTraffic, earlyContext->coalesce());
-          Protocol::setAead(
-              *earlyReadRecordLayer,
-              cipher,
-              folly::range(earlyReadSecret.secret),
-              *state.context()->getFactory(),
-              *scheduler);
+          if (!state.context()->getOmitEarlyRecordLayer()) {
+            earlyReadRecordLayer =
+                state.context()->getFactory()->makeEncryptedReadRecordLayer(
+                    EncryptionLevel::EarlyData);
+            earlyReadRecordLayer->setProtocolVersion(version);
+
+            Protocol::setAead(
+                *earlyReadRecordLayer,
+                cipher,
+                folly::range(earlyReadSecret.secret),
+                *state.context()->getFactory(),
+                *scheduler);
+          }
+
           earlyReadSecretAvailable =
               SecretAvailable(std::move(earlyReadSecret));
           earlyExporterMaster = folly::IOBuf::copyBuffer(folly::range(
@@ -1538,27 +1541,49 @@ EventHandler<ServerTypes, StateEnum::ExpectingClientHello, Event::ClientHello>::
               };
 
               if (earlyDataType == EarlyDataType::Accepted) {
-                return actions(
-                    [handshakeReadRecordLayer =
-                         std::move(handshakeReadRecordLayer),
-                     earlyReadRecordLayer = std::move(earlyReadRecordLayer),
-                     earlyExporterMaster = std::move(earlyExporterMaster)](
-                        State& newState) mutable {
-                      newState.readRecordLayer() =
-                          std::move(earlyReadRecordLayer);
-                      newState.handshakeReadRecordLayer() =
-                          std::move(handshakeReadRecordLayer);
-                      newState.earlyExporterMasterSecret() =
-                          std::move(earlyExporterMaster);
-                    },
-                    std::move(saveState),
-                    std::move(*earlyReadSecretAvailable),
-                    std::move(handshakeReadSecretAvailable),
-                    std::move(handshakeWriteSecretAvailable),
-                    std::move(appWriteSecretAvailable),
-                    std::move(serverFlight),
-                    &Transition<StateEnum::AcceptingEarlyData>,
-                    ReportEarlyHandshakeSuccess());
+                if (state.context()->getOmitEarlyRecordLayer()) {
+                  return actions(
+                      [handshakeReadRecordLayer =
+                           std::move(handshakeReadRecordLayer),
+                       earlyExporterMaster = std::move(earlyExporterMaster)](
+                          State& newState) mutable {
+                        newState.readRecordLayer() =
+                            std::move(handshakeReadRecordLayer);
+                        newState.earlyExporterMasterSecret() =
+                            std::move(earlyExporterMaster);
+                      },
+                      std::move(saveState),
+                      std::move(*earlyReadSecretAvailable),
+                      std::move(handshakeReadSecretAvailable),
+                      std::move(handshakeWriteSecretAvailable),
+                      std::move(appWriteSecretAvailable),
+                      std::move(serverFlight),
+                      &Transition<StateEnum::ExpectingFinished>,
+                      ReportEarlyHandshakeSuccess());
+
+                } else {
+                  return actions(
+                      [handshakeReadRecordLayer =
+                           std::move(handshakeReadRecordLayer),
+                       earlyReadRecordLayer = std::move(earlyReadRecordLayer),
+                       earlyExporterMaster = std::move(earlyExporterMaster)](
+                          State& newState) mutable {
+                        newState.readRecordLayer() =
+                            std::move(earlyReadRecordLayer);
+                        newState.handshakeReadRecordLayer() =
+                            std::move(handshakeReadRecordLayer);
+                        newState.earlyExporterMasterSecret() =
+                            std::move(earlyExporterMaster);
+                      },
+                      std::move(saveState),
+                      std::move(*earlyReadSecretAvailable),
+                      std::move(handshakeReadSecretAvailable),
+                      std::move(handshakeWriteSecretAvailable),
+                      std::move(appWriteSecretAvailable),
+                      std::move(serverFlight),
+                      &Transition<StateEnum::AcceptingEarlyData>,
+                      ReportEarlyHandshakeSuccess());
+                }
               } else {
                 auto transition = requestClientAuth
                     ? Transition<StateEnum::ExpectingCertificate>

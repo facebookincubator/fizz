@@ -204,6 +204,18 @@ class FizzClientContext {
     }
   }
 
+  /**
+   * Whether to omit the early record layer when sending early data. This will
+   * also omit the EndOfEarlyData message.
+   * Default is false, and using this requires a custom record layer.
+   */
+  void setOmitEarlyRecordLayer(bool enabled) {
+    omitEarlyRecordLayer_ = enabled;
+  }
+  bool getOmitEarlyRecordLayer() const {
+    return omitEarlyRecordLayer_;
+  }
+
  private:
   std::shared_ptr<Factory> factory_;
 
@@ -228,6 +240,8 @@ class FizzClientContext {
   bool sendEarlyData_{false};
 
   bool compatMode_{false};
+
+  bool omitEarlyRecordLayer_{false};
 
   std::shared_ptr<PskCache> pskCache_;
   std::shared_ptr<const SelfCert> clientCert_;

@@ -208,6 +208,10 @@ class HandshakeTest : public Test {
         .WillByDefault(Invoke([](folly::exception_wrapper ex) {
           FAIL() << "Client Error: " << ex.what().toStdString();
         }));
+    ON_CALL(clientRead_, readErr_(_))
+        .WillByDefault(Invoke([](const AsyncSocketException& ex) {
+          FAIL() << "Client Read Error: " << ex.what();
+        }));
   }
 
   void expectServerSuccess() {
@@ -216,6 +220,10 @@ class HandshakeTest : public Test {
     ON_CALL(serverCallback_, _fizzHandshakeError(_))
         .WillByDefault(Invoke([](folly::exception_wrapper ex) {
           FAIL() << "Server Error: " << ex.what().toStdString();
+        }));
+    ON_CALL(serverRead_, readErr_(_))
+        .WillByDefault(Invoke([](const AsyncSocketException& ex) {
+          FAIL() << "Server Read Error: " << ex.what();
         }));
   }
 
@@ -878,6 +886,26 @@ TEST_F(HandshakeTest, EarlyDataTrickleSendRejected) {
   expectServerSuccess();
   doServerHandshake();
   verifyParameters();
+}
+
+TEST_F(HandshakeTest, EarlyDataAcceptedOmitEarlyRecord) {
+  clientContext_->setSendEarlyData(true);
+  clientContext_->setOmitEarlyRecordLayer(true);
+  serverContext_->setOmitEarlyRecordLayer(true);
+  setupResume();
+
+  expected_.pskType = PskType::Resumption;
+  expected_.earlyDataType = EarlyDataType::Accepted;
+
+  expectClientSuccess();
+  doClientHandshake();
+  verifyEarlyParameters();
+
+  expectReplaySafety();
+  expectServerSuccess();
+  doServerHandshake();
+  verifyParameters();
+  sendAppData();
 }
 
 TEST_F(HandshakeTest, Compat) {

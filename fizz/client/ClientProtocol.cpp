@@ -653,19 +653,21 @@ EventHandler<ClientTypes, StateEnum::Uninitialized, Event::Connect>::handle(
         std::move(chlo), *psk, *keyScheduler, *handshakeContext);
 
     if (earlyDataParams) {
-      earlyWriteRecordLayer =
-          context->getFactory()->makeEncryptedWriteRecordLayer(
-              EncryptionLevel::EarlyData);
-      earlyWriteRecordLayer->setProtocolVersion(psk->version);
       auto earlyWriteSecret = keyScheduler->getSecret(
           EarlySecrets::ClientEarlyTraffic,
           handshakeContext->getHandshakeContext()->coalesce());
-      Protocol::setAead(
-          *earlyWriteRecordLayer,
-          psk->cipher,
-          folly::range(earlyWriteSecret.secret),
-          *context->getFactory(),
-          *keyScheduler);
+      if (!context->getOmitEarlyRecordLayer()) {
+        earlyWriteRecordLayer =
+            context->getFactory()->makeEncryptedWriteRecordLayer(
+                EncryptionLevel::EarlyData);
+        earlyWriteRecordLayer->setProtocolVersion(psk->version);
+        Protocol::setAead(
+            *earlyWriteRecordLayer,
+            psk->cipher,
+            folly::range(earlyWriteSecret.secret),
+            *context->getFactory(),
+            *keyScheduler);
+      }
       earlyWriteSecretAvailable = SecretAvailable(std::move(earlyWriteSecret));
 
       auto earlyExporterVector = keyScheduler->getSecret(
@@ -1257,7 +1259,8 @@ static void validateAcceptedEarly(
         AlertDescription::illegal_parameter);
   }
 
-  if (!state.earlyWriteRecordLayer()) {
+  if (!state.earlyWriteRecordLayer() &&
+      !state.context()->getOmitEarlyRecordLayer()) {
     throw FizzException(
         "no early record layer", AlertDescription::illegal_parameter);
   }
@@ -1574,7 +1577,8 @@ EventHandler<ClientTypes, StateEnum::ExpectingFinished, Event::Finished>::
   state.keyScheduler()->deriveMasterSecret();
 
   folly::Optional<TLSContent> eoedWrite;
-  if (state.earlyDataType() == EarlyDataType::Accepted) {
+  if (state.earlyDataType() == EarlyDataType::Accepted &&
+      !state.context()->getOmitEarlyRecordLayer()) {
     auto encodedEndOfEarly = encodeHandshake(EndOfEarlyData());
     state.handshakeContext()->appendToTranscript(encodedEndOfEarly);
     DCHECK(state.earlyWriteRecordLayer());
@@ -1862,6 +1866,10 @@ static Actions ignoreEarlyAppWrite(const State& state, EarlyAppWrite write) {
 }
 
 static Actions handleEarlyAppWrite(const State& state, EarlyAppWrite appWrite) {
+  if (state.context()->getOmitEarlyRecordLayer()) {
+    throw FizzException("early app writes disabled", folly::none);
+  }
+
   switch (*state.earlyDataType()) {
     case EarlyDataType::NotAttempted:
       throw FizzException("invalid early write", folly::none);
