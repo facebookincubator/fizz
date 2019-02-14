@@ -79,7 +79,9 @@ class BogoTestServer : public AsyncSocket::ConnectCallback,
 
   void fizzHandshakeAttemptFallback(
       std::unique_ptr<folly::IOBuf> clientHello) override {
-    auto fd = transport_->getUnderlyingTransport<AsyncSocket>()->detachFd();
+    auto fd = transport_->getUnderlyingTransport<AsyncSocket>()
+                  ->detachNetworkSocket()
+                  .toFd();
     transport_.reset();
     if (!sslContext_) {
       unimplemented_ = true;

@@ -110,7 +110,7 @@ class FizzExampleServer : public AsyncFizzServer::HandshakeCallback,
     LOG(INFO) << "Fallback attempt";
     auto socket = transport_->getUnderlyingTransport<AsyncSocket>();
     auto evb = socket->getEventBase();
-    auto fd = socket->detachFd();
+    auto fd = socket->detachNetworkSocket().toFd();
     transport_.reset();
     sslSocket_ =
         AsyncSSLSocket::UniquePtr(new AsyncSSLSocket(sslCtx_, evb, fd));
