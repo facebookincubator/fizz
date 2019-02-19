@@ -80,7 +80,7 @@ using Action = boost::variant<
     NewCachedPsk,
     SecretAvailable>;
 
-#if defined(__ANDROID__)
+#if defined(FOLLY_MOBILE)
 using Actions = std::vector<Action>;
 #else
 using Actions = folly::small_vector<Action, 4>;
