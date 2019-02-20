@@ -38,7 +38,7 @@ struct DeliverAppData {
  */
 struct WriteToSocket {
   folly::AsyncTransportWrapper::WriteCallback* callback{nullptr};
-#if defined(FOLLY_MOBILE)
+#if defined(__ANDROID__)
   std::vector<TLSContent> contents;
 #else
   folly::small_vector<TLSContent, 4> contents;
