@@ -275,6 +275,17 @@ TEST_F(ClientProtocolTest, TestInvalidTransitionError) {
   expectActions<ReportError>(actions);
 }
 
+TEST_F(ClientProtocolTest, TestAlertEncryptionLevel) {
+  setMockRecord();
+  EXPECT_CALL(*mockWrite_, _write(_));
+  auto encryptionLevel = state_.writeRecordLayer()->getEncryptionLevel();
+  auto actions = ClientStateMachine().processAppWrite(state_, AppWrite());
+  auto write = expectAction<WriteToSocket>(actions);
+  EXPECT_EQ(write.contents.size(), 1);
+  EXPECT_EQ(write.contents[0].encryptionLevel, encryptionLevel);
+  EXPECT_EQ(write.contents[0].contentType, ContentType::alert);
+}
+
 TEST_F(ClientProtocolTest, TestConnectFlow) {
   EXPECT_CALL(*factory_, makePlaintextReadRecordLayer())
       .WillOnce(Invoke([this]() {
@@ -1853,13 +1864,10 @@ TEST_F(ClientProtocolTest, TestHelloRetryRequestGroupAlreadySent) {
   HelloRetryRequestKeyShare keyShare;
   keyShare.selected_group = NamedGroup::x25519;
   hrr.extensions.push_back(encodeExtension(std::move(keyShare)));
-  auto encryptionLevel = state_.writeRecordLayer()->getEncryptionLevel();
+
   auto actions = detail::processEvent(state_, std::move(hrr));
   expectError<FizzException>(
       actions, AlertDescription::illegal_parameter, "already-sent group");
-  auto write = expectAction<WriteToSocket>(actions);
-  EXPECT_EQ(write.contents[0].encryptionLevel, encryptionLevel);
-  EXPECT_EQ(write.contents[0].contentType, ContentType::alert);
 }
 
 TEST_F(ClientProtocolTest, TestHelloRetryRequestNoKeyShare) {
