@@ -193,47 +193,49 @@ class MockFactory : public Factory {
 
   void setDefaults() {
     ON_CALL(*this, makePlaintextReadRecordLayer())
-        .WillByDefault(InvokeWithoutArgs(
-            []() { return std::make_unique<MockPlaintextReadRecordLayer>(); }));
+        .WillByDefault(InvokeWithoutArgs([]() {
+          return std::make_unique<NiceMock<MockPlaintextReadRecordLayer>>();
+        }));
 
     ON_CALL(*this, makePlaintextWriteRecordLayer())
         .WillByDefault(InvokeWithoutArgs([]() {
-          auto ret = std::make_unique<MockPlaintextWriteRecordLayer>();
+          auto ret =
+              std::make_unique<NiceMock<MockPlaintextWriteRecordLayer>>();
           ret->setDefaults();
           return ret;
         }));
     ON_CALL(*this, makeEncryptedReadRecordLayer(_))
         .WillByDefault(Invoke([](EncryptionLevel encryptionLevel) {
-          return std::make_unique<MockEncryptedReadRecordLayer>(
+          return std::make_unique<NiceMock<MockEncryptedReadRecordLayer>>(
               encryptionLevel);
         }));
 
     ON_CALL(*this, makeEncryptedWriteRecordLayer(_))
         .WillByDefault(Invoke([](EncryptionLevel encryptionLevel) {
-          auto ret =
-              std::make_unique<MockEncryptedWriteRecordLayer>(encryptionLevel);
+          auto ret = std::make_unique<NiceMock<MockEncryptedWriteRecordLayer>>(
+              encryptionLevel);
           ret->setDefaults();
           return ret;
         }));
 
     ON_CALL(*this, makeKeyScheduler(_)).WillByDefault(InvokeWithoutArgs([]() {
-      auto ret = std::make_unique<MockKeyScheduler>();
+      auto ret = std::make_unique<NiceMock<MockKeyScheduler>>();
       ret->setDefaults();
       return ret;
     }));
     ON_CALL(*this, makeHandshakeContext(_))
         .WillByDefault(InvokeWithoutArgs([]() {
-          auto ret = std::make_unique<MockHandshakeContext>();
+          auto ret = std::make_unique<NiceMock<MockHandshakeContext>>();
           ret->setDefaults();
           return ret;
         }));
     ON_CALL(*this, makeKeyExchange(_)).WillByDefault(InvokeWithoutArgs([]() {
-      auto ret = std::make_unique<MockKeyExchange>();
+      auto ret = std::make_unique<NiceMock<MockKeyExchange>>();
       ret->setDefaults();
       return ret;
     }));
     ON_CALL(*this, makeAead(_)).WillByDefault(InvokeWithoutArgs([]() {
-      auto ret = std::make_unique<MockAead>();
+      auto ret = std::make_unique<NiceMock<MockAead>>();
       ret->setDefaults();
       return ret;
     }));
@@ -246,7 +248,7 @@ class MockFactory : public Factory {
       return 0x44444444;
     }));
     ON_CALL(*this, _makePeerCert(_)).WillByDefault(InvokeWithoutArgs([]() {
-      return std::make_unique<MockPeerCert>();
+      return std::make_unique<NiceMock<MockPeerCert>>();
     }));
   }
 };
