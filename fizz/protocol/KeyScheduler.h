@@ -115,6 +115,16 @@ class KeyScheduler {
       size_t ivLength) const;
 
   /**
+   * Derive a traffic key and iv from a traffic secret with the label supplied.
+   */
+  virtual TrafficKey getTrafficKeyWithLabel(
+      folly::ByteRange trafficSecret,
+      folly::StringPiece keyLabel,
+      folly::StringPiece ivLabel,
+      size_t keyLength,
+      size_t ivLength) const;
+
+  /**
    * Derive a resumption secret with a particular ticket nonce. Does not require
    * being in master secret state.
    */

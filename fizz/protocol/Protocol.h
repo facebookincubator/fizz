@@ -23,11 +23,34 @@ class Protocol {
       folly::ByteRange secret,
       const Factory& factory,
       const KeyScheduler& scheduler) {
+    auto aead = deriveRecordAead(factory, scheduler, cipher, secret);
+    recordLayer.setAead(secret, std::move(aead));
+  }
+
+  static std::unique_ptr<Aead> deriveRecordAead(
+      const Factory& factory,
+      const KeyScheduler& scheduler,
+      CipherSuite cipher,
+      folly::ByteRange secret) {
     auto aead = factory.makeAead(cipher);
     auto trafficKey =
         scheduler.getTrafficKey(secret, aead->keyLength(), aead->ivLength());
     aead->setKey(std::move(trafficKey));
-    recordLayer.setAead(secret, std::move(aead));
+    return aead;
+  }
+
+  static std::unique_ptr<Aead> deriveRecordAeadWithLabel(
+      const Factory& factory,
+      const KeyScheduler& scheduler,
+      CipherSuite cipher,
+      folly::ByteRange secret,
+      folly::StringPiece keyLabel,
+      folly::StringPiece ivLabel) {
+    auto aead = factory.makeAead(cipher);
+    auto trafficKey = scheduler.getTrafficKeyWithLabel(
+        secret, keyLabel, ivLabel, aead->keyLength(), aead->ivLength());
+    aead->setKey(std::move(trafficKey));
+    return aead;
   }
 
   static Buf getFinished(

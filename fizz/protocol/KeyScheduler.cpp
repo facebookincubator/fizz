@@ -203,11 +203,21 @@ TrafficKey KeyScheduler::getTrafficKey(
     folly::ByteRange trafficSecret,
     size_t keyLength,
     size_t ivLength) const {
+  return getTrafficKeyWithLabel(
+      trafficSecret, kTrafficKey, kTrafficIv, keyLength, ivLength);
+}
+
+TrafficKey KeyScheduler::getTrafficKeyWithLabel(
+    folly::ByteRange trafficSecret,
+    folly::StringPiece keyLabel,
+    folly::StringPiece ivLabel,
+    size_t keyLength,
+    size_t ivLength) const {
   TrafficKey trafficKey;
   trafficKey.key = deriver_->expandLabel(
-      trafficSecret, kTrafficKey, folly::IOBuf::create(0), keyLength);
+      trafficSecret, keyLabel, folly::IOBuf::create(0), keyLength);
   trafficKey.iv = deriver_->expandLabel(
-      trafficSecret, kTrafficIv, folly::IOBuf::create(0), ivLength);
+      trafficSecret, ivLabel, folly::IOBuf::create(0), ivLength);
   return trafficKey;
 }
 
