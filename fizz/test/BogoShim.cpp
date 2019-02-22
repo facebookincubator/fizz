@@ -86,8 +86,8 @@ class BogoTestServer : public AsyncSocket::ConnectCallback,
     if (!sslContext_) {
       unimplemented_ = true;
     } else {
-      sslSocket_ =
-          AsyncSSLSocket::UniquePtr(new AsyncSSLSocket(sslContext_, evb_, fd));
+      sslSocket_ = AsyncSSLSocket::UniquePtr(new AsyncSSLSocket(
+          sslContext_, evb_, folly::NetworkSocket::fromFd(fd)));
       sslSocket_->setPreReceivedData(std::move(clientHello));
       sslSocket_->sslAccept(this);
     }

@@ -112,8 +112,8 @@ class FizzExampleServer : public AsyncFizzServer::HandshakeCallback,
     auto evb = socket->getEventBase();
     auto fd = socket->detachNetworkSocket().toFd();
     transport_.reset();
-    sslSocket_ =
-        AsyncSSLSocket::UniquePtr(new AsyncSSLSocket(sslCtx_, evb, fd));
+    sslSocket_ = AsyncSSLSocket::UniquePtr(
+        new AsyncSSLSocket(sslCtx_, evb, folly::NetworkSocket::fromFd(fd)));
     sslSocket_->setPreReceivedData(std::move(clientHello));
     sslSocket_->sslAccept(this);
   }
