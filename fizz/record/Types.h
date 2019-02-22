@@ -92,7 +92,6 @@ enum class ExtensionType : uint16_t {
   signature_algorithms = 13,
   application_layer_protocol_negotiation = 16,
   token_binding = 24,
-  quic_transport_parameters = 26,
   compress_certificate = 27,
   pre_shared_key = 41,
   early_data = 42,
@@ -103,6 +102,7 @@ enum class ExtensionType : uint16_t {
   post_handshake_auth = 49,
   signature_algorithms_cert = 50,
   key_share = 51,
+  quic_transport_parameters = 0xffa5,
 
   // alternate_server_name = 0xfb00,
 };
