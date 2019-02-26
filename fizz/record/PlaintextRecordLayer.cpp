@@ -39,9 +39,7 @@ folly::Optional<TLSMessage> PlaintextReadRecordLayer::read(
         if (buf.chainLength() < (cursor - buf.front()) + length) {
           return folly::none;
         }
-        length +=
-            sizeof(ContentType) + sizeof(ProtocolVersion) + sizeof(uint16_t);
-        buf.trimStart(length);
+        buf.trimStart(static_cast<size_t>(kPlaintextHeaderSize) + length);
         continue;
       } else if (msg.type != ContentType::change_cipher_spec) {
         skipEncryptedRecords_ = false;
