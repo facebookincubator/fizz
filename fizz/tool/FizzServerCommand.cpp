@@ -253,7 +253,7 @@ void FizzServerAcceptor::connectionAccepted(
     int fd,
     const SocketAddress& clientAddr) noexcept {
   LOG(INFO) << "Connection accepted from " << clientAddr;
-  auto sock = new AsyncSocket(evb_, fd);
+  auto sock = new AsyncSocket(evb_, folly::NetworkSocket::fromFd(fd));
   std::shared_ptr<AsyncFizzServer> transport = AsyncFizzServer::UniquePtr(
       new AsyncFizzServer(AsyncSocket::UniquePtr(sock), ctx_));
   socket_->pauseAccepting();
