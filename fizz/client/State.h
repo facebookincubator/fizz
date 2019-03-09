@@ -298,7 +298,7 @@ class State {
   /**
    * Resumption secret.
    *
-   * Shoiuld not
+   * Should not be used outside of the state machine.
    */
   const Buf& resumptionSecret() const {
     return *resumptionSecret_;
