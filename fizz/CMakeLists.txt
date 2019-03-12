@@ -36,8 +36,6 @@ endif()
 find_package(Boost REQUIRED COMPONENTS system thread filesystem regex context)
 find_package(OpenSSL REQUIRED)
 find_package(Glog REQUIRED)
-find_package(Gflags REQUIRED)
-find_package(Libevent REQUIRED)
 find_package(DoubleConversion REQUIRED)
 find_package(Threads REQUIRED)
 if (UNIX AND NOT APPLE)
@@ -47,6 +45,40 @@ endif()
 include(CheckAtomic)
 
 find_package(Sodium REQUIRED)
+
+SET(FIZZ_SHINY_DEPENDENCIES "")
+SET(FIZZ_LINK_LIBRARIES "")
+SET(FIZZ_INCLUDE_DIRECTORIES "")
+
+find_package(gflags CONFIG QUIET)
+if (gflags_FOUND)
+  message(STATUS "Found gflags from package config")
+  if (TARGET gflags-shared)
+    list(APPEND FIZZ_SHINY_DEPENDENCIES gflags-shared)
+  elseif (TARGET gflags)
+    list(APPEND FIZZ_SHINY_DEPENDENCIES gflags)
+  else()
+    message(FATAL_ERROR "Unable to determine the target name for the GFlags package.")
+  endif()
+  list(APPEND CMAKE_REQUIRED_LIBRARIES ${GFLAGS_LIBRARIES})
+  list(APPEND CMAKE_REQUIRED_INCLUDES ${GFLAGS_INCLUDE_DIR})
+else()
+  find_package(Gflags REQUIRED MODULE)
+  list(APPEND FIZZ_LINK_LIBRARIES ${LIBGFLAGS_LIBRARY})
+  list(APPEND FIZZ_INCLUDE_DIRECTORIES ${LIBGFLAGS_INCLUDE_DIR})
+  list(APPEND CMAKE_REQUIRED_LIBRARIES ${LIBGFLAGS_LIBRARY})
+  list(APPEND CMAKE_REQUIRED_INCLUDES ${LIBGFLAGS_INCLUDE_DIR})
+endif()
+
+find_package(Libevent CONFIG QUIET)
+if(TARGET event)
+  message(STATUS "Found libevent from package config")
+  list(APPEND FIZZ_SHINY_DEPENDENCIES event)
+else()
+  find_package(Libevent MODULE REQUIRED)
+  list(APPEND FIZZ_LINK_LIBRARIES ${LIBEVENT_LIB})
+  list(APPEND FIZZ_INCLUDE_DIRECTORIES ${LIBEVENT_INCLUDE_DIR})
+endif()
 
 set(FIZZ_HEADER_DIRS
   base
@@ -158,8 +190,7 @@ target_include_directories(
     ${OPENSSL_INCLUDE_DIR}
   PRIVATE
     ${GLOG_INCLUDE_DIRS}
-    ${GFLAGS_INCLUDE_DIRS}
-    ${LIBEVENT_INCLUDE_DIRS}
+    ${FIZZ_INCLUDE_DIRECTORIES}
     ${DOUBLE_CONVERSION_INCLUDE_DIRS}
 )
 
@@ -176,11 +207,14 @@ target_link_libraries(fizz
     Threads::Threads
   PRIVATE
     ${GLOG_LIBRARIES}
-    ${GFLAGS_LIBRARIES}
-    ${LIBEVENT_LIBRARIES}
+    ${FIZZ_LINK_LIBRARIES}
     ${DOUBLE_CONVERSION_LIBRARIES}
     ${CMAKE_DL_LIBS}
     ${LIBRT_LIBRARIES})
+
+if ($FIZZ_SHINY_DEPENDENCIES)
+  add_dependencies(fizz ${FIZZ_SHINY_DEPENDENCIES})
+endif()
 
 if (${CMAKE_CXX_COMPILER_ID} STREQUAL MSVC)
   # Work around C1128: number of sections exceeded object file format limit.
@@ -283,24 +317,25 @@ if(BUILD_TESTS)
   )
 
   macro(add_gtest test_source test_name)
-  add_executable(${test_name} ${test_source} test/CMakeTestMain.cpp)
+    add_executable(${test_name} ${test_source} test/CMakeTestMain.cpp)
 
-  set_property(TARGET ${test_name} PROPERTY ENABLE_EXPORTS true)
-  target_include_directories(
-    ${test_name} PUBLIC ${LIBGMOCK_INCLUDE_DIR} ${LIBGTEST_INCLUDE_DIR})
-  target_link_libraries(
-    ${test_name}
-    fizz
-    fizz_test_support
-    ${LIBGMOCK_LIBRARIES})
+    set_property(TARGET ${test_name} PROPERTY ENABLE_EXPORTS true)
+    target_include_directories(
+      ${test_name} PUBLIC ${LIBGMOCK_INCLUDE_DIR} ${LIBGTEST_INCLUDE_DIR})
+    target_compile_definitions(${test_name} PUBLIC ${LIBGMOCK_DEFINES})
+    target_link_libraries(
+      ${test_name}
+      fizz
+      fizz_test_support
+      ${LIBGMOCK_LIBRARIES})
 
-  if(NOT ${CMAKE_CXX_COMPILER_ID} STREQUAL MSVC)
-    # GMOCK_MOCK_METHOD() will complain otherwise
-    target_compile_options(${test_name}
-      PRIVATE "-Wno-inconsistent-missing-override")
-  endif()
+    if(NOT ${CMAKE_CXX_COMPILER_ID} STREQUAL MSVC)
+      # GMOCK_MOCK_METHOD() will complain otherwise
+      target_compile_options(${test_name}
+        PRIVATE "-Wno-inconsistent-missing-override")
+    endif()
 
-  add_test(${test_name} bin/${test_name})
+    add_test(${test_name} bin/${test_name})
   endmacro(add_gtest)
 
   add_gtest(client/test/SynchronizedLruPskCacheTest.cpp SyncronizedLruPskCacheTest)
