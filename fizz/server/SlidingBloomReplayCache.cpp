@@ -71,7 +71,7 @@ SlidingBloomReplayCache::SlidingBloomReplayCache(
   double dividend = -hashCountDouble * rpsDouble * ttlDouble;
   double root = pow(acceptableFPR, 1.0 / hashCountDouble);
   double divisor = bucketCountDouble * log(1.0 - root);
-  bitSize_ = dividend / divisor;
+  bitSize_ = std::ceil(dividend / divisor);
   VLOG(8) << "Initializing with bitSize = " << bitSize_;
 
   bucketWidthInMs_ =

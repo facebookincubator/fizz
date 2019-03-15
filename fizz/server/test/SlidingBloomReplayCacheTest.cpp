@@ -75,7 +75,7 @@ TEST(SlidingBloomReplayCacheTest, TestSimpleTestAndSet) {
 
 TEST(SlidingBloomReplayCacheTest, TestCacheErrorRate) {
   const int numTries = 1 << 14;
-  SlidingBloomReplayCache cache(12, numTries, 0.0005, nullptr);
+  SlidingBloomReplayCache cache(12, numTries, 0.0001, nullptr);
   std::vector<std::string> history(numTries);
   for (size_t i = 0; i < numTries; i++) {
     history[i] = generateRandomString(8, 64);
