@@ -106,6 +106,7 @@ set(FIZZ_TEST_HEADER_DIRS
   protocol/test
   record/test
   server/test
+  tool/test
   util/test
   test
 )
@@ -383,6 +384,7 @@ if(BUILD_TESTS)
   add_gtest(server/test/NegotiatorTest.cpp NegotiatorTest)
   add_gtest(server/test/FizzServerTest.cpp FizzServerTest)
   add_gtest(server/test/SlidingBloomReplayCacheTest.cpp SlidingBloomReplayCacheTest)
+  add_gtest(tool/test/FizzCommandCommonTest.cpp FizzCommandCommonTest)
   add_gtest(util/test/FizzUtilTest.cpp FizzUtilTest)
   add_gtest(test/AsyncFizzBaseTest.cpp AsyncFizzBaseTest)
   add_gtest(test/HandshakeTest.cpp HandshakeTest)
