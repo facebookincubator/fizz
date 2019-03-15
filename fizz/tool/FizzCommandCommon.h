@@ -45,6 +45,32 @@ inline uint16_t portFromString(const std::string& portStr, bool serverSide) {
   }
 }
 
+inline std::pair<std::string, uint16_t> hostPortFromString(
+    const std::string& hostPortStr) {
+  std::string host;
+  uint16_t port;
+  size_t colonIdx = hostPortStr.rfind(':');
+  if (colonIdx == std::string::npos) {
+    throw std::runtime_error("-connect requires a host:port pair.");
+  }
+  size_t start = 0;
+  size_t length = colonIdx;
+  // Handle IPv6. Force presence of [] to avoid using the last nibble
+  // instead of a port.
+  if (hostPortStr.rfind(':', colonIdx - 1) != std::string::npos) {
+    if (hostPortStr.front() != '[' || hostPortStr.at(colonIdx - 1) != ']') {
+      throw std::runtime_error(
+          "IPv6 " + hostPortStr.substr(0, colonIdx) +
+          " must be enclosed in square brackets.");
+    }
+    start++;
+    length -= 2;
+  }
+  host = hostPortStr.substr(start, length);
+  port = portFromString(hostPortStr.substr(colonIdx + 1), false);
+  return {host, port};
+}
+
 // Argument handler function
 
 typedef std::function<void(const std::string&)> FizzCommandArgHandler;

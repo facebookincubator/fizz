@@ -258,12 +258,7 @@ int fizzClientCommand(const std::vector<std::string>& args) {
         port = portFromString(arg, false);
     }}},
     {"-connect", {true, [&host, &port](const std::string& arg) {
-        size_t colonIdx = arg.find(':');
-        if (colonIdx == std::string::npos) {
-          throw std::runtime_error("-connect requires a host:port pair.");
-        }
-        host = arg.substr(0, colonIdx);
-        port = portFromString(arg.substr(colonIdx+1), false);
+        std::tie(host, port) = hostPortFromString(arg);
      }}},
     {"-verify", {false, [&verify](const std::string&) { verify = true; }}},
     {"-cert", {true, [&certPath](const std::string& arg) { certPath = arg; }}},
