@@ -8,7 +8,13 @@ project("fizz" VERSION 1.0.0 LANGUAGES CXX C)
 add_compile_options(-std=c++14)
 
 set(CMAKE_POSITION_INDEPENDENT_CODE ON)
-set(CMAKE_MODULE_PATH ${CMAKE_SOURCE_DIR}/cmake/)
+set(CMAKE_MODULE_PATH
+  "${CMAKE_SOURCE_DIR}/cmake/"
+  # for in-fbsource builds
+  "${CMAKE_CURRENT_SOURCE_DIR}/../opensource/fbcode_builder/CMake"
+  # For shipit-transformed builds
+  "${CMAKE_SOURCE_DIR}/../build/fbcode_builder/CMake"
+  ${CMAKE_MODULE_PATH})
 
 # When installing Folly & Fizz in a non-default prefix, this will let
 # projects linking against libfizz.so to find libfolly.so automatically.
