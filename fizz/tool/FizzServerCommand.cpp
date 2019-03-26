@@ -17,6 +17,7 @@
 #include <fizz/tool/FizzCommandCommon.h>
 #include <fizz/util/Parse.h>
 
+#include <folly/Format.h>
 #include <folly/io/async/AsyncSSLSocket.h>
 #include <folly/io/async/AsyncServerSocket.h>
 
@@ -52,7 +53,8 @@ void printUsage() {
     << " -loop                    (don't exit after client disconnect. Default: false)\n"
     << " -quiet                   (hide informational logging. Default: false)\n"
     << " -v verbosity             (set verbose log level for VLOG macros. Default: 0)\n"
-    << " -vmodule m1=N,...        (set per-module verbose log level for VLOG macros. Default: none)\n";
+    << " -vmodule m1=N,...        (set per-module verbose log level for VLOG macros. Default: none)\n"
+    << " -http                    (run a crude HTTP server that returns stats for GET requests. Default: false)\n";
   // clang-format on
 }
 
@@ -70,6 +72,9 @@ class FizzServerAcceptor : AsyncServerSocket::AcceptCallback {
 
   void acceptError(const std::exception& ex) noexcept override;
   void done();
+  void setHttpEnabled(bool enabled) {
+    http_ = enabled;
+  }
 
  private:
   bool loop_{false};
@@ -79,6 +84,7 @@ class FizzServerAcceptor : AsyncServerSocket::AcceptCallback {
   AsyncServerSocket::UniquePtr socket_;
   std::unique_ptr<AsyncFizzServer::HandshakeCallback> cb_;
   std::unique_ptr<TerminalInputHandler> inputHandler_;
+  bool http_{false};
 };
 
 class FizzExampleServer : public AsyncFizzServer::HandshakeCallback,
@@ -175,47 +181,69 @@ class FizzExampleServer : public AsyncFizzServer::HandshakeCallback,
     finish();
   }
 
- private:
-  void printHandshakeSuccess() {
+ protected:
+  std::vector<std::string> handshakeSuccessLog() {
     auto& state = transport_->getState();
     auto serverCert = state.serverCert();
     auto clientCert = state.clientCert();
-    LOG(INFO) << "Handshake succeeded.";
-    LOG(INFO) << "  TLS Version: " << toString(*state.version());
-    LOG(INFO) << "  Cipher Suite:  " << toString(*state.cipher());
-    LOG(INFO) << "  Named Group: "
-              << (state.group() ? toString(*state.group()) : "(none)");
-    LOG(INFO) << "  Signature Scheme: "
-              << (state.sigScheme() ? toString(*state.sigScheme()) : "(none)");
-    LOG(INFO) << "  PSK: " << toString(*state.pskType());
-    LOG(INFO) << "  PSK Mode: "
-              << (state.pskMode() ? toString(*state.pskMode()) : "(none)");
-    LOG(INFO) << "  Key Exchange Type: " << toString(*state.keyExchangeType());
-    LOG(INFO) << "  Early: " << toString(*state.earlyDataType());
-    LOG(INFO) << "  Server identity: "
-              << (serverCert ? serverCert->getIdentity() : "(none)");
-    LOG(INFO) << "  Client Identity: "
-              << (clientCert ? clientCert->getIdentity() : "(none)");
-    LOG(INFO) << "  Server Certificate Compression: "
-              << (state.serverCertCompAlgo()
-                      ? toString(*state.serverCertCompAlgo())
-                      : "(none)");
-    LOG(INFO) << "  ALPN: " << state.alpn().value_or("(none)");
+    return {
+        folly::to<std::string>("  TLS Version: ", toString(*state.version())),
+        folly::to<std::string>("  Cipher Suite:  ", toString(*state.cipher())),
+        folly::to<std::string>(
+            "  Named Group: ",
+            (state.group() ? toString(*state.group()) : "(none)")),
+        folly::to<std::string>(
+            "  Signature Scheme: ",
+            (state.sigScheme() ? toString(*state.sigScheme()) : "(none)")),
+        folly::to<std::string>("  PSK: ", toString(*state.pskType())),
+        folly::to<std::string>(
+            "  PSK Mode: ",
+            (state.pskMode() ? toString(*state.pskMode()) : "(none)")),
+        folly::to<std::string>(
+            "  Key Exchange Type: ", toString(*state.keyExchangeType())),
+        folly::to<std::string>("  Early: ", toString(*state.earlyDataType())),
+        folly::to<std::string>(
+            "  Server identity: ",
+            (serverCert ? serverCert->getIdentity() : "(none)")),
+        folly::to<std::string>(
+            "  Client Identity: ",
+            (clientCert ? clientCert->getIdentity() : "(none)")),
+        folly::to<std::string>(
+            "  Server Certificate Compression: ",
+            (state.serverCertCompAlgo() ? toString(*state.serverCertCompAlgo())
+                                        : "(none)")),
+        folly::to<std::string>("  ALPN: ", state.alpn().value_or("(none)"))};
   }
 
-  void printFallbackSuccess() {
+  std::vector<std::string> fallbackSuccessLog() {
     auto serverCert = sslSocket_->getSelfCertificate();
     auto clientCert = sslSocket_->getPeerCertificate();
     auto ssl = sslSocket_->getSSL();
-    LOG(INFO) << "Handshake succeeded.";
-    LOG(INFO) << "  TLS Version: " << SSL_get_version(ssl);
-    LOG(INFO) << "  Cipher:  " << sslSocket_->getNegotiatedCipherName();
-    LOG(INFO) << "  Signature Algorithm: "
-              << sslSocket_->getSSLCertSigAlgName();
-    LOG(INFO) << "  Server identity: "
-              << (serverCert ? serverCert->getIdentity() : "(none)");
-    LOG(INFO) << "  Client Identity: "
-              << (clientCert ? clientCert->getIdentity() : "(none)");
+    return {folly::to<std::string>("  TLS Version: ", SSL_get_version(ssl)),
+            folly::to<std::string>(
+                "  Cipher:  ", sslSocket_->getNegotiatedCipherName()),
+            folly::to<std::string>(
+                "  Signature Algorithm: ", sslSocket_->getSSLCertSigAlgName()),
+            folly::to<std::string>(
+                "  Server identity: ",
+                (serverCert ? serverCert->getIdentity() : "(none)")),
+            folly::to<std::string>(
+                "  Client Identity: ",
+                (clientCert ? clientCert->getIdentity() : "(none)"))};
+  }
+
+  void printHandshakeSuccess() {
+    LOG(INFO) << "Fizz handshake succeeded.";
+    for (const auto& line : handshakeSuccessLog()) {
+      LOG(INFO) << line;
+    }
+  }
+
+  void printFallbackSuccess() {
+    LOG(INFO) << "Fallback handshake succeeded.";
+    for (const auto& line : fallbackSuccessLog()) {
+      LOG(INFO) << line;
+    }
   }
 
   void finish() {
@@ -232,6 +260,74 @@ class FizzExampleServer : public AsyncFizzServer::HandshakeCallback,
   std::shared_ptr<SSLContext> sslCtx_;
   std::array<char, 8192> readBuf_;
   bool connected_{false};
+};
+
+class FizzHTTPServer : public FizzExampleServer {
+ public:
+  explicit FizzHTTPServer(
+      std::shared_ptr<AsyncFizzServer> transport,
+      FizzServerAcceptor* acceptor,
+      std::shared_ptr<SSLContext> sslCtx)
+      : FizzExampleServer(transport, acceptor, sslCtx) {}
+
+  // HTTP server doesn't send user input.
+  void write(std::unique_ptr<IOBuf> /*msg*/) override {}
+  void readDataAvailable(size_t len) noexcept override {
+    readBufferAvailable(IOBuf::copyBuffer(readBuf_.data(), len));
+  }
+
+  void readBufferAvailable(std::unique_ptr<IOBuf> buf) noexcept override {
+    if (!requestBuf_) {
+      requestBuf_ = std::move(buf);
+    } else {
+      requestBuf_->prependChain(std::move(buf));
+    }
+
+    if (requestBuf_->computeChainDataLength() >= 5) {
+      auto coalesced = requestBuf_->coalesce();
+      if (strncmp(
+              reinterpret_cast<const char*>(coalesced.data()), "GET /", 5) ==
+          0) {
+        auto response = IOBuf::create(0);
+        folly::io::Appender appender(response.get(), 10);
+        std::string responseBody =
+            transport_ ? respondHandshakeSuccess() : respondFallbackSuccess();
+        format(
+            "HTTP/1.0 200 OK\r\n"
+            "Content-Type: text/plain\r\n"
+            "Content-Length: {}\r\n\r\n"
+            "{}",
+            responseBody.length(),
+            responseBody)(appender);
+        if (transport_) {
+          transport_->writeChain(nullptr, std::move(response));
+          transport_->close();
+        } else {
+          sslSocket_->writeChain(nullptr, std::move(response));
+          sslSocket_->close();
+        }
+      } else {
+        LOG(WARNING) << "Got non-GET request: " << StringPiece(coalesced);
+      }
+    }
+  }
+
+ private:
+  std::string respondHandshakeSuccess() {
+    const std::string headerStr = "Fizz HTTP Server\n\n";
+    std::string response;
+    join("\n", handshakeSuccessLog(), response);
+    return headerStr + response;
+  }
+
+  std::string respondFallbackSuccess() {
+    const std::string headerStr = "Fizz HTTP Server (Fallback)\n\n";
+    std::string response;
+    join("\n", fallbackSuccessLog(), response);
+    return headerStr + response;
+  }
+
+  std::unique_ptr<IOBuf> requestBuf_;
 };
 
 FizzServerAcceptor::FizzServerAcceptor(
@@ -257,7 +353,9 @@ void FizzServerAcceptor::connectionAccepted(
   std::shared_ptr<AsyncFizzServer> transport = AsyncFizzServer::UniquePtr(
       new AsyncFizzServer(AsyncSocket::UniquePtr(sock), ctx_));
   socket_->pauseAccepting();
-  auto serverCb = std::make_unique<FizzExampleServer>(transport, this, sslCtx_);
+  auto serverCb = http_
+      ? std::make_unique<FizzHTTPServer>(transport, this, sslCtx_)
+      : std::make_unique<FizzExampleServer>(transport, this, sslCtx_);
   inputHandler_ = std::make_unique<TerminalInputHandler>(evb_, serverCb.get());
   cb_ = std::move(serverCb);
   transport->accept(cb_.get());
@@ -296,6 +394,7 @@ int fizzServerCommand(const std::vector<std::string>& args) {
   folly::Optional<std::vector<CertificateCompressionAlgorithm>> compAlgos;
   bool loop = false;
   bool fallback = false;
+  bool http = false;
 
   // clang-format off
   FizzArgHandlerMap handlers = {
@@ -341,7 +440,8 @@ int fizzServerCommand(const std::vector<std::string>& args) {
     }}},
     {"-fallback", {false, [&fallback](const std::string&) {
         fallback = true;
-    }}}
+    }}},
+    {"-http", {false, [&http](const std::string&) { http = true; }}}
   };
   // clang-format on
 
@@ -472,6 +572,7 @@ int fizzServerCommand(const std::vector<std::string>& args) {
   serverContext->setSupportedVersions(
       {ProtocolVersion::tls_1_3, ProtocolVersion::tls_1_3_28});
   FizzServerAcceptor acceptor(port, serverContext, loop, &evb, sslContext);
+  acceptor.setHttpEnabled(http);
   evb.loop();
   return 0;
 }
