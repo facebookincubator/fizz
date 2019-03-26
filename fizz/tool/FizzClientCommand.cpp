@@ -11,6 +11,7 @@
 #include <fizz/tool/FizzCommandCommon.h>
 #include <fizz/util/Parse.h>
 #include <folly/FileUtil.h>
+#include <folly/Format.h>
 #include <folly/io/async/SSLContext.h>
 
 #include <iostream>
@@ -46,7 +47,8 @@ void printUsage() {
     << " -early                   (enables sending early data during resumption. Default: false)\n"
     << " -quiet                   (hide informational logging. Default: false)\n"
     << " -v verbosity             (set verbose log level for VLOG macros. Default: 0)\n"
-    << " -vmodule m1=N,...        (set per-module verbose log level for VLOG macros. Default: none)\n";
+    << " -vmodule m1=N,...        (set per-module verbose log level for VLOG macros. Default: none)\n"
+    << " -httpproxy host:port     (set an HTTP proxy to use. Default: none)\n";
   // clang-format on
 }
 
@@ -61,12 +63,14 @@ class Connection : public AsyncSocket::ConnectCallback,
       std::shared_ptr<FizzClientContext> clientContext,
       Optional<std::string> sni,
       std::shared_ptr<const CertificateVerifier> verifier,
-      bool willResume)
+      bool willResume,
+      std::string proxyTarget)
       : evb_(evb),
         clientContext_(clientContext),
         sni_(sni),
         verifier_(std::move(verifier)),
-        willResume_(willResume) {}
+        willResume_(willResume),
+        proxyTarget_(proxyTarget) {}
 
   void connect(const SocketAddress& addr) {
     sock_ = AsyncSocket::UniquePtr(new AsyncSocket(evb_));
@@ -89,6 +93,22 @@ class Connection : public AsyncSocket::ConnectCallback,
   void connectSuccess() noexcept override {
     LOG(INFO) << (willResume_ ? "Initial connection" : "Connection")
               << " established.";
+    if (!proxyTarget_.empty()) {
+      auto connectCommand = IOBuf::create(0);
+      folly::io::Appender appender(connectCommand.get(), 10);
+      format(
+          "CONNECT {} HTTP/1.1\r\n"
+          "Host: {}\r\n\r\n",
+          proxyTarget_,
+          proxyTarget_)(appender);
+      sock_->setReadCB(this);
+      sock_->writeChain(nullptr, std::move(connectCommand));
+    } else {
+      doHandshake();
+    }
+  }
+
+  void doHandshake() {
     transport_ = AsyncFizzClient::UniquePtr(
         new AsyncFizzClient(std::move(sock_), clientContext_));
     transport_->connect(this, verifier_, sni_, sni_);
@@ -111,12 +131,13 @@ class Connection : public AsyncSocket::ConnectCallback,
     evb_->terminateLoopSoon();
   }
 
-  void getReadBuffer(void** /* bufReturn */, size_t* /* lenReturn */) override {
-    throw std::runtime_error("getReadBuffer not implemented");
+  void getReadBuffer(void** bufReturn, size_t* lenReturn) override {
+    *bufReturn = readBuf_.data();
+    *lenReturn = readBuf_.size();
   }
 
-  void readDataAvailable(size_t /* len */) noexcept override {
-    CHECK(false) << "readDataAvailable not implemented";
+  void readDataAvailable(size_t len) noexcept override {
+    readBufferAvailable(IOBuf::copyBuffer(readBuf_.data(), len));
   }
 
   bool isBufferMovable() noexcept override {
@@ -124,7 +145,45 @@ class Connection : public AsyncSocket::ConnectCallback,
   }
 
   void readBufferAvailable(std::unique_ptr<IOBuf> buf) noexcept override {
-    std::cout << StringPiece(buf->coalesce()).str();
+    if (!transport_) {
+      if (!proxyResponseBuffer_) {
+        proxyResponseBuffer_ = std::move(buf);
+      } else {
+        proxyResponseBuffer_->prependChain(std::move(buf));
+      }
+      auto currentContents = StringPiece(proxyResponseBuffer_->coalesce());
+      auto statusEndPos = currentContents.find("\r\n");
+      if (statusEndPos == std::string::npos) {
+        // No complete line yet
+        return;
+      }
+      auto statusLine = currentContents.subpiece(0, statusEndPos).str();
+      unsigned int httpVer;
+      unsigned int httpStatus;
+      if (sscanf(statusLine.c_str(), "HTTP/1.%u %u", &httpVer, &httpStatus) !=
+          2) {
+        LOG(ERROR) << "Failed to parse status: " << statusLine;
+        close();
+      }
+
+      if (httpStatus / 100 != 2) {
+        LOG(ERROR) << "Got non-200 status: " << httpStatus;
+        close();
+      }
+
+      auto endPos = currentContents.find("\r\n\r\n");
+      if (endPos != std::string::npos) {
+        endPos += 4;
+        auto remainder = currentContents.subpiece(endPos);
+        sock_->setReadCB(nullptr);
+        if (remainder.size()) {
+          sock_->setPreReceivedData(IOBuf::copyBuffer(remainder));
+        }
+        doHandshake();
+      }
+    } else {
+      std::cout << StringPiece(buf->coalesce()).str();
+    }
   }
 
   void readEOF() noexcept override {
@@ -214,6 +273,9 @@ class Connection : public AsyncSocket::ConnectCallback,
   AsyncSocket::UniquePtr sock_;
   AsyncFizzClient::UniquePtr transport_;
   bool willResume_{false};
+  std::array<char, 8192> readBuf_;
+  std::string proxyTarget_;
+  std::unique_ptr<IOBuf> proxyResponseBuffer_;
 };
 
 class ResumptionPskCache : public BasicPskCache {
@@ -250,6 +312,8 @@ int fizzClientCommand(const std::vector<std::string>& args) {
   std::vector<std::string> alpns;
   folly::Optional<std::vector<CertificateCompressionAlgorithm>> compAlgos;
   bool early = false;
+  std::string proxyHost = "";
+  uint16_t proxyPort = 0;
 
   // clang-format off
   FizzArgHandlerMap handlers = {
@@ -287,6 +351,9 @@ int fizzClientCommand(const std::vector<std::string>& args) {
     {"-early", {false, [&early](const std::string&) { early = true; }}},
     {"-quiet", {false, [](const std::string&) {
         FLAGS_minloglevel = google::GLOG_ERROR;
+    }}},
+    {"-httpproxy", {true, [&proxyHost, &proxyPort] (const std::string& arg) {
+        std::tie(proxyHost, proxyPort) = hostPortFromString(arg);
     }}}
   };
   // clang-format on
@@ -378,10 +445,16 @@ int fizzClientCommand(const std::vector<std::string>& args) {
   }
 
   try {
-    SocketAddress addr(host, port, true);
     auto sni = customSNI.empty() ? host : customSNI;
-    Connection conn(&evb, clientContext, sni, verifier, reconnect);
-    Connection resumptionConn(&evb, clientContext, sni, verifier, false);
+    auto connectHost = proxyHost.empty() ? host : proxyHost;
+    auto connectPort = proxyHost.empty() ? port : proxyPort;
+    auto proxiedHost = proxyHost.empty()
+        ? std::string()
+        : folly::to<std::string>(host, ":", port);
+    SocketAddress addr(connectHost, connectPort, true);
+    Connection conn(&evb, clientContext, sni, verifier, reconnect, proxiedHost);
+    Connection resumptionConn(
+        &evb, clientContext, sni, verifier, false, proxiedHost);
     Connection* inputTarget = &conn;
     if (reconnect) {
       auto pskCache = std::make_shared<ResumptionPskCache>(
