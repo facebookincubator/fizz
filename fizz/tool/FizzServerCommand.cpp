@@ -68,7 +68,7 @@ class FizzServerAcceptor : AsyncServerSocket::AcceptCallback {
       EventBase* evb,
       std::shared_ptr<SSLContext> sslCtx);
   void connectionAccepted(
-      int fd,
+      folly::NetworkSocket fdNetworkSocket,
       const SocketAddress& clientAddr) noexcept override;
 
   void acceptError(const std::exception& ex) noexcept override;
@@ -369,8 +369,10 @@ FizzServerAcceptor::FizzServerAcceptor(
 }
 
 void FizzServerAcceptor::connectionAccepted(
-    int fd,
+    folly::NetworkSocket fdNetworkSocket,
     const SocketAddress& clientAddr) noexcept {
+  int fd = fdNetworkSocket.toFd();
+
   LOG(INFO) << "Connection accepted from " << clientAddr;
   auto sock = new AsyncSocket(evb_, folly::NetworkSocket::fromFd(fd));
   std::shared_ptr<AsyncFizzServer> transport = AsyncFizzServer::UniquePtr(

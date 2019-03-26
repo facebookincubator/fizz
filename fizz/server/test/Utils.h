@@ -57,9 +57,9 @@ class FizzTestServer : public folly::AsyncServerSocket::AcceptCallback {
   }
 
   void connectionAccepted(
-      int fd,
+      folly::NetworkSocket fdNetworkSocket,
       const folly::SocketAddress& /* clientAddr */) noexcept override {
-    auto sock = new folly::AsyncSocket(&evb_, folly::NetworkSocket::fromFd(fd));
+    auto sock = new folly::AsyncSocket(&evb_, fdNetworkSocket);
     std::shared_ptr<AsyncFizzServer> transport = AsyncFizzServer::UniquePtr(
         new AsyncFizzServer(folly::AsyncSocket::UniquePtr(sock), ctx_));
     auto callback = factory_->getCallback(transport);
