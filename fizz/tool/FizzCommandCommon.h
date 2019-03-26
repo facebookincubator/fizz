@@ -8,6 +8,7 @@
 
 #pragma once
 
+#include <fizz/protocol/AsyncFizzBase.h>
 #include <fizz/util/Parse.h>
 #include <folly/io/IOBuf.h>
 #include <folly/io/async/EventBase.h>
@@ -119,6 +120,81 @@ class TerminalInputHandler : public folly::EventHandler {
 
   InputHandlerCallback* cb_;
   folly::EventBase* evb_;
+};
+
+// Class that stores secrets for printing
+class SecretCollector : public AsyncFizzBase::SecretCallback {
+ public:
+  void externalPskBinderAvailable(
+      const std::vector<uint8_t>& secret) noexcept override {
+    externalPskBinder_ = secret;
+  }
+
+  void resumptionPskBinderAvailable(
+      const std::vector<uint8_t>& secret) noexcept override {
+    resumptionPskBinder_ = secret;
+  }
+
+  void earlyExporterSecretAvailable(
+      const std::vector<uint8_t>& secret) noexcept override {
+    earlyExporterSecret_ = secret;
+  }
+
+  void clientEarlyTrafficSecretAvailable(
+      const std::vector<uint8_t>& secret) noexcept override {
+    clientEarlyTrafficSecret_ = secret;
+  }
+
+  void clientHandshakeTrafficSecretAvailable(
+      const std::vector<uint8_t>& secret) noexcept override {
+    clientHandshakeTrafficSecret_ = secret;
+  }
+
+  void serverHandshakeTrafficSecretAvailable(
+      const std::vector<uint8_t>& secret) noexcept override {
+    serverHandshakeTrafficSecret_ = secret;
+  }
+
+  void exporterMasterSecretAvailable(
+      const std::vector<uint8_t>& secret) noexcept override {
+    exporterMasterSecret_ = secret;
+  }
+
+  void resumptionMasterSecretAvailable(
+      const std::vector<uint8_t>& secret) noexcept override {
+    resumptionMasterSecret_ = secret;
+  }
+
+  void clientAppTrafficSecretAvailable(
+      const std::vector<uint8_t>& secret) noexcept override {
+    clientAppTrafficSecret_ = secret;
+  }
+
+  void serverAppTrafficSecretAvailable(
+      const std::vector<uint8_t>& secret) noexcept override {
+    serverAppTrafficSecret_ = secret;
+  }
+
+ protected:
+  using OptionalSecret = folly::Optional<std::vector<uint8_t>>;
+
+  static std::string secretStr(const OptionalSecret& secret) {
+    if (!secret) {
+      return "(none)";
+    }
+    return folly::hexlify(*secret);
+  }
+
+  OptionalSecret externalPskBinder_;
+  OptionalSecret resumptionPskBinder_;
+  OptionalSecret earlyExporterSecret_;
+  OptionalSecret clientEarlyTrafficSecret_;
+  OptionalSecret clientHandshakeTrafficSecret_;
+  OptionalSecret serverHandshakeTrafficSecret_;
+  OptionalSecret exporterMasterSecret_;
+  OptionalSecret resumptionMasterSecret_;
+  OptionalSecret clientAppTrafficSecret_;
+  OptionalSecret serverAppTrafficSecret_;
 };
 
 } // namespace tool

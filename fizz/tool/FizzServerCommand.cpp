@@ -47,6 +47,7 @@ void printUsage() {
     << " -capaths d1:...          (colon-separated paths to directories of CA certs used for verification)\n"
     << " -cafile file             (path to bundle of CA certs used for verification)\n"
     << " -early                   (enables sending early data during resumption. Default: false)\n"
+    << " -early_max maxBytes      (sets the maximum amount allowed in early data. Default: UINT32_MAX)\n"
     << " -alpn alpn1,.. .         (comma-separated list of ALPNs to support. Default: none)\n"
     << " -certcompression a1,...  (enables certificate compression support for given algorithms. Default: None)\n"
     << " -fallback                (enables falling back to OpenSSL for pre-1.3 connections. Default: false)\n"
@@ -90,7 +91,8 @@ class FizzServerAcceptor : AsyncServerSocket::AcceptCallback {
 class FizzExampleServer : public AsyncFizzServer::HandshakeCallback,
                           public AsyncSSLSocket::HandshakeCB,
                           public AsyncTransportWrapper::ReadCallback,
-                          public InputHandlerCallback {
+                          public InputHandlerCallback,
+                          public SecretCollector {
  public:
   explicit FizzExampleServer(
       std::shared_ptr<AsyncFizzServer> transport,
@@ -212,7 +214,28 @@ class FizzExampleServer : public AsyncFizzServer::HandshakeCallback,
             "  Server Certificate Compression: ",
             (state.serverCertCompAlgo() ? toString(*state.serverCertCompAlgo())
                                         : "(none)")),
-        folly::to<std::string>("  ALPN: ", state.alpn().value_or("(none)"))};
+        folly::to<std::string>("  ALPN: ", state.alpn().value_or("(none)")),
+        folly::to<std::string>("  Secrets:"),
+        folly::to<std::string>(
+            "    External PSK Binder: ", secretStr(externalPskBinder_)),
+        folly::to<std::string>(
+            "    Resumption PSK Binder: ", secretStr(resumptionPskBinder_)),
+        folly::to<std::string>(
+            "    Early Exporter: ", secretStr(earlyExporterSecret_)),
+        folly::to<std::string>(
+            "    Early Client Data: ", secretStr(clientEarlyTrafficSecret_)),
+        folly::to<std::string>(
+            "    Client Handshake: ", secretStr(clientHandshakeTrafficSecret_)),
+        folly::to<std::string>(
+            "    Server Handshake: ", secretStr(serverHandshakeTrafficSecret_)),
+        folly::to<std::string>(
+            "    Exporter Master: ", secretStr(exporterMasterSecret_)),
+        folly::to<std::string>(
+            "    Resumption Master: ", secretStr(resumptionMasterSecret_)),
+        folly::to<std::string>(
+            "    Client Traffic: ", secretStr(clientAppTrafficSecret_)),
+        folly::to<std::string>(
+            "    Server Traffic: ", secretStr(serverAppTrafficSecret_))};
   }
 
   std::vector<std::string> fallbackSuccessLog() {
@@ -357,6 +380,7 @@ void FizzServerAcceptor::connectionAccepted(
       ? std::make_unique<FizzHTTPServer>(transport, this, sslCtx_)
       : std::make_unique<FizzExampleServer>(transport, this, sslCtx_);
   inputHandler_ = std::make_unique<TerminalInputHandler>(evb_, serverCb.get());
+  transport->setSecretCallback(serverCb.get());
   cb_ = std::move(serverCb);
   transport->accept(cb_.get());
 }
@@ -395,6 +419,7 @@ int fizzServerCommand(const std::vector<std::string>& args) {
   bool loop = false;
   bool fallback = false;
   bool http = false;
+  uint32_t earlyDataSize = std::numeric_limits<uint32_t>::max();
 
   // clang-format off
   FizzArgHandlerMap handlers = {
@@ -441,7 +466,10 @@ int fizzServerCommand(const std::vector<std::string>& args) {
     {"-fallback", {false, [&fallback](const std::string&) {
         fallback = true;
     }}},
-    {"-http", {false, [&http](const std::string&) { http = true; }}}
+    {"-http", {false, [&http](const std::string&) { http = true; }}},
+    {"-early_max", {true, [&earlyDataSize](const std::string& arg) {
+        earlyDataSize = folly::to<uint32_t>(arg);
+    }}}
   };
   // clang-format on
 
@@ -551,6 +579,7 @@ int fizzServerCommand(const std::vector<std::string>& args) {
         true,
         {std::chrono::seconds(-10), std::chrono::seconds(10)},
         std::make_shared<SlidingBloomReplayCache>(240, 140000, 0.0005, &evb));
+    serverContext->setMaxEarlyDataSize(earlyDataSize);
   }
 
   std::shared_ptr<SSLContext> sslContext;

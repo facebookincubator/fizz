@@ -56,7 +56,8 @@ class Connection : public AsyncSocket::ConnectCallback,
                    public AsyncFizzClient::HandshakeCallback,
                    public AsyncTransportWrapper::ReadCallback,
                    public AsyncTransport::ReplaySafetyCallback,
-                   public InputHandlerCallback {
+                   public InputHandlerCallback,
+                   public SecretCollector {
  public:
   Connection(
       EventBase* evb,
@@ -111,6 +112,7 @@ class Connection : public AsyncSocket::ConnectCallback,
   void doHandshake() {
     transport_ = AsyncFizzClient::UniquePtr(
         new AsyncFizzClient(std::move(sock_), clientContext_));
+    transport_->setSecretCallback(this);
     transport_->connect(this, verifier_, sni_, sni_);
   }
 
@@ -264,6 +266,23 @@ class Connection : public AsyncSocket::ConnectCallback,
                       ? toString(*state.serverCertCompAlgo())
                       : "(none)");
     LOG(INFO) << "  ALPN: " << state.alpn().value_or("(none)");
+    LOG(INFO) << "  Client Random: " << folly::hexlify(state.clientRandom());
+    LOG(INFO) << "  Secrets:";
+    LOG(INFO) << "    External PSK Binder: " << secretStr(externalPskBinder_);
+    LOG(INFO) << "    Resumption PSK Binder: "
+              << secretStr(resumptionPskBinder_);
+    LOG(INFO) << "    Early Exporter: " << secretStr(earlyExporterSecret_);
+    LOG(INFO) << "    Early Client Data: "
+              << secretStr(clientEarlyTrafficSecret_);
+    LOG(INFO) << "    Client Handshake: "
+              << secretStr(clientHandshakeTrafficSecret_);
+    LOG(INFO) << "    Server Handshake: "
+              << secretStr(serverHandshakeTrafficSecret_);
+    LOG(INFO) << "    Exporter Master: " << secretStr(exporterMasterSecret_);
+    LOG(INFO) << "    Resumption Master: "
+              << secretStr(resumptionMasterSecret_);
+    LOG(INFO) << "    Client Traffic: " << secretStr(clientAppTrafficSecret_);
+    LOG(INFO) << "    Server Traffic: " << secretStr(serverAppTrafficSecret_);
   }
 
   EventBase* evb_;
