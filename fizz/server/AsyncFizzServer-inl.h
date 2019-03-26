@@ -321,7 +321,10 @@ void AsyncFizzServerT<SM>::ActionMoveVisitor::operator()(
 }
 
 template <typename SM>
-void AsyncFizzServerT<SM>::ActionMoveVisitor::operator()(SecretAvailable&) {}
+void AsyncFizzServerT<SM>::ActionMoveVisitor::operator()(
+    SecretAvailable& secret) {
+  server_.secretAvailable(secret.secret);
+}
 
 template <typename SM>
 void AsyncFizzServerT<SM>::ActionMoveVisitor::operator()(EndOfData&) {

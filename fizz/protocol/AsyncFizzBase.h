@@ -8,6 +8,7 @@
 
 #pragma once
 
+#include <fizz/protocol/KeyScheduler.h>
 #include <fizz/record/Types.h>
 #include <folly/io/IOBufQueue.h>
 #include <folly/io/async/AsyncSocket.h>
@@ -43,6 +44,34 @@ class AsyncFizzBase : public folly::WriteChainAsyncTransportWrapper<
 
    private:
     AsyncFizzBase& transport_;
+  };
+
+  class SecretCallback {
+   public:
+    virtual ~SecretCallback() = default;
+    /**
+     * Each of the below is called when the corresponding secret is received.
+     */
+    virtual void externalPskBinderAvailable(
+        const std::vector<uint8_t>&) noexcept {}
+    virtual void resumptionPskBinderAvailable(
+        const std::vector<uint8_t>&) noexcept {}
+    virtual void earlyExporterSecretAvailable(
+        const std::vector<uint8_t>&) noexcept {}
+    virtual void clientEarlyTrafficSecretAvailable(
+        const std::vector<uint8_t>&) noexcept {}
+    virtual void clientHandshakeTrafficSecretAvailable(
+        const std::vector<uint8_t>&) noexcept {}
+    virtual void serverHandshakeTrafficSecretAvailable(
+        const std::vector<uint8_t>&) noexcept {}
+    virtual void exporterMasterSecretAvailable(
+        const std::vector<uint8_t>&) noexcept {}
+    virtual void resumptionMasterSecretAvailable(
+        const std::vector<uint8_t>&) noexcept {}
+    virtual void clientAppTrafficSecretAvailable(
+        const std::vector<uint8_t>&) noexcept {}
+    virtual void serverAppTrafficSecretAvailable(
+        const std::vector<uint8_t>&) noexcept {}
   };
 
   explicit AsyncFizzBase(folly::AsyncTransportWrapper::UniquePtr transport);
@@ -160,6 +189,14 @@ class AsyncFizzBase : public folly::WriteChainAsyncTransportWrapper<
     return result;
   }
 
+  void setSecretCallback(SecretCallback* cb) {
+    secretCallback_ = cb;
+  }
+
+  SecretCallback* getSecretCallback() {
+    return secretCallback_;
+  }
+
   /**
    * Behavior tunables
    */
@@ -223,6 +260,11 @@ class AsyncFizzBase : public folly::WriteChainAsyncTransportWrapper<
    */
   virtual void transportDataAvailable() = 0;
 
+  /**
+   * Allows the derived class to give a derived secret to the secret callback.
+   */
+  virtual void secretAvailable(const DerivedSecret& secret) noexcept;
+
   folly::IOBufQueue transportReadBuf_{folly::IOBufQueue::cacheChainLength()};
 
  private:
@@ -258,5 +300,6 @@ class AsyncFizzBase : public folly::WriteChainAsyncTransportWrapper<
   HandshakeTimeout handshakeTimeout_;
 
   bool closeTransportOnCloseNotify_{true};
+  SecretCallback* secretCallback_{nullptr};
 };
 } // namespace fizz

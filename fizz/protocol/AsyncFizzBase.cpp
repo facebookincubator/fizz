@@ -232,4 +232,72 @@ void AsyncFizzBase::handshakeTimeoutExpired() noexcept {
       AsyncSocketException::TIMED_OUT, "handshake timeout expired");
   transportError(eof);
 }
+
+// The below maps the secret type to the appropriate secret callback function.
+namespace {
+class SecretVisitor : public boost::static_visitor<> {
+ public:
+  explicit SecretVisitor(
+      AsyncFizzBase::SecretCallback* cb,
+      const std::vector<uint8_t>& secretBuf)
+      : callback_(cb), secretBuf_(secretBuf) {}
+  void operator()(const EarlySecrets& secret) {
+    switch (secret) {
+      case EarlySecrets::ExternalPskBinder:
+        callback_->externalPskBinderAvailable(secretBuf_);
+        return;
+      case EarlySecrets::ResumptionPskBinder:
+        callback_->resumptionPskBinderAvailable(secretBuf_);
+        return;
+      case EarlySecrets::ClientEarlyTraffic:
+        callback_->clientEarlyTrafficSecretAvailable(secretBuf_);
+        return;
+      case EarlySecrets::EarlyExporter:
+        callback_->earlyExporterSecretAvailable(secretBuf_);
+        return;
+    }
+  }
+  void operator()(const HandshakeSecrets& secret) {
+    switch (secret) {
+      case HandshakeSecrets::ClientHandshakeTraffic:
+        callback_->clientHandshakeTrafficSecretAvailable(secretBuf_);
+        return;
+      case HandshakeSecrets::ServerHandshakeTraffic:
+        callback_->serverHandshakeTrafficSecretAvailable(secretBuf_);
+        return;
+    }
+  }
+  void operator()(const MasterSecrets& secret) {
+    switch (secret) {
+      case MasterSecrets::ExporterMaster:
+        callback_->exporterMasterSecretAvailable(secretBuf_);
+        return;
+      case MasterSecrets::ResumptionMaster:
+        callback_->resumptionMasterSecretAvailable(secretBuf_);
+        return;
+    }
+  }
+  void operator()(const AppTrafficSecrets& secret) {
+    switch (secret) {
+      case AppTrafficSecrets::ClientAppTraffic:
+        callback_->clientAppTrafficSecretAvailable(secretBuf_);
+        return;
+      case AppTrafficSecrets::ServerAppTraffic:
+        callback_->serverAppTrafficSecretAvailable(secretBuf_);
+        return;
+    }
+  }
+
+ private:
+  AsyncFizzBase::SecretCallback* callback_;
+  const std::vector<uint8_t>& secretBuf_;
+};
+} // namespace
+
+void AsyncFizzBase::secretAvailable(const DerivedSecret& secret) noexcept {
+  if (secretCallback_) {
+    SecretVisitor visitor(secretCallback_, secret.secret);
+    boost::apply_visitor(visitor, secret.type);
+  }
+}
 } // namespace fizz

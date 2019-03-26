@@ -111,6 +111,80 @@ class AsyncFizzBaseTest : public testing::Test, public AsyncFizzBase {
   std::vector<uint8_t> readBuf_;
 };
 
+namespace {
+class MockSecretCallback : public AsyncFizzBase::SecretCallback {
+ public:
+  MOCK_METHOD1(externalPskBinderAvailable_, void(const std::vector<uint8_t>&));
+  void externalPskBinderAvailable(
+      const std::vector<uint8_t>& secret) noexcept override {
+    externalPskBinderAvailable_(secret);
+  }
+  MOCK_METHOD1(
+      resumptionPskBinderAvailable_,
+      void(const std::vector<uint8_t>&));
+  void resumptionPskBinderAvailable(
+      const std::vector<uint8_t>& secret) noexcept override {
+    resumptionPskBinderAvailable_(secret);
+  }
+  MOCK_METHOD1(
+      earlyExporterSecretAvailable_,
+      void(const std::vector<uint8_t>&));
+  void earlyExporterSecretAvailable(
+      const std::vector<uint8_t>& secret) noexcept override {
+    earlyExporterSecretAvailable_(secret);
+  }
+  MOCK_METHOD1(
+      clientEarlyTrafficSecretAvailable_,
+      void(const std::vector<uint8_t>&));
+  void clientEarlyTrafficSecretAvailable(
+      const std::vector<uint8_t>& secret) noexcept override {
+    clientEarlyTrafficSecretAvailable_(secret);
+  }
+  MOCK_METHOD1(
+      clientHandshakeTrafficSecretAvailable_,
+      void(const std::vector<uint8_t>&));
+  void clientHandshakeTrafficSecretAvailable(
+      const std::vector<uint8_t>& secret) noexcept override {
+    clientHandshakeTrafficSecretAvailable_(secret);
+  }
+  MOCK_METHOD1(
+      serverHandshakeTrafficSecretAvailable_,
+      void(const std::vector<uint8_t>&));
+  void serverHandshakeTrafficSecretAvailable(
+      const std::vector<uint8_t>& secret) noexcept override {
+    serverHandshakeTrafficSecretAvailable_(secret);
+  }
+  MOCK_METHOD1(
+      exporterMasterSecretAvailable_,
+      void(const std::vector<uint8_t>&));
+  void exporterMasterSecretAvailable(
+      const std::vector<uint8_t>& secret) noexcept override {
+    exporterMasterSecretAvailable_(secret);
+  }
+  MOCK_METHOD1(
+      resumptionMasterSecretAvailable_,
+      void(const std::vector<uint8_t>&));
+  void resumptionMasterSecretAvailable(
+      const std::vector<uint8_t>& secret) noexcept override {
+    resumptionMasterSecretAvailable_(secret);
+  }
+  MOCK_METHOD1(
+      clientAppTrafficSecretAvailable_,
+      void(const std::vector<uint8_t>&));
+  void clientAppTrafficSecretAvailable(
+      const std::vector<uint8_t>& secret) noexcept override {
+    clientAppTrafficSecretAvailable_(secret);
+  }
+  MOCK_METHOD1(
+      serverAppTrafficSecretAvailable_,
+      void(const std::vector<uint8_t>&));
+  void serverAppTrafficSecretAvailable(
+      const std::vector<uint8_t>& secret) noexcept override {
+    serverAppTrafficSecretAvailable_(secret);
+  }
+};
+} // namespace
+
 MATCHER_P(BufMatches, expected, "") {
   folly::IOBufEqualTo eq;
   return eq(*arg, *expected);
@@ -464,6 +538,81 @@ TEST_F(AsyncFizzBaseTest, TestAttachEventBaseWithReadCb) {
   EXPECT_CALL(*socket_, attachEventBase(&evb)).InSequence(s);
   EXPECT_CALL(*socket_, setReadCB(transportReadCallback_)).InSequence(s);
   attachEventBase(&evb);
+}
+
+TEST_F(AsyncFizzBaseTest, TestSecretAvailable) {
+  MockSecretCallback cb;
+  setSecretCallback(&cb);
+  auto makeSecret = [](std::string secret, SecretType type) {
+    std::vector<uint8_t> secretBuf(secret.begin(), secret.end());
+    return DerivedSecret(std::move(secretBuf), type);
+  };
+
+  auto checkSecret = [](const DerivedSecret& expected) {
+    return [&expected](const std::vector<uint8_t>& secret) {
+      EXPECT_EQ(secret, expected.secret);
+    };
+  };
+
+  auto exPskBinder =
+      makeSecret("exPskBindSecret", EarlySecrets::ExternalPskBinder);
+  EXPECT_CALL(cb, externalPskBinderAvailable_(_))
+      .WillOnce(Invoke(checkSecret(exPskBinder)));
+  secretAvailable(exPskBinder);
+
+  auto resPskBinder =
+      makeSecret("resPskBindSecret", EarlySecrets::ResumptionPskBinder);
+  EXPECT_CALL(cb, resumptionPskBinderAvailable_(_))
+      .WillOnce(Invoke(checkSecret(resPskBinder)));
+  secretAvailable(resPskBinder);
+
+  auto earlyExpSecret =
+      makeSecret("earlyExpSecret", EarlySecrets::EarlyExporter);
+  EXPECT_CALL(cb, earlyExporterSecretAvailable_(_))
+      .WillOnce(Invoke(checkSecret(earlyExpSecret)));
+  secretAvailable(earlyExpSecret);
+
+  auto clientEarlySecret =
+      makeSecret("clientEarlySecret", EarlySecrets::ClientEarlyTraffic);
+  EXPECT_CALL(cb, clientEarlyTrafficSecretAvailable_(_))
+      .WillOnce(Invoke(checkSecret(clientEarlySecret)));
+  secretAvailable(clientEarlySecret);
+
+  auto clientHandSecret =
+      makeSecret("clientHandSecret", HandshakeSecrets::ClientHandshakeTraffic);
+  EXPECT_CALL(cb, clientHandshakeTrafficSecretAvailable_(_))
+      .WillOnce(Invoke(checkSecret(clientHandSecret)));
+  secretAvailable(clientHandSecret);
+
+  auto serverHandSecret =
+      makeSecret("serverHandSecret", HandshakeSecrets::ServerHandshakeTraffic);
+  EXPECT_CALL(cb, serverHandshakeTrafficSecretAvailable_(_))
+      .WillOnce(Invoke(checkSecret(serverHandSecret)));
+  secretAvailable(serverHandSecret);
+
+  auto exporterMaster =
+      makeSecret("exporterMaster", MasterSecrets::ExporterMaster);
+  EXPECT_CALL(cb, exporterMasterSecretAvailable_(_))
+      .WillOnce(Invoke(checkSecret(exporterMaster)));
+  secretAvailable(exporterMaster);
+
+  auto resumptionMaster =
+      makeSecret("resumptionMaster", MasterSecrets::ResumptionMaster);
+  EXPECT_CALL(cb, resumptionMasterSecretAvailable_(_))
+      .WillOnce(Invoke(checkSecret(resumptionMaster)));
+  secretAvailable(resumptionMaster);
+
+  auto clientAppSecret =
+      makeSecret("clientAppSecret", AppTrafficSecrets::ClientAppTraffic);
+  EXPECT_CALL(cb, clientAppTrafficSecretAvailable_(_))
+      .WillOnce(Invoke(checkSecret(clientAppSecret)));
+  secretAvailable(clientAppSecret);
+
+  auto serverAppSecret =
+      makeSecret("serverAppSecret", AppTrafficSecrets::ServerAppTraffic);
+  EXPECT_CALL(cb, serverAppTrafficSecretAvailable_(_))
+      .WillOnce(Invoke(checkSecret(serverAppSecret)));
+  secretAvailable(serverAppSecret);
 }
 } // namespace test
 } // namespace fizz
