@@ -195,6 +195,7 @@ target_include_directories(
     ${FOLLY_INCLUDE_DIR}
     ${Boost_INCLUDE_DIR}
     ${OPENSSL_INCLUDE_DIR}
+    ${sodium_INCLUDE_DIR}
   PRIVATE
     ${GLOG_INCLUDE_DIRS}
     ${FIZZ_INCLUDE_DIRECTORIES}
