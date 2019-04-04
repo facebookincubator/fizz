@@ -38,7 +38,8 @@ void printUsage() {
     << "\n"
     << "Supported arguments:\n"
     << " -accept port             (set port to accept connections on. Default: 8443)\n"
-    << " -ciphers c1,...          (comma-separated custom list of ciphers to use in order of preference)\n"
+    << " -ciphers c1,c2:c3;...    (Lists of ciphers in preference order, separated by colons. Default:\n"
+    << "                           TLS_AES_128_GCM_SHA256,TLS_AES_256_GCM_SHA384:TLS_CHACHA20_POLY1305_SHA256)\n"
     << " -cert cert               (PEM format server certificate. Default: none, generates a self-signed cert)\n"
     << " -key key                 (PEM format private key for server certificate. Default: none)\n"
     << " -pass password           (private key password. Default: none)\n"
@@ -48,8 +49,8 @@ void printUsage() {
     << " -cafile file             (path to bundle of CA certs used for verification)\n"
     << " -early                   (enables sending early data during resumption. Default: false)\n"
     << " -early_max maxBytes      (sets the maximum amount allowed in early data. Default: UINT32_MAX)\n"
-    << " -alpn alpn1,.. .         (comma-separated list of ALPNs to support. Default: none)\n"
-    << " -certcompression a1,...  (enables certificate compression support for given algorithms. Default: None)\n"
+    << " -alpn alpn1:...          (comma-separated list of ALPNs to support. Default: none)\n"
+    << " -certcompression a1:...  (enables certificate compression support for given algorithms. Default: None)\n"
     << " -fallback                (enables falling back to OpenSSL for pre-1.3 connections. Default: false)\n"
     << " -loop                    (don't exit after client disconnect. Default: false)\n"
     << " -quiet                   (hide informational logging. Default: false)\n"
@@ -406,7 +407,6 @@ void FizzServerAcceptor::done() {
 
 int fizzServerCommand(const std::vector<std::string>& args) {
   uint16_t port = 8443;
-  Optional<std::vector<CipherSuite>> ciphers;
   std::string certPath;
   std::string keyPath;
   std::string keyPass;
@@ -420,6 +420,13 @@ int fizzServerCommand(const std::vector<std::string>& args) {
   bool fallback = false;
   bool http = false;
   uint32_t earlyDataSize = std::numeric_limits<uint32_t>::max();
+  std::vector<std::vector<CipherSuite>> ciphers {
+    {CipherSuite::TLS_AES_128_GCM_SHA256,
+     CipherSuite::TLS_AES_256_GCM_SHA384},
+#if FOLLY_OPENSSL_IS_110
+    {CipherSuite::TLS_CHACHA20_POLY1305_SHA256}
+#endif
+  };
 
   // clang-format off
   FizzArgHandlerMap handlers = {
@@ -427,12 +434,17 @@ int fizzServerCommand(const std::vector<std::string>& args) {
         port = portFromString(arg, true);
     }}},
     {"-ciphers", {true, [&ciphers](const std::string& arg) {
-        try {
-          ciphers = fromCSV<CipherSuite>(arg);
-        }
-        catch (const std::exception& e) {
-          LOG(ERROR) << "Error parsing cipher suites: " << e.what();
-          throw;
+        ciphers.clear();
+        std::vector<std::string> list;
+        folly::split(":", arg, list);
+        for (const auto& item : list) {
+          try {
+            ciphers.push_back(splitParse<CipherSuite>(item, ","));
+          }
+          catch (const std::exception& e) {
+            LOG(ERROR) << "Error parsing cipher suites: " << e.what();
+            throw;
+          }
         }
     }}},
     {"-cert", {true, [&certPath](const std::string& arg) { certPath = arg; }}},
@@ -449,11 +461,11 @@ int fizzServerCommand(const std::vector<std::string>& args) {
     {"-early", {false, [&early](const std::string&) { early = true; }}},
     {"-alpn", {true, [&alpns](const std::string& arg) {
         alpns.clear();
-        folly::split(",", arg, alpns);
+        folly::split(":", arg, alpns);
     }}},
     {"-certcompression", {true, [&compAlgos](const std::string& arg) {
         try {
-          compAlgos = fromCSV<CertificateCompressionAlgorithm>(arg);
+          compAlgos = splitParse<CertificateCompressionAlgorithm>(arg);
         } catch (const std::exception& e) {
           LOG(ERROR) << "Error parsing certificate compression algorithms: " << e.what();
           throw;
@@ -512,9 +524,7 @@ int fizzServerCommand(const std::vector<std::string>& args) {
   }
 
   auto serverContext = std::make_shared<FizzServerContext>();
-  if (ciphers) {
-    serverContext->setSupportedCiphers({*ciphers});
-  }
+  serverContext->setSupportedCiphers(std::move(ciphers));
   serverContext->setClientAuthMode(clientAuthMode);
   serverContext->setClientCertVerifier(verifier);
 

@@ -42,8 +42,10 @@ void printUsage() {
     << " -cafile file             (path to bundle of CA certs used for verification)\n"
     << " -reconnect               (after connecting, open another connection using a psk. Default: false)\n"
     << " -servername name         (server name to send in SNI. Default: same as host)\n"
-    << " -alpn alpn1,...          (comma-separated list of ALPNs to send. Default: none)\n"
-    << " -certcompression a1,...  (enables certificate compression support for given algorithms. Default: None)\n"
+    << " -alpn alpn1:...          (colon-separated list of ALPNs to send. Default: none)\n"
+    << " -ciphers c1:...          (colon-separated list of ciphers in preference order. Default:\n"
+    << "                           TLS_AES_128_GCM_SHA256,TLS_AES_256_GCM_SHA384,TLS_CHACHA20_POLY1305_SHA256)\n"
+    << " -certcompression a1:...  (enables certificate compression support for given algorithms. Default: None)\n"
     << " -early                   (enables sending early data during resumption. Default: false)\n"
     << " -quiet                   (hide informational logging. Default: false)\n"
     << " -v verbosity             (set verbose log level for VLOG macros. Default: 0)\n"
@@ -333,6 +335,13 @@ int fizzClientCommand(const std::vector<std::string>& args) {
   bool early = false;
   std::string proxyHost = "";
   uint16_t proxyPort = 0;
+  std::vector<CipherSuite> ciphers {
+    CipherSuite::TLS_AES_128_GCM_SHA256,
+    CipherSuite::TLS_AES_256_GCM_SHA384,
+#if FOLLY_OPENSSL_IS_110
+    CipherSuite::TLS_CHACHA20_POLY1305_SHA256,
+#endif
+  };
 
   // clang-format off
   FizzArgHandlerMap handlers = {
@@ -361,7 +370,7 @@ int fizzClientCommand(const std::vector<std::string>& args) {
     }}},
     {"-certcompression", {true, [&compAlgos](const std::string& arg) {
         try {
-          compAlgos = fromCSV<CertificateCompressionAlgorithm>(arg);
+          compAlgos = splitParse<CertificateCompressionAlgorithm>(arg);
         } catch (const std::exception& e) {
           LOG(ERROR) << "Error parsing certificate compression algorithms: " << e.what();
           throw;
@@ -373,6 +382,9 @@ int fizzClientCommand(const std::vector<std::string>& args) {
     }}},
     {"-httpproxy", {true, [&proxyHost, &proxyPort] (const std::string& arg) {
         std::tie(proxyHost, proxyPort) = hostPortFromString(arg);
+    }}},
+    {"-ciphers", {true, [&ciphers](const std::string& arg) {
+        ciphers = splitParse<CipherSuite>(arg);
     }}}
   };
   // clang-format on
@@ -400,6 +412,8 @@ int fizzClientCommand(const std::vector<std::string>& args) {
   if (!alpns.empty()) {
     clientContext->setSupportedAlpns(std::move(alpns));
   }
+
+  clientContext->setSupportedCiphers(std::move(ciphers));
 
   clientContext->setSupportedVersions(
       {ProtocolVersion::tls_1_3, ProtocolVersion::tls_1_3_28});

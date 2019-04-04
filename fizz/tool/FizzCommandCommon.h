@@ -89,10 +89,10 @@ int parseArguments(
 // Utility to convert from comma-separated string to vector of T that has
 // a parse() implementation in util/Parse.h
 template <typename T>
-inline std::vector<T> fromCSV(const std::string& arg) {
+inline std::vector<T> splitParse(const std::string& arg, const std::string& sep = ":") {
   std::vector<folly::StringPiece> pieces;
   std::vector<T> output;
-  folly::split(",", arg, pieces);
+  folly::split(sep, arg, pieces);
   std::transform(
       pieces.begin(), pieces.end(), std::back_inserter(output), parse<T>);
   return output;
