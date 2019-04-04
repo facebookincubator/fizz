@@ -23,7 +23,16 @@ namespace fizz {
  *   - BlankHash: ByteRange containing the digest of a hash of empty input
  */
 template <typename T>
-struct Sha {
+class Sha {
+ public:
+  void hash_init();
+
+  void hash_update(folly::ByteRange data);
+
+  void hash_update(const folly::IOBuf& data);
+
+  void hash_final(folly::MutableByteRange out);
+
   /**
    * Puts HMAC(key, in) into out. Out must be at least of size HashLen.
    */
@@ -36,6 +45,9 @@ struct Sha {
    * Puts Hash(in) into out. Out must be at least of size HashLen.
    */
   static void hash(const folly::IOBuf& in, folly::MutableByteRange out);
+
+ private:
+  folly::ssl::OpenSSLHash::Digest digest_;
 };
 } // namespace fizz
 #include <fizz/crypto/Sha-inl.h>

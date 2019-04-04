@@ -9,7 +9,6 @@
 #pragma once
 
 #include <fizz/record/Types.h>
-#include <folly/ssl/OpenSSLHash.h>
 
 namespace fizz {
 
@@ -59,7 +58,7 @@ class HandshakeContextImpl : public HandshakeContext {
   }
 
  private:
-  folly::ssl::OpenSSLHash::Digest hashState_;
+  Hash hashState_;
   std::string hkdfLabelPrefix_;
 };
 } // namespace fizz

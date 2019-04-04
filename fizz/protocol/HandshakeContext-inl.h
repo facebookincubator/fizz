@@ -14,8 +14,7 @@ template <typename Hash>
 HandshakeContextImpl<Hash>::HandshakeContextImpl(
     const std::string& hkdfLabelPrefix)
     : hkdfLabelPrefix_(hkdfLabelPrefix) {
-  hashState_ = folly::ssl::OpenSSLHash::Digest();
-  hashState_.hash_init(Hash::HashEngine());
+  hashState_.hash_init();
 }
 
 template <typename Hash>
@@ -25,7 +24,7 @@ void HandshakeContextImpl<Hash>::appendToTranscript(const Buf& data) {
 
 template <typename Hash>
 Buf HandshakeContextImpl<Hash>::getHandshakeContext() const {
-  folly::ssl::OpenSSLHash::Digest copied(hashState_);
+  Hash copied(hashState_);
   auto out = folly::IOBuf::create(Hash::HashLen);
   out->append(Hash::HashLen);
   folly::MutableByteRange outRange(out->writableData(), out->length());

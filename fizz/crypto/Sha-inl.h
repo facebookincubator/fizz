@@ -11,6 +11,26 @@
 namespace fizz {
 
 template <typename T>
+void Sha<T>::hash_init() {
+  digest_.hash_init(T::HashEngine());
+}
+
+template <typename T>
+void Sha<T>::hash_update(folly::ByteRange data) {
+  digest_.hash_update(data);
+}
+
+template <typename T>
+void Sha<T>::hash_update(const folly::IOBuf& data) {
+  digest_.hash_update(data);
+}
+
+template <typename T>
+void Sha<T>::hash_final(folly::MutableByteRange out) {
+  digest_.hash_final(out);
+}
+
+template <typename T>
 void Sha<T>::hmac(
     folly::ByteRange key,
     const folly::IOBuf& in,

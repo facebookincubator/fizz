@@ -14,7 +14,8 @@
 
 namespace fizz {
 
-struct Sha384 : Sha<Sha384> {
+class Sha384 : public Sha<Sha384> {
+ public:
   static constexpr size_t HashLen = 48;
 
   static constexpr auto HashEngine = EVP_sha384;
