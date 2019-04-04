@@ -14,7 +14,8 @@
 
 namespace fizz {
 
-struct Sha256 : Sha<Sha256> {
+class Sha256 : public Sha<Sha256> {
+ public:
   static constexpr size_t HashLen = 32;
 
   static constexpr auto HashEngine = EVP_sha256;
