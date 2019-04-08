@@ -55,7 +55,7 @@ int parseArguments(
 TerminalInputHandler::TerminalInputHandler(
     EventBase* evb,
     InputHandlerCallback* cb)
-    : EventHandler(evb, 0), cb_(cb), evb_(evb) {
+    : EventHandler(evb, folly::NetworkSocket::fromFd(0)), cb_(cb), evb_(evb) {
   registerHandler(EventHandler::READ | EventHandler::PERSIST);
 }
 
