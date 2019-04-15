@@ -7,6 +7,9 @@
  */
 
 #include <fizz/client/AsyncFizzClient.h>
+#ifdef FIZZ_TOOL_ENABLE_BROTLI
+#include <fizz/protocol/BrotliCertificateDecompressor.h>
+#endif
 #include <fizz/protocol/ZlibCertificateDecompressor.h>
 #include <fizz/tool/FizzCommandCommon.h>
 #include <fizz/util/Parse.h>
@@ -428,6 +431,12 @@ int fizzClientCommand(const std::vector<std::string>& args) {
           decompressors.push_back(
               std::make_shared<ZlibCertificateDecompressor>());
           break;
+#ifdef FIZZ_TOOL_ENABLE_BROTLI
+        case CertificateCompressionAlgorithm::brotli:
+          decompressors.push_back(
+              std::make_shared<BrotliCertificateDecompressor>());
+          break;
+#endif
         default:
           LOG(WARNING) << "Don't know what decompressor to use for "
                        << toString(algo) << ", ignoring...";

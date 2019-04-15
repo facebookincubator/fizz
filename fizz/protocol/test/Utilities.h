@@ -123,5 +123,6 @@ std::shared_ptr<PeerCert> getPeerCert(const CertAndKey& cert) {
   return std::make_shared<PeerCertImpl<KeyType::P256>>(
       folly::ssl::X509UniquePtr(X509_dup(cert.cert.get())));
 }
+
 } // namespace test
 } // namespace fizz

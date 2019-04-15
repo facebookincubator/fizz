@@ -221,6 +221,8 @@ std::string toString(CertificateCompressionAlgorithm algo) {
   switch (algo) {
     case CertificateCompressionAlgorithm::zlib:
       return "zlib";
+    case CertificateCompressionAlgorithm::brotli:
+      return "brotli";
   }
   return enumToHex(algo);
 }

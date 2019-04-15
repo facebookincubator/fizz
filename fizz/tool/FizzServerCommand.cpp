@@ -8,6 +8,9 @@
 
 #include <fizz/crypto/aead/AESGCM128.h>
 #include <fizz/crypto/aead/OpenSSLEVPCipher.h>
+#ifdef FIZZ_TOOL_ENABLE_BROTLI
+#include <fizz/protocol/BrotliCertificateCompressor.h>
+#endif
 #include <fizz/protocol/DefaultCertificateVerifier.h>
 #include <fizz/protocol/ZlibCertificateCompressor.h>
 #include <fizz/protocol/test/Utilities.h>
@@ -550,6 +553,13 @@ int fizzServerCommand(const std::vector<std::string>& args) {
           compressors.push_back(std::make_shared<ZlibCertificateCompressor>(9));
           finalAlgos.push_back(algo);
           break;
+#ifdef FIZZ_TOOL_ENABLE_BROTLI
+        case CertificateCompressionAlgorithm::brotli:
+          compressors.push_back(
+              std::make_shared<BrotliCertificateCompressor>());
+          finalAlgos.push_back(algo);
+          break;
+#endif
         default:
           LOG(WARNING) << "Don't know what compressor to use for "
                        << toString(algo) << ", ignoring.";
