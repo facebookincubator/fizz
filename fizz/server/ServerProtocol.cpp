@@ -205,7 +205,7 @@ AsyncActions processEvent(const State& state, Param param) {
         actions,
         [&state](folly::Future<Actions>& futureActions) -> AsyncActions {
           return std::move(futureActions)
-              .onError([&state](folly::exception_wrapper ew) {
+              .thenError([&state](folly::exception_wrapper ew) {
                 auto ex = ew.get_exception<FizzException>();
                 if (ex) {
                   return detail::handleError(
