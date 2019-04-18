@@ -223,6 +223,8 @@ std::string toString(CertificateCompressionAlgorithm algo) {
       return "zlib";
     case CertificateCompressionAlgorithm::brotli:
       return "brotli";
+    case CertificateCompressionAlgorithm::zstd:
+      return "zstd";
   }
   return enumToHex(algo);
 }

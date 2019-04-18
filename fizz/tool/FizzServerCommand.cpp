@@ -13,6 +13,9 @@
 #endif
 #include <fizz/protocol/DefaultCertificateVerifier.h>
 #include <fizz/protocol/ZlibCertificateCompressor.h>
+#ifdef FIZZ_TOOL_ENABLE_ZSTD
+#include <fizz/protocol/ZstdCertificateCompressor.h>
+#endif
 #include <fizz/protocol/test/Utilities.h>
 #include <fizz/server/AsyncFizzServer.h>
 #include <fizz/server/SlidingBloomReplayCache.h>
@@ -557,6 +560,13 @@ int fizzServerCommand(const std::vector<std::string>& args) {
         case CertificateCompressionAlgorithm::brotli:
           compressors.push_back(
               std::make_shared<BrotliCertificateCompressor>());
+          finalAlgos.push_back(algo);
+          break;
+#endif
+#ifdef FIZZ_TOOL_ENABLE_ZSTD
+        case CertificateCompressionAlgorithm::zstd:
+          compressors.push_back(
+              std::make_shared<ZstdCertificateCompressor>(19));
           finalAlgos.push_back(algo);
           break;
 #endif

@@ -11,6 +11,9 @@
 #include <fizz/protocol/BrotliCertificateDecompressor.h>
 #endif
 #include <fizz/protocol/ZlibCertificateDecompressor.h>
+#ifdef FIZZ_TOOL_ENABLE_ZSTD
+#include <fizz/protocol/ZstdCertificateDecompressor.h>
+#endif
 #include <fizz/tool/FizzCommandCommon.h>
 #include <fizz/util/Parse.h>
 #include <folly/FileUtil.h>
@@ -435,6 +438,12 @@ int fizzClientCommand(const std::vector<std::string>& args) {
         case CertificateCompressionAlgorithm::brotli:
           decompressors.push_back(
               std::make_shared<BrotliCertificateDecompressor>());
+          break;
+#endif
+#ifdef FIZZ_TOOL_ENABLE_ZSTD
+        case CertificateCompressionAlgorithm::zstd:
+          decompressors.push_back(
+              std::make_shared<ZstdCertificateDecompressor>());
           break;
 #endif
         default:

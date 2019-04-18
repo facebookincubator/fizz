@@ -160,6 +160,7 @@ std::string toString(PskKeyExchangeMode);
 enum class CertificateCompressionAlgorithm : uint16_t {
   zlib = 1,
   brotli = 2,
+  zstd = 3,
 };
 
 std::string toString(CertificateCompressionAlgorithm);
