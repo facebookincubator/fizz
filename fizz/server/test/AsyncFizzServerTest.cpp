@@ -457,8 +457,8 @@ TEST_F(AsyncFizzServerTest, TestTransportEof) {
 
 TEST_F(AsyncFizzServerTest, TestGetCertsNone) {
   completeHandshake();
-  EXPECT_EQ(server_->getSelfCert(), nullptr);
-  EXPECT_EQ(server_->getPeerCert(), nullptr);
+  EXPECT_EQ(server_->getSelfCertificate(), nullptr);
+  EXPECT_EQ(server_->getPeerCertificate(), nullptr);
 }
 
 TEST_F(AsyncFizzServerTest, TestGetCerts) {
@@ -467,10 +467,8 @@ TEST_F(AsyncFizzServerTest, TestGetCerts) {
   accept();
   EXPECT_CALL(handshakeCallback_, _fizzHandshakeSuccess());
   fullHandshakeSuccess(clientCert, serverCert);
-  EXPECT_CALL(*serverCert, getX509());
-  EXPECT_EQ(server_->getSelfCert(), nullptr);
-  EXPECT_CALL(*clientCert, getX509());
-  EXPECT_EQ(server_->getPeerCert(), nullptr);
+  EXPECT_NE(server_->getSelfCertificate(), nullptr);
+  EXPECT_NE(server_->getPeerCertificate(), nullptr);
 }
 
 TEST_F(AsyncFizzServerTest, TestTransportNotGoodOnSuccess) {

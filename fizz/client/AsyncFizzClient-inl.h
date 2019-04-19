@@ -152,26 +152,6 @@ bool AsyncFizzClientT<SM>::error() const {
 }
 
 template <typename SM>
-folly::ssl::X509UniquePtr AsyncFizzClientT<SM>::getPeerCert() const {
-  auto serverCert = getPeerCertificate();
-  if (serverCert) {
-    return serverCert->getX509();
-  } else {
-    return nullptr;
-  }
-}
-
-template <typename SM>
-const X509* AsyncFizzClientT<SM>::getSelfCert() const {
-  auto cert = getSelfCertificate();
-  if (cert) {
-    return cert->getX509().get();
-  } else {
-    return nullptr;
-  }
-}
-
-template <typename SM>
 const Cert* AsyncFizzClientT<SM>::getPeerCertificate() const {
   return earlyDataState_ ? getState().earlyDataParams()->serverCert.get()
                          : getState().serverCert().get();

@@ -62,26 +62,6 @@ void AsyncFizzServerT<SM>::attachEventBase(folly::EventBase* evb) {
 }
 
 template <typename SM>
-folly::ssl::X509UniquePtr AsyncFizzServerT<SM>::getPeerCert() const {
-  auto cert = getPeerCertificate();
-  if (cert) {
-    return cert->getX509();
-  } else {
-    return nullptr;
-  }
-}
-
-template <typename SM>
-const X509* AsyncFizzServerT<SM>::getSelfCert() const {
-  auto cert = getSelfCertificate();
-  if (cert) {
-    return cert->getX509().get();
-  } else {
-    return nullptr;
-  }
-}
-
-template <typename SM>
 const Cert* AsyncFizzServerT<SM>::getPeerCertificate() const {
   return getState().clientCert().get();
 }

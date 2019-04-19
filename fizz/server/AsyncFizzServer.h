@@ -51,8 +51,6 @@ class AsyncFizzServerT : public AsyncFizzBase {
   bool isDetachable() const override;
   void attachEventBase(folly::EventBase* evb) override;
 
-  folly::ssl::X509UniquePtr getPeerCert() const override;
-  const X509* getSelfCert() const override;
   bool isReplaySafe() const override;
   void setReplaySafetyCallback(
       folly::AsyncTransport::ReplaySafetyCallback* callback) override;

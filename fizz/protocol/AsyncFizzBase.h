@@ -104,13 +104,6 @@ class AsyncFizzBase : public folly::WriteChainAsyncTransportWrapper<
   bool error() const override = 0;
 
   /**
-   * Information about the current security state.
-   * To be implemented by derived classes.
-   */
-  folly::ssl::X509UniquePtr getPeerCert() const override = 0;
-  const X509* getSelfCert() const override = 0;
-
-  /**
    * Get the certificates in fizz::Cert form.
    */
   const Cert* getPeerCertificate() const override = 0;

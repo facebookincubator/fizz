@@ -95,9 +95,6 @@ class AsyncFizzClientT : public AsyncFizzBase,
   bool connecting() const override;
   bool error() const override;
 
-  folly::ssl::X509UniquePtr getPeerCert() const override;
-  const X509* getSelfCert() const override;
-
   const Cert* getPeerCertificate() const override;
   const Cert* getSelfCertificate() const override;
 

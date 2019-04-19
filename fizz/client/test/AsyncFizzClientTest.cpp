@@ -475,8 +475,8 @@ TEST_F(AsyncFizzClientTest, TestNoPskResumption) {
 
 TEST_F(AsyncFizzClientTest, TestGetCertsNone) {
   completeHandshake();
-  EXPECT_EQ(client_->getSelfCert(), nullptr);
-  EXPECT_EQ(client_->getPeerCert(), nullptr);
+  EXPECT_EQ(client_->getSelfCertificate(), nullptr);
+  EXPECT_EQ(client_->getPeerCertificate(), nullptr);
 }
 
 TEST_F(AsyncFizzClientTest, TestGetCerts) {
@@ -485,10 +485,8 @@ TEST_F(AsyncFizzClientTest, TestGetCerts) {
   connect();
   EXPECT_CALL(handshakeCallback_, _fizzHandshakeSuccess());
   fullHandshakeSuccess(false, "h2", clientCert, serverCert);
-  EXPECT_CALL(*clientCert, getX509());
-  EXPECT_EQ(client_->getSelfCert(), nullptr);
-  EXPECT_CALL(*serverCert, getX509());
-  EXPECT_EQ(client_->getPeerCert(), nullptr);
+  EXPECT_NE(client_->getSelfCertificate(), nullptr);
+  EXPECT_NE(client_->getPeerCertificate(), nullptr);
 }
 
 TEST_F(AsyncFizzClientTest, TestEarlyHandshake) {
@@ -506,10 +504,8 @@ TEST_F(AsyncFizzClientTest, TestEarlyParams) {
   params.serverCert = serverCert;
   completeEarlyHandshake(std::move(params));
   EXPECT_EQ(client_->getApplicationProtocol(), "h2");
-  EXPECT_CALL(*clientCert, getX509());
-  EXPECT_EQ(client_->getSelfCert(), nullptr);
-  EXPECT_CALL(*serverCert, getX509());
-  EXPECT_EQ(client_->getPeerCert(), nullptr);
+  EXPECT_NE(client_->getSelfCertificate(), nullptr);
+  EXPECT_NE(client_->getPeerCertificate(), nullptr);
 }
 
 TEST_F(AsyncFizzClientTest, TestEarlyApplicationProtocolNone) {
