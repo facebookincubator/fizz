@@ -25,8 +25,13 @@ class TokenBindingContext {
     if (!std::is_sorted(
             versions.begin(),
             versions.end(),
-            std::greater_equal<TokenBindingProtocolVersion>())) {
+            std::greater<TokenBindingProtocolVersion>())) {
       throw std::runtime_error("Protocol Versions are not in descending order");
+    }
+    // check if these are unique
+    auto it = std::unique(versions.begin(), versions.end());
+    if (it != versions.end()) {
+      throw std::runtime_error("Protocol Versions contain duplicates");
     }
     supportedVersions_ = std::move(versions);
   }
