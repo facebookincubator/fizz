@@ -98,6 +98,7 @@ set(FIZZ_HEADER_DIRS
   extensions/secretlogging
   extensions/tokenbinding
   protocol
+  protocol/clock
   record
   server
   util
@@ -110,6 +111,7 @@ set(FIZZ_TEST_HEADER_DIRS
   crypto/exchange/test
   crypto/test
   protocol/test
+  protocol/clock/test
   record/test
   server/test
   tool/test
@@ -162,6 +164,7 @@ set(FIZZ_SOURCES
   protocol/CertDecompressionManager.cpp
   protocol/ZlibCertificateCompressor.cpp
   protocol/ZlibCertificateDecompressor.cpp
+  protocol/clock/SystemClock.cpp
   extensions/exportedauth/ExportedAuthenticator.cpp
   extensions/secretlogging/LoggingKeyScheduler.cpp
   extensions/tokenbinding/Types.cpp
