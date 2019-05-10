@@ -344,7 +344,7 @@ int fizzClientCommand(const std::vector<std::string>& args) {
   std::vector<CipherSuite> ciphers {
     CipherSuite::TLS_AES_128_GCM_SHA256,
     CipherSuite::TLS_AES_256_GCM_SHA384,
-#if FOLLY_OPENSSL_IS_110
+#if FOLLY_OPENSSL_HAS_CHACHA
     CipherSuite::TLS_CHACHA20_POLY1305_SHA256,
 #endif
   };

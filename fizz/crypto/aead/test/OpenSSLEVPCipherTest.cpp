@@ -374,7 +374,7 @@ INSTANTIATE_TEST_CASE_P(
             false,
             CipherSuite::TLS_AES_256_GCM_SHA384}));
 
-#if FOLLY_OPENSSL_IS_110
+#if FOLLY_OPENSSL_HAS_CHACHA
 // Adapted from libressl's chacha20-poly1305 aead tests
 INSTANTIATE_TEST_CASE_P(
     ChaChaTestVectors,

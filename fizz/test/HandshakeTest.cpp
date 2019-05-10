@@ -583,7 +583,7 @@ TEST_F(HandshakeTest, PskKe) {
 
 // This test is only run with 1.1.0 as it requires chacha to run (chacha and
 // aes-gcm-128 are the only ciphers with a compatible hash algorithm).
-#if FOLLY_OPENSSL_IS_110
+#if FOLLY_OPENSSL_HAS_CHACHA
 TEST_F(HandshakeTest, ResumeChangeCipher) {
   setupResume();
   clientContext_->setSupportedCiphers(
@@ -600,7 +600,7 @@ TEST_F(HandshakeTest, ResumeChangeCipher) {
   verifyParameters();
   sendAppData();
 }
-#endif // FOLLY_OPENSSL_IS_110
+#endif // FOLLY_OPENSSL_HAS_CHACHA
 
 TEST_F(HandshakeTest, TestEkmSame) {
   expectSuccess();
