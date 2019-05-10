@@ -95,7 +95,6 @@ set(FIZZ_HEADER_DIRS
   crypto/signature
   crypto/openssl
   extensions/exportedauth
-  extensions/secretlogging
   extensions/tokenbinding
   protocol
   protocol/clock
@@ -166,7 +165,6 @@ set(FIZZ_SOURCES
   protocol/ZlibCertificateDecompressor.cpp
   protocol/clock/SystemClock.cpp
   extensions/exportedauth/ExportedAuthenticator.cpp
-  extensions/secretlogging/LoggingKeyScheduler.cpp
   extensions/tokenbinding/Types.cpp
   extensions/tokenbinding/TokenBindingConstructor.cpp
   extensions/tokenbinding/TokenBindingClientExtension.cpp
