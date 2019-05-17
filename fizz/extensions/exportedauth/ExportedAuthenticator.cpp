@@ -8,6 +8,7 @@
 
 #include <fizz/extensions/exportedauth/ExportedAuthenticator.h>
 #include <fizz/extensions/exportedauth/Util.h>
+#include <fizz/protocol/OpenSSLFactory.h>
 
 using namespace folly;
 
@@ -34,7 +35,7 @@ Buf ExportedAuthenticator::getAuthenticator(
     const SelfCert& cert,
     Buf authenticatorRequest) {
   auto cipher = transport.getCipher();
-  auto deriver = Factory().makeKeyDeriver(*cipher);
+  auto deriver = OpenSSLFactory().makeKeyDeriver(*cipher);
   auto hashLength = deriver->hashLength();
   auto supportedSchemes = transport.getSupportedSigSchemes();
   Buf handshakeContext;
@@ -75,7 +76,7 @@ ExportedAuthenticator::validateAuthenticator(
     Buf authenticatorRequest,
     Buf authenticator) {
   auto cipher = transport.getCipher();
-  auto deriver = Factory().makeKeyDeriver(*cipher);
+  auto deriver = OpenSSLFactory().makeKeyDeriver(*cipher);
   auto hashLength = deriver->hashLength();
   Buf handshakeContext;
   Buf finishedMacKey;

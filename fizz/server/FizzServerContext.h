@@ -9,7 +9,7 @@
 #pragma once
 
 #include <fizz/protocol/Certificate.h>
-#include <fizz/protocol/Factory.h>
+#include <fizz/protocol/OpenSSLFactory.h>
 #include <fizz/record/Types.h>
 #include <fizz/server/CertManager.h>
 #include <fizz/server/CookieCipher.h>
@@ -44,7 +44,7 @@ enum class ClientAuthMode { None, Optional, Required };
 
 class FizzServerContext {
  public:
-  FizzServerContext() : factory_(std::make_shared<Factory>()) {}
+  FizzServerContext() : factory_(std::make_shared<OpenSSLFactory>()) {}
   virtual ~FizzServerContext() = default;
 
   /**

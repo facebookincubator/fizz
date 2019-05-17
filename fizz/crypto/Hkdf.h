@@ -8,8 +8,6 @@
 
 #pragma once
 
-#include <fizz/crypto/Sha256.h>
-#include <fizz/crypto/Sha384.h>
 #include <folly/io/IOBuf.h>
 
 namespace fizz {

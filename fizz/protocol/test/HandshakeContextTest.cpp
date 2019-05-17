@@ -8,6 +8,7 @@
 
 #include <folly/portability/GTest.h>
 
+#include <fizz/crypto/Sha256.h>
 #include <fizz/protocol/HandshakeContext.h>
 
 using namespace folly;

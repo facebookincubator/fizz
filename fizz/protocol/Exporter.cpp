@@ -19,7 +19,7 @@ Buf Exporter::getEkm(
   if (!context) {
     context = folly::IOBuf::create(0);
   }
-  auto deriver = Factory().makeKeyDeriver(cipher);
+  auto deriver = OpenSSLFactory().makeKeyDeriver(cipher);
   std::vector<uint8_t> base(deriver->hashLength());
   folly::MutableByteRange hashedContext(base.data(), base.size());
   deriver->hash(*context, hashedContext);

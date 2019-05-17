@@ -15,9 +15,9 @@
 #include <fizz/protocol/Certificate.h>
 #include <fizz/protocol/CertificateCompressor.h>
 #include <fizz/protocol/CertificateVerifier.h>
-#include <fizz/protocol/Factory.h>
 #include <fizz/protocol/HandshakeContext.h>
 #include <fizz/protocol/KeyScheduler.h>
+#include <fizz/protocol/OpenSSLFactory.h>
 #include <fizz/protocol/Types.h>
 #include <fizz/record/test/Mocks.h>
 
@@ -157,7 +157,7 @@ class MockCertificateVerifier : public CertificateVerifier {
   MOCK_CONST_METHOD0(getCertificateRequestExtensions, std::vector<Extension>());
 };
 
-class MockFactory : public Factory {
+class MockFactory : public OpenSSLFactory {
  public:
   MOCK_CONST_METHOD0(
       makePlaintextReadRecordLayer,

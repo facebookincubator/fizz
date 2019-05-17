@@ -9,6 +9,7 @@
 #include <folly/portability/GTest.h>
 
 #include <fizz/crypto/KeyDerivation.h>
+#include <fizz/crypto/Sha256.h>
 #include <folly/String.h>
 #include <folly/io/IOBuf.h>
 

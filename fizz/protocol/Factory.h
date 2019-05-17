@@ -60,32 +60,10 @@ class Factory {
   }
 
   virtual std::unique_ptr<KeyDerivation> makeKeyDeriver(
-      CipherSuite cipher) const {
-    switch (cipher) {
-      case CipherSuite::TLS_CHACHA20_POLY1305_SHA256:
-      case CipherSuite::TLS_AES_128_GCM_SHA256:
-      case CipherSuite::TLS_AES_128_OCB_SHA256_EXPERIMENTAL:
-        return std::make_unique<KeyDerivationImpl<Sha256>>(getHkdfPrefix());
-      case CipherSuite::TLS_AES_256_GCM_SHA384:
-        return std::make_unique<KeyDerivationImpl<Sha384>>(getHkdfPrefix());
-      default:
-        throw std::runtime_error("ks: not implemented");
-    }
-  }
+      CipherSuite cipher) const = 0;
 
   virtual std::unique_ptr<HandshakeContext> makeHandshakeContext(
-      CipherSuite cipher) const {
-    switch (cipher) {
-      case CipherSuite::TLS_CHACHA20_POLY1305_SHA256:
-      case CipherSuite::TLS_AES_128_GCM_SHA256:
-      case CipherSuite::TLS_AES_128_OCB_SHA256_EXPERIMENTAL:
-        return std::make_unique<HandshakeContextImpl<Sha256>>(getHkdfPrefix());
-      case CipherSuite::TLS_AES_256_GCM_SHA384:
-        return std::make_unique<HandshakeContextImpl<Sha384>>(getHkdfPrefix());
-      default:
-        throw std::runtime_error("hs: not implemented");
-    }
-  }
+      CipherSuite cipher) const = 0;
 
   virtual std::unique_ptr<KeyExchange> makeKeyExchange(NamedGroup group) const {
     switch (group) {

@@ -12,6 +12,7 @@
 #include <fizz/protocol/CertDecompressionManager.h>
 #include <fizz/protocol/Certificate.h>
 #include <fizz/protocol/Factory.h>
+#include <fizz/protocol/OpenSSLFactory.h>
 #include <fizz/record/Types.h>
 
 namespace fizz {
@@ -19,7 +20,9 @@ namespace client {
 
 class FizzClientContext {
  public:
-  FizzClientContext() : factory_(std::make_shared<Factory>()) {}
+  FizzClientContext() : factory_(std::make_shared<OpenSSLFactory>()) {}
+  FizzClientContext(std::shared_ptr<Factory> factory)
+      : factory_(std::move(factory)) {}
   virtual ~FizzClientContext() = default;
 
   /**
