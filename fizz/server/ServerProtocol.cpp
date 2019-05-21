@@ -791,7 +791,8 @@ static Optional<std::string> negotiateAlpn(
 
 static Optional<std::chrono::milliseconds> getClockSkew(
     const Optional<ResumptionState>& psk,
-    Optional<uint32_t> obfuscatedAge) {
+    Optional<uint32_t> obfuscatedAge,
+    const std::chrono::system_clock::time_point& currentTime) {
   if (!psk || !obfuscatedAge) {
     return folly::none;
   }
@@ -800,7 +801,7 @@ static Optional<std::chrono::milliseconds> getClockSkew(
       static_cast<uint32_t>(*obfuscatedAge - psk->ticketAgeAdd));
 
   auto expected = std::chrono::duration_cast<std::chrono::milliseconds>(
-      std::chrono::system_clock::now() - psk->ticketIssueTime);
+      currentTime - psk->ticketIssueTime);
 
   return std::chrono::milliseconds(age - expected);
 }
@@ -1098,7 +1099,10 @@ EventHandler<ServerTypes, StateEnum::ExpectingClientHello, Event::ClientHello>::
 
         auto alpn = negotiateAlpn(chlo, folly::none, *state.context());
 
-        auto clockSkew = getClockSkew(resState, obfuscatedAge);
+        auto clockSkew = getClockSkew(
+            resState,
+            obfuscatedAge,
+            state.context()->getClock().getCurrentTime());
 
         auto earlyDataType = negotiateEarlyDataType(
             state.context()->getAcceptEarlyData(version),
@@ -1713,7 +1717,7 @@ static Future<Optional<WriteToSocket>> generateTicket(
   resState.clientCert = state.clientCert();
   resState.alpn = state.alpn();
   resState.ticketAgeAdd = state.context()->getFactory()->makeTicketAgeAdd();
-  resState.ticketIssueTime = std::chrono::system_clock::now();
+  resState.ticketIssueTime = state.context()->getClock().getCurrentTime();
   resState.appToken = std::move(appToken);
 
   auto ticketFuture = ticketCipher->encrypt(std::move(resState));
@@ -1875,7 +1879,6 @@ EventHandler<ServerTypes, StateEnum::ExpectingFinished, Event::Finished>::
   auto saveState = [readRecordLayer = std::move(readRecordLayer),
                     resumptionMasterSecret](State& newState) mutable {
     newState.readRecordLayer() = std::move(readRecordLayer);
-
     newState.resumptionMasterSecret() = std::move(resumptionMasterSecret);
   };
 

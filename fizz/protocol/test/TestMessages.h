@@ -85,10 +85,10 @@ struct TestMessages {
     return chlo;
   }
 
-  static ClientHello clientHelloPskEarly() {
+  static ClientHello clientHelloPskEarly(uint32_t ticketAge = 100000) {
     auto chlo = clientHello();
     chlo.extensions.push_back(encodeExtension(ClientEarlyData()));
-    addPsk(chlo);
+    addPsk(chlo, ticketAge);
     return chlo;
   }
 

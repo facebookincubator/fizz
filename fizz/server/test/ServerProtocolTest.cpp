@@ -10,6 +10,7 @@
 #include <folly/portability/GTest.h>
 
 #include <fizz/crypto/exchange/test/Mocks.h>
+#include <fizz/protocol/clock/test/Mocks.h>
 #include <fizz/protocol/test/Mocks.h>
 #include <fizz/protocol/test/ProtocolTest.h>
 #include <fizz/protocol/test/TestMessages.h>
@@ -44,14 +45,26 @@ class ServerProtocolTest : public ProtocolTest<ServerTypes, Actions> {
     context_->setCertManager(std::move(certManager));
     context_->setSupportedAlpns({"h2", "h3"});
     mockTicketCipher_ = std::make_shared<MockTicketCipher>();
-    mockTicketCipher_->setDefaults();
+    mockTicketCipher_->setDefaults(
+        std::chrono::system_clock::time_point(std::chrono::seconds(10)));
     context_->setTicketCipher(mockTicketCipher_);
     extensions_ = std::make_shared<MockServerExtensions>();
+    clock_ = std::make_shared<MockClock>();
+    context_->setClock(clock_);
 
     ON_CALL(*certManager_, getCert(_, _, _))
         .WillByDefault(Return(CertManager::CertMatch(
             std::make_pair(cert_, SignatureScheme::ecdsa_secp256r1_sha256))));
     ON_CALL(*certManager_, getCert(_)).WillByDefault(Return(cert_));
+
+    ON_CALL(*clock_, getCurrentTime())
+        .WillByDefault(Return(
+            std::chrono::system_clock::time_point(std::chrono::minutes(5))));
+
+    replayCache_ = std::make_shared<MockReplayCache>();
+    ON_CALL(*replayCache_, check(_)).WillByDefault(InvokeWithoutArgs([] {
+      return folly::makeFuture(ReplayCacheResult::NotReplay);
+    }));
   }
 
  protected:
@@ -144,10 +157,6 @@ class ServerProtocolTest : public ProtocolTest<ServerTypes, Actions> {
   }
 
   void acceptEarlyData() {
-    replayCache_ = std::make_shared<MockReplayCache>();
-    ON_CALL(*replayCache_, check(_)).WillByDefault(InvokeWithoutArgs([] {
-      return folly::makeFuture(ReplayCacheResult::NotReplay);
-    }));
     context_->setEarlyDataSettings(
         true,
         {std::chrono::milliseconds(-1000000),
@@ -302,6 +311,7 @@ class ServerProtocolTest : public ProtocolTest<ServerTypes, Actions> {
   MockCertManager* certManager_;
   std::shared_ptr<MockServerExtensions> extensions_;
   std::shared_ptr<MockReplayCache> replayCache_;
+  std::shared_ptr<MockClock> clock_;
   bool addExtensions_ = true;
 };
 
@@ -2184,7 +2194,7 @@ TEST_F(ServerProtocolTest, TestClientHelloPskDheEarlyFlow) {
         res.alpn = "h2";
         res.ticketAgeAdd = 0;
         res.ticketIssueTime =
-            std::chrono::system_clock::now() - std::chrono::seconds(100);
+            std::chrono::system_clock::time_point(std::chrono::seconds(10));
         return std::make_pair(PskType::Resumption, std::move(res));
       }));
   Sequence contextSeq;
@@ -2379,8 +2389,10 @@ TEST_F(ServerProtocolTest, TestClientHelloPskDheEarlyFlow) {
                           IOBuf::copyBuffer("serverappiv")};
       }));
 
-  auto actions = getActions(
-      detail::processEvent(state_, TestMessages::clientHelloPskEarly()));
+  std::chrono::milliseconds age =
+      std::chrono::minutes(5) - std::chrono::seconds(10);
+  auto actions = getActions(detail::processEvent(
+      state_, TestMessages::clientHelloPskEarly(age.count())));
 
   expectActions<
       MutateState,
@@ -2452,7 +2464,7 @@ TEST_F(ServerProtocolTest, TestClientHelloPskEarlyFlow) {
         res.alpn = "h2";
         res.ticketAgeAdd = 0;
         res.ticketIssueTime =
-            std::chrono::system_clock::now() - std::chrono::seconds(100);
+            std::chrono::system_clock::time_point(std::chrono::seconds(10));
         return std::make_pair(PskType::Resumption, std::move(res));
       }));
   Sequence contextSeq;
@@ -2635,8 +2647,10 @@ TEST_F(ServerProtocolTest, TestClientHelloPskEarlyFlow) {
                           IOBuf::copyBuffer("serverappiv")};
       }));
 
-  auto actions = getActions(
-      detail::processEvent(state_, TestMessages::clientHelloPskEarly()));
+  std::chrono::milliseconds age =
+      std::chrono::minutes(5) - std::chrono::seconds(10);
+  auto actions = getActions(detail::processEvent(
+      state_, TestMessages::clientHelloPskEarly(age.count())));
 
   expectActions<
       MutateState,
@@ -2996,8 +3010,10 @@ TEST_F(ServerProtocolTest, TestClientHelloAcceptEarlyData) {
   acceptEarlyData();
   setUpExpectingClientHello();
 
-  auto actions = getActions(
-      detail::processEvent(state_, TestMessages::clientHelloPskEarly()));
+  std::chrono::milliseconds age =
+      std::chrono::minutes(5) - std::chrono::seconds(10);
+  auto actions = getActions(detail::processEvent(
+      state_, TestMessages::clientHelloPskEarly(age.count())));
   expectActions<
       MutateState,
       WriteToSocket,
@@ -3018,8 +3034,10 @@ TEST_F(ServerProtocolTest, TestClientHelloAcceptEarlyDataOmitEarlyRecort) {
   acceptEarlyData();
   setUpExpectingClientHello();
 
-  auto actions = getActions(
-      detail::processEvent(state_, TestMessages::clientHelloPskEarly()));
+  std::chrono::milliseconds age =
+      std::chrono::minutes(5) - std::chrono::seconds(10);
+  auto actions = getActions(detail::processEvent(
+      state_, TestMessages::clientHelloPskEarly(age.count())));
   expectActions<
       MutateState,
       WriteToSocket,
@@ -3083,13 +3101,15 @@ TEST_F(ServerProtocolTest, TestClientHelloAcceptEarlyDataWithValidAppToken) {
         res.alpn = "h2";
         res.ticketAgeAdd = 0xffffffff;
         res.ticketIssueTime =
-            std::chrono::system_clock::now() - std::chrono::seconds(100);
+            std::chrono::system_clock::time_point(std::chrono::seconds(10));
         res.appToken = IOBuf::copyBuffer(appTokenStr);
         return std::make_pair(PskType::Resumption, std::move(res));
       }));
 
-  auto actions = getActions(
-      detail::processEvent(state_, TestMessages::clientHelloPskEarly()));
+  std::chrono::milliseconds age =
+      std::chrono::minutes(5) - std::chrono::seconds(10);
+  auto actions = getActions(detail::processEvent(
+      state_, TestMessages::clientHelloPskEarly(age.count())));
   expectActions<
       MutateState,
       WriteToSocket,
@@ -3136,8 +3156,10 @@ TEST_F(ServerProtocolTest, TestClientHelloHrrRejectEarlyData) {
           [rrl]() { return std::unique_ptr<PlaintextReadRecordLayer>(rrl); }));
   EXPECT_CALL(*rrl, setSkipEncryptedRecords(true));
 
-  auto actions = getActions(
-      detail::processEvent(state_, TestMessages::clientHelloPskEarly()));
+  std::chrono::milliseconds age =
+      std::chrono::minutes(5) - std::chrono::seconds(10);
+  auto actions = getActions(detail::processEvent(
+      state_, TestMessages::clientHelloPskEarly(age.count())));
   expectActions<MutateState, WriteToSocket>(actions);
   processStateMutations(actions);
   EXPECT_EQ(state_.state(), StateEnum::ExpectingClientHello);
@@ -3187,8 +3209,10 @@ TEST_F(ServerProtocolTest, TestClientHelloRejectEarlyDataPskRejected) {
     return std::make_pair(PskType::Rejected, none);
   }));
 
-  auto actions = getActions(
-      detail::processEvent(state_, TestMessages::clientHelloPskEarly()));
+  std::chrono::milliseconds age =
+      std::chrono::minutes(5) - std::chrono::seconds(10);
+  auto actions = getActions(detail::processEvent(
+      state_, TestMessages::clientHelloPskEarly(age.count())));
   expectActions<MutateState, WriteToSocket, SecretAvailable>(actions);
   processStateMutations(actions);
   EXPECT_EQ(state_.state(), StateEnum::ExpectingFinished);
@@ -3210,8 +3234,10 @@ TEST_F(ServerProtocolTest, TestClientHelloRejectEarlyDataReplayCache) {
     return folly::makeFuture(ReplayCacheResult::DefinitelyReplay);
   }));
 
-  auto actions = getActions(
-      detail::processEvent(state_, TestMessages::clientHelloPskEarly()));
+  std::chrono::milliseconds age =
+      std::chrono::minutes(5) - std::chrono::seconds(10);
+  auto actions = getActions(detail::processEvent(
+      state_, TestMessages::clientHelloPskEarly(age.count())));
   expectActions<MutateState, WriteToSocket, SecretAvailable>(actions);
   processStateMutations(actions);
   EXPECT_EQ(state_.state(), StateEnum::ExpectingFinished);
@@ -3224,7 +3250,9 @@ TEST_F(ServerProtocolTest, TestClientHelloRejectEarlyDataNoAlpn) {
   acceptEarlyData();
   setUpExpectingClientHello();
 
-  auto chlo = TestMessages::clientHelloPskEarly();
+  std::chrono::milliseconds age =
+      std::chrono::minutes(5) - std::chrono::seconds(10);
+  auto chlo = TestMessages::clientHelloPskEarly(age.count());
   TestMessages::removeExtension(
       chlo, ExtensionType::application_layer_protocol_negotiation);
 
@@ -3263,8 +3291,10 @@ TEST_F(ServerProtocolTest, TestClientHelloRejectEarlyDataAfterHrr) {
   acceptEarlyData();
   setUpExpectingClientHelloRetry();
 
-  auto actions = getActions(
-      detail::processEvent(state_, TestMessages::clientHelloPskEarly()));
+  std::chrono::milliseconds age =
+      std::chrono::minutes(5) - std::chrono::seconds(10);
+  auto actions = getActions(detail::processEvent(
+      state_, TestMessages::clientHelloPskEarly(age.count())));
   expectActions<MutateState, WriteToSocket, SecretAvailable>(actions);
   processStateMutations(actions);
   EXPECT_EQ(state_.state(), StateEnum::ExpectingFinished);
@@ -3275,13 +3305,18 @@ TEST_F(ServerProtocolTest, TestClientHelloRejectEarlyDataAfterHrr) {
 TEST_F(ServerProtocolTest, TestClientHelloRejectEarlyDataClockBehind) {
   context_->setEarlyDataSettings(
       true,
-      {std::chrono::milliseconds(-10), std::chrono::milliseconds(10)},
+      {std::chrono::milliseconds(-1000), std::chrono::milliseconds(1000)},
       replayCache_);
   setUpExpectingClientHello();
 
+  // Actual ticket issued: 10 seconds ago
+  mockTicketCipher_->setDefaults(
+      std::chrono::system_clock::time_point(std::chrono::seconds(290)));
+
   auto chlo = TestMessages::clientHello();
   chlo.extensions.push_back(encodeExtension(ClientEarlyData()));
-  TestMessages::addPsk(chlo, 1000);
+  // Set age here to 4 seconds (6 seconds behind)
+  TestMessages::addPsk(chlo, 4000);
 
   auto actions = getActions(detail::processEvent(state_, std::move(chlo)));
   expectActions<MutateState, WriteToSocket, SecretAvailable>(actions);
@@ -3289,19 +3324,24 @@ TEST_F(ServerProtocolTest, TestClientHelloRejectEarlyDataClockBehind) {
   EXPECT_EQ(state_.state(), StateEnum::ExpectingFinished);
   EXPECT_EQ(state_.pskType(), PskType::Resumption);
   EXPECT_EQ(state_.earlyDataType(), EarlyDataType::Rejected);
-  EXPECT_LT(*state_.clientClockSkew(), std::chrono::milliseconds(-5000));
+  EXPECT_EQ(*state_.clientClockSkew(), std::chrono::milliseconds(-6000));
 }
 
 TEST_F(ServerProtocolTest, TestClientHelloRejectEarlyDataClockAhead) {
   context_->setEarlyDataSettings(
       true,
-      {std::chrono::milliseconds(-10), std::chrono::milliseconds(10)},
+      {std::chrono::milliseconds(-1000), std::chrono::milliseconds(1000)},
       replayCache_);
   setUpExpectingClientHello();
 
+  // Actual ticket issued: 10 seconds ago
+  mockTicketCipher_->setDefaults(
+      std::chrono::system_clock::time_point(std::chrono::seconds(290)));
+
   auto chlo = TestMessages::clientHello();
   chlo.extensions.push_back(encodeExtension(ClientEarlyData()));
-  TestMessages::addPsk(chlo, 200000);
+  // Client believes issued 16 seconds ago (6 seconds ahead);
+  TestMessages::addPsk(chlo, 16000);
 
   auto actions = getActions(detail::processEvent(state_, std::move(chlo)));
   expectActions<MutateState, WriteToSocket, SecretAvailable>(actions);
@@ -3309,7 +3349,7 @@ TEST_F(ServerProtocolTest, TestClientHelloRejectEarlyDataClockAhead) {
   EXPECT_EQ(state_.state(), StateEnum::ExpectingFinished);
   EXPECT_EQ(state_.pskType(), PskType::Resumption);
   EXPECT_EQ(state_.earlyDataType(), EarlyDataType::Rejected);
-  EXPECT_GT(*state_.clientClockSkew(), std::chrono::milliseconds(5000));
+  EXPECT_EQ(*state_.clientClockSkew(), std::chrono::milliseconds(6000));
 }
 
 TEST_F(ServerProtocolTest, TestClientHelloRejectEarlyDataTicketAgeOverflow) {
@@ -3325,7 +3365,7 @@ TEST_F(ServerProtocolTest, TestClientHelloRejectEarlyDataTicketAgeOverflow) {
         res.alpn = "h2";
         res.ticketAgeAdd = 0xffffffff;
         res.ticketIssueTime =
-            std::chrono::system_clock::now() - std::chrono::seconds(100);
+            std::chrono::system_clock::time_point(std::chrono::seconds(10));
         return std::make_pair(PskType::Resumption, std::move(res));
       }));
 
@@ -3355,7 +3395,7 @@ TEST_F(ServerProtocolTest, TestClientHelloRejectEarlyDataNegativeExpectedAge) {
         res.alpn = "h2";
         res.ticketAgeAdd = 0;
         res.ticketIssueTime =
-            std::chrono::system_clock::now() + std::chrono::seconds(100);
+            std::chrono::system_clock::time_point(std::chrono::seconds(10));
         return std::make_pair(PskType::Resumption, std::move(res));
       }));
 
@@ -3397,13 +3437,15 @@ TEST_F(ServerProtocolTest, TestClientHelloRejectEarlyDataInvalidAppToken) {
         res.alpn = "h2";
         res.ticketAgeAdd = 0xffffffff;
         res.ticketIssueTime =
-            std::chrono::system_clock::now() - std::chrono::seconds(100);
+            std::chrono::system_clock::time_point(std::chrono::seconds(10));
         res.appToken = IOBuf::copyBuffer(appTokenStr);
         return std::make_pair(PskType::Resumption, std::move(res));
       }));
 
-  auto actions = getActions(
-      detail::processEvent(state_, TestMessages::clientHelloPskEarly()));
+  std::chrono::milliseconds age =
+      std::chrono::minutes(5) - std::chrono::seconds(10);
+  auto actions = getActions(detail::processEvent(
+      state_, TestMessages::clientHelloPskEarly(age.count())));
   expectActions<MutateState, WriteToSocket, SecretAvailable>(actions);
   processStateMutations(actions);
   EXPECT_EQ(state_.state(), StateEnum::ExpectingFinished);
@@ -3550,7 +3592,7 @@ TEST_F(ServerProtocolTest, TestClientHelloRenegotiatePskCipher) {
         res.alpn = "h2";
         res.ticketAgeAdd = 0;
         res.ticketIssueTime =
-            std::chrono::system_clock::now() + std::chrono::seconds(100);
+            std::chrono::system_clock::time_point(std::chrono::seconds(10));
         return std::make_pair(PskType::Resumption, std::move(res));
       }));
 
@@ -3575,7 +3617,7 @@ TEST_F(ServerProtocolTest, TestClientHelloRenegotiatePskCipherIncompatible) {
         res.alpn = "h2";
         res.ticketAgeAdd = 0;
         res.ticketIssueTime =
-            std::chrono::system_clock::now() + std::chrono::seconds(100);
+            std::chrono::system_clock::time_point(std::chrono::seconds(10));
         return std::make_pair(PskType::Resumption, std::move(res));
       }));
 

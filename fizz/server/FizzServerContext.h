@@ -10,6 +10,7 @@
 
 #include <fizz/protocol/Certificate.h>
 #include <fizz/protocol/OpenSSLFactory.h>
+#include <fizz/protocol/clock/SystemClock.h>
 #include <fizz/record/Types.h>
 #include <fizz/server/CertManager.h>
 #include <fizz/server/CookieCipher.h>
@@ -295,6 +296,13 @@ class FizzServerContext {
     return omitEarlyRecordLayer_;
   }
 
+  void setClock(std::shared_ptr<Clock> clock) {
+    clock_ = clock;
+  }
+  const Clock& getClock() const {
+    return *clock_;
+  }
+
  private:
   std::shared_ptr<Factory> factory_;
 
@@ -331,6 +339,7 @@ class FizzServerContext {
   uint32_t maxEarlyDataSize_{std::numeric_limits<uint32_t>::max()};
   ClockSkewTolerance clockSkewTolerance_;
   std::shared_ptr<ReplayCache> replayCache_;
+  std::shared_ptr<Clock> clock_ = std::make_shared<SystemClock>();
 
   std::vector<CertificateCompressionAlgorithm> supportedCompressionAlgos_;
 
