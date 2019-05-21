@@ -44,6 +44,7 @@ void FizzServer<ActionMoveVisitor, SM>::newTransportData() {
 
 template <typename ActionMoveVisitor, typename SM>
 Buf FizzServer<ActionMoveVisitor, SM>::getEarlyEkm(
+    const Factory& factory,
     folly::StringPiece label,
     const Buf& context,
     uint16_t length) const {
@@ -51,6 +52,7 @@ Buf FizzServer<ActionMoveVisitor, SM>::getEarlyEkm(
     throw std::runtime_error("early ekm not available");
   }
   return Exporter::getEkm(
+      factory,
       *this->state_.cipher(),
       (*this->state_.earlyExporterMasterSecret())->coalesce(),
       label,

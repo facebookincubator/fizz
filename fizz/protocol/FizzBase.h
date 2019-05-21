@@ -8,6 +8,7 @@
 
 #pragma once
 
+#include <fizz/protocol/Factory.h>
 #include <fizz/protocol/Params.h>
 #include <folly/Overload.h>
 
@@ -103,8 +104,11 @@ class FizzBase {
    * Returns an exported key material derived from the 1-RTT secret of the TLS
    * connection.
    */
-  Buf getEkm(folly::StringPiece label, const Buf& context, uint16_t length)
-      const;
+  Buf getEkm(
+      const Factory& factory,
+      folly::StringPiece label,
+      const Buf& context,
+      uint16_t length) const;
 
  protected:
   void processActions(typename StateMachine::CompletedActions actions);

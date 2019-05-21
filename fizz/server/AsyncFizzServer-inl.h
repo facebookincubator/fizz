@@ -145,7 +145,8 @@ Buf AsyncFizzServerT<SM>::getEkm(
     folly::StringPiece label,
     const Buf& context,
     uint16_t length) const {
-  return fizzServer_.getEkm(label, context, length);
+  return fizzServer_.getEkm(
+      *fizzContext_->getFactory(), label, context, length);
 }
 
 template <typename SM>
@@ -153,7 +154,8 @@ Buf AsyncFizzServerT<SM>::getEarlyEkm(
     folly::StringPiece label,
     const Buf& context,
     uint16_t length) const {
-  return fizzServer_.getEarlyEkm(label, context, length);
+  return fizzServer_.getEarlyEkm(
+      *fizzContext_->getFactory(), label, context, length);
 }
 
 template <typename SM>

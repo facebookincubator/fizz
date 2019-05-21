@@ -44,8 +44,11 @@ class FizzClient : public FizzBase<
    * Returns an exported key material derived from the early secret of the TLS
    * connection. Throws if the early secret is not available.
    */
-  Buf getEarlyEkm(folly::StringPiece label, const Buf& context, uint16_t length)
-      const;
+  Buf getEarlyEkm(
+      const Factory& factory,
+      folly::StringPiece label,
+      const Buf& context,
+      uint16_t length) const;
 
  private:
   friend class FizzBase<

@@ -10,13 +10,13 @@
 
 #include <fizz/crypto/KeyDerivation.h>
 #include <fizz/protocol/Factory.h>
-#include <fizz/protocol/OpenSSLFactory.h>
 
 namespace fizz {
 
 class Exporter {
  public:
   static Buf getEkm(
+      const Factory& factory,
       CipherSuite cipher,
       folly::ByteRange exporterMaster,
       folly::StringPiece label,

@@ -11,6 +11,7 @@
 namespace fizz {
 
 Buf Exporter::getEkm(
+    const Factory& factory,
     CipherSuite cipher,
     folly::ByteRange exporterMaster,
     folly::StringPiece label,
@@ -19,7 +20,7 @@ Buf Exporter::getEkm(
   if (!context) {
     context = folly::IOBuf::create(0);
   }
-  auto deriver = OpenSSLFactory().makeKeyDeriver(cipher);
+  auto deriver = factory.makeKeyDeriver(cipher);
   std::vector<uint8_t> base(deriver->hashLength());
   folly::MutableByteRange hashedContext(base.data(), base.size());
   deriver->hash(*context, hashedContext);
