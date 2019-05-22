@@ -4661,22 +4661,6 @@ TEST_F(ServerProtocolTest, TestEarlyWriteError) {
   expectError<FizzException>(
       actions, AlertDescription::unexpected_message, "invalid event");
 }
-
-TEST_F(ServerProtocolTest, TestDecodeErrorAlert) {
-  setUpAcceptingData();
-  EXPECT_CALL(*appRead_, read(_))
-      .WillOnce(Invoke([](auto &&) -> folly::Optional<TLSMessage> {
-        throw std::runtime_error("read record layer error");
-      }));
-  folly::IOBufQueue buf;
-  auto actions =
-      getActions(ServerStateMachine().processSocketData(state_, buf));
-  auto exc = expectError<FizzException>(
-      actions, AlertDescription::decode_error, "read record layer error");
-
-  ASSERT_TRUE(exc.getAlert().hasValue());
-  EXPECT_EQ(AlertDescription::decode_error, exc.getAlert().value());
-}
 } // namespace test
 } // namespace server
 } // namespace fizz

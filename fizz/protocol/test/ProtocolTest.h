@@ -103,7 +103,7 @@ class ProtocolTest : public testing::Test {
   }
 
   template <typename ExceptionType>
-  ExceptionType expectError(
+  void expectError(
       Actions& actions,
       folly::Optional<AlertDescription> alert,
       std::string msg = "") {
@@ -126,7 +126,6 @@ class ProtocolTest : public testing::Test {
     EXPECT_EQ(state_.state(), SM::StateEnum::Error);
     EXPECT_EQ(state_.readRecordLayer(), nullptr);
     EXPECT_EQ(state_.writeRecordLayer(), nullptr);
-    return *ex;
   }
 
   void expectAeadCreation(std::map<std::string, MockAead**> keys) {
