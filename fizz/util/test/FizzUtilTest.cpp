@@ -47,6 +47,7 @@ TEST(UtilTest, CreateTicketCipher) {
       std::vector<std::string>(),
       // any number high enough to last the duration of the test should be fine
       std::chrono::seconds(100),
+      std::chrono::minutes(100),
       folly::Optional<std::string>("fakeContext"));
   {
     server::ResumptionState state;
@@ -61,6 +62,7 @@ TEST(UtilTest, CreateTicketCipher) {
         "fakeSecrettttttttttttttttttttttttt2",
         std::vector<std::string>(),
         std::chrono::seconds(100),
+        std::chrono::minutes(100),
         folly::Optional<std::string>("fakeContext"));
     server::ResumptionState state;
     auto blob = cipher->encrypt(std::move(state)).get();

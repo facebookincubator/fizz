@@ -44,7 +44,8 @@ class FizzUtil {
       const std::vector<std::string>& oldSecrets,
       const std::string& currentSecret,
       const std::vector<std::string>& newSecrets,
-      std::chrono::seconds validity,
+      std::chrono::seconds ticketValidity,
+      std::chrono::seconds /*handshakeValidity*/,
       folly::Optional<std::string> pskContext) {
     std::unique_ptr<TicketCipherT> cipher;
     if (pskContext.hasValue()) {
@@ -54,7 +55,7 @@ class FizzUtil {
     }
     cipher->setTicketSecrets(
         compileSecrets(oldSecrets, currentSecret, newSecrets));
-    cipher->setValidity(validity);
+    cipher->setValidity(ticketValidity);
     return cipher;
   }
 
