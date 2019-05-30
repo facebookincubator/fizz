@@ -157,10 +157,21 @@ AsyncActions ServerStateMachine::processSocketData(
       return actions(WaitForData());
     }
     return detail::processEvent(state, std::move(*param));
-  } catch (const std::exception& e) {
+  } catch (const FizzException& e) {
     return detail::handleError(
         state,
         ReportError(folly::exception_wrapper(std::current_exception(), e)),
+        e.getAlert());
+  } catch (const std::exception& e) {
+    return detail::handleError(
+        state,
+        ReportError(folly::make_exception_wrapper<FizzException>(
+            folly::to<std::string>(
+                "error decoding record in state ",
+                toString(state.state()),
+                ": ",
+                e.what()),
+            AlertDescription::decode_error)),
         AlertDescription::decode_error);
   }
 }
