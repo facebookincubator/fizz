@@ -226,9 +226,9 @@ class FizzClientContext {
   std::vector<CipherSuite> supportedCiphers_ = {
       CipherSuite::TLS_AES_128_GCM_SHA256,
       CipherSuite::TLS_AES_256_GCM_SHA384,
-#if FOLLY_OPENSSL_IS_110
+#if FOLLY_OPENSSL_HAS_CHACHA
       CipherSuite::TLS_CHACHA20_POLY1305_SHA256,
-#endif // FOLLY_OPENSSL_IS_110
+#endif // FOLLY_OPENSSL_HAS_CHACHA
   };
   std::vector<SignatureScheme> supportedSigSchemes_ = {
       SignatureScheme::ecdsa_secp256r1_sha256,
