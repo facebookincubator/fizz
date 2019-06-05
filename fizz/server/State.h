@@ -284,6 +284,14 @@ class State {
     return exporterMasterSecret_;
   }
 
+  /**
+   * Get the timestamp for the handshake that authenticated this connection.
+   */
+  const folly::Optional<std::chrono::system_clock::time_point>& handshakeTime()
+      const {
+    return handshakeTime_;
+  }
+
   /*
    * State setters.
    */
@@ -377,6 +385,9 @@ class State {
   auto& exporterMasterSecret() {
     return exporterMasterSecret_;
   }
+  auto& handshakeTime() {
+    return handshakeTime_;
+  }
 
  private:
   StateEnum state_{StateEnum::Uninitialized};
@@ -416,6 +427,7 @@ class State {
   std::unique_ptr<AppTokenValidator> appTokenValidator_;
   std::shared_ptr<ServerExtensions> extensions_;
   std::vector<uint8_t> resumptionMasterSecret_;
+  folly::Optional<std::chrono::system_clock::time_point> handshakeTime_;
 
   std::unique_ptr<HandshakeLogging> handshakeLogging_;
 

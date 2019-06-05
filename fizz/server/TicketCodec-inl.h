@@ -40,6 +40,10 @@ Buf TicketCodec<Storage>::encode(ResumptionState resState) {
     fizz::detail::writeBuf<uint8_t>(nullptr, appender);
   }
   fizz::detail::writeBuf<uint16_t>(resState.appToken, appender);
+  uint64_t handshakeTime = std::chrono::duration_cast<std::chrono::seconds>(
+                               resState.handshakeTime.time_since_epoch())
+                               .count();
+  fizz::detail::write(handshakeTime, appender);
   return buf;
 }
 
@@ -69,14 +73,25 @@ ResumptionState TicketCodec<Storage>::decode(
 
   resState.ticketIssueTime = std::chrono::time_point<std::chrono::system_clock>(
       std::chrono::seconds(seconds));
+  // If unset, set handshake timestamp to ticket timestamp
+  resState.handshakeTime = resState.ticketIssueTime;
+
   if (context) {
     resState.serverCert =
         context->getCert(selfIdentity->moveToFbString().toStdString());
   }
+
   if (cursor.isAtEnd()) {
     return resState;
   }
   fizz::detail::readBuf<uint16_t>(resState.appToken, cursor);
+
+  if (cursor.isAtEnd()) {
+    return resState;
+  }
+  fizz::detail::read(seconds, cursor);
+  resState.handshakeTime = std::chrono::time_point<std::chrono::system_clock>(
+      std::chrono::seconds(seconds));
 
   return resState;
 }

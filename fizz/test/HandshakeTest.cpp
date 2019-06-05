@@ -108,7 +108,7 @@ class HandshakeTest : public Test {
     auto ticketCipher = std::make_shared<AES128TicketCipher>();
     auto ticketSeed = RandomGenerator<32>().generateRandom();
     ticketCipher->setTicketSecrets({{range(ticketSeed)}});
-    ticketCipher->setValidity(std::chrono::seconds(60));
+    ticketCipher->setTicketValidity(std::chrono::seconds(60));
     serverContext_->setTicketCipher(std::move(ticketCipher));
 
     cookieCipher_ = std::make_shared<AES128CookieCipher>();

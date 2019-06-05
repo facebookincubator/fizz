@@ -33,7 +33,7 @@ class TicketCipher {
    * Returns the ResumptionState for an opaque PSK, and the type of PSK
    * (resumption or external).
    *
-   * Returns Rejected if the PSK is not recognized.
+   * Returns Rejected if the PSK is not recognized or not valid.
    */
   virtual folly::Future<std::pair<PskType, folly::Optional<ResumptionState>>>
   decrypt(std::unique_ptr<folly::IOBuf> encryptedTicket) const = 0;

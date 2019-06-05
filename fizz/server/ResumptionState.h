@@ -27,6 +27,7 @@ struct ResumptionState {
   uint32_t ticketAgeAdd;
   std::chrono::system_clock::time_point ticketIssueTime;
   Buf appToken;
+  std::chrono::system_clock::time_point handshakeTime;
 };
 } // namespace server
 } // namespace fizz

@@ -9,6 +9,7 @@
 #include <folly/portability/GTest.h>
 
 #include <fizz/crypto/test/TestUtil.h>
+#include <fizz/protocol/clock/test/Mocks.h>
 #include <fizz/server/TicketTypes.h>
 #include <fizz/util/FizzUtil.h>
 #include <folly/FileUtil.h>
@@ -45,10 +46,11 @@ TEST(UtilTest, CreateTicketCipher) {
       std::vector<std::string>(),
       "fakeSecretttttttttttttttttttttttttt",
       std::vector<std::string>(),
-      // any number high enough to last the duration of the test should be fine
       std::chrono::seconds(100),
       std::chrono::minutes(100),
       folly::Optional<std::string>("fakeContext"));
+  auto clock = std::make_shared<MockClock>();
+  cipher->setClock(clock);
   {
     server::ResumptionState state;
     auto blob = cipher->encrypt(std::move(state)).get();
@@ -64,6 +66,7 @@ TEST(UtilTest, CreateTicketCipher) {
         std::chrono::seconds(100),
         std::chrono::minutes(100),
         folly::Optional<std::string>("fakeContext"));
+    newCipher->setClock(clock);
     server::ResumptionState state;
     auto blob = cipher->encrypt(std::move(state)).get();
     EXPECT_EQ(

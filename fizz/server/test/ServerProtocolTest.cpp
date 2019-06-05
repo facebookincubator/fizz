@@ -225,6 +225,8 @@ class ServerProtocolTest : public ProtocolTest<ServerTypes, Actions> {
     state_.serverCert() = cert_;
     state_.pskType() = PskType::NotAttempted;
     state_.alpn() = "h2";
+    state_.handshakeTime() =
+        std::chrono::system_clock::time_point(std::chrono::seconds(10));
   }
 
   void setUpExpectingCertificate() {
@@ -242,6 +244,8 @@ class ServerProtocolTest : public ProtocolTest<ServerTypes, Actions> {
     state_.pskType() = PskType::NotAttempted;
     state_.alpn() = "h2";
     context_->setClientAuthMode(ClientAuthMode::Required);
+    state_.handshakeTime() =
+        std::chrono::system_clock::time_point(std::chrono::seconds(10));
   }
 
   void setUpExpectingCertificateVerify() {
@@ -264,6 +268,8 @@ class ServerProtocolTest : public ProtocolTest<ServerTypes, Actions> {
     state_.pskType() = PskType::NotAttempted;
     state_.alpn() = "h2";
     context_->setClientAuthMode(ClientAuthMode::Required);
+    state_.handshakeTime() =
+        std::chrono::system_clock::time_point(std::chrono::seconds(10));
   }
 
   void setUpAcceptingEarlyData() {
@@ -277,6 +283,8 @@ class ServerProtocolTest : public ProtocolTest<ServerTypes, Actions> {
     state_.executor() = &executor_;
     state_.state() = StateEnum::AcceptingEarlyData;
     state_.context() = context_;
+    state_.handshakeTime() =
+        std::chrono::system_clock::time_point(std::chrono::seconds(10));
   }
 
   void setUpAcceptingData() {
@@ -291,6 +299,8 @@ class ServerProtocolTest : public ProtocolTest<ServerTypes, Actions> {
     state_.state() = StateEnum::AcceptingData;
     state_.serverCert() = cert_;
     state_.pskType() = PskType::NotAttempted;
+    state_.handshakeTime() =
+        std::chrono::system_clock::time_point(std::chrono::minutes(5));
     state_.alpn() = "h2";
   }
 
@@ -1239,6 +1249,8 @@ TEST_F(ServerProtocolTest, TestClientHelloPskFlow) {
         res.cipher = CipherSuite::TLS_AES_128_GCM_SHA256;
         res.resumptionSecret = folly::IOBuf::copyBuffer("resumesecret");
         res.serverCert = cert_;
+        res.handshakeTime =
+            std::chrono::system_clock::time_point(std::chrono::seconds(1));
         return std::make_pair(PskType::Resumption, std::move(res));
       }));
   Sequence contextSeq;
@@ -1454,6 +1466,8 @@ TEST_F(ServerProtocolTest, TestClientHelloPskDheFlow) {
         res.cipher = CipherSuite::TLS_AES_128_GCM_SHA256;
         res.resumptionSecret = folly::IOBuf::copyBuffer("resumesecret");
         res.serverCert = cert_;
+        res.handshakeTime =
+            std::chrono::system_clock::time_point(std::chrono::seconds(1));
         return std::make_pair(PskType::Resumption, std::move(res));
       }));
   Sequence contextSeq;
@@ -1976,6 +1990,8 @@ TEST_F(ServerProtocolTest, TestRetryClientHelloPskDheFlow) {
         res.cipher = CipherSuite::TLS_AES_128_GCM_SHA256;
         res.resumptionSecret = folly::IOBuf::copyBuffer("resumesecret");
         res.serverCert = cert_;
+        res.handshakeTime =
+            std::chrono::system_clock::time_point(std::chrono::seconds(1));
         return std::make_pair(PskType::Resumption, std::move(res));
       }));
   Sequence contextSeq;
@@ -2195,6 +2211,8 @@ TEST_F(ServerProtocolTest, TestClientHelloPskDheEarlyFlow) {
         res.ticketAgeAdd = 0;
         res.ticketIssueTime =
             std::chrono::system_clock::time_point(std::chrono::seconds(10));
+        res.handshakeTime =
+            std::chrono::system_clock::time_point(std::chrono::seconds(1));
         return std::make_pair(PskType::Resumption, std::move(res));
       }));
   Sequence contextSeq;
@@ -2420,6 +2438,9 @@ TEST_F(ServerProtocolTest, TestClientHelloPskDheEarlyFlow) {
       actions, AppTrafficSecrets::ServerAppTraffic, StringPiece("sat"));
   processStateMutations(actions);
   EXPECT_EQ(state_.state(), StateEnum::AcceptingEarlyData);
+  EXPECT_EQ(
+      *state_.handshakeTime(),
+      std::chrono::system_clock::time_point(std::chrono::seconds(1)));
   EXPECT_EQ(state_.handshakeReadRecordLayer().get(), handshakerrl);
   EXPECT_EQ(state_.readRecordLayer().get(), earlyrrl);
   EXPECT_EQ(
@@ -2465,6 +2486,8 @@ TEST_F(ServerProtocolTest, TestClientHelloPskEarlyFlow) {
         res.ticketAgeAdd = 0;
         res.ticketIssueTime =
             std::chrono::system_clock::time_point(std::chrono::seconds(10));
+        res.handshakeTime =
+            std::chrono::system_clock::time_point(std::chrono::seconds(1));
         return std::make_pair(PskType::Resumption, std::move(res));
       }));
   Sequence contextSeq;
@@ -2679,6 +2702,9 @@ TEST_F(ServerProtocolTest, TestClientHelloPskEarlyFlow) {
 
   processStateMutations(actions);
   EXPECT_EQ(state_.state(), StateEnum::AcceptingEarlyData);
+  EXPECT_EQ(
+      *state_.handshakeTime(),
+      std::chrono::system_clock::time_point(std::chrono::seconds(1)));
   EXPECT_EQ(state_.handshakeReadRecordLayer().get(), handshakerrl);
   EXPECT_EQ(state_.readRecordLayer().get(), earlyrrl);
   EXPECT_EQ(
@@ -3021,6 +3047,9 @@ TEST_F(ServerProtocolTest, TestClientHelloAcceptEarlyData) {
       SecretAvailable>(actions);
   processStateMutations(actions);
   EXPECT_EQ(state_.state(), StateEnum::AcceptingEarlyData);
+  EXPECT_EQ(
+      *state_.handshakeTime(),
+      std::chrono::system_clock::time_point(std::chrono::seconds(10)));
   EXPECT_EQ(state_.pskType(), PskType::Resumption);
   EXPECT_EQ(state_.earlyDataType(), EarlyDataType::Accepted);
   EXPECT_EQ(state_.replayCacheResult(), ReplayCacheResult::NotReplay);
@@ -3103,6 +3132,8 @@ TEST_F(ServerProtocolTest, TestClientHelloAcceptEarlyDataWithValidAppToken) {
         res.ticketIssueTime =
             std::chrono::system_clock::time_point(std::chrono::seconds(10));
         res.appToken = IOBuf::copyBuffer(appTokenStr);
+        res.handshakeTime =
+            std::chrono::system_clock::time_point(std::chrono::seconds(1));
         return std::make_pair(PskType::Resumption, std::move(res));
       }));
 
@@ -3117,6 +3148,9 @@ TEST_F(ServerProtocolTest, TestClientHelloAcceptEarlyDataWithValidAppToken) {
       SecretAvailable>(actions);
   processStateMutations(actions);
   EXPECT_EQ(state_.state(), StateEnum::AcceptingEarlyData);
+  EXPECT_EQ(
+      *state_.handshakeTime(),
+      std::chrono::system_clock::time_point(std::chrono::seconds(1)));
   EXPECT_EQ(state_.pskType(), PskType::Resumption);
   EXPECT_EQ(state_.earlyDataType(), EarlyDataType::Accepted);
   EXPECT_EQ(state_.replayCacheResult(), ReplayCacheResult::NotReplay);
@@ -3366,6 +3400,8 @@ TEST_F(ServerProtocolTest, TestClientHelloRejectEarlyDataTicketAgeOverflow) {
         res.ticketAgeAdd = 0xffffffff;
         res.ticketIssueTime =
             std::chrono::system_clock::time_point(std::chrono::seconds(10));
+        res.handshakeTime =
+            std::chrono::system_clock::time_point(std::chrono::seconds(1));
         return std::make_pair(PskType::Resumption, std::move(res));
       }));
 
@@ -3396,6 +3432,8 @@ TEST_F(ServerProtocolTest, TestClientHelloRejectEarlyDataNegativeExpectedAge) {
         res.ticketAgeAdd = 0;
         res.ticketIssueTime =
             std::chrono::system_clock::time_point(std::chrono::seconds(10));
+        res.handshakeTime =
+            std::chrono::system_clock::time_point(std::chrono::seconds(1));
         return std::make_pair(PskType::Resumption, std::move(res));
       }));
 
@@ -3439,6 +3477,8 @@ TEST_F(ServerProtocolTest, TestClientHelloRejectEarlyDataInvalidAppToken) {
         res.ticketIssueTime =
             std::chrono::system_clock::time_point(std::chrono::seconds(10));
         res.appToken = IOBuf::copyBuffer(appTokenStr);
+        res.handshakeTime =
+            std::chrono::system_clock::time_point(std::chrono::seconds(1));
         return std::make_pair(PskType::Resumption, std::move(res));
       }));
 
@@ -3593,6 +3633,8 @@ TEST_F(ServerProtocolTest, TestClientHelloRenegotiatePskCipher) {
         res.ticketAgeAdd = 0;
         res.ticketIssueTime =
             std::chrono::system_clock::time_point(std::chrono::seconds(10));
+        res.handshakeTime =
+            std::chrono::system_clock::time_point(std::chrono::seconds(1));
         return std::make_pair(PskType::Resumption, std::move(res));
       }));
 
@@ -3618,6 +3660,8 @@ TEST_F(ServerProtocolTest, TestClientHelloRenegotiatePskCipherIncompatible) {
         res.ticketAgeAdd = 0;
         res.ticketIssueTime =
             std::chrono::system_clock::time_point(std::chrono::seconds(10));
+        res.handshakeTime =
+            std::chrono::system_clock::time_point(std::chrono::seconds(1));
         return std::make_pair(PskType::Resumption, std::move(res));
       }));
 
@@ -3950,6 +3994,10 @@ TEST_F(ServerProtocolTest, TestFullHandshakeFinished) {
       state_.readRecordLayer()->getEncryptionLevel(),
       EncryptionLevel::AppTraffic);
   EXPECT_EQ(state_.writeRecordLayer().get(), mockWrite_);
+  EXPECT_TRUE(state_.handshakeTime().hasValue());
+  EXPECT_EQ(
+      *state_.handshakeTime(),
+      std::chrono::system_clock::time_point(std::chrono::seconds(10)));
   ASSERT_THAT(state_.resumptionMasterSecret(), ElementsAre('r', 's', 'e', 'c'));
 }
 

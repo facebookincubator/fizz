@@ -1090,6 +1090,16 @@ EventHandler<ServerTypes, StateEnum::ExpectingClientHello, Event::ClientHello>::
 
         auto legacySessionId = chlo.legacy_session_id->clone();
 
+        // If we successfully resumed, set the handshake time to the ticket's
+        // handshake time to preserve it across ticket updates. If not, set it
+        // to now.
+        std::chrono::system_clock::time_point handshakeTime;
+        if (resState) {
+          handshakeTime = resState->handshakeTime;
+        } else {
+          handshakeTime = state.context()->getClock().getCurrentTime();
+        }
+
         std::unique_ptr<KeyScheduler> scheduler;
         std::unique_ptr<HandshakeContext> handshakeContext;
         std::tie(scheduler, handshakeContext) = setupSchedulerAndContext(
@@ -1413,8 +1423,8 @@ EventHandler<ServerTypes, StateEnum::ExpectingClientHello, Event::ClientHello>::
                         alpn = std::move(alpn),
                         clockSkew,
                         legacySessionId = std::move(legacySessionId),
-                        serverCertCompAlgo =
-                            certCompressionAlgo](Optional<Buf> sig) mutable {
+                        serverCertCompAlgo = certCompressionAlgo,
+                        handshakeTime](Optional<Buf> sig) mutable {
               Optional<Buf> encodedCertificateVerify;
               if (sig) {
                 encodedCertificateVerify = getCertificateVerify(
@@ -1531,7 +1541,9 @@ EventHandler<ServerTypes, StateEnum::ExpectingClientHello, Event::ClientHello>::
                                 earlyDataTypeSave,
                                 replayCacheResult,
                                 clockSkew,
-                                serverCertCompAlgo](State& newState) mutable {
+                                serverCertCompAlgo,
+                                handshakeTime = std::move(handshakeTime)](
+                                   State& newState) mutable {
                 newState.writeRecordLayer() =
                     std::move(appTrafficWriteRecordLayer);
                 newState.handshakeContext() = std::move(handshakeContext);
@@ -1553,6 +1565,7 @@ EventHandler<ServerTypes, StateEnum::ExpectingClientHello, Event::ClientHello>::
                 newState.alpn() = std::move(alpn);
                 newState.clientClockSkew() = clockSkew;
                 newState.serverCertCompAlgo() = serverCertCompAlgo;
+                newState.handshakeTime() = std::move(handshakeTime);
               };
 
               if (earlyDataType == EarlyDataType::Accepted) {
@@ -1730,6 +1743,7 @@ static Future<Optional<WriteToSocket>> generateTicket(
   resState.ticketAgeAdd = state.context()->getFactory()->makeTicketAgeAdd();
   resState.ticketIssueTime = state.context()->getClock().getCurrentTime();
   resState.appToken = std::move(appToken);
+  resState.handshakeTime = *state.handshakeTime();
 
   auto ticketFuture = ticketCipher->encrypt(std::move(resState));
   return ticketFuture.via(state.executor())

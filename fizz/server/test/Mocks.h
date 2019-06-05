@@ -124,6 +124,7 @@ class MockTicketCipher : public TicketCipher {
           res.alpn = "h2";
           res.ticketAgeAdd = 0;
           res.ticketIssueTime = ticketIssued;
+          res.handshakeTime = ticketIssued;
           return std::make_pair(PskType::Resumption, std::move(res));
         }));
     ON_CALL(*this, _encrypt(_)).WillByDefault(InvokeWithoutArgs([]() {
