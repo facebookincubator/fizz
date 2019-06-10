@@ -30,6 +30,7 @@ CachedPsk getTestPsk(
   psk.ticketAgeAdd = 0x11111111;
   psk.ticketIssueTime = issueTime;
   psk.ticketExpirationTime = issueTime + std::chrono::seconds(10);
+  psk.ticketHandshakeTime = issueTime - std::chrono::seconds(10);
   psk.alpn = "h2";
   return psk;
 }
@@ -45,6 +46,7 @@ void pskEq(const CachedPsk& psk1, const CachedPsk& psk2) {
   EXPECT_EQ(psk1.ticketAgeAdd, psk2.ticketAgeAdd);
   EXPECT_EQ(psk1.ticketIssueTime, psk2.ticketIssueTime);
   EXPECT_EQ(psk1.ticketExpirationTime, psk2.ticketExpirationTime);
+  EXPECT_EQ(psk1.ticketHandshakeTime, psk2.ticketHandshakeTime);
   EXPECT_EQ(psk1.alpn, psk2.alpn);
 }
 } // namespace test

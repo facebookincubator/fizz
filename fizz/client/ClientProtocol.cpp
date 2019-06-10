@@ -357,8 +357,13 @@ static folly::Optional<CachedPsk> validatePsk(
     return folly::none;
   }
 
-  if (std::chrono::system_clock::now() > psk->ticketExpirationTime) {
+  auto now = context.getClock()->getCurrentTime();
+  if (now > psk->ticketExpirationTime) {
     VLOG(1) << "Ignoring expired cached psk";
+    return folly::none;
+  }
+  if (now - psk->ticketHandshakeTime > context.getMaxPskHandshakeLife()) {
+    VLOG(1) << "Ignoring psk with stale handshake";
     return folly::none;
   }
 
@@ -375,6 +380,11 @@ static folly::Optional<CachedPsk> validatePsk(
           context.getSupportedCiphers().end(),
           psk->cipher) == context.getSupportedCiphers().end()) {
     VLOG(1) << "Ignoring cached psk with cipher " << toString(psk->cipher);
+    return folly::none;
+  }
+
+  if (psk->ticketHandshakeTime > now) {
+    VLOG(1) << "Ignoring psk from future";
     return folly::none;
   }
 
@@ -487,13 +497,15 @@ static ClientHello getClientHello(
   return chlo;
 }
 
-static ClientPresharedKey getPskExtension(const CachedPsk& psk) {
+static ClientPresharedKey getPskExtension(
+    const CachedPsk& psk,
+    const Clock& clock) {
   ClientPresharedKey pskExt;
   PskIdentity ident;
   ident.psk_identity = folly::IOBuf::copyBuffer(psk.psk);
   ident.obfuscated_ticket_age =
       std::chrono::duration_cast<std::chrono::milliseconds>(
-          std::chrono::system_clock::now() - psk.ticketIssueTime)
+          clock.getCurrentTime() - psk.ticketIssueTime)
           .count();
   ident.obfuscated_ticket_age += psk.ticketAgeAdd;
   pskExt.identities.push_back(std::move(ident));
@@ -516,7 +528,8 @@ static Buf encodeAndAddBinders(
     ClientHello chlo,
     const CachedPsk& psk,
     KeyScheduler& scheduler,
-    HandshakeContext& handshakeContext) {
+    HandshakeContext& handshakeContext,
+    const Clock& clock) {
   scheduler.deriveEarlySecret(folly::range(psk.secret));
 
   auto binderKey = scheduler.getSecret(
@@ -524,7 +537,7 @@ static Buf encodeAndAddBinders(
                                     : EarlySecrets::ResumptionPskBinder,
       handshakeContext.getBlankContext());
 
-  auto pskExt = getPskExtension(psk);
+  auto pskExt = getPskExtension(psk, clock);
   chlo.extensions.push_back(encodeExtension(pskExt));
 
   size_t binderLength = getBinderLength(chlo);
@@ -661,7 +674,11 @@ EventHandler<ClientTypes, StateEnum::Uninitialized, Event::Connect>::handle(
         context->getFactory()->makeHandshakeContext(psk->cipher);
 
     encodedClientHello = encodeAndAddBinders(
-        std::move(chlo), *psk, *keyScheduler, *handshakeContext);
+        std::move(chlo),
+        *psk,
+        *keyScheduler,
+        *handshakeContext,
+        *context->getClock());
 
     if (earlyDataParams) {
       auto earlyWriteSecret = keyScheduler->getSecret(
@@ -1032,6 +1049,13 @@ EventHandler<ClientTypes, StateEnum::ExpectingServerHello, Event::ServerHello>::
     authType = ClientAuthType::NotRequested;
   }
 
+  std::chrono::system_clock::time_point handshakeTime;
+  if (negotiatedPsk.mode) {
+    handshakeTime = state.attemptedPsk()->ticketHandshakeTime;
+  } else {
+    handshakeTime = state.context()->getClock()->getCurrentTime();
+  }
+
   return actions(
       [keyScheduler = std::move(scheduler),
        readRecordLayer = std::move(handshakeReadRecordLayer),
@@ -1047,7 +1071,8 @@ EventHandler<ClientTypes, StateEnum::ExpectingServerHello, Event::ServerHello>::
        pskMode = negotiatedPsk.mode,
        serverCert = std::move(negotiatedPsk.serverCert),
        clientCert = std::move(negotiatedPsk.clientCert),
-       authType = std::move(authType)](State& newState) mutable {
+       authType = std::move(authType),
+       handshakeTime = std::move(handshakeTime)](State& newState) mutable {
         newState.keyScheduler() = std::move(keyScheduler);
         newState.readRecordLayer() = std::move(readRecordLayer);
         newState.writeRecordLayer() = std::move(writeRecordLayer);
@@ -1065,6 +1090,7 @@ EventHandler<ClientTypes, StateEnum::ExpectingServerHello, Event::ServerHello>::
         newState.serverCert() = std::move(serverCert);
         newState.clientCert() = std::move(clientCert);
         newState.clientAuthRequested() = std::move(authType);
+        newState.handshakeTime() = std::move(handshakeTime);
       },
       SecretAvailable(std::move(handshakeReadSecret)),
       SecretAvailable(std::move(handshakeWriteSecret)),
@@ -1195,7 +1221,11 @@ Actions EventHandler<
     auto keyScheduler = state.context()->getFactory()->makeKeyScheduler(cipher);
 
     encodedClientHello = encodeAndAddBinders(
-        std::move(chlo), *attemptedPsk, *keyScheduler, *handshakeContext);
+        std::move(chlo),
+        *attemptedPsk,
+        *keyScheduler,
+        *handshakeContext,
+        *state.context()->getClock());
   } else {
     encodedClientHello = encodeHandshake(std::move(chlo));
     handshakeContext->appendToTranscript(encodedClientHello);
@@ -1765,9 +1795,12 @@ EventHandler<ClientTypes, StateEnum::Established, Event::NewSessionTicket>::
   newCachedPsk.psk.clientCert = state.clientCert();
   newCachedPsk.psk.alpn = state.alpn();
   newCachedPsk.psk.ticketAgeAdd = nst.ticket_age_add;
-  newCachedPsk.psk.ticketIssueTime = std::chrono::system_clock::now();
-  newCachedPsk.psk.ticketExpirationTime = std::chrono::system_clock::now() +
+  newCachedPsk.psk.ticketIssueTime =
+      state.context()->getClock()->getCurrentTime();
+  newCachedPsk.psk.ticketExpirationTime =
+      state.context()->getClock()->getCurrentTime() +
       std::chrono::seconds(nst.ticket_lifetime);
+  newCachedPsk.psk.ticketHandshakeTime = *state.handshakeTime();
   newCachedPsk.psk.maxEarlyDataSize = getMaxEarlyDataSize(nst);
 
   return actions(std::move(newCachedPsk));

@@ -13,6 +13,7 @@
 #include <fizz/protocol/Certificate.h>
 #include <fizz/protocol/Factory.h>
 #include <fizz/protocol/OpenSSLFactory.h>
+#include <fizz/protocol/clock/SystemClock.h>
 #include <fizz/record/Types.h>
 
 namespace fizz {
@@ -20,9 +21,11 @@ namespace client {
 
 class FizzClientContext {
  public:
-  FizzClientContext() : factory_(std::make_shared<OpenSSLFactory>()) {}
+  FizzClientContext()
+      : factory_(std::make_shared<OpenSSLFactory>()),
+        clock_(std::make_shared<SystemClock>()) {}
   FizzClientContext(std::shared_ptr<Factory> factory)
-      : factory_(std::move(factory)) {}
+      : factory_(std::move(factory)), clock_(std::make_shared<SystemClock>()) {}
   virtual ~FizzClientContext() = default;
 
   /**
@@ -219,6 +222,26 @@ class FizzClientContext {
     return omitEarlyRecordLayer_;
   }
 
+  /**
+   * Controls the maximum age of a ticket's original handshake (i.e. the full
+   * handshake that originally authenticated the initial connection) before
+   * it's invalidated and removed from the cache.
+   */
+  void setMaxPskHandshakeLife(std::chrono::seconds life) {
+    maxPskHandshakeLife_ = life;
+  }
+  std::chrono::seconds getMaxPskHandshakeLife() const {
+    return maxPskHandshakeLife_;
+  }
+
+  void setClock(std::shared_ptr<Clock> clock) {
+    clock_ = clock;
+  }
+
+  std::shared_ptr<Clock> getClock() const {
+    return clock_;
+  }
+
  private:
   std::shared_ptr<Factory> factory_;
 
@@ -249,6 +272,9 @@ class FizzClientContext {
   std::shared_ptr<PskCache> pskCache_;
   std::shared_ptr<const SelfCert> clientCert_;
   std::shared_ptr<CertDecompressionManager> certDecompressionManager_;
+  std::shared_ptr<Clock> clock_;
+
+  std::chrono::seconds maxPskHandshakeLife_{std::chrono::hours(168)};
 };
 } // namespace client
 } // namespace fizz

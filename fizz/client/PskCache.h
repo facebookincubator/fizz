@@ -34,6 +34,7 @@ struct CachedPsk {
   uint32_t ticketAgeAdd;
   std::chrono::system_clock::time_point ticketIssueTime;
   std::chrono::system_clock::time_point ticketExpirationTime;
+  std::chrono::system_clock::time_point ticketHandshakeTime;
 };
 
 class PskCache {

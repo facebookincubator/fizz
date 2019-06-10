@@ -118,6 +118,10 @@ class AsyncFizzClientTest : public Test {
             if (acceptEarlyData || pskResumed) {
               newState.pskMode() = PskKeyExchangeMode::psk_ke;
               newState.pskType() = PskType::Resumption;
+              newState.handshakeTime() =
+                  std::chrono::system_clock::now() - std::chrono::hours(1);
+            } else {
+              newState.handshakeTime() = std::chrono::system_clock::now();
             }
           };
           ReportHandshakeSuccess reportSuccess;

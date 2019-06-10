@@ -347,6 +347,16 @@ class State {
     return extensions_.get();
   }
 
+  /**
+   * Gets the time point corresponding to when the full handshake that
+   * authenticated this connection occurred (i.e. the original full handshake
+   * for resumed connections).
+   */
+  const folly::Optional<std::chrono::system_clock::time_point>& handshakeTime()
+      const {
+    return handshakeTime_;
+  }
+
   auto& state() {
     return state_;
   }
@@ -499,6 +509,10 @@ class State {
     return extensions_;
   }
 
+  auto& handshakeTime() {
+    return handshakeTime_;
+  }
+
  private:
   StateEnum state_{StateEnum::Uninitialized};
 
@@ -532,6 +546,7 @@ class State {
   folly::Optional<std::string> alpn_;
   folly::Optional<std::string> sni_;
   folly::Optional<CertificateCompressionAlgorithm> serverCertCompAlgo_;
+  folly::Optional<std::chrono::system_clock::time_point> handshakeTime_;
 
   folly::Optional<EarlyDataParams> earlyDataParams_;
 

@@ -12,6 +12,7 @@
 #include <fizz/client/ClientProtocol.h>
 #include <fizz/client/test/Mocks.h>
 #include <fizz/client/test/Utilities.h>
+#include <fizz/protocol/clock/test/Mocks.h>
 #include <fizz/protocol/test/Matchers.h>
 #include <fizz/protocol/test/ProtocolTest.h>
 #include <fizz/protocol/test/TestMessages.h>
@@ -43,6 +44,11 @@ class ClientProtocolTest : public ProtocolTest<ClientTypes, Actions> {
     context_->setSendEarlyData(true);
     mockLeaf_ = std::make_shared<MockPeerCert>();
     mockClientCert_ = std::make_shared<MockSelfCert>();
+    mockClock_ = std::make_shared<MockClock>();
+    context_->setClock(mockClock_);
+    ON_CALL(*mockClock_, getCurrentTime())
+        .WillByDefault(Return(
+            std::chrono::system_clock::time_point(std::chrono::minutes(5))));
   }
 
  protected:
@@ -87,7 +93,8 @@ class ClientProtocolTest : public ProtocolTest<ClientTypes, Actions> {
   }
 
   CachedPsk getCachedPsk() {
-    CachedPsk psk = getTestPsk("PSK", std::chrono::system_clock::now());
+    CachedPsk psk = getTestPsk(
+        "PSK", std::chrono::system_clock::time_point(std::chrono::minutes(5)));
     psk.serverCert = mockLeaf_;
     psk.clientCert = mockClientCert_;
     return psk;
@@ -165,6 +172,8 @@ class ClientProtocolTest : public ProtocolTest<ClientTypes, Actions> {
          ExtensionType::application_layer_protocol_negotiation,
          ExtensionType::pre_shared_key,
          ExtensionType::early_data});
+    state_.handshakeTime() =
+        std::chrono::system_clock::time_point(std::chrono::minutes(4));
   }
 
   void setupExpectingEncryptedExtensionsEarlySent() {
@@ -172,8 +181,12 @@ class ClientProtocolTest : public ProtocolTest<ClientTypes, Actions> {
     setMockEarlyRecord();
     state_.attemptedPsk() = getCachedPsk();
     state_.pskType() = PskType::Resumption;
+    state_.handshakeTime() =
+        std::chrono::system_clock::now() - std::chrono::hours(1);
     state_.earlyDataType() = EarlyDataType::Attempted;
     state_.earlyDataParams() = getEarlyDataParams();
+    state_.handshakeTime() =
+        std::chrono::system_clock::time_point(std::chrono::minutes(4));
   }
 
   void setupExpectingCertificate() {
@@ -181,6 +194,8 @@ class ClientProtocolTest : public ProtocolTest<ClientTypes, Actions> {
     setMockContextAndScheduler();
     state_.context() = context_;
     state_.state() = StateEnum::ExpectingCertificate;
+    state_.handshakeTime() =
+        std::chrono::system_clock::time_point(std::chrono::minutes(4));
   }
 
   void setupExpectingCertificateRequest() {
@@ -189,6 +204,8 @@ class ClientProtocolTest : public ProtocolTest<ClientTypes, Actions> {
     context_->setClientCertificate(mockClientCert_);
     state_.context() = context_;
     state_.state() = StateEnum::ExpectingCertificate;
+    state_.handshakeTime() =
+        std::chrono::system_clock::time_point(std::chrono::minutes(4));
   }
 
   void setupExpectingCertificateVerify() {
@@ -203,6 +220,8 @@ class ClientProtocolTest : public ProtocolTest<ClientTypes, Actions> {
     state_.unverifiedCertChain() = std::move(certs);
     state_.state() = StateEnum::ExpectingCertificateVerify;
     state_.clientAuthRequested() = ClientAuthType::NotRequested;
+    state_.handshakeTime() =
+        std::chrono::system_clock::time_point(std::chrono::minutes(4));
   }
 
   void setupExpectingFinished() {
@@ -217,6 +236,8 @@ class ClientProtocolTest : public ProtocolTest<ClientTypes, Actions> {
     state_.state() = StateEnum::ExpectingFinished;
     state_.clientAuthRequested() = ClientAuthType::NotRequested;
     state_.earlyDataType() = EarlyDataType::NotAttempted;
+    state_.handshakeTime() =
+        std::chrono::system_clock::time_point(std::chrono::minutes(4));
   }
 
   void setupAcceptingData() {
@@ -230,6 +251,8 @@ class ClientProtocolTest : public ProtocolTest<ClientTypes, Actions> {
     state_.resumptionSecret() = IOBuf::copyBuffer("resumptionsecret");
     state_.sni() = "www.hostname.com";
     state_.serverCert() = mockLeaf_;
+    state_.handshakeTime() =
+        std::chrono::system_clock::time_point(std::chrono::minutes(4));
   }
 
   void doFinishedFlow(ClientAuthType authType);
@@ -248,6 +271,7 @@ class ClientProtocolTest : public ProtocolTest<ClientTypes, Actions> {
   std::shared_ptr<MockSelfCert> mockClientCert_;
   std::shared_ptr<MockCertificateVerifier> verifier_;
   std::shared_ptr<MockPskCache> pskCache_;
+  std::shared_ptr<MockClock> mockClock_;
 };
 
 TEST_F(ClientProtocolTest, TestInvalidTransitionNoAlert) {
@@ -598,6 +622,37 @@ TEST_F(ClientProtocolTest, TestConnectPskEarlyFlow) {
 TEST_F(ClientProtocolTest, TestConnectNoHostNoPsk) {
   Connect connect;
   connect.context = context_;
+  auto actions = detail::processEvent(state_, std::move(connect));
+  expectActions<MutateState, WriteToSocket>(actions);
+  processStateMutations(actions);
+  EXPECT_EQ(state_.state(), StateEnum::ExpectingServerHello);
+  EXPECT_FALSE(state_.attemptedPsk().hasValue());
+}
+
+TEST_F(ClientProtocolTest, TestConnectPskStaleHandshake) {
+  Connect connect;
+  connect.context = context_;
+  connect.cachedPsk = getCachedPsk();
+  std::string sni = "www.hostname.com";
+  connect.sni = sni;
+  context_->setMaxPskHandshakeLife(std::chrono::seconds(1));
+  auto actions = detail::processEvent(state_, std::move(connect));
+  expectActions<MutateState, WriteToSocket>(actions);
+  processStateMutations(actions);
+  EXPECT_EQ(state_.state(), StateEnum::ExpectingServerHello);
+  EXPECT_FALSE(state_.attemptedPsk().hasValue());
+}
+
+TEST_F(ClientProtocolTest, TestConnectPskFutureHandshake) {
+  Connect connect;
+  connect.context = context_;
+  connect.cachedPsk = getTestPsk(
+      "PSK", std::chrono::system_clock::time_point(std::chrono::hours(86400)));
+  connect.cachedPsk->serverCert = mockLeaf_;
+  connect.cachedPsk->clientCert = mockClientCert_;
+  std::string sni = "www.hostname.com";
+  connect.sni = sni;
+  context_->setMaxPskHandshakeLife(std::chrono::seconds(1));
   auto actions = detail::processEvent(state_, std::move(connect));
   expectActions<MutateState, WriteToSocket>(actions);
   processStateMutations(actions);
@@ -1009,6 +1064,9 @@ TEST_F(ClientProtocolTest, TestServerHelloFlow) {
   EXPECT_EQ(state_.keyExchangeType(), KeyExchangeType::OneRtt);
   EXPECT_EQ(state_.pskType(), PskType::NotAttempted);
   EXPECT_EQ(state_.serverCert(), nullptr);
+  EXPECT_EQ(
+      state_.handshakeTime(),
+      std::chrono::system_clock::time_point(std::chrono::minutes(5)));
 }
 
 TEST_F(ClientProtocolTest, TestServerHelloAfterHrrFlow) {
@@ -1093,6 +1151,9 @@ TEST_F(ClientProtocolTest, TestServerHelloAfterHrrFlow) {
   EXPECT_EQ(state_.keyExchangeType(), KeyExchangeType::HelloRetryRequest);
   EXPECT_EQ(state_.pskType(), PskType::NotAttempted);
   EXPECT_EQ(state_.serverCert(), nullptr);
+  EXPECT_EQ(
+      state_.handshakeTime(),
+      std::chrono::system_clock::time_point(std::chrono::minutes(5)));
 }
 
 TEST_F(ClientProtocolTest, TestServerHelloPskFlow) {
@@ -1189,6 +1250,10 @@ TEST_F(ClientProtocolTest, TestServerHelloPskFlow) {
   EXPECT_EQ(state_.pskType(), PskType::Resumption);
   EXPECT_EQ(state_.serverCert(), mockLeaf_);
   EXPECT_EQ(state_.clientCert(), mockClientCert_);
+  EXPECT_EQ(
+      state_.handshakeTime(),
+      std::chrono::system_clock::time_point(
+          std::chrono::minutes(5) - std::chrono::seconds(10)));
 }
 
 TEST_F(ClientProtocolTest, TestServerHelloPskNoDhFlow) {
@@ -1283,6 +1348,10 @@ TEST_F(ClientProtocolTest, TestServerHelloPskNoDhFlow) {
   EXPECT_EQ(state_.keyExchangeType(), KeyExchangeType::None);
   EXPECT_EQ(state_.pskType(), PskType::Resumption);
   EXPECT_EQ(state_.serverCert(), mockLeaf_);
+  EXPECT_EQ(
+      state_.handshakeTime(),
+      std::chrono::system_clock::time_point(
+          std::chrono::minutes(5) - std::chrono::seconds(10)));
 }
 
 TEST_F(ClientProtocolTest, TestServerHelloPskAfterHrrFlow) {
@@ -1368,6 +1437,10 @@ TEST_F(ClientProtocolTest, TestServerHelloPskAfterHrrFlow) {
   EXPECT_EQ(state_.keyExchangeType(), KeyExchangeType::HelloRetryRequest);
   EXPECT_EQ(state_.pskType(), PskType::Resumption);
   EXPECT_EQ(state_.serverCert(), mockLeaf_);
+  EXPECT_EQ(
+      state_.handshakeTime(),
+      std::chrono::system_clock::time_point(
+          std::chrono::minutes(5) - std::chrono::seconds(10)));
 }
 
 TEST_F(ClientProtocolTest, TestServerHello) {
@@ -1376,6 +1449,9 @@ TEST_F(ClientProtocolTest, TestServerHello) {
   expectActions<MutateState, SecretAvailable>(actions);
   processStateMutations(actions);
   EXPECT_EQ(state_.state(), StateEnum::ExpectingEncryptedExtensions);
+  EXPECT_EQ(
+      state_.handshakeTime(),
+      std::chrono::system_clock::time_point(std::chrono::minutes(5)));
 }
 
 TEST_F(ClientProtocolTest, TestServerHelloPsk) {
@@ -1386,6 +1462,10 @@ TEST_F(ClientProtocolTest, TestServerHelloPsk) {
   processStateMutations(actions);
   EXPECT_EQ(state_.state(), StateEnum::ExpectingEncryptedExtensions);
   EXPECT_EQ(state_.pskType(), PskType::Resumption);
+  EXPECT_EQ(
+      state_.handshakeTime(),
+      std::chrono::system_clock::time_point(
+          std::chrono::minutes(5) - std::chrono::seconds(10)));
 }
 
 TEST_F(ClientProtocolTest, TestServerHelloPskRejected) {
@@ -1396,6 +1476,9 @@ TEST_F(ClientProtocolTest, TestServerHelloPskRejected) {
   processStateMutations(actions);
   EXPECT_EQ(state_.state(), StateEnum::ExpectingEncryptedExtensions);
   EXPECT_EQ(state_.pskType(), PskType::Rejected);
+  EXPECT_EQ(
+      state_.handshakeTime(),
+      std::chrono::system_clock::time_point(std::chrono::minutes(5)));
 }
 
 TEST_F(ClientProtocolTest, TestServerHelloExtraData) {
@@ -1529,6 +1612,10 @@ TEST_F(ClientProtocolTest, TestServerHelloPskDifferentCompatibleCipher) {
   processStateMutations(actions);
   EXPECT_EQ(state_.state(), StateEnum::ExpectingEncryptedExtensions);
   EXPECT_EQ(state_.cipher(), CipherSuite::TLS_AES_128_GCM_SHA256);
+  EXPECT_EQ(
+      state_.handshakeTime(),
+      std::chrono::system_clock::time_point(
+          std::chrono::minutes(5) - std::chrono::seconds(10)));
 }
 
 TEST_F(ClientProtocolTest, TestServerHelloPskDheNotSupported) {
@@ -2687,6 +2774,9 @@ TEST_F(ClientProtocolTest, TestFinishedEarlyFlow) {
       EncryptionLevel::AppTraffic);
   EXPECT_EQ(state_.earlyWriteRecordLayer().get(), nullptr);
   EXPECT_EQ(state_.state(), StateEnum::Established);
+  EXPECT_EQ(
+      state_.handshakeTime(),
+      std::chrono::system_clock::time_point(std::chrono::minutes(4)));
   EXPECT_TRUE(
       IOBufEqualTo()(*state_.resumptionSecret(), IOBuf::copyBuffer("res")));
 }
@@ -2805,6 +2895,9 @@ TEST_F(ClientProtocolTest, TestFinishedEarlyFlowOmitEarlyRecord) {
       EncryptionLevel::AppTraffic);
   EXPECT_EQ(state_.earlyWriteRecordLayer().get(), nullptr);
   EXPECT_EQ(state_.state(), StateEnum::Established);
+  EXPECT_EQ(
+      state_.handshakeTime(),
+      std::chrono::system_clock::time_point(std::chrono::minutes(4)));
   EXPECT_TRUE(
       IOBufEqualTo()(*state_.resumptionSecret(), IOBuf::copyBuffer("res")));
 }
@@ -2979,6 +3072,9 @@ void ClientProtocolTest::doFinishedFlow(ClientAuthType authType) {
       state_.writeRecordLayer()->getEncryptionLevel(),
       EncryptionLevel::AppTraffic);
   EXPECT_EQ(state_.state(), StateEnum::Established);
+  EXPECT_EQ(
+      state_.handshakeTime(),
+      std::chrono::system_clock::time_point(std::chrono::minutes(4)));
   EXPECT_TRUE(
       IOBufEqualTo()(*state_.resumptionSecret(), IOBuf::copyBuffer("res")));
   EXPECT_FALSE(state_.sentCCS());
@@ -2994,6 +3090,9 @@ TEST_F(ClientProtocolTest, TestFinished) {
       SecretAvailable>(actions);
   processStateMutations(actions);
   EXPECT_EQ(state_.state(), StateEnum::Established);
+  EXPECT_EQ(
+      state_.handshakeTime(),
+      std::chrono::system_clock::time_point(std::chrono::minutes(4)));
 }
 
 TEST_F(ClientProtocolTest, TestFinishedExtraData) {
@@ -3027,6 +3126,9 @@ TEST_F(ClientProtocolTest, TestFinishedRejectedEarly) {
   EXPECT_EQ(reportSuccess.earlyDataAccepted, false);
   processStateMutations(actions);
   EXPECT_EQ(state_.state(), StateEnum::Established);
+  EXPECT_EQ(
+      state_.handshakeTime(),
+      std::chrono::system_clock::time_point(std::chrono::minutes(4)));
 }
 
 TEST_F(ClientProtocolTest, TestFinishedCompat) {
@@ -3046,6 +3148,9 @@ TEST_F(ClientProtocolTest, TestFinishedCompat) {
   EXPECT_EQ(write.contents[1].contentType, ContentType::handshake);
   processStateMutations(actions);
   EXPECT_EQ(state_.state(), StateEnum::Established);
+  EXPECT_EQ(
+      state_.handshakeTime(),
+      std::chrono::system_clock::time_point(std::chrono::minutes(4)));
   EXPECT_TRUE(state_.sentCCS());
 }
 
@@ -3072,6 +3177,12 @@ TEST_F(ClientProtocolTest, TestNewSessionTicket) {
   EXPECT_EQ(psk.clientCert, mockClientCert_);
   EXPECT_EQ(psk.maxEarlyDataSize, 0);
   EXPECT_EQ(psk.ticketAgeAdd, 0x44444444);
+  EXPECT_EQ(
+      psk.ticketIssueTime,
+      std::chrono::system_clock::time_point(std::chrono::minutes(5)));
+  EXPECT_EQ(
+      psk.ticketHandshakeTime,
+      std::chrono::system_clock::time_point(std::chrono::minutes(4)));
 }
 
 TEST_F(ClientProtocolTest, TestNewSessionTicketNonce) {
@@ -3115,6 +3226,12 @@ TEST_F(ClientProtocolTest, TestNewSessionTicketEarlyData) {
   EXPECT_EQ(psk.serverCert, mockLeaf_);
   EXPECT_EQ(psk.maxEarlyDataSize, 2000);
   EXPECT_EQ(psk.ticketAgeAdd, 0x44444444);
+  EXPECT_EQ(
+      psk.ticketIssueTime,
+      std::chrono::system_clock::time_point(std::chrono::minutes(5)));
+  EXPECT_EQ(
+      psk.ticketHandshakeTime,
+      std::chrono::system_clock::time_point(std::chrono::minutes(4)));
 }
 
 TEST_F(ClientProtocolTest, TestAppData) {
@@ -3239,6 +3356,9 @@ TEST_F(ClientProtocolTest, TestKeyUpdateRequestFlow) {
       state_.writeRecordLayer()->getEncryptionLevel(),
       EncryptionLevel::AppTraffic);
   EXPECT_EQ(state_.state(), StateEnum::Established);
+  EXPECT_EQ(
+      state_.handshakeTime(),
+      std::chrono::system_clock::time_point(std::chrono::minutes(4)));
 }
 
 TEST_F(ClientProtocolTest, TestInvalidEarlyWrite) {
