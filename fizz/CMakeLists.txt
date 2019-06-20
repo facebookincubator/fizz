@@ -271,6 +271,7 @@ ELSE(CMAKE_CROSSCOMPILING)
    option(BUILD_TESTS "BUILD_TESTS" ON)
 ENDIF(CMAKE_CROSSCOMPILING)
 
+OPTION(FIZZ_TEST_INSTALL_PREFIX ${CMAKE_INSTALL_PREFIX})
 if(BUILD_TESTS)
   enable_testing()
 
@@ -324,6 +325,24 @@ if(BUILD_TESTS)
     PUBLIC
       fizz
   )
+
+  # export fizz headers and targets for unit tests utils
+  # since other projects such as mvfst and proxygen use them
+  install(
+    TARGETS fizz_test_support
+    EXPORT fizz-exports
+    ARCHIVE DESTINATION ${FIZZ_TEST_INSTALL_PREFIX}/lib
+    LIBRARY DESTINATION ${FIZZ_TEST_INSTALL_PREFIX}/lib
+  )
+
+  foreach(dir ${FIZZ_TEST_HEADER_DIRS})
+    get_filename_component(PARENT_DIR "/${dir}" DIRECTORY)
+    install(
+      DIRECTORY ${dir}
+      DESTINATION "${FIZZ_TEST_INSTALL_PREFIX}/include/fizz${PARENT_DIR}"
+      FILES_MATCHING PATTERN "*.h"
+    )
+  endforeach()
 
   macro(add_gtest test_source test_name)
     add_executable(${test_name} ${test_source} test/CMakeTestMain.cpp)
