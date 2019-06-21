@@ -106,7 +106,7 @@ folly::Optional<TokenBindingParameters> getExtension(
   folly::io::Cursor cursor(it->extension_data.get());
   detail::read(params.version, cursor);
   detail::readVector<uint8_t>(params.key_parameters_list, cursor);
-  return std::move(params);
+  return params;
 }
 
 namespace extensions {
