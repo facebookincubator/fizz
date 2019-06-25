@@ -39,7 +39,8 @@ if (NOT folly_FOUND)
   find_package(Folly MODULE REQUIRED)
 endif()
 
-find_package(Boost REQUIRED COMPONENTS system thread filesystem regex context)
+find_package(Boost REQUIRED COMPONENTS system thread filesystem regex context
+                                       date_time program_options)
 find_package(OpenSSL REQUIRED)
 find_package(Glog REQUIRED)
 find_package(DoubleConversion REQUIRED)
