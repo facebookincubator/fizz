@@ -7,6 +7,7 @@
  */
 
 #include <fizz/protocol/Certificate.h>
+#include <openssl/bio.h>
 
 namespace {
 int getCurveName(EVP_PKEY* key) {
@@ -133,7 +134,10 @@ std::unique_ptr<SelfCert> selfCertFromDataInternal(
     throw std::runtime_error("no certificates read");
   }
 
-  folly::ssl::BioUniquePtr b(BIO_new_mem_buf(keyData.data(), keyData.size()));
+  folly::ssl::BioUniquePtr b(BIO_new_mem_buf(
+      const_cast<void*>( // needed by openssl 1.0.2d at least
+          reinterpret_cast<const void*>(keyData.data())),
+      keyData.size()));
 
   if (!b) {
     throw std::runtime_error("failed to create BIO");

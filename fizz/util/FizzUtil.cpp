@@ -14,6 +14,8 @@
 #include <folly/portability/OpenSSL.h>
 #include <folly/ssl/Init.h>
 
+#include <openssl/bio.h>
+
 namespace fizz {
 
 static int passwordCallback(char* password, int size, int, void* data) {
@@ -73,7 +75,10 @@ folly::ssl::EvpPkeyUniquePtr FizzUtil::readPrivateKey(
 folly::ssl::EvpPkeyUniquePtr FizzUtil::decryptPrivateKey(
     const std::string& data,
     folly::PasswordInFile* pf) {
-  folly::ssl::BioUniquePtr keyBio(BIO_new_mem_buf(data.data(), data.size()));
+  folly::ssl::BioUniquePtr keyBio(BIO_new_mem_buf(
+      const_cast<void*>( // needed by openssl 1.0.2d
+          reinterpret_cast<const void*>(data.data())),
+      data.size()));
   if (!keyBio) {
     throw std::runtime_error("couldn't create bio");
   }
