@@ -18,6 +18,7 @@
 #include <fizz/record/test/Mocks.h>
 #include <fizz/server/ServerProtocol.h>
 #include <fizz/server/test/Mocks.h>
+#include <fizz/util/Workarounds.h>
 #include <folly/executors/ManualExecutor.h>
 
 using namespace fizz::test;
@@ -73,6 +74,7 @@ class ServerProtocolTest : public ProtocolTest<ServerTypes, Actions> {
       ;
     return folly::variant_match(
         asyncActions,
+        ::fizz::detail::result_type<Actions>(),
         [immediate](folly::Future<Actions>& futureActions) {
           if (immediate) {
             EXPECT_TRUE(futureActions.hasValue());

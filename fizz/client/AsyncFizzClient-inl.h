@@ -6,6 +6,8 @@
  *  LICENSE file in the root directory of this source tree.
  */
 
+#include <fizz/util/Workarounds.h>
+
 namespace fizz {
 namespace client {
 
@@ -350,6 +352,7 @@ void AsyncFizzClientT<SM>::deliverHandshakeError(folly::exception_wrapper ex) {
     callback_ = folly::none;
     folly::variant_match(
         cb,
+        ::fizz::detail::result_type<void>(),
         [this, &ex](HandshakeCallback* callback) {
           callback->fizzHandshakeError(this, std::move(ex));
         },
@@ -397,6 +400,7 @@ void AsyncFizzClientT<SM>::ActionMoveVisitor::operator()(
     client_.callback_ = folly::none;
     folly::variant_match(
         cb,
+        ::fizz::detail::result_type<void>(),
         [this](HandshakeCallback* callback) {
           callback->fizzHandshakeSuccess(&client_);
         },
@@ -462,6 +466,7 @@ void AsyncFizzClientT<SM>::ActionMoveVisitor::operator()(
     client_.callback_ = folly::none;
     folly::variant_match(
         cb,
+        ::fizz::detail::result_type<void>(),
         [this](HandshakeCallback* callback) {
           callback->fizzHandshakeSuccess(&client_);
         },

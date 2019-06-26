@@ -7,9 +7,9 @@
  */
 
 #include <fizz/protocol/Exporter.h>
+#include <fizz/util/Workarounds.h>
 
 namespace fizz {
-
 template <typename Derived, typename ActionMoveVisitor, typename StateMachine>
 void FizzBase<Derived, ActionMoveVisitor, StateMachine>::writeNewSessionTicket(
     WriteNewSessionTicket w) {
@@ -64,6 +64,7 @@ void FizzBase<Derived, ActionMoveVisitor, StateMachine>::moveToErrorState(
     pendingEvents_.pop_front();
     folly::variant_match(
         event,
+        detail::result_type<void>(),
         [&ex](AppWrite& write) {
           if (write.callback) {
             write.callback->writeErr(0, ex);
@@ -146,6 +147,7 @@ void FizzBase<Derived, ActionMoveVisitor, StateMachine>::
       pendingEvents_.pop_front();
       folly::variant_match(
           event,
+          detail::result_type<void>(),
           [&actions, this](WriteNewSessionTicket& write) {
             actions =
                 machine_.processWriteNewSessionTicket(state_, std::move(write));

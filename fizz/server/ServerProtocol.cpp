@@ -17,6 +17,7 @@
 #include <fizz/server/AsyncSelfCert.h>
 #include <fizz/server/Negotiator.h>
 #include <fizz/server/ReplayCache.h>
+#include <fizz/util/Workarounds.h>
 #include <folly/Overload.h>
 #include <algorithm>
 
@@ -214,6 +215,7 @@ AsyncActions processEvent(const State& state, Param param) {
 
     return folly::variant_match(
         actions,
+        ::fizz::detail::result_type<AsyncActions>(),
         [&state](folly::Future<Actions>& futureActions) -> AsyncActions {
           return std::move(futureActions)
               .thenError([&state](folly::exception_wrapper ew) {

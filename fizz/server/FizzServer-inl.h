@@ -64,6 +64,7 @@ template <typename ActionMoveVisitor, typename SM>
 void FizzServer<ActionMoveVisitor, SM>::startActions(AsyncActions actions) {
   folly::variant_match(
       actions,
+      ::fizz::detail::result_type<void>(),
       [this](folly::Future<Actions>& futureActions) {
         std::move(futureActions)
             .then(
