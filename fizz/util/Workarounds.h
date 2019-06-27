@@ -13,7 +13,7 @@ decltype(auto) result_type() {
 
    public:
     using result_type = R;
-    R operator()(Uninstantiable);
+    result_type operator()(Uninstantiable);
   };
 
   return Inner{};
