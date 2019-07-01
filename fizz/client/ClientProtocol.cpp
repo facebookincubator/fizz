@@ -597,7 +597,7 @@ static Optional<EarlyDataParams> getEarlyDataParams(
   params.serverCert = psk->serverCert;
   params.clientCert = psk->clientCert;
   params.alpn = psk->alpn;
-  return std::move(params);
+  return params;
 }
 
 Actions

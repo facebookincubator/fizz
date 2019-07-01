@@ -317,7 +317,7 @@ folly::Optional<std::unique_ptr<folly::IOBuf>> evpDecrypt(
   if (!decrypted) {
     return folly::none;
   }
-  return std::move(output);
+  return output;
 }
 } // namespace detail
 } // namespace fizz

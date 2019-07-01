@@ -88,7 +88,7 @@ folly::Optional<TLSMessage> PlaintextReadRecordLayer::read(
       }
     }
 
-    return std::move(msg);
+    return msg;
   }
 }
 
