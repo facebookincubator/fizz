@@ -12,6 +12,8 @@
 #include <folly/io/IOBuf.h>
 #include <folly/ssl/OpenSSLPtrTypes.h>
 
+// @lint-ignore-every PRIVATEKEY
+
 namespace fizz {
 namespace test {
 
