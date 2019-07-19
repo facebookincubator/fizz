@@ -209,7 +209,7 @@ class MockReplayCache : public ReplayCache {
 
 class MockAppTokenValidator : public AppTokenValidator {
  public:
-  MOCK_CONST_METHOD1(validate, bool(const ResumptionState&));
+  MOCK_METHOD1(validate, bool(const ResumptionState&));
 };
 } // namespace test
 } // namespace server

@@ -59,7 +59,7 @@ class AppTokenValidator {
  public:
   virtual ~AppTokenValidator() = default;
 
-  virtual bool validate(const ResumptionState&) const = 0;
+  virtual bool validate(const ResumptionState&) = 0;
 };
 
 class State {
@@ -182,7 +182,7 @@ class State {
    * Callback to application that validates appToken from ResumptionState.
    * If this function returns false, early data should be rejected.
    */
-  const AppTokenValidator* appTokenValidator() const {
+  AppTokenValidator* appTokenValidator() const {
     return appTokenValidator_.get();
   }
 
