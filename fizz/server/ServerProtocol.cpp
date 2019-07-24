@@ -830,7 +830,7 @@ static EarlyDataType negotiateEarlyDataType(
     ReplayCacheResult replayCacheResult,
     Optional<std::chrono::milliseconds> clockSkew,
     ClockSkewTolerance clockSkewTolerance,
-    AppTokenValidator* appTokenValidator) {
+    const AppTokenValidator* appTokenValidator) {
   if (!getExtension<ClientEarlyData>(chlo.extensions)) {
     return EarlyDataType::NotAttempted;
   }
