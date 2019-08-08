@@ -147,7 +147,7 @@ folly::Optional<TLSMessage> EncryptedReadRecordLayer::read(
           static_cast<ContentTypeType>(msg.type)));
   }
 
-  if (!msg.fragment) {
+  if (!msg.fragment || msg.fragment->empty()) {
     if (msg.type == ContentType::application_data) {
       msg.fragment = folly::IOBuf::create(0);
     } else {
