@@ -113,7 +113,7 @@ folly::Optional<TLSMessage> EncryptedReadRecordLayer::read(
     return folly::none;
   }
 
-  TLSMessage msg;
+  TLSMessage msg{};
   // Iterate over the buffers while trying to find
   // the first non-zero octet. This is much faster than
   // first iterating and then trimming.
