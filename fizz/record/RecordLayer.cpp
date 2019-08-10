@@ -65,6 +65,9 @@ folly::Optional<Param> ReadRecordLayer::readEvent(
           handshakeMessage =
               folly::IOBuf::create(message->fragment->length() + kExtraAlloc);
         } else if (handshakeMessage->tailroom() < message->fragment->length()) {
+          // There might be remaining bytes from the previous handshake that are
+          // left over in the unparsedHandshakeData_ buffer.
+          handshakeMessage->unshare();
           handshakeMessage->reserve(
               0, message->fragment->length() + kExtraAlloc);
         }

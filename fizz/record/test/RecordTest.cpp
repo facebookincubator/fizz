@@ -154,6 +154,33 @@ TEST_F(RecordTest, TestHandshakeSpliced) {
   EXPECT_ANY_THROW(read_.readEvent(queue_));
 }
 
+TEST_F(RecordTest, TestMultipleHandshakeMessages) {
+  EXPECT_CALL(read_, read(_))
+      .WillOnce(InvokeWithoutArgs([]() {
+        return TLSMessage{ContentType::handshake,
+                          getBuf("14000002aabb14000002")};
+      }))
+      .WillOnce(InvokeWithoutArgs([]() {
+        // Really large message to force the record layer to
+        // allocate more space as well the tail end of the previous
+        // finished message
+        auto message = getBuf("ccdd");
+        for (size_t i = 0; i < 1000; ++i) {
+          message->prependChain(getBuf("14000002aabb"));
+        }
+        message->coalesce();
+        return TLSMessage{ContentType::handshake, std::move(message)};
+      }));
+  auto param = read_.readEvent(queue_);
+  auto& finished = boost::get<Finished>(*param);
+  expectSame(finished.verify_data, "aabb");
+  EXPECT_TRUE(read_.hasUnparsedHandshakeData());
+  param = read_.readEvent(queue_);
+  auto& finished2 = boost::get<Finished>(*param);
+  expectSame(finished2.verify_data, "ccdd");
+  EXPECT_TRUE(read_.hasUnparsedHandshakeData());
+}
+
 TEST_F(RecordTest, TestWriteAppData) {
   EXPECT_CALL(write_, _write(_)).WillOnce(Invoke([&](TLSMessage& msg) {
     TLSContent content;
