@@ -939,6 +939,24 @@ TEST_F(ClientProtocolTest, TestConnectPskEarlyOmitEarlyRecord) {
   EXPECT_EQ(state_.earlyWriteRecordLayer().get(), nullptr);
 }
 
+TEST_F(ClientProtocolTest, TestConnectPskExternalNoCerts) {
+  context_->setOmitEarlyRecordLayer(true);
+  Connect connect;
+  connect.context = context_;
+  CachedPsk psk;
+  psk.psk = "External";
+  psk.secret = "externalsecret";
+  psk.type = PskType::External;
+  psk.version = ProtocolVersion::tls_1_3;
+  psk.cipher = CipherSuite::TLS_AES_128_GCM_SHA256;
+  connect.cachedPsk = psk;
+  auto actions = detail::processEvent(state_, std::move(connect));
+  expectActions<MutateState, WriteToSocket>(actions);
+  processStateMutations(actions);
+  EXPECT_EQ(state_.state(), StateEnum::ExpectingServerHello);
+  EXPECT_EQ(state_.attemptedPsk()->psk, psk.psk);
+}
+
 TEST_F(ClientProtocolTest, TestConnectCompat) {
   context_->setCompatibilityMode(true);
   Connect connect;
@@ -2034,6 +2052,7 @@ TEST_F(ClientProtocolTest, TestEncryptedExtensionsPsk) {
   context_->setSupportedAlpns({"h2"});
   setupExpectingEncryptedExtensions();
   state_.serverCert() = mockLeaf_;
+  state_.pskType() = PskType::Resumption;
   EXPECT_CALL(
       *mockHandshakeContext_, appendToTranscript(BufMatches("eeencoding")));
 
@@ -2043,6 +2062,22 @@ TEST_F(ClientProtocolTest, TestEncryptedExtensionsPsk) {
   EXPECT_EQ(*state_.alpn(), "h2");
   EXPECT_EQ(state_.state(), StateEnum::ExpectingFinished);
   EXPECT_EQ(state_.serverCert(), mockLeaf_);
+}
+
+TEST_F(ClientProtocolTest, TestEncryptedExtensionsPskExternalNoCert) {
+  context_->setSupportedAlpns({"h2"});
+  setupExpectingEncryptedExtensions();
+  state_.pskType() = PskType::External;
+  EXPECT_CALL(
+      *mockHandshakeContext_, appendToTranscript(BufMatches("eeencoding")));
+
+  auto actions = detail::processEvent(state_, TestMessages::encryptedExt());
+  expectActions<MutateState>(actions);
+  processStateMutations(actions);
+  EXPECT_EQ(*state_.alpn(), "h2");
+  EXPECT_EQ(state_.state(), StateEnum::ExpectingFinished);
+  EXPECT_EQ(state_.pskType(), PskType::External);
+  EXPECT_EQ(state_.serverCert(), nullptr);
 }
 
 TEST_F(ClientProtocolTest, TestEncryptedExtensionsAlpn) {
@@ -2121,7 +2156,7 @@ TEST_F(ClientProtocolTest, TestEncryptedExtensionsEarlyAccepted) {
   auto actions = detail::processEvent(state_, std::move(ee));
   expectActions<MutateState>(actions);
   processStateMutations(actions);
-  EXPECT_EQ(state_.state(), StateEnum::ExpectingCertificate);
+  EXPECT_EQ(state_.state(), StateEnum::ExpectingFinished);
   EXPECT_EQ(*state_.earlyDataType(), EarlyDataType::Accepted);
 }
 
@@ -2131,7 +2166,7 @@ TEST_F(ClientProtocolTest, TestEncryptedExtensionsEarlyRejected) {
   auto actions = detail::processEvent(state_, std::move(ee));
   expectActions<MutateState>(actions);
   processStateMutations(actions);
-  EXPECT_EQ(state_.state(), StateEnum::ExpectingCertificate);
+  EXPECT_EQ(state_.state(), StateEnum::ExpectingFinished);
   EXPECT_EQ(*state_.earlyDataType(), EarlyDataType::Rejected);
 }
 
@@ -2142,7 +2177,7 @@ TEST_F(ClientProtocolTest, TestEncryptedExtensionsEarlyAlreadyRejected) {
   auto actions = detail::processEvent(state_, std::move(ee));
   expectActions<MutateState>(actions);
   processStateMutations(actions);
-  EXPECT_EQ(state_.state(), StateEnum::ExpectingCertificate);
+  EXPECT_EQ(state_.state(), StateEnum::ExpectingFinished);
   EXPECT_EQ(*state_.earlyDataType(), EarlyDataType::Rejected);
 }
 

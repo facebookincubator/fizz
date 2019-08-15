@@ -357,16 +357,6 @@ static folly::Optional<CachedPsk> validatePsk(
     return folly::none;
   }
 
-  auto now = context.getClock()->getCurrentTime();
-  if (now > psk->ticketExpirationTime) {
-    VLOG(1) << "Ignoring expired cached psk";
-    return folly::none;
-  }
-  if (now - psk->ticketHandshakeTime > context.getMaxPskHandshakeLife()) {
-    VLOG(1) << "Ignoring psk with stale handshake";
-    return folly::none;
-  }
-
   if (std::find(
           context.getSupportedVersions().begin(),
           context.getSupportedVersions().end(),
@@ -383,9 +373,22 @@ static folly::Optional<CachedPsk> validatePsk(
     return folly::none;
   }
 
-  if (psk->ticketHandshakeTime > now) {
-    VLOG(1) << "Ignoring psk from future";
-    return folly::none;
+  // The below checks apply only to resumption tickets
+  if (psk->type == PskType::Resumption) {
+    auto now = context.getClock()->getCurrentTime();
+    if (now > psk->ticketExpirationTime) {
+      VLOG(1) << "Ignoring expired cached psk";
+      return folly::none;
+    }
+    if (now - psk->ticketHandshakeTime > context.getMaxPskHandshakeLife()) {
+      VLOG(1) << "Ignoring psk with stale handshake";
+      return folly::none;
+    }
+
+    if (psk->ticketHandshakeTime > now) {
+      VLOG(1) << "Ignoring psk from future";
+      return folly::none;
+    }
   }
 
   return psk;
@@ -503,11 +506,15 @@ static ClientPresharedKey getPskExtension(
   ClientPresharedKey pskExt;
   PskIdentity ident;
   ident.psk_identity = folly::IOBuf::copyBuffer(psk.psk);
-  ident.obfuscated_ticket_age =
-      std::chrono::duration_cast<std::chrono::milliseconds>(
-          clock.getCurrentTime() - psk.ticketIssueTime)
-          .count();
-  ident.obfuscated_ticket_age += psk.ticketAgeAdd;
+  if (psk.type == PskType::Resumption) {
+    ident.obfuscated_ticket_age =
+        std::chrono::duration_cast<std::chrono::milliseconds>(
+            clock.getCurrentTime() - psk.ticketIssueTime)
+            .count();
+    ident.obfuscated_ticket_age += psk.ticketAgeAdd;
+  } else {
+    ident.obfuscated_ticket_age = 0;
+  }
   pskExt.identities.push_back(std::move(ident));
   PskBinder binder;
   size_t binderSize = getHashSize(getHashFunction(psk.cipher));
@@ -1365,7 +1372,8 @@ Actions EventHandler<
     newState.earlyDataType() = earlyDataType;
   };
 
-  if (state.serverCert() != nullptr) {
+  if (state.pskType() == PskType::Resumption ||
+      state.pskType() == PskType::External) {
     return actions(
         std::move(mutateState), &Transition<StateEnum::ExpectingFinished>);
   } else {
