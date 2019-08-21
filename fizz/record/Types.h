@@ -235,8 +235,8 @@ struct CertificateMsg
 };
 
 struct CompressedCertificate : HandshakeStruct<
-                                Event::CompressedCertificate,
-                                HandshakeType::compressed_certificate> {
+                                   Event::CompressedCertificate,
+                                   HandshakeType::compressed_certificate> {
   CertificateCompressionAlgorithm algorithm;
   uint32_t uncompressed_length;
   Buf compressed_certificate_message;

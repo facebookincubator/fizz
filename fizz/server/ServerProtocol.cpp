@@ -1523,52 +1523,52 @@ EventHandler<ServerTypes, StateEnum::ExpectingClientHello, Event::ClientHello>::
               // Save all the necessary state except for the read record layer,
               // which is done separately as it varies if early data was
               // accepted.
-              auto saveState = [appTrafficWriteRecordLayer =
-                                    std::move(appTrafficWriteRecordLayer),
-                                handshakeContext = std::move(handshakeContext),
-                                scheduler = std::move(scheduler),
-                                exporterMaster = std::move(exporterMaster),
-                                serverCert = std::move(serverCert),
-                                clientCert = std::move(clientCert),
-                                cipher,
-                                group,
-                                sigScheme,
-                                clientHandshakeSecret =
-                                    std::move(clientHandshakeSecret),
-                                pskType,
-                                pskMode,
-                                version,
-                                keyExchangeType,
-                                alpn = std::move(alpn),
-                                earlyDataTypeSave,
-                                replayCacheResult,
-                                clockSkew,
-                                serverCertCompAlgo,
-                                handshakeTime = std::move(handshakeTime)](
-                                   State& newState) mutable {
-                newState.writeRecordLayer() =
-                    std::move(appTrafficWriteRecordLayer);
-                newState.handshakeContext() = std::move(handshakeContext);
-                newState.keyScheduler() = std::move(scheduler);
-                newState.exporterMasterSecret() = std::move(exporterMaster);
-                newState.serverCert() = std::move(*serverCert);
-                newState.clientCert() = std::move(clientCert);
-                newState.version() = version;
-                newState.cipher() = cipher;
-                newState.group() = group;
-                newState.sigScheme() = sigScheme;
-                newState.clientHandshakeSecret() =
-                    std::move(clientHandshakeSecret);
-                newState.pskType() = pskType;
-                newState.pskMode() = pskMode;
-                newState.keyExchangeType() = keyExchangeType;
-                newState.earlyDataType() = earlyDataTypeSave;
-                newState.replayCacheResult() = replayCacheResult;
-                newState.alpn() = std::move(alpn);
-                newState.clientClockSkew() = clockSkew;
-                newState.serverCertCompAlgo() = serverCertCompAlgo;
-                newState.handshakeTime() = std::move(handshakeTime);
-              };
+              auto saveState =
+                  [appTrafficWriteRecordLayer =
+                       std::move(appTrafficWriteRecordLayer),
+                   handshakeContext = std::move(handshakeContext),
+                   scheduler = std::move(scheduler),
+                   exporterMaster = std::move(exporterMaster),
+                   serverCert = std::move(serverCert),
+                   clientCert = std::move(clientCert),
+                   cipher,
+                   group,
+                   sigScheme,
+                   clientHandshakeSecret = std::move(clientHandshakeSecret),
+                   pskType,
+                   pskMode,
+                   version,
+                   keyExchangeType,
+                   alpn = std::move(alpn),
+                   earlyDataTypeSave,
+                   replayCacheResult,
+                   clockSkew,
+                   serverCertCompAlgo,
+                   handshakeTime =
+                       std::move(handshakeTime)](State& newState) mutable {
+                    newState.writeRecordLayer() =
+                        std::move(appTrafficWriteRecordLayer);
+                    newState.handshakeContext() = std::move(handshakeContext);
+                    newState.keyScheduler() = std::move(scheduler);
+                    newState.exporterMasterSecret() = std::move(exporterMaster);
+                    newState.serverCert() = std::move(*serverCert);
+                    newState.clientCert() = std::move(clientCert);
+                    newState.version() = version;
+                    newState.cipher() = cipher;
+                    newState.group() = group;
+                    newState.sigScheme() = sigScheme;
+                    newState.clientHandshakeSecret() =
+                        std::move(clientHandshakeSecret);
+                    newState.pskType() = pskType;
+                    newState.pskMode() = pskMode;
+                    newState.keyExchangeType() = keyExchangeType;
+                    newState.earlyDataType() = earlyDataTypeSave;
+                    newState.replayCacheResult() = replayCacheResult;
+                    newState.alpn() = std::move(alpn);
+                    newState.clientClockSkew() = clockSkew;
+                    newState.serverCertCompAlgo() = serverCertCompAlgo;
+                    newState.handshakeTime() = std::move(handshakeTime);
+                  };
 
               if (earlyDataType == EarlyDataType::Accepted) {
                 if (state.context()->getOmitEarlyRecordLayer()) {
