@@ -19,7 +19,6 @@
 #include <folly/ssl/Init.h>
 
 using namespace folly;
-using namespace folly::io;
 
 using namespace testing;
 

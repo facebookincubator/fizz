@@ -15,8 +15,6 @@
 #include <folly/FileUtil.h>
 #include <folly/experimental/TestUtil.h>
 
-using namespace folly;
-using namespace testing;
 
 namespace fizz {
 namespace test {

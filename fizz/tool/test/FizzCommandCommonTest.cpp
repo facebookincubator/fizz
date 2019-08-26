@@ -12,7 +12,6 @@
 #include <fizz/tool/FizzCommandCommon.h>
 #include <folly/container/Array.h>
 
-using namespace testing;
 
 namespace fizz {
 namespace tool {

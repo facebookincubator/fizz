@@ -15,10 +15,7 @@
 #include <fizz/record/Extensions.h>
 #include <fizz/server/ServerExtensions.h>
 
-using namespace folly;
-using namespace folly::io;
 
-using testing::_;
 using namespace testing;
 
 namespace fizz {

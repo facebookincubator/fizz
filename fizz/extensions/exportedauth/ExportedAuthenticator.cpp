@@ -10,7 +10,6 @@
 #include <fizz/extensions/exportedauth/Util.h>
 #include <fizz/protocol/OpenSSLFactory.h>
 
-using namespace folly;
 
 namespace fizz {
 

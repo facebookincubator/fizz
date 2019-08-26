@@ -13,10 +13,7 @@
 #include <fizz/extensions/tokenbinding/Validator.h>
 
 using namespace folly;
-using namespace folly::io;
-using namespace folly::ssl;
 
-using testing::_;
 using namespace testing;
 
 namespace fizz {

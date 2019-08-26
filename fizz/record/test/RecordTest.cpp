@@ -15,7 +15,6 @@
 #include <folly/String.h>
 
 using namespace folly;
-using namespace folly::io;
 
 using testing::_;
 using namespace testing;

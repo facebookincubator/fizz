@@ -18,10 +18,7 @@
 using namespace fizz::extensions;
 
 using namespace folly;
-using namespace folly::io;
 
-using testing::_;
-using namespace testing;
 
 StringPiece tokenBinding{"00180004000d0102"};
 

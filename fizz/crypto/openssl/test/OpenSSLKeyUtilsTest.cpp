@@ -13,8 +13,6 @@
 
 #include <folly/String.h>
 
-using namespace folly;
-using namespace folly::ssl;
 
 namespace fizz {
 namespace test {

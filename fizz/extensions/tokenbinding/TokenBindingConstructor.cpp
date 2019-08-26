@@ -14,8 +14,6 @@
 #include <fizz/crypto/openssl/OpenSSLKeyUtils.h>
 #include <fizz/extensions/tokenbinding/Utils.h>
 
-using namespace folly;
-using namespace folly::io;
 using namespace folly::ssl;
 
 namespace fizz {

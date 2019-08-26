@@ -12,8 +12,6 @@
 #include <fizz/crypto/Sha256.h>
 #include <fizz/crypto/test/TestUtil.h>
 
-using namespace testing;
-using namespace folly;
 
 namespace fizz {
 namespace test {

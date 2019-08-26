@@ -12,7 +12,6 @@
 #include <fizz/protocol/HandshakeContext.h>
 
 using namespace folly;
-using namespace testing;
 
 namespace fizz {
 namespace test {

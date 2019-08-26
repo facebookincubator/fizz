@@ -13,7 +13,6 @@
 #include <fizz/client/test/Utilities.h>
 #include <folly/Format.h>
 
-using namespace folly;
 using namespace testing;
 
 namespace fizz {

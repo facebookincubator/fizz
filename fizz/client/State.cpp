@@ -8,8 +8,6 @@
 
 #include <fizz/client/State.h>
 
-using fizz::client::ClientAuthType;
-using fizz::client::StateEnum;
 
 namespace fizz {
 namespace client {

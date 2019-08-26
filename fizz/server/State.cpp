@@ -8,7 +8,6 @@
 
 #include <fizz/server/State.h>
 
-using fizz::server::StateEnum;
 
 namespace fizz {
 namespace server {

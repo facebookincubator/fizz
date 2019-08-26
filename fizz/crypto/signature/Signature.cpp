@@ -14,7 +14,6 @@
 #include <folly/ssl/OpenSSLPtrTypes.h>
 
 using namespace folly;
-using namespace folly::ssl;
 
 namespace fizz {
 namespace detail {

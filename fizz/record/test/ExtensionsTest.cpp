@@ -14,10 +14,7 @@
 #include <folly/String.h>
 
 using namespace folly;
-using namespace folly::io;
 
-using testing::_;
-using namespace testing;
 
 StringPiece alpn{"00100017001502683208737064792f332e3108687474702f312e31"};
 StringPiece sni{"0000001500130000107777772e66616365626f6f6b2e636f6d"};

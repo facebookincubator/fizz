@@ -11,7 +11,6 @@
 
 #include <fizz/server/Negotiator.h>
 
-using namespace testing;
 
 namespace fizz {
 namespace server {
