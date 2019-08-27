@@ -15,6 +15,7 @@
 #include <boost/chrono/duration.hpp>
 #include <folly/Conv.h>
 #include <folly/hash/Hash.h>
+#include <folly/portability/Unistd.h>
 
 #include <fizz/crypto/RandomGenerator.h>
 
