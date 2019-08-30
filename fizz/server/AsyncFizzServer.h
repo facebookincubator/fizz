@@ -67,6 +67,12 @@ class AsyncFizzServerT : public AsyncFizzBase {
     return state_;
   }
 
+  /**
+   * Exposes API for application to send client a new session ticket containing
+   * the provided appToken.
+   */
+  void sendTicketWithAppToken(Buf appToken);
+
   folly::Optional<CipherSuite> getCipher() const override;
 
   std::vector<SignatureScheme> getSupportedSigSchemes() const override;

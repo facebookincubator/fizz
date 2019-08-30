@@ -819,6 +819,13 @@ static Optional<std::chrono::milliseconds> getClockSkew(
   return std::chrono::milliseconds(age - expected);
 }
 
+static Optional<Buf> getAppToken(const Optional<ResumptionState>& psk) {
+  if (!psk.hasValue() || !psk->appToken) {
+    return folly::none;
+  }
+  return psk->appToken->clone();
+}
+
 static EarlyDataType negotiateEarlyDataType(
     bool acceptEarlyData,
     const ClientHello& chlo,
@@ -1127,6 +1134,8 @@ EventHandler<ServerTypes, StateEnum::ExpectingClientHello, Event::ClientHello>::
             obfuscatedAge,
             state.context()->getClock().getCurrentTime());
 
+        auto appToken = getAppToken(resState);
+
         auto earlyDataType = negotiateEarlyDataType(
             state.context()->getAcceptEarlyData(version),
             chlo,
@@ -1424,6 +1433,7 @@ EventHandler<ServerTypes, StateEnum::ExpectingClientHello, Event::ClientHello>::
                         clientCert = std::move(clientCert),
                         alpn = std::move(alpn),
                         clockSkew,
+                        appToken = std::move(appToken),
                         legacySessionId = std::move(legacySessionId),
                         serverCertCompAlgo = certCompressionAlgo,
                         handshakeTime](Optional<Buf> sig) mutable {
@@ -1543,6 +1553,7 @@ EventHandler<ServerTypes, StateEnum::ExpectingClientHello, Event::ClientHello>::
                    earlyDataTypeSave,
                    replayCacheResult,
                    clockSkew,
+                   appToken = std::move(appToken),
                    serverCertCompAlgo,
                    handshakeTime =
                        std::move(handshakeTime)](State& newState) mutable {
@@ -1566,6 +1577,7 @@ EventHandler<ServerTypes, StateEnum::ExpectingClientHello, Event::ClientHello>::
                     newState.replayCacheResult() = replayCacheResult;
                     newState.alpn() = std::move(alpn);
                     newState.clientClockSkew() = clockSkew;
+                    newState.appToken() = std::move(appToken);
                     newState.serverCertCompAlgo() = serverCertCompAlgo;
                     newState.handshakeTime() = std::move(handshakeTime);
                   };

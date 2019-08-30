@@ -130,6 +130,13 @@ void AsyncFizzServerT<SM>::closeNow() {
 }
 
 template <typename SM>
+void AsyncFizzServerT<SM>::sendTicketWithAppToken(Buf appToken) {
+  WriteNewSessionTicket nst;
+  nst.appToken = std::move(appToken);
+  fizzServer_.writeNewSessionTicket(std::move(nst));
+}
+
+template <typename SM>
 folly::Optional<CipherSuite> AsyncFizzServerT<SM>::getCipher() const {
   return getState().cipher();
 }

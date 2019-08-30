@@ -179,6 +179,13 @@ class State {
   }
 
   /**
+   * AppToken seen in session ticket if session was resumed.
+   */
+  const folly::Optional<Buf>& appToken() const {
+    return appToken_;
+  }
+
+  /**
    * Callback to application that validates appToken from ResumptionState.
    * If this function returns false, early data should be rejected.
    */
@@ -367,6 +374,9 @@ class State {
   auto& clientClockSkew() {
     return clientClockSkew_;
   }
+  auto& appToken() {
+    return appToken_;
+  }
   auto& appTokenValidator() {
     return appTokenValidator_;
   }
@@ -424,6 +434,7 @@ class State {
   folly::Optional<Buf> clientHandshakeSecret_;
   folly::Optional<std::string> alpn_;
   folly::Optional<std::chrono::milliseconds> clientClockSkew_;
+  folly::Optional<Buf> appToken_;
   std::unique_ptr<AppTokenValidator> appTokenValidator_;
   std::shared_ptr<ServerExtensions> extensions_;
   std::vector<uint8_t> resumptionMasterSecret_;

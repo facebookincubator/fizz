@@ -3058,6 +3058,7 @@ TEST_F(ServerProtocolTest, TestClientHelloAcceptEarlyData) {
   EXPECT_EQ(
       state_.readRecordLayer()->getEncryptionLevel(),
       EncryptionLevel::EarlyData);
+  EXPECT_FALSE(state_.appToken().hasValue());
 }
 
 TEST_F(ServerProtocolTest, TestClientHelloAcceptEarlyDataOmitEarlyRecort) {
@@ -3156,6 +3157,9 @@ TEST_F(ServerProtocolTest, TestClientHelloAcceptEarlyDataWithValidAppToken) {
   EXPECT_EQ(state_.pskType(), PskType::Resumption);
   EXPECT_EQ(state_.earlyDataType(), EarlyDataType::Accepted);
   EXPECT_EQ(state_.replayCacheResult(), ReplayCacheResult::NotReplay);
+  EXPECT_TRUE(state_.appToken().hasValue());
+  EXPECT_TRUE(
+      IOBufEqualTo()(*state_.appToken(), IOBuf::copyBuffer(appTokenStr)));
 }
 
 TEST_F(ServerProtocolTest, TestClientHelloRejectEarlyData) {
@@ -3493,6 +3497,9 @@ TEST_F(ServerProtocolTest, TestClientHelloRejectEarlyDataInvalidAppToken) {
   EXPECT_EQ(state_.state(), StateEnum::ExpectingFinished);
   EXPECT_EQ(state_.pskType(), PskType::Resumption);
   EXPECT_EQ(state_.earlyDataType(), EarlyDataType::Rejected);
+  EXPECT_TRUE(state_.appToken().hasValue());
+  EXPECT_TRUE(
+      IOBufEqualTo()(*state_.appToken(), IOBuf::copyBuffer(appTokenStr)));
 }
 
 TEST_F(ServerProtocolTest, TestClientHelloHandshakeLogging) {

@@ -231,6 +231,22 @@ TEST_F(AsyncFizzServerTest, TestDeliverAppData) {
   socketReadCallback_->readBufferAvailable(IOBuf::copyBuffer("ClientHello"));
 }
 
+TEST_F(AsyncFizzServerTest, TestSendTicketWithAppToken) {
+  completeHandshake();
+  EXPECT_CALL(*machine_, _processWriteNewSessionTicket(_, _))
+      .WillOnce(InvokeWithoutArgs([]() {
+        WriteToSocket write;
+        TLSContent record;
+        record.contentType = ContentType::handshake;
+        record.encryptionLevel = EncryptionLevel::AppTraffic;
+        record.data = IOBuf::copyBuffer("XYZ");
+        write.contents.emplace_back(std::move(record));
+        return actions(std::move(write));
+      }));
+  EXPECT_CALL(*socket_, writeChain(_, _, _));
+  server_->sendTicketWithAppToken(IOBuf::copyBuffer("testAppToken"));
+}
+
 TEST_F(AsyncFizzServerTest, TestWriteToSocket) {
   completeHandshake();
   server_->setReadCB(&readCallback_);
