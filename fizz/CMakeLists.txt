@@ -16,6 +16,16 @@ set(CMAKE_MODULE_PATH
   "${CMAKE_SOURCE_DIR}/../build/fbcode_builder/CMake"
   ${CMAKE_MODULE_PATH})
 
+option(BUILD_SHARED_LIBS
+  "If enabled, build fizz as a shared library.  \
+  This is generally discouraged, since fizz does not commit to having \
+  a stable ABI."
+  OFF
+)
+# Mark BUILD_SHARED_LIBS as an "advanced" option, since enabling it
+# is generally discouraged.
+mark_as_advanced(BUILD_SHARED_LIBS)
+
 # When installing Folly & Fizz in a non-default prefix, this will let
 # projects linking against libfizz.so to find libfolly.so automatically.
 SET(CMAKE_INSTALL_RPATH_USE_LINK_PATH TRUE)
