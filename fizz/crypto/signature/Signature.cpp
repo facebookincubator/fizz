@@ -148,8 +148,12 @@ void rsaPssVerify(
     throw std::runtime_error("Could not update verification");
   }
 
-  if (EVP_DigestVerifyFinal(mdCtx.get(), signature.data(), signature.size()) !=
-      1) {
+  if (EVP_DigestVerifyFinal(
+          mdCtx.get(),
+          // const_cast<unsigned char*> is needed for OpenSSL 1.0.1 on Debian 8,
+          // which HHVM currently expects to support until 2020/6/30
+          const_cast<unsigned char*>(signature.data()),
+          signature.size()) != 1) {
     throw std::runtime_error("Signature verification failed");
   }
 }
