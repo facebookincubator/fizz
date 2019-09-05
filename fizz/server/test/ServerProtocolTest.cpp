@@ -439,6 +439,7 @@ TEST_F(ServerProtocolTest, TestAppClose) {
   auto actions2 = ServerStateMachine().processSocketData(state_, queue);
   folly::variant_match(
       actions2,
+      ::fizz::detail::result_type<void>(),
       [this](Actions& actions) {
         expectActions<MutateState, EndOfData>(actions);
         processStateMutations(actions);
