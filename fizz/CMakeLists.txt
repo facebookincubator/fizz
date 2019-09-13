@@ -230,6 +230,7 @@ target_link_libraries(fizz
     Threads::Threads
   PRIVATE
     ${GLOG_LIBRARIES}
+    ${GFLAGS_LIBRARIES}
     ${FIZZ_LINK_LIBRARIES}
     ${DOUBLE_CONVERSION_LIBRARIES}
     ${CMAKE_DL_LIBS}
