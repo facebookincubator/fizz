@@ -9,11 +9,11 @@ add_compile_options(-std=c++14)
 
 set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 set(CMAKE_MODULE_PATH
-  "${CMAKE_SOURCE_DIR}/cmake/"
+  "${CMAKE_CURRENT_SOURCE_DIR}/cmake"
   # for in-fbsource builds
   "${CMAKE_CURRENT_SOURCE_DIR}/../opensource/fbcode_builder/CMake"
   # For shipit-transformed builds
-  "${CMAKE_SOURCE_DIR}/../build/fbcode_builder/CMake"
+  "${CMAKE_CURRENT_SOURCE_DIR}/../build/fbcode_builder/CMake"
   ${CMAKE_MODULE_PATH})
 
 option(BUILD_SHARED_LIBS
@@ -25,6 +25,9 @@ option(BUILD_SHARED_LIBS
 # Mark BUILD_SHARED_LIBS as an "advanced" option, since enabling it
 # is generally discouraged.
 mark_as_advanced(BUILD_SHARED_LIBS)
+
+include(FBBuildOptions)
+fb_activate_static_library_option()
 
 # When installing Folly & Fizz in a non-default prefix, this will let
 # projects linking against libfizz.so to find libfolly.so automatically.
