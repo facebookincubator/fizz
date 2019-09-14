@@ -105,6 +105,7 @@ enum class ExtensionType : uint16_t {
   quic_transport_parameters = 0xffa5,
 
   // alternate_server_name = 0xfb00,
+  test_extension = 0xff03,
   thrift_parameters = 0xff41,
 };
 

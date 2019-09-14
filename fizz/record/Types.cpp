@@ -91,6 +91,8 @@ std::string toString(ExtensionType extType) {
       return "compress_certificate";
     case ExtensionType::thrift_parameters:
       return "thrift_parameters";
+    case ExtensionType::test_extension:
+      return "test_extension";
   }
   return enumToHex(extType);
 }
