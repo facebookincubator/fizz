@@ -185,6 +185,7 @@ set(FIZZ_SOURCES
   extensions/tokenbinding/Validator.cpp
   client/State.cpp
   client/ClientProtocol.cpp
+  client/PskSerializationUtils.cpp
   client/SynchronizedLruPskCache.cpp
   client/EarlyDataRejectionPolicy.cpp
   util/FizzUtil.cpp
