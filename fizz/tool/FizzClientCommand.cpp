@@ -14,6 +14,7 @@
 #ifdef FIZZ_TOOL_ENABLE_ZSTD
 #include <fizz/protocol/ZstdCertificateDecompressor.h>
 #endif
+#include <fizz/client/PskSerializationUtils.h>
 #include <fizz/tool/FizzCommandCommon.h>
 #include <fizz/util/Parse.h>
 #include <folly/FileUtil.h>
@@ -47,6 +48,8 @@ void printUsage() {
     << " -capaths d1:...          (colon-separated paths to directories of CA certs used for verification)\n"
     << " -cafile file             (path to bundle of CA certs used for verification)\n"
     << " -reconnect               (after connecting, open another connection using a psk. Default: false)\n"
+    << " -psk_save file           (after connecting, save the psk to file )\n"
+    << " -psk_load file           (given file that contains a serialized psk, deserialize psk and open a connection with it)\n"
     << " -servername name         (server name to send in SNI. Default: same as host)\n"
     << " -alpn alpn1:...          (colon-separated list of ALPNs to send. Default: none)\n"
     << " -ciphers c1:...          (colon-separated list of ciphers in preference order. Default:\n"
@@ -323,6 +326,42 @@ class ResumptionPskCache : public BasicPskCache {
   folly::Function<void()> callback_;
 };
 
+class BasicPersistentPskCache : public BasicPskCache {
+ public:
+  BasicPersistentPskCache(std::string save_file, std::string load_file)
+      : saveFile_(save_file), loadFile_(load_file) {}
+
+  void putPsk(const std::string& /* unused */, CachedPsk psk) override {
+    if (saveFile_.empty()) {
+      return;
+    }
+    std::string serializedPsk = serializePsk(psk);
+    if (writeFile(serializedPsk, saveFile_.c_str())) {
+      LOG(INFO) << "\n Saved PSK to " << saveFile_ << " \n";
+    } else {
+      LOG(ERROR) << "\n Unable to save PSK " << saveFile_ << " \n";
+    }
+  }
+
+  folly::Optional<CachedPsk> getPsk(const std::string& /* unused */) override {
+    if (loadFile_.empty()) {
+      return folly::none;
+    }
+    LOG(INFO) << "\n Loading PSK from " << loadFile_ << " \n";
+    std::string serializedPsk;
+    readFile(loadFile_.c_str(), serializedPsk);
+    try {
+      return deserializePsk(serializedPsk, OpenSSLFactory());
+    } catch (const std::exception& e) {
+      LOG(ERROR) << "Error deserializing: " << loadFile_ << "\n" << e.what();
+      throw;
+    }
+  }
+
+ private:
+  std::string saveFile_, loadFile_;
+};
+
 } // namespace
 
 int fizzClientCommand(const std::vector<std::string>& args) {
@@ -334,6 +373,8 @@ int fizzClientCommand(const std::vector<std::string>& args) {
   std::string keyPass;
   std::string caPath;
   std::string caFile;
+  std::string pskSaveFile;
+  std::string pskLoadFile;
   bool reconnect = false;
   std::string customSNI;
   std::vector<std::string> alpns;
@@ -342,10 +383,9 @@ int fizzClientCommand(const std::vector<std::string>& args) {
   std::string proxyHost = "";
   uint16_t proxyPort = 0;
   std::vector<CipherSuite> ciphers {
-    CipherSuite::TLS_AES_128_GCM_SHA256,
-    CipherSuite::TLS_AES_256_GCM_SHA384,
+    CipherSuite::TLS_AES_128_GCM_SHA256, CipherSuite::TLS_AES_256_GCM_SHA384,
 #if FOLLY_OPENSSL_HAS_CHACHA
-    CipherSuite::TLS_CHACHA20_POLY1305_SHA256,
+        CipherSuite::TLS_CHACHA20_POLY1305_SHA256,
 #endif
   };
 
@@ -364,6 +404,12 @@ int fizzClientCommand(const std::vector<std::string>& args) {
     {"-pass", {true, [&keyPass](const std::string& arg) { keyPass = arg; }}},
     {"-capath", {true, [&caPath](const std::string& arg) { caPath = arg; }}},
     {"-cafile", {true, [&caFile](const std::string& arg) { caFile = arg; }}},
+    {"-psk_save", {true, [&pskSaveFile](const std::string& arg) {
+      pskSaveFile = arg;
+    }}},
+    {"-psk_load", {true,[&pskLoadFile](const std::string& arg) {
+      pskLoadFile = arg;
+    }}},
     {"-reconnect", {false, [&reconnect](const std::string&) {
         reconnect = true;
     }}},
@@ -515,6 +561,11 @@ int fizzClientCommand(const std::vector<std::string>& args) {
           });
       clientContext->setPskCache(pskCache);
       inputTarget = &resumptionConn;
+    }
+    if (!pskSaveFile.empty() || !pskLoadFile.empty()) {
+      auto pskCache =
+          std::make_shared<BasicPersistentPskCache>(pskSaveFile, pskLoadFile);
+      clientContext->setPskCache(pskCache);
     }
     TerminalInputHandler input(&evb, inputTarget);
     conn.connect(addr);
