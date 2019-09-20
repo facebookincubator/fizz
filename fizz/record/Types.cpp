@@ -93,6 +93,8 @@ std::string toString(ExtensionType extType) {
       return "thrift_parameters";
     case ExtensionType::test_extension:
       return "test_extension";
+    case ExtensionType::delegated_credential:
+      return "delegated_credential";
   }
   return enumToHex(extType);
 }
