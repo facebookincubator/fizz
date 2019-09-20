@@ -4412,9 +4412,9 @@ TEST_F(ServerProtocolTest, TestCertificate) {
       *mockHandshakeContext_, appendToTranscript(BufMatches("certencoding")));
   clientLeafCert_ = std::make_shared<MockPeerCert>();
   clientIntCert_ = std::make_shared<MockPeerCert>();
-  EXPECT_CALL(*factory_, _makePeerCert(BufMatches("cert1")))
+  EXPECT_CALL(*factory_, _makePeerCert(CertEntryBufMatches("cert1"), true))
       .WillOnce(Return(clientLeafCert_));
-  EXPECT_CALL(*factory_, _makePeerCert(BufMatches("cert2")))
+  EXPECT_CALL(*factory_, _makePeerCert(CertEntryBufMatches("cert2"), false))
       .WillOnce(Return(clientIntCert_));
 
   auto certificate = TestMessages::certificate();

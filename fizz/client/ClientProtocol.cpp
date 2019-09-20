@@ -1471,6 +1471,7 @@ static MutateState handleCertMsg(
   }
 
   std::vector<std::shared_ptr<const PeerCert>> serverCerts;
+  bool leaf = true;
   for (auto& certEntry : certMsg.certificate_list) {
     // We don't request any certificate-related extensions
     if (!certEntry.extensions.empty()) {
@@ -1480,7 +1481,8 @@ static MutateState handleCertMsg(
     }
 
     serverCerts.emplace_back(state.context()->getFactory()->makePeerCert(
-        std::move(certEntry.cert_data)));
+        std::move(certEntry), leaf));
+    leaf = false;
   }
 
   if (serverCerts.empty()) {

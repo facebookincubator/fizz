@@ -1795,6 +1795,7 @@ EventHandler<ServerTypes, StateEnum::ExpectingCertificate, Event::Certificate>::
   }
 
   std::vector<std::shared_ptr<const PeerCert>> clientCerts;
+  bool leaf = true;
   for (auto& certEntry : certMsg.certificate_list) {
     // We don't request any extensions, so this ought to be empty
     if (!certEntry.extensions.empty()) {
@@ -1804,7 +1805,8 @@ EventHandler<ServerTypes, StateEnum::ExpectingCertificate, Event::Certificate>::
     }
 
     clientCerts.emplace_back(state.context()->getFactory()->makePeerCert(
-        std::move(certEntry.cert_data)));
+        std::move(certEntry), leaf));
+    leaf = false;
   }
 
   if (clientCerts.empty()) {

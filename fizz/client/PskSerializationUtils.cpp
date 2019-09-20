@@ -101,16 +101,16 @@ fizz::client::CachedPsk deserializePsk(
   psk.ticketExpirationTime = std::chrono::time_point<std::chrono::system_clock>(
       std::chrono::seconds(ticketExpirationTime));
 
-  std::unique_ptr<IOBuf> certData;
-  fizz::detail::readBuf<uint32_t>(certData, cursor);
-  if (!certData->empty()) {
-    psk.serverCert = factory.makePeerCert(std::move(certData));
+  CertificateEntry entry;
+  fizz::detail::readBuf<uint32_t>(entry.cert_data, cursor);
+  if (!entry.cert_data->empty()) {
+    psk.serverCert = factory.makePeerCert(std::move(entry), true);
   }
 
-  std::unique_ptr<IOBuf> clientCertData;
-  fizz::detail::readBuf<uint32_t>(clientCertData, cursor);
-  if (!clientCertData->empty()) {
-    psk.clientCert = factory.makePeerCert(std::move(clientCertData));
+  CertificateEntry clientEntry;
+  fizz::detail::readBuf<uint32_t>(clientEntry.cert_data, cursor);
+  if (!clientEntry.cert_data->empty()) {
+    psk.clientCert = factory.makePeerCert(std::move(clientEntry), true);
   }
 
   fizz::detail::read(psk.maxEarlyDataSize, cursor);

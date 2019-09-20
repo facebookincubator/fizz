@@ -186,9 +186,12 @@ class MockFactory : public OpenSSLFactory {
   MOCK_CONST_METHOD0(makeRandom, Random());
   MOCK_CONST_METHOD0(makeTicketAgeAdd, uint32_t());
 
-  MOCK_CONST_METHOD1(_makePeerCert, std::shared_ptr<PeerCert>(Buf&));
-  std::shared_ptr<PeerCert> makePeerCert(Buf certData) const override {
-    return _makePeerCert(certData);
+  MOCK_CONST_METHOD2(
+      _makePeerCert,
+      std::shared_ptr<PeerCert>(CertificateEntry& entry, bool leaf));
+  std::shared_ptr<PeerCert> makePeerCert(CertificateEntry entry, bool leaf)
+      const override {
+    return _makePeerCert(entry, leaf);
   }
 
   void setDefaults() {
@@ -247,7 +250,7 @@ class MockFactory : public OpenSSLFactory {
     ON_CALL(*this, makeTicketAgeAdd()).WillByDefault(InvokeWithoutArgs([]() {
       return 0x44444444;
     }));
-    ON_CALL(*this, _makePeerCert(_)).WillByDefault(InvokeWithoutArgs([]() {
+    ON_CALL(*this, _makePeerCert(_, _)).WillByDefault(InvokeWithoutArgs([]() {
       return std::make_unique<NiceMock<MockPeerCert>>();
     }));
   }

@@ -2220,9 +2220,9 @@ TEST_F(ClientProtocolTest, TestCertificateFlow) {
       *mockHandshakeContext_, appendToTranscript(BufMatches("certencoding")));
   mockLeaf_ = std::make_shared<MockPeerCert>();
   mockIntermediate_ = std::make_shared<MockPeerCert>();
-  EXPECT_CALL(*factory_, _makePeerCert(BufMatches("cert1")))
+  EXPECT_CALL(*factory_, _makePeerCert(CertEntryBufMatches("cert1"), true))
       .WillOnce(Return(mockLeaf_));
-  EXPECT_CALL(*factory_, _makePeerCert(BufMatches("cert2")))
+  EXPECT_CALL(*factory_, _makePeerCert(CertEntryBufMatches("cert2"), false))
       .WillOnce(Return(mockIntermediate_));
 
   auto certificate = TestMessages::certificate();
@@ -2282,9 +2282,9 @@ TEST_F(ClientProtocolTest, TestCompressedCertificateFlow) {
       appendToTranscript(BufMatches("compcertencoding")));
   mockLeaf_ = std::make_shared<MockPeerCert>();
   mockIntermediate_ = std::make_shared<MockPeerCert>();
-  EXPECT_CALL(*factory_, _makePeerCert(BufMatches("cert1")))
+  EXPECT_CALL(*factory_, _makePeerCert(CertEntryBufMatches("cert1"), true))
       .WillOnce(Return(mockLeaf_));
-  EXPECT_CALL(*factory_, _makePeerCert(BufMatches("cert2")))
+  EXPECT_CALL(*factory_, _makePeerCert(CertEntryBufMatches("cert2"), false))
       .WillOnce(Return(mockIntermediate_));
 
   auto decompressor = std::make_shared<MockCertificateDecompressor>();

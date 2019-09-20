@@ -15,6 +15,11 @@
 namespace fizz {
 namespace test {
 
+MATCHER_P(CertEntryBufMatches, expected, "") {
+  return folly::IOBufEqualTo()(
+      folly::IOBuf::copyBuffer(expected), arg.cert_data);
+}
+
 MATCHER_P(BufMatches, expected, "") {
   return folly::IOBufEqualTo()(folly::IOBuf::copyBuffer(expected), arg);
 }

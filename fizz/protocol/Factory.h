@@ -103,8 +103,10 @@ class Factory {
     return RandomNumGenerator<uint32_t>().generateRandom();
   }
 
-  virtual std::shared_ptr<PeerCert> makePeerCert(Buf certData) const {
-    return CertUtils::makePeerCert(std::move(certData));
+  virtual std::shared_ptr<PeerCert> makePeerCert(
+      CertificateEntry certEntry,
+      bool /*leaf*/) const {
+    return CertUtils::makePeerCert(std::move(certEntry.cert_data));
   }
 
   virtual std::string getHkdfPrefix() const {
