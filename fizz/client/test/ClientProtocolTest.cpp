@@ -2275,6 +2275,83 @@ TEST_F(ClientProtocolTest, TestCertificateEmpty) {
       actions, AlertDescription::illegal_parameter, "no cert");
 }
 
+TEST_F(ClientProtocolTest, TestCertificateExtensions) {
+  setupExpectingCertificate();
+  // Set up cert with an extension.
+  auto certificate = TestMessages::certificate();
+  CertificateEntry entry;
+  entry.cert_data = folly::IOBuf::copyBuffer("cert");
+  Extension certExt;
+  certExt.extension_type = static_cast<fizz::ExtensionType>(0xbeef);
+  certExt.extension_data = folly::IOBuf::create(0);
+  entry.extensions.push_back(std::move(certExt));
+  certificate.certificate_list.push_back(std::move(entry));
+  auto ext = std::make_shared<MockClientExtensions>();
+  EXPECT_CALL(*ext, getClientHelloExtensions())
+      .WillOnce(InvokeWithoutArgs([]() {
+        Extension ext;
+        ext.extension_type = static_cast<fizz::ExtensionType>(0xbeef);
+        ext.extension_data = folly::IOBuf::create(0);
+        std::vector<Extension> exts;
+        exts.push_back(std::move(ext));
+        return exts;
+      }));
+  state_.extensions() = ext;
+  auto actions = detail::processEvent(state_, std::move(certificate));
+  expectActions<MutateState>(actions);
+  processStateMutations(actions);
+  EXPECT_EQ(state_.unverifiedCertChain()->size(), 1);
+  EXPECT_EQ(state_.state(), StateEnum::ExpectingCertificateVerify);
+}
+
+TEST_F(ClientProtocolTest, TestCertificateUnrequestedExtensions) {
+  setupExpectingCertificate();
+  // Set up cert with an extension.
+  auto certificate = TestMessages::certificate();
+  CertificateEntry entry;
+  entry.cert_data = folly::IOBuf::copyBuffer("cert");
+  Extension certExt;
+  certExt.extension_type = static_cast<fizz::ExtensionType>(0xbeef);
+  certExt.extension_data = folly::IOBuf::create(0);
+  entry.extensions.push_back(std::move(certExt));
+  certificate.certificate_list.push_back(std::move(entry));
+  auto ext = std::make_shared<MockClientExtensions>();
+  EXPECT_CALL(*ext, getClientHelloExtensions())
+      .WillOnce(InvokeWithoutArgs([]() {
+        Extension ext;
+        // Different type here
+        ext.extension_type = static_cast<fizz::ExtensionType>(0xface);
+        ext.extension_data = folly::IOBuf::create(0);
+        std::vector<Extension> exts;
+        exts.push_back(std::move(ext));
+        return exts;
+      }));
+  state_.extensions() = ext;
+  auto actions = detail::processEvent(state_, std::move(certificate));
+  expectError<FizzException>(
+      actions,
+      AlertDescription::illegal_parameter,
+      "unrequested certificate extension");
+}
+
+TEST_F(ClientProtocolTest, TestCertificateNoExtensionsSent) {
+  setupExpectingCertificate();
+  // Set up cert with an extension.
+  auto certificate = TestMessages::certificate();
+  CertificateEntry entry;
+  entry.cert_data = folly::IOBuf::copyBuffer("cert");
+  Extension certExt;
+  certExt.extension_type = static_cast<fizz::ExtensionType>(0xbeef);
+  certExt.extension_data = folly::IOBuf::create(0);
+  entry.extensions.push_back(std::move(certExt));
+  certificate.certificate_list.push_back(std::move(entry));
+  auto actions = detail::processEvent(state_, std::move(certificate));
+  expectError<FizzException>(
+      actions,
+      AlertDescription::illegal_parameter,
+      "certificate extensions must be empty");
+}
+
 TEST_F(ClientProtocolTest, TestCompressedCertificateFlow) {
   setupExpectingCertificate();
   EXPECT_CALL(

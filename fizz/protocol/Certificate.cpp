@@ -29,6 +29,8 @@ Buf CertUtils::prepareSignData(
   static constexpr folly::StringPiece kClientLabel =
       "TLS 1.3, client CertificateVerify";
   static constexpr folly::StringPiece kAuthLabel = "Exported Authenticator";
+  static constexpr folly::StringPiece kDelegatedCredLabel =
+      "TLS, server delegated credentials";
   static constexpr size_t kSigPrefixLen = 64;
   static constexpr uint8_t kSigPrefix = 32;
 
@@ -37,8 +39,10 @@ Buf CertUtils::prepareSignData(
     label = kServerLabel;
   } else if (context == CertificateVerifyContext::Client) {
     label = kClientLabel;
-  } else {
+  } else if (context == CertificateVerifyContext::Authenticator) {
     label = kAuthLabel;
+  } else {
+    label = kDelegatedCredLabel;
   }
 
   size_t sigDataLen = kSigPrefixLen + label.size() + 1 + toBeSigned.size();
@@ -169,7 +173,27 @@ std::unique_ptr<SelfCert> CertUtils::makeSelfCert(
     std::string password,
     const std::vector<std::shared_ptr<CertificateCompressor>>& compressors) {
   return selfCertFromDataInternal(
-      std::move(certData), std::move(encryptedKeyData), &password[0], compressors);
+      std::move(certData),
+      std::move(encryptedKeyData),
+      &password[0],
+      compressors);
+}
+
+KeyType CertUtils::getKeyType(const folly::ssl::EvpPkeyUniquePtr& key) {
+  if (EVP_PKEY_id(key.get()) == EVP_PKEY_RSA) {
+    return KeyType::RSA;
+  } else if (EVP_PKEY_id(key.get()) == EVP_PKEY_EC) {
+    switch (getCurveName(key.get())) {
+      case NID_X9_62_prime256v1:
+        return KeyType::P256;
+      case NID_secp384r1:
+        return KeyType::P384;
+      case NID_secp521r1:
+        return KeyType::P521;
+    }
+  }
+
+  throw std::runtime_error("unknown key type");
 }
 
 std::unique_ptr<SelfCert> CertUtils::makeSelfCert(
@@ -181,24 +205,21 @@ std::unique_ptr<SelfCert> CertUtils::makeSelfCert(
     throw std::runtime_error("Failed to read public key");
   }
 
-  if (EVP_PKEY_id(pubKey.get()) == EVP_PKEY_RSA) {
-    return std::make_unique<SelfCertImpl<KeyType::RSA>>(
-        std::move(key), std::move(certs), compressors);
-  } else if (EVP_PKEY_id(pubKey.get()) == EVP_PKEY_EC) {
-    switch (getCurveName(pubKey.get())) {
-      case NID_X9_62_prime256v1:
-        return std::make_unique<SelfCertImpl<KeyType::P256>>(
-            std::move(key), std::move(certs), compressors);
-      case NID_secp384r1:
-        return std::make_unique<SelfCertImpl<KeyType::P384>>(
-            std::move(key), std::move(certs), compressors);
-      case NID_secp521r1:
-        return std::make_unique<SelfCertImpl<KeyType::P521>>(
-            std::move(key), std::move(certs), compressors);
-      default:
-        break;
-    }
+  switch (getKeyType(pubKey)) {
+    case KeyType::RSA:
+      return std::make_unique<SelfCertImpl<KeyType::RSA>>(
+          std::move(key), std::move(certs), compressors);
+    case KeyType::P256:
+      return std::make_unique<SelfCertImpl<KeyType::P256>>(
+          std::move(key), std::move(certs), compressors);
+    case KeyType::P384:
+      return std::make_unique<SelfCertImpl<KeyType::P384>>(
+          std::move(key), std::move(certs), compressors);
+    case KeyType::P521:
+      return std::make_unique<SelfCertImpl<KeyType::P521>>(
+          std::move(key), std::move(certs), compressors);
   }
+
   throw std::runtime_error("unknown self cert type");
 }
 

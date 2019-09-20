@@ -108,6 +108,7 @@ set(FIZZ_HEADER_DIRS
   crypto/exchange
   crypto/signature
   crypto/openssl
+  extensions/delegatedcred
   extensions/exportedauth
   extensions/tokenbinding
   protocol
@@ -178,6 +179,10 @@ set(FIZZ_SOURCES
   protocol/ZlibCertificateCompressor.cpp
   protocol/ZlibCertificateDecompressor.cpp
   protocol/clock/SystemClock.cpp
+  extensions/delegatedcred/DelegatedCredentialClientExtension.cpp
+  extensions/delegatedcred/DelegatedCredentialFactory.cpp
+  extensions/delegatedcred/DelegatedCredentialUtils.cpp
+  extensions/delegatedcred/Types.cpp
   extensions/exportedauth/ExportedAuthenticator.cpp
   extensions/tokenbinding/Types.cpp
   extensions/tokenbinding/TokenBindingConstructor.cpp
@@ -397,6 +402,8 @@ if(BUILD_TESTS)
   add_gtest(crypto/test/KeyDerivationTest.cpp KeyDerivationTest)
   add_gtest(crypto/test/RandomGeneratorTest.cpp RandomGeneratorTest)
   add_gtest(crypto/test/UtilsTest.cpp UtilsTest)
+  add_gtest(extensions/delegatedcred/test/DelegatedCredentialFactoryTest.cpp DelegatedCredentialFactoryTest)
+  add_gtest(extensions/delegatedcred/test/PeerDelegatedCredentialTest.cpp PeerDelegatedCredentialTest)
   add_gtest(extensions/tokenbinding/test/TokenBindingConstructorTest.cpp TokenBindingConstructorTest)
   add_gtest(extensions/tokenbinding/test/ValidatorTest.cpp ValidatorTest)
   add_gtest(extensions/tokenbinding/test/TokenBindingServerExtensionTest.cpp TokenBindingServerExtensionTest)

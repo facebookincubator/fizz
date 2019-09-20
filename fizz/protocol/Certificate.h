@@ -17,7 +17,12 @@
 
 namespace fizz {
 
-enum class CertificateVerifyContext { Server, Client, Authenticator };
+enum class CertificateVerifyContext {
+  Server,
+  Client,
+  Authenticator,
+  DelegatedCredential
+};
 
 using Cert = folly::AsyncTransportCertificate;
 
@@ -108,6 +113,11 @@ class CertUtils {
       std::string keyData,
       const std::vector<std::shared_ptr<CertificateCompressor>>& compressors =
           {});
+
+  /**
+   * Returns the key type for a public/private key.
+   */
+  static KeyType getKeyType(const folly::ssl::EvpPkeyUniquePtr& key);
 
   /**
    * Creates a SelfCert using the supplied certificate, encrypted key data,

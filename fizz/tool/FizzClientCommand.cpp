@@ -7,6 +7,8 @@
  */
 
 #include <fizz/client/AsyncFizzClient.h>
+#include <fizz/extensions/delegatedcred/DelegatedCredentialClientExtension.h>
+#include <fizz/extensions/delegatedcred/DelegatedCredentialFactory.h>
 #ifdef FIZZ_TOOL_ENABLE_BROTLI
 #include <fizz/protocol/BrotliCertificateDecompressor.h>
 #endif
@@ -59,7 +61,8 @@ void printUsage() {
     << " -quiet                   (hide informational logging. Default: false)\n"
     << " -v verbosity             (set verbose log level for VLOG macros. Default: 0)\n"
     << " -vmodule m1=N,...        (set per-module verbose log level for VLOG macros. Default: none)\n"
-    << " -httpproxy host:port     (set an HTTP proxy to use. Default: none)\n";
+    << " -httpproxy host:port     (set an HTTP proxy to use. Default: none)\n"
+    << " -delegatedcred           (enable delegated credential support. Default: false)\n";
   // clang-format on
 }
 
@@ -76,13 +79,15 @@ class Connection : public AsyncSocket::ConnectCallback,
       Optional<std::string> sni,
       std::shared_ptr<const CertificateVerifier> verifier,
       bool willResume,
-      std::string proxyTarget)
+      std::string proxyTarget,
+      std::shared_ptr<ClientExtensions> extensions)
       : evb_(evb),
         clientContext_(clientContext),
         sni_(sni),
         verifier_(std::move(verifier)),
         willResume_(willResume),
-        proxyTarget_(proxyTarget) {}
+        proxyTarget_(proxyTarget),
+        extensions_(extensions) {}
 
   void connect(const SocketAddress& addr) {
     sock_ = AsyncSocket::UniquePtr(new AsyncSocket(evb_));
@@ -122,7 +127,7 @@ class Connection : public AsyncSocket::ConnectCallback,
 
   void doHandshake() {
     transport_ = AsyncFizzClient::UniquePtr(
-        new AsyncFizzClient(std::move(sock_), clientContext_));
+        new AsyncFizzClient(std::move(sock_), clientContext_, extensions_));
     transport_->setSecretCallback(this);
     transport_->connect(this, verifier_, sni_, sni_);
   }
@@ -306,6 +311,7 @@ class Connection : public AsyncSocket::ConnectCallback,
   std::array<char, 8192> readBuf_;
   std::string proxyTarget_;
   std::unique_ptr<IOBuf> proxyResponseBuffer_;
+  std::shared_ptr<ClientExtensions> extensions_;
 };
 
 class ResumptionPskCache : public BasicPskCache {
@@ -388,6 +394,7 @@ int fizzClientCommand(const std::vector<std::string>& args) {
         CipherSuite::TLS_CHACHA20_POLY1305_SHA256,
 #endif
   };
+  bool delegatedCredentials = false;
 
   // clang-format off
   FizzArgHandlerMap handlers = {
@@ -437,6 +444,9 @@ int fizzClientCommand(const std::vector<std::string>& args) {
     }}},
     {"-ciphers", {true, [&ciphers](const std::string& arg) {
         ciphers = splitParse<CipherSuite>(arg);
+    }}},
+    {"-delegatedcred", {false, [&delegatedCredentials](const std::string&) {
+        delegatedCredentials = true;
     }}}
   };
   // clang-format on
@@ -541,6 +551,14 @@ int fizzClientCommand(const std::vector<std::string>& args) {
     clientContext->setClientCertificate(std::move(cert));
   }
 
+  std::shared_ptr<ClientExtensions> extensions;
+  if (delegatedCredentials) {
+    clientContext->setFactory(
+        std::make_shared<extensions::DelegatedCredentialFactory>());
+    extensions =
+        std::make_shared<extensions::DelegatedCredentialClientExtension>();
+  }
+
   try {
     auto sni = customSNI.empty() ? host : customSNI;
     auto connectHost = proxyHost.empty() ? host : proxyHost;
@@ -549,9 +567,10 @@ int fizzClientCommand(const std::vector<std::string>& args) {
         ? std::string()
         : folly::to<std::string>(host, ":", port);
     SocketAddress addr(connectHost, connectPort, true);
-    Connection conn(&evb, clientContext, sni, verifier, reconnect, proxiedHost);
+    Connection conn(
+        &evb, clientContext, sni, verifier, reconnect, proxiedHost, extensions);
     Connection resumptionConn(
-        &evb, clientContext, sni, verifier, false, proxiedHost);
+        &evb, clientContext, sni, verifier, false, proxiedHost, extensions);
     Connection* inputTarget = &conn;
     if (reconnect) {
       auto pskCache = std::make_shared<ResumptionPskCache>(

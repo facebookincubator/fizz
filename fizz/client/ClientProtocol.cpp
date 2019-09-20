@@ -1473,11 +1473,29 @@ static MutateState handleCertMsg(
   std::vector<std::shared_ptr<const PeerCert>> serverCerts;
   bool leaf = true;
   for (auto& certEntry : certMsg.certificate_list) {
-    // We don't request any certificate-related extensions
-    if (!certEntry.extensions.empty()) {
-      throw FizzException(
-          "certificate extensions must be empty",
-          AlertDescription::illegal_parameter);
+    if (state.extensions()) {
+      // Check that these extensions correspond to ones we requested.
+      auto sentExtensions = state.extensions()->getClientHelloExtensions();
+      for (auto& ext : certEntry.extensions) {
+        auto extIt = std::find_if(
+            sentExtensions.begin(),
+            sentExtensions.end(),
+            [type = ext.extension_type](const Extension& sentExt) {
+              return sentExt.extension_type == type;
+            });
+        if (extIt == sentExtensions.end()) {
+          throw FizzException(
+              "unrequested certificate extension:" +
+                  toString(ext.extension_type),
+              AlertDescription::illegal_parameter);
+        }
+      }
+    } else {
+      if (!certEntry.extensions.empty()) {
+        throw FizzException(
+            "certificate extensions must be empty",
+            AlertDescription::illegal_parameter);
+      }
     }
 
     serverCerts.emplace_back(state.context()->getFactory()->makePeerCert(
