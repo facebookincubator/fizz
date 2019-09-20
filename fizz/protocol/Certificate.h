@@ -106,7 +106,8 @@ class CertUtils {
   static std::unique_ptr<SelfCert> makeSelfCert(
       std::string certData,
       std::string keyData,
-      const std::vector<std::shared_ptr<CertificateCompressor>>& compressors = {});
+      const std::vector<std::shared_ptr<CertificateCompressor>>& compressors =
+          {});
 
   /**
    * Creates a SelfCert using the supplied certificate, encrypted key data,
@@ -116,12 +117,14 @@ class CertUtils {
       std::string certData,
       std::string encryptedKeyData,
       std::string password,
-      const std::vector<std::shared_ptr<CertificateCompressor>>& compressors = {});
+      const std::vector<std::shared_ptr<CertificateCompressor>>& compressors =
+          {});
 
   static std::unique_ptr<SelfCert> makeSelfCert(
       std::vector<folly::ssl::X509UniquePtr> certs,
       folly::ssl::EvpPkeyUniquePtr key,
-      const std::vector<std::shared_ptr<CertificateCompressor>>& compressors = {});
+      const std::vector<std::shared_ptr<CertificateCompressor>>& compressors =
+          {});
 
   /**
    * Clones a compressed cert by copying the relevant fields and cloning the
@@ -189,7 +192,7 @@ class PeerCertImpl : public PeerCert {
 
   folly::ssl::X509UniquePtr getX509() const override;
 
- private:
+ protected:
   OpenSSLSignature<T> signature_;
   folly::ssl::X509UniquePtr cert_;
 };
