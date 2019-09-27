@@ -8,6 +8,7 @@
 
 #include <fizz/extensions/delegatedcred/DelegatedCredentialFactory.h>
 #include <fizz/extensions/delegatedcred/PeerDelegatedCredential.h>
+#include <folly/portability/OpenSSL.h>
 
 namespace fizz {
 namespace extensions {
@@ -32,7 +33,7 @@ std::shared_ptr<PeerCert> DelegatedCredentialFactory::makePeerCert(
   }
 
   // Check validity period first.
-  auto notBefore = X509_get_notBefore(parentX509.get());
+  auto notBefore = X509_get0_notBefore(parentX509.get());
   auto notBeforeTime =
       folly::ssl::OpenSSLCertUtils::asnTimeToTimepoint(notBefore);
   auto credentialExpiresTime =
