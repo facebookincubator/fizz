@@ -23,11 +23,11 @@
 
 #include <folly/io/async/test/MockAsyncTransport.h>
 
-/* using override */
-using namespace testing;
-
 namespace fizz {
 namespace test {
+
+/* using override */
+using namespace testing;
 
 class MockKeyScheduler : public KeyScheduler {
  public:

@@ -14,10 +14,10 @@
 #include <fizz/record/EncryptedRecordLayer.h>
 #include <fizz/record/PlaintextRecordLayer.h>
 
+namespace fizz {
+
 /* using override */
 using namespace testing;
-
-namespace fizz {
 
 template <typename T>
 void setWriteDefaults(T* obj) {

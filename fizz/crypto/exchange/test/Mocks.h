@@ -12,10 +12,10 @@
 
 #include <fizz/crypto/exchange/KeyExchange.h>
 
+namespace fizz {
+
 /* using override */
 using namespace testing;
-
-namespace fizz {
 
 class MockKeyExchange : public KeyExchange {
  public:

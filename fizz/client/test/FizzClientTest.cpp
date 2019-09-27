@@ -95,7 +95,7 @@ TEST_F(FizzClientTest, TestConnectPskIdentity) {
 TEST(FizzClientContextTest, TestCopy) {
   FizzClientContext ctx;
   auto ctx2 = ctx;
-  (void) ctx2;
+  (void)ctx2;
 }
 } // namespace test
 } // namespace client

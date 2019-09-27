@@ -21,14 +21,14 @@
 #include <fizz/server/ServerExtensions.h>
 #include <fizz/server/ServerProtocol.h>
 
+namespace fizz {
+namespace server {
+namespace test {
+
 /* using override */
 using namespace testing;
 /* using override */
 using namespace fizz::test;
-
-namespace fizz {
-namespace server {
-namespace test {
 
 class MockServerStateMachine : public ServerStateMachine {
  public:

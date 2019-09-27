@@ -11,11 +11,11 @@
 #include <fizz/crypto/aead/Aead.h>
 #include <folly/portability/GMock.h>
 
-/* using override */
-using namespace testing;
-
 namespace fizz {
 namespace test {
+
+/* using override */
+using namespace testing;
 
 class MockAead : public Aead {
  public:
