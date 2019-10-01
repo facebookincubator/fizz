@@ -12,6 +12,52 @@
 namespace fizz {
 namespace server {
 
+void HandshakeLogging::populateFromClientHello(const ClientHello& chlo) {
+  clientLegacyVersion = chlo.legacy_version;
+  auto supportedVersions = getExtension<SupportedVersions>(chlo.extensions);
+  if (supportedVersions) {
+    clientSupportedVersions = supportedVersions->versions;
+  }
+  clientCiphers = chlo.cipher_suites;
+  clientExtensions.clear();
+  for (const auto& extension : chlo.extensions) {
+    clientExtensions.push_back(extension.extension_type);
+  }
+  auto sni = getExtension<ServerNameList>(chlo.extensions);
+  if (sni && !sni->server_name_list.empty()) {
+    clientSni =
+        sni->server_name_list.front().hostname->moveToFbString().toStdString();
+  }
+  auto supportedGroups = getExtension<SupportedGroups>(chlo.extensions);
+  if (supportedGroups) {
+    clientSupportedGroups = std::move(supportedGroups->named_group_list);
+  }
+
+  auto keyShare = getExtension<ClientKeyShare>(chlo.extensions);
+  if (keyShare && !clientKeyShares) {
+    std::vector<NamedGroup> shares;
+    for (const auto& entry : keyShare->client_shares) {
+      shares.push_back(entry.group);
+    }
+    clientKeyShares = std::move(shares);
+  }
+
+  auto exchangeModes = getExtension<PskKeyExchangeModes>(chlo.extensions);
+  if (exchangeModes) {
+    clientKeyExchangeModes = std::move(exchangeModes->modes);
+  }
+
+  auto clientSigSchemes = getExtension<SignatureAlgorithms>(chlo.extensions);
+  if (clientSigSchemes) {
+    clientSignatureAlgorithms =
+        std::move(clientSigSchemes->supported_signature_algorithms);
+  }
+
+  clientSessionIdSent =
+      chlo.legacy_session_id && !chlo.legacy_session_id->empty();
+  clientRandom = chlo.random;
+}
+
 folly::StringPiece toString(StateEnum state) {
   switch (state) {
     case StateEnum::Uninitialized:

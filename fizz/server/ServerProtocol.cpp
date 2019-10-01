@@ -374,61 +374,16 @@ EventHandler<ServerTypes, StateEnum::Uninitialized, Event::Accept>::handle(
 }
 
 static void addHandshakeLogging(const State& state, const ClientHello& chlo) {
-  if (state.handshakeLogging()) {
-    state.handshakeLogging()->clientLegacyVersion = chlo.legacy_version;
-    auto supportedVersions = getExtension<SupportedVersions>(chlo.extensions);
-    if (supportedVersions) {
-      state.handshakeLogging()->clientSupportedVersions =
-          supportedVersions->versions;
-    }
-    state.handshakeLogging()->clientCiphers = chlo.cipher_suites;
-    state.handshakeLogging()->clientExtensions.clear();
-    for (const auto& extension : chlo.extensions) {
-      state.handshakeLogging()->clientExtensions.push_back(
-          extension.extension_type);
-    }
-    auto plaintextReadRecord =
-        dynamic_cast<PlaintextReadRecordLayer*>(state.readRecordLayer());
-    if (plaintextReadRecord) {
-      state.handshakeLogging()->clientRecordVersion =
-          plaintextReadRecord->getReceivedRecordVersion();
-    }
-    auto sni = getExtension<ServerNameList>(chlo.extensions);
-    if (sni && !sni->server_name_list.empty()) {
-      state.handshakeLogging()->clientSni = sni->server_name_list.front()
-                                                .hostname->moveToFbString()
-                                                .toStdString();
-    }
-    auto supportedGroups = getExtension<SupportedGroups>(chlo.extensions);
-    if (supportedGroups) {
-      state.handshakeLogging()->clientSupportedGroups =
-          std::move(supportedGroups->named_group_list);
-    }
-
-    auto keyShare = getExtension<ClientKeyShare>(chlo.extensions);
-    if (keyShare && !state.handshakeLogging()->clientKeyShares) {
-      std::vector<NamedGroup> shares;
-      for (const auto& entry : keyShare->client_shares) {
-        shares.push_back(entry.group);
-      }
-      state.handshakeLogging()->clientKeyShares = std::move(shares);
-    }
-
-    auto exchangeModes = getExtension<PskKeyExchangeModes>(chlo.extensions);
-    if (exchangeModes) {
-      state.handshakeLogging()->clientKeyExchangeModes =
-          std::move(exchangeModes->modes);
-    }
-
-    auto clientSigSchemes = getExtension<SignatureAlgorithms>(chlo.extensions);
-    if (clientSigSchemes) {
-      state.handshakeLogging()->clientSignatureAlgorithms =
-          std::move(clientSigSchemes->supported_signature_algorithms);
-    }
-
-    state.handshakeLogging()->clientSessionIdSent =
-        chlo.legacy_session_id && !chlo.legacy_session_id->empty();
-    state.handshakeLogging()->clientRandom = chlo.random;
+  auto logging = state.handshakeLogging();
+  if (!logging) {
+    return;
+  }
+  logging->populateFromClientHello(chlo);
+  auto plaintextReadRecord =
+      dynamic_cast<PlaintextReadRecordLayer*>(state.readRecordLayer());
+  if (plaintextReadRecord) {
+    logging->clientRecordVersion =
+        plaintextReadRecord->getReceivedRecordVersion();
   }
 }
 
