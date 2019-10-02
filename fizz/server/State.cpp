@@ -8,7 +8,6 @@
 
 #include <fizz/server/State.h>
 
-
 namespace fizz {
 namespace server {
 
@@ -22,6 +21,11 @@ void HandshakeLogging::populateFromClientHello(const ClientHello& chlo) {
   clientExtensions.clear();
   for (const auto& extension : chlo.extensions) {
     clientExtensions.push_back(extension.extension_type);
+    if (extension.extension_type == ExtensionType::test_extension &&
+        extension.extension_data->length() == 1) {
+      // Special extension we want to log the byte for
+      testExtensionByte = *extension.extension_data->data();
+    }
   }
   auto sni = getExtension<ServerNameList>(chlo.extensions);
   if (sni && !sni->server_name_list.empty()) {

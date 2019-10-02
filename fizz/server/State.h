@@ -50,6 +50,7 @@ struct HandshakeLogging {
   std::vector<SignatureScheme> clientSignatureAlgorithms;
   folly::Optional<bool> clientSessionIdSent;
   folly::Optional<Random> clientRandom;
+  folly::Optional<uint8_t> testExtensionByte;
 
   void populateFromClientHello(const ClientHello& chlo);
 };

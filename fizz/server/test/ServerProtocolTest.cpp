@@ -3536,6 +3536,21 @@ TEST_F(ServerProtocolTest, TestClientHelloHandshakeLogging) {
   EXPECT_TRUE(state_.handshakeLogging()->clientRandom.hasValue());
 }
 
+TEST_F(ServerProtocolTest, TestClientHelloTestByte) {
+  setUpExpectingClientHello();
+  state_.handshakeLogging() = std::make_unique<HandshakeLogging>();
+
+  auto chlo = TestMessages::clientHello();
+  auto testExtensionByte = static_cast<uint8_t>(0);
+  chlo.extensions.push_back({ExtensionType::test_extension,
+                             folly::IOBuf::copyBuffer(&testExtensionByte, 1)});
+  auto actions = getActions(detail::processEvent(state_, std::move(chlo)));
+  processStateMutations(actions);
+
+  EXPECT_TRUE(state_.handshakeLogging()->testExtensionByte.hasValue());
+  EXPECT_EQ(state_.handshakeLogging()->testExtensionByte.value(), 0);
+}
+
 TEST_F(ServerProtocolTest, TestClientHelloHandshakeLoggingError) {
   setUpExpectingClientHello();
   state_.handshakeLogging() = std::make_unique<HandshakeLogging>();
