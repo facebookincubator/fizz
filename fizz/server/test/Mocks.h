@@ -103,19 +103,21 @@ class MockTicketCipher : public TicketCipher {
     return _encrypt(resState);
   }
 
-  MOCK_CONST_METHOD1(
+  MOCK_CONST_METHOD2(
       _decrypt,
       folly::Future<std::pair<PskType, folly::Optional<ResumptionState>>>(
-          std::unique_ptr<folly::IOBuf>& encryptedTicket));
+          std::unique_ptr<folly::IOBuf>& encryptedTicket,
+          const State* state));
   folly::Future<std::pair<PskType, folly::Optional<ResumptionState>>> decrypt(
-      std::unique_ptr<folly::IOBuf> encryptedTicket) const override {
-    return _decrypt(encryptedTicket);
+      std::unique_ptr<folly::IOBuf> encryptedTicket,
+      const State* state = nullptr) const override {
+    return _decrypt(encryptedTicket, state);
   }
 
   void setDefaults(
       std::chrono::system_clock::time_point ticketIssued =
           std::chrono::system_clock::now()) {
-    ON_CALL(*this, _decrypt(_))
+    ON_CALL(*this, _decrypt(_, _))
         .WillByDefault(InvokeWithoutArgs([ticketIssued]() {
           ResumptionState res;
           res.version = ProtocolVersion::tls_1_3;
