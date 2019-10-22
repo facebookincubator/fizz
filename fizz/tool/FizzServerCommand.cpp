@@ -278,6 +278,10 @@ class FizzExampleServer : public AsyncFizzServer::HandshakeCallback,
 
   void finish() {
     if (transport_ || sslSocket_) {
+      // Forcibly clean up connection
+      if (transport_) {
+        transport_->closeNow();
+      }
       transport_.reset();
       sslSocket_.reset();
       acceptor_->done();

@@ -169,6 +169,12 @@ void AsyncFizzBase::deliverError(
       readCallback->readErr(ex);
     }
   }
+
+  // Clear the secret callback too.
+  if (secretCallback_) {
+    secretCallback_ = nullptr;
+  }
+
   if (closeTransport) {
     transport_->close();
   }
