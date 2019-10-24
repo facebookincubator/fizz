@@ -221,6 +221,10 @@ class AsyncFizzClientT : public AsyncFizzBase,
 
   // Set when using socket connect() API to later pass into the state machine
   std::shared_ptr<const CertificateVerifier> verifier_;
+
+  // Contains app writes pending a handshake success. Will be cleared once the
+  // handshake succeeds.
+  std::deque<AppWrite> pendingHandshakeAppWrites_;
 };
 
 using AsyncFizzClient = AsyncFizzClientT<ClientStateMachine>;

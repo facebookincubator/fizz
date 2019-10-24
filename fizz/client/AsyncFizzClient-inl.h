@@ -57,8 +57,8 @@ void AsyncFizzClientT<SM>::connect(
     std::chrono::milliseconds timeout) {
   DelayedDestruction::DestructorGuard dg(this);
 
-  CHECK(callback);
-  CHECK(!callback_);
+  // shouldn't attempt to connect a second time
+  CHECK(!callback_.hasValue()) << "connect already called";
   callback_ = callback;
 
   if (!transport_->good()) {
@@ -103,8 +103,8 @@ void AsyncFizzClientT<SM>::connect(
     const folly::SocketAddress& bindAddr) {
   DelayedDestruction::DestructorGuard dg(this);
 
-  CHECK(callback);
-  CHECK(!callback_);
+  // shouldn't attempt to connect a second time
+  CHECK(!callback_.hasValue()) << "connect already called";
   callback_ = callback;
 
   verifier_ = std::move(verifier);
@@ -306,7 +306,20 @@ void AsyncFizzClientT<SM>::writeAppData(
     w.callback = callback;
     w.data = std::move(buf);
     w.flags = flags;
-    fizzClient_.appWrite(std::move(w));
+
+    // Instead of dealing with the ordering of all 3 potential queues (early
+    // data resend buffer, early data pending writes, and pending handshake
+    // writes), we only queue up pending handshake writes if early data is
+    // disabled through the user submitted FizzClientContext configuration.
+    // Otherwise, we revert to the previous behavior where the write would fail
+    // at the transport level.
+    if (connecting() && !fizzContext_->getSendEarlyData()) {
+      // underlying socket hasn't been connected, collect app data writes until
+      // it is, then flush them
+      pendingHandshakeAppWrites_.push_back(std::move(w));
+    } else {
+      fizzClient_.appWrite(std::move(w));
+    }
   }
 }
 
@@ -333,6 +346,15 @@ void AsyncFizzClientT<SM>::deliverAllErrors(
     replaySafetyCallback_ = nullptr;
   }
 
+  // if there are writes pending, call their error callback and clear the queue
+  while (!pendingHandshakeAppWrites_.empty()) {
+    auto w = std::move(pendingHandshakeAppWrites_.front());
+    pendingHandshakeAppWrites_.pop_front();
+    if (w.callback) {
+      w.callback->writeErr(0, ex);
+    }
+  }
+
   while (earlyDataState_ && !earlyDataState_->pendingAppWrites.empty()) {
     auto w = std::move(earlyDataState_->pendingAppWrites.front());
     earlyDataState_->pendingAppWrites.pop_front();
@@ -354,23 +376,27 @@ void AsyncFizzClientT<SM>::deliverHandshakeError(folly::exception_wrapper ex) {
         cb,
         ::fizz::detail::result_type<void>(),
         [this, &ex](HandshakeCallback* callback) {
-          callback->fizzHandshakeError(this, std::move(ex));
+          if (callback) {
+            callback->fizzHandshakeError(this, std::move(ex));
+          }
         },
         [&ex](folly::AsyncSocket::ConnectCallback* callback) {
-          ex.handle(
-              [callback](const folly::AsyncSocketException& ase) {
-                callback->connectErr(ase);
-              },
-              [callback](const std::exception& stdEx) {
-                folly::AsyncSocketException ase(
-                    folly::AsyncSocketException::SSL_ERROR, stdEx.what());
-                callback->connectErr(ase);
-              },
-              [callback](...) {
-                folly::AsyncSocketException ase(
-                    folly::AsyncSocketException::SSL_ERROR, "unknown error");
-                callback->connectErr(ase);
-              });
+          if (callback) {
+            ex.handle(
+                [callback](const folly::AsyncSocketException& ase) {
+                  callback->connectErr(ase);
+                },
+                [callback](const std::exception& stdEx) {
+                  folly::AsyncSocketException ase(
+                      folly::AsyncSocketException::SSL_ERROR, stdEx.what());
+                  callback->connectErr(ase);
+                },
+                [callback](...) {
+                  folly::AsyncSocketException ase(
+                      folly::AsyncSocketException::SSL_ERROR, "unknown error");
+                  callback->connectErr(ase);
+                });
+          }
         });
   }
 }
@@ -402,10 +428,14 @@ void AsyncFizzClientT<SM>::ActionMoveVisitor::operator()(
         cb,
         ::fizz::detail::result_type<void>(),
         [this](HandshakeCallback* callback) {
-          callback->fizzHandshakeSuccess(&client_);
+          if (callback) {
+            callback->fizzHandshakeSuccess(&client_);
+          }
         },
         [](folly::AsyncSocket::ConnectCallback* callback) {
-          callback->connectSuccess();
+          if (callback) {
+            callback->connectSuccess();
+          }
         });
   }
 }
@@ -441,6 +471,16 @@ template <typename SM>
 void AsyncFizzClientT<SM>::ActionMoveVisitor::operator()(
     ReportHandshakeSuccess& success) {
   client_.cancelHandshakeTimeout();
+
+  // if there are app writes pending this handshake success, flush them first,
+  // then flush the early data buffers
+  auto& pendingHandshakeAppWrites = client_.pendingHandshakeAppWrites_;
+  while (!pendingHandshakeAppWrites.empty()) {
+    auto w = std::move(pendingHandshakeAppWrites.front());
+    pendingHandshakeAppWrites.pop_front();
+    client_.fizzClient_.appWrite(std::move(w));
+  }
+
   if (client_.earlyDataState_) {
     if (!success.earlyDataAccepted) {
       auto ex = client_.handleEarlyReject();
@@ -468,10 +508,14 @@ void AsyncFizzClientT<SM>::ActionMoveVisitor::operator()(
         cb,
         ::fizz::detail::result_type<void>(),
         [this](HandshakeCallback* callback) {
-          callback->fizzHandshakeSuccess(&client_);
+          if (callback) {
+            callback->fizzHandshakeSuccess(&client_);
+          }
         },
         [](folly::AsyncSocket::ConnectCallback* callback) {
-          callback->connectSuccess();
+          if (callback) {
+            callback->connectSuccess();
+          }
         });
   }
   if (client_.replaySafetyCallback_) {

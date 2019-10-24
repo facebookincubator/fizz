@@ -192,6 +192,14 @@ class HandshakeTest : public Test {
     evb_.loop();
   }
 
+  // don't register a callback for connect/handshake
+  void doClientHandshakeNullCallback() {
+    // register read callback here because we don't call expectClientSuccess
+    client_->setReadCB(&clientRead_);
+    client_->connect(nullptr, nullptr, folly::none, std::string("Fizz"));
+    evb_.loop();
+  }
+
   void doServerHandshake() {
     server_->accept(&serverCallback_);
     evb_.loop();
@@ -261,6 +269,10 @@ class HandshakeTest : public Test {
 
   void clientWrite(StringPiece write) {
     client_->writeChain(nullptr, IOBuf::copyBuffer(write));
+  }
+
+  void clientWriteWithCallback(StringPiece write) {
+    client_->writeChain(&clientWriteCallback_, IOBuf::copyBuffer(write));
   }
 
   void serverWrite(StringPiece write) {
@@ -382,6 +394,7 @@ class HandshakeTest : public Test {
   fizz::server::test::MockHandshakeCallback serverCallback_;
 
   folly::test::MockReadCallback readCallback_;
+  folly::test::MockWriteCallback clientWriteCallback_;
 
   std::shared_ptr<fizz::ClientExtensions> clientExtensions_;
   std::shared_ptr<fizz::ServerExtensions> serverExtensions_;

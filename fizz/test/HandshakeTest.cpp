@@ -528,6 +528,69 @@ TEST_F(HandshakeTest, EarlyDataAcceptedOmitEarlyRecord) {
   sendAppData();
 }
 
+// Disables early data, initiates connection with a null callback, writes a
+// couple strings that should be queued, successfully connects, and verifies
+// whether queued messaged arrived on server
+TEST_F(HandshakeTest, QueuePendingHandshake) {
+  // disable early data
+  clientContext_->setSendEarlyData(false);
+
+  // connect with a null callback
+  doClientHandshakeNullCallback();
+
+  clientWrite("queued");
+  clientWrite("up");
+
+  expectServerSuccess();
+  expectServerRead("queued");
+  expectServerRead("up");
+  doServerHandshake();
+
+  // rely on defaults
+  verifyParameters();
+  // send some more, just in case
+  sendAppData();
+}
+
+// Disables early data, initiates connection with a null callback, writes a
+// couple strings that should be queued, fails to handshake, and verifies queued
+// writes receive error callbacks
+TEST_F(HandshakeTest, ClearPendingHandshakeQueueOnError) {
+  // disable early data
+  clientContext_->setSendEarlyData(false);
+
+  // set up a failure during handshake
+  clientContext_->setSupportedGroups({NamedGroup::secp256r1});
+  clientContext_->setDefaultShares({NamedGroup::secp256r1});
+  serverContext_->setSupportedGroups({NamedGroup::x25519});
+
+  // connect with a null callback
+  doClientHandshakeNullCallback();
+
+  // enqueue one write with callback and one without
+  clientWriteWithCallback("queued");
+  clientWrite("up");
+
+  // server handshake callback should get a failure
+  EXPECT_CALL(serverCallback_, _fizzHandshakeError(_))
+      .WillOnce(Invoke([](folly::exception_wrapper ex) {
+        EXPECT_THAT(ex.what().toStdString(), HasSubstr("no group match"));
+      }));
+  ON_CALL(serverCallback_, _fizzHandshakeSuccess()).WillByDefault(Invoke([]() {
+    FAIL() << "Server should not have succeeded its handshake.";
+  }));
+
+  // error callback will occur once handshake fails
+  EXPECT_CALL(clientWriteCallback_, writeErr_(_, _))
+      .WillOnce(Invoke([](size_t bytesWritten, folly::exception_wrapper ex) {
+        EXPECT_THAT(bytesWritten, Eq(0));
+        EXPECT_THAT(
+            ex.what().toStdString(), HasSubstr("alert: handshake_failure"));
+      }));
+
+  doServerHandshake();
+}
+
 TEST_F(HandshakeTest, Compat) {
   clientContext_->setCompatibilityMode(true);
   expectSuccess();

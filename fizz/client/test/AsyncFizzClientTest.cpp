@@ -207,20 +207,77 @@ TEST_F(AsyncFizzClientTest, TestReadMulti) {
 }
 
 TEST_F(AsyncFizzClientTest, TestWrite) {
-  connect();
+  completeHandshake();
   EXPECT_CALL(*machine_, _processAppWrite(_, _))
       .WillOnce(InvokeWithoutArgs([]() { return detail::actions(); }));
   client_->writeChain(nullptr, IOBuf::copyBuffer("HTTP GET"));
 }
 
 TEST_F(AsyncFizzClientTest, TestWriteMulti) {
-  connect();
+  completeHandshake();
   EXPECT_CALL(*machine_, _processAppWrite(_, _))
-      .WillOnce(InvokeWithoutArgs([]() { return detail::actions(); }));
+      .Times(2)
+      .WillRepeatedly(InvokeWithoutArgs([]() { return detail::actions(); }));
   client_->writeChain(nullptr, IOBuf::copyBuffer("HTTP GET"));
-  EXPECT_CALL(*machine_, _processAppWrite(_, _))
-      .WillOnce(InvokeWithoutArgs([]() { return detail::actions(); }));
   client_->writeChain(nullptr, IOBuf::copyBuffer("HTTP POST"));
+}
+
+// Tests that queue for writes pending a handshake success isn't used
+TEST_F(AsyncFizzClientTest, TestWriteQueuePendingHandshakeWithEarlyData) {
+  // early data is set to true in the context in SetUp()
+  connect();
+  Sequence s;
+  EXPECT_CALL(*machine_, _processAppWrite(_, _))
+      .Times(2)
+      .InSequence(s)
+      .WillRepeatedly(InvokeWithoutArgs([]() { return detail::actions(); }));
+  // writes will skip queue and be written directly to fizz client, which hasn't
+  // been connected yet
+  client_->writeChain(nullptr, IOBuf::copyBuffer("HTTP GET"));
+  client_->writeChain(nullptr, IOBuf::copyBuffer("HTTP POST"));
+  EXPECT_CALL(handshakeCallback_, _fizzHandshakeSuccess()).InSequence(s);
+  fullHandshakeSuccess(true);
+}
+
+// Tests that queue for writes pending a handshake is used and that writes are
+// flushed only after handshake is complete
+TEST_F(AsyncFizzClientTest, TestWriteQueuePendingHandshakeWithoutEarlyData) {
+  context_->setSendEarlyData(false);
+  connect();
+  client_->writeChain(nullptr, IOBuf::copyBuffer("HTTP GET"));
+  client_->writeChain(nullptr, IOBuf::copyBuffer("HTTP POST"));
+  Sequence s;
+  EXPECT_CALL(handshakeCallback_, _fizzHandshakeSuccess()).InSequence(s);
+  EXPECT_CALL(*machine_, _processAppWrite(_, _))
+      .Times(2)
+      .InSequence(s)
+      .WillRepeatedly(InvokeWithoutArgs([]() { return detail::actions(); }));
+  fullHandshakeSuccess(true);
+  EXPECT_CALL(*machine_, _processAppWrite(_, _))
+      .InSequence(s)
+      .WillOnce(InvokeWithoutArgs([]() { return detail::actions(); }));
+  client_->writeChain(nullptr, IOBuf::copyBuffer("HTTP PUT"));
+}
+
+// Tests that the error callback for queued writes is called and the queue is
+// cleared when an error occurs
+TEST_F(AsyncFizzClientTest, TestPendingHandshakeQueueErrorCallback) {
+  context_->setSendEarlyData(false);
+  connect();
+  client_->writeChain(nullptr, IOBuf::copyBuffer("HTTP GET"));
+  client_->writeChain(&writeCallback_, IOBuf::copyBuffer("HTTP POST"));
+  client_->writeChain(&writeCallback_, IOBuf::copyBuffer("HTTP POST"));
+  Sequence s;
+  EXPECT_CALL(*machine_, _processSocketData(_, _))
+      .InSequence(s)
+      .WillOnce(InvokeWithoutArgs([]() {
+        return detail::actions(ReportError("unit test"), WaitForData());
+      }));
+  EXPECT_CALL(handshakeCallback_, _fizzHandshakeError(_)).InSequence(s);
+  // two of three write callbacks were registered
+  EXPECT_CALL(writeCallback_, writeErr_(0, _)).Times(2).InSequence(s);
+  // trigger the _processSocketData expectation
+  socketReadCallback_->readBufferAvailable(IOBuf::copyBuffer("ignore"));
 }
 
 TEST_F(AsyncFizzClientTest, TestWriteErrorState) {
