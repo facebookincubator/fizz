@@ -20,7 +20,7 @@ Buf KeyDerivationImpl<Hash>::expandLabel(
     uint16_t length) {
   HkdfLabel hkdfLabel = {
       length, std::string(label.begin(), label.end()), std::move(hashValue)};
-  return HkdfImpl<Hash>().expand(
+  return HkdfImpl::create<Hash>().expand(
       secret, *encodeHkdfLabel(std::move(hkdfLabel), labelPrefix_), length);
 }
 
@@ -29,7 +29,7 @@ Buf KeyDerivationImpl<Hash>::hkdfExpand(
     folly::ByteRange secret,
     Buf info,
     uint16_t length) {
-  return HkdfImpl<Hash>().expand(secret, *info, length);
+  return HkdfImpl::create<Hash>().expand(secret, *info, length);
 }
 
 template <typename Hash>

@@ -48,10 +48,12 @@ class Hkdf {
  *   - HashLen: length of the hash digest
  *   - hmac(ByteRange key, const IOBuf& in, MutableByteRange out)
  */
-template <typename Hash>
 class HkdfImpl : public Hkdf {
  public:
-  static constexpr size_t HashLen = Hash::HashLen;
+  template <typename Hash>
+  static HkdfImpl create() {
+    return HkdfImpl(Hash::HashLen, &Hash::hmac);
+  }
 
   std::vector<uint8_t> extract(folly::ByteRange salt, folly::ByteRange ikm)
       const override;
@@ -68,9 +70,17 @@ class HkdfImpl : public Hkdf {
       size_t outputBytes) const override;
 
   size_t hashLength() const override {
-    return HashLen;
+    return hashLength_;
   }
+
+ private:
+  using HmacFunc =
+      void (*)(folly::ByteRange, const folly::IOBuf&, folly::MutableByteRange);
+
+  HkdfImpl(size_t hashLength, HmacFunc hmacFunc)
+      : hashLength_(hashLength), hmacFunc_(hmacFunc) {}
+
+  size_t hashLength_;
+  HmacFunc hmacFunc_;
 };
 } // namespace fizz
-
-#include <fizz/crypto/Hkdf-inl.h>

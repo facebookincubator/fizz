@@ -98,7 +98,7 @@ class KeyDerivationImpl : public KeyDerivation {
 
   std::vector<uint8_t> hkdfExtract(folly::ByteRange salt, folly::ByteRange ikm)
       override {
-    return HkdfImpl<Hash>().extract(salt, ikm);
+    return HkdfImpl::create<Hash>().extract(salt, ikm);
   }
 
  private:

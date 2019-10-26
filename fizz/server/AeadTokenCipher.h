@@ -25,7 +25,7 @@ class Aead128GCMTokenCipher {
  public:
   static constexpr size_t kMinTokenSecretLength = 32;
 
-  using HkdfType = HkdfImpl<Sha256>;
+  using HashType = Sha256;
   using AeadType = OpenSSLEVPCipher;
   using CipherType = AESGCM128;
 
@@ -55,7 +55,7 @@ class Aead128GCMTokenCipher {
 
  private:
   using Secret = std::vector<uint8_t>;
-  static constexpr size_t kSaltLength = HkdfType::HashLen;
+  static constexpr size_t kSaltLength = HashType::HashLen;
   using Salt = std::array<uint8_t, kSaltLength>;
   using SeqNum = uint32_t;
   static constexpr size_t kTokenHeaderLength = kSaltLength + sizeof(SeqNum);

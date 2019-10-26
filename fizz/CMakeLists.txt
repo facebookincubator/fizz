@@ -143,6 +143,7 @@ set(FIZZ_SOURCES
   crypto/aead/OpenSSLEVPCipher.cpp
   crypto/aead/IOBufUtil.cpp
   crypto/signature/Signature.cpp
+  crypto/Hkdf.cpp
   crypto/Sha256.cpp
   crypto/Sha384.cpp
   crypto/openssl/OpenSSLKeyUtils.cpp
