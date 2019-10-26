@@ -22,9 +22,9 @@ class OpenSSLFactory : public Factory {
       case CipherSuite::TLS_CHACHA20_POLY1305_SHA256:
       case CipherSuite::TLS_AES_128_GCM_SHA256:
       case CipherSuite::TLS_AES_128_OCB_SHA256_EXPERIMENTAL:
-        return std::make_unique<KeyDerivationImpl<Sha256>>(getHkdfPrefix());
+        return KeyDerivationImpl::make<Sha256>(getHkdfPrefix());
       case CipherSuite::TLS_AES_256_GCM_SHA384:
-        return std::make_unique<KeyDerivationImpl<Sha384>>(getHkdfPrefix());
+        return KeyDerivationImpl::make<Sha384>(getHkdfPrefix());
       default:
         throw std::runtime_error("ks: not implemented");
     }

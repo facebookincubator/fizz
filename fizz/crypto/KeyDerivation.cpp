@@ -6,46 +6,55 @@
  *  LICENSE file in the root directory of this source tree.
  */
 
+#include <fizz/crypto/KeyDerivation.h>
+
 namespace fizz {
 
-template <typename Hash>
-KeyDerivationImpl<Hash>::KeyDerivationImpl(const std::string& labelPrefix)
-    : labelPrefix_(labelPrefix) {}
+KeyDerivationImpl::KeyDerivationImpl(
+    const std::string& labelPrefix,
+    size_t hashLength,
+    HashFunc hashFunc,
+    HmacFunc hmacFunc,
+    HkdfImpl hkdf,
+    folly::ByteRange blankHash)
+    : labelPrefix_(labelPrefix),
+      hashLength_(hashLength),
+      hashFunc_(hashFunc),
+      hmacFunc_(hmacFunc),
+      hkdf_(hkdf),
+      blankHash_(blankHash) {}
 
-template <typename Hash>
-Buf KeyDerivationImpl<Hash>::expandLabel(
+Buf KeyDerivationImpl::expandLabel(
     folly::ByteRange secret,
     folly::StringPiece label,
     Buf hashValue,
     uint16_t length) {
   HkdfLabel hkdfLabel = {
       length, std::string(label.begin(), label.end()), std::move(hashValue)};
-  return HkdfImpl::create<Hash>().expand(
+  return hkdf_.expand(
       secret, *encodeHkdfLabel(std::move(hkdfLabel), labelPrefix_), length);
 }
 
-template <typename Hash>
-Buf KeyDerivationImpl<Hash>::hkdfExpand(
+Buf KeyDerivationImpl::hkdfExpand(
     folly::ByteRange secret,
     Buf info,
     uint16_t length) {
-  return HkdfImpl::create<Hash>().expand(secret, *info, length);
+  return hkdf_.expand(secret, *info, length);
 }
 
-template <typename Hash>
-std::vector<uint8_t> KeyDerivationImpl<Hash>::deriveSecret(
+std::vector<uint8_t> KeyDerivationImpl::deriveSecret(
     folly::ByteRange secret,
     folly::StringPiece label,
     folly::ByteRange messageHash) {
-  CHECK_EQ(secret.size(), Hash::HashLen);
-  CHECK_EQ(messageHash.size(), Hash::HashLen);
+  CHECK_EQ(secret.size(), hashLength_);
+  CHECK_EQ(messageHash.size(), hashLength_);
   // Copying the buffer to avoid violating constness of the data.
   auto hashBuf = folly::IOBuf::copyBuffer(messageHash);
-  auto out = expandLabel(secret, label, std::move(hashBuf), Hash::HashLen);
-  std::vector<uint8_t> prk(Hash::HashLen);
+  auto out = expandLabel(secret, label, std::move(hashBuf), hashLength_);
+  std::vector<uint8_t> prk(hashLength_);
   size_t offset = 0;
   for (auto buf : *out) {
-    size_t remaining = Hash::HashLen - offset;
+    size_t remaining = hashLength_ - offset;
     size_t length = std::min(buf.size(), remaining);
     memcpy(prk.data() + offset, buf.data(), length);
     offset += length;

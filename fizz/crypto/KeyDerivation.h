@@ -56,30 +56,50 @@ class KeyDerivation {
       folly::MutableByteRange out) = 0;
 };
 
-template <typename Hash>
 class KeyDerivationImpl : public KeyDerivation {
  public:
   ~KeyDerivationImpl() override = default;
 
-  KeyDerivationImpl(const std::string& labelPrefix);
+  template <typename Hash>
+  static KeyDerivationImpl create(const std::string& labelPrefix) {
+    return KeyDerivationImpl(
+        labelPrefix,
+        Hash::HashLen,
+        &Hash::hash,
+        &Hash::hmac,
+        HkdfImpl::create<Hash>(),
+        Hash::BlankHash);
+  }
+
+  template <typename Hash>
+  static std::unique_ptr<KeyDerivationImpl> make(
+      const std::string& labelPrefix) {
+    return std::unique_ptr<KeyDerivationImpl>(new KeyDerivationImpl(
+        labelPrefix,
+        Hash::HashLen,
+        &Hash::hash,
+        &Hash::hmac,
+        HkdfImpl::create<Hash>(),
+        Hash::BlankHash));
+  }
 
   size_t hashLength() const override {
-    return Hash::HashLen;
+    return hashLength_;
   }
 
   void hash(const folly::IOBuf& in, folly::MutableByteRange out) override {
-    Hash::hash(in, out);
+    hashFunc_(in, out);
   }
 
   void hmac(
       folly::ByteRange key,
       const folly::IOBuf& in,
       folly::MutableByteRange out) override {
-    Hash::hmac(key, in, out);
+    hmacFunc_(key, in, out);
   }
 
   folly::ByteRange blankHash() const override {
-    return Hash::BlankHash;
+    return blankHash_;
   }
 
   Buf expandLabel(
@@ -98,12 +118,27 @@ class KeyDerivationImpl : public KeyDerivation {
 
   std::vector<uint8_t> hkdfExtract(folly::ByteRange salt, folly::ByteRange ikm)
       override {
-    return HkdfImpl::create<Hash>().extract(salt, ikm);
+    return hkdf_.extract(salt, ikm);
   }
 
  private:
+  using HashFunc = void (*)(const folly::IOBuf&, folly::MutableByteRange);
+  using HmacFunc =
+          void (*)(folly::ByteRange, const folly::IOBuf&, folly::MutableByteRange);
+
+  KeyDerivationImpl(
+      const std::string& labelPrefix,
+      size_t hashLength,
+      HashFunc hashFunc,
+      HmacFunc hmacFunc,
+      HkdfImpl hkdf,
+      folly::ByteRange blankHash);
+
   std::string labelPrefix_;
+  size_t hashLength_;
+  HashFunc hashFunc_;
+  HmacFunc hmacFunc_;
+  HkdfImpl hkdf_;
+  folly::ByteRange blankHash_;
 };
 } // namespace fizz
-
-#include <fizz/crypto/KeyDerivation-inl.h>
