@@ -21,7 +21,6 @@ struct StatelessHelloRetryRequest {
   Buf data;
 };
 
-template <typename AeadType, typename HkdfType>
 class AeadCookieCipher : public CookieCipher {
  public:
   AeadCookieCipher()
@@ -55,11 +54,9 @@ class AeadCookieCipher : public CookieCipher {
  private:
   Buf getStatelessResponse(const ClientHello& chlo, Buf appToken) const;
 
-  AeadTokenCipher<AeadType, HkdfType> tokenCipher_;
+  Aead128GCMTokenCipher tokenCipher_;
 
   const FizzServerContext* context_ = nullptr;
 };
 } // namespace server
 } // namespace fizz
-
-#include <fizz/server/AeadCookieCipher-inl.h>

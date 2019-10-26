@@ -17,8 +17,8 @@
 namespace fizz {
 namespace server {
 
-template <typename AeadType, typename CodecType, typename HkdfType>
-class AeadTicketCipher : public TicketCipher {
+template <typename CodecType>
+class Aead128GCMTicketCipher : public TicketCipher {
  public:
   /**
    * Set the PSK context used for these tickets. The PSK context is used as
@@ -26,12 +26,12 @@ class AeadTicketCipher : public TicketCipher {
    * different keys, preventing keys from one context from being used for
    * another.
    */
-  explicit AeadTicketCipher(std::string pskContext)
+  explicit Aead128GCMTicketCipher(std::string pskContext)
       : tokenCipher_(std::vector<std::string>(
             {CodecType::Label.toString(), pskContext})),
         clock_(std::make_shared<SystemClock>()) {}
 
-  AeadTicketCipher()
+  Aead128GCMTicketCipher()
       : tokenCipher_(std::vector<std::string>({CodecType::Label.toString()})),
         clock_(std::make_shared<SystemClock>()) {}
 
@@ -119,7 +119,7 @@ class AeadTicketCipher : public TicketCipher {
   }
 
  private:
-  AeadTokenCipher<AeadType, HkdfType> tokenCipher_;
+  Aead128GCMTokenCipher tokenCipher_;
 
   std::chrono::seconds ticketValidity_{std::chrono::hours(1)};
   std::chrono::seconds handshakeValidity_{std::chrono::hours(72)};

@@ -6,6 +6,7 @@
  *  LICENSE file in the root directory of this source tree.
  */
 
+#include <fizz/server/AeadCookieCipher.h>
 #include <fizz/record/Extensions.h>
 
 namespace fizz {
@@ -59,11 +60,8 @@ inline CookieState decodeCookie(Buf cookie) {
 }
 } // namespace detail
 
-template <typename AeadType, typename HkdfType>
 boost::variant<AppToken, StatelessHelloRetryRequest>
-AeadCookieCipher<AeadType, HkdfType>::getTokenOrRetry(
-    Buf clientHello,
-    Buf appToken) const {
+AeadCookieCipher::getTokenOrRetry(Buf clientHello, Buf appToken) const {
   folly::IOBufQueue queue{folly::IOBufQueue::cacheChainLength()};
   queue.append(std::move(clientHello));
   auto msg = PlaintextReadRecordLayer().readEvent(queue);
@@ -89,9 +87,7 @@ AeadCookieCipher<AeadType, HkdfType>::getTokenOrRetry(
   }
 }
 
-template <typename AeadType, typename HkdfType>
-folly::Optional<CookieState> AeadCookieCipher<AeadType, HkdfType>::decrypt(
-    Buf cookie) const {
+folly::Optional<CookieState> AeadCookieCipher::decrypt(Buf cookie) const {
   auto plaintext = tokenCipher_.decrypt(std::move(cookie));
   if (plaintext) {
     return detail::decodeCookie(std::move(*plaintext));
@@ -100,8 +96,7 @@ folly::Optional<CookieState> AeadCookieCipher<AeadType, HkdfType>::decrypt(
   }
 }
 
-template <typename AeadType, typename HkdfType>
-Buf AeadCookieCipher<AeadType, HkdfType>::getStatelessResponse(
+Buf AeadCookieCipher::getStatelessResponse(
     const ClientHello& chlo,
     Buf appToken) const {
   auto state = getCookieState(

@@ -540,10 +540,8 @@ int fizzServerCommand(const std::vector<std::string>& args) {
   serverContext->setClientAuthMode(clientAuthMode);
   serverContext->setClientCertVerifier(verifier);
 
-  auto ticketCipher = std::make_shared<AeadTicketCipher<
-      OpenSSLEVPCipher<AESGCM128>,
-      TicketCodec<CertificateStorage::X509>,
-      HkdfImpl<Sha256>>>();
+  auto ticketCipher = std::make_shared<
+      Aead128GCMTicketCipher<TicketCodec<CertificateStorage::X509>>>();
   auto ticketSeed = RandomGenerator<32>().generateRandom();
   ticketCipher->setTicketSecrets({{range(ticketSeed)}});
   serverContext->setTicketCipher(ticketCipher);

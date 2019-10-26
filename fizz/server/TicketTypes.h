@@ -16,15 +16,10 @@
 
 namespace fizz {
 namespace server {
-using AES128TicketCipher = AeadTicketCipher<
-    OpenSSLEVPCipher<AESGCM128>,
-    TicketCodec<CertificateStorage::X509>,
-    HkdfImpl<Sha256>>;
-using AES128TicketIdentityOnlyCipher = AeadTicketCipher<
-    OpenSSLEVPCipher<AESGCM128>,
-    TicketCodec<CertificateStorage::IdentityOnly>,
-    HkdfImpl<Sha256>>;
-using AES128TokenCipher =
-    AeadTokenCipher<OpenSSLEVPCipher<AESGCM128>, HkdfImpl<Sha256>>;
+using AES128TicketCipher =
+    Aead128GCMTicketCipher<TicketCodec<CertificateStorage::X509>>;
+using AES128TicketIdentityOnlyCipher =
+    Aead128GCMTicketCipher<TicketCodec<CertificateStorage::IdentityOnly>>;
+using AES128TokenCipher = Aead128GCMTokenCipher;
 } // namespace server
 } // namespace fizz

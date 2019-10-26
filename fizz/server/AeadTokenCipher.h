@@ -8,6 +8,9 @@
 
 #pragma once
 
+#include <fizz/crypto/Hkdf.h>
+#include <fizz/crypto/Sha256.h>
+#include <fizz/crypto/aead/OpenSSLEVPCipher.h>
 #include <fizz/record/Types.h>
 #include <folly/Optional.h>
 #include <folly/io/IOBuf.h>
@@ -18,10 +21,13 @@ namespace server {
 /**
  * Used to encrypt and decrypt various tokens (for example PSKs).
  */
-template <typename AeadType, typename HkdfType>
-class AeadTokenCipher {
+class Aead128GCMTokenCipher {
  public:
   static constexpr size_t kMinTokenSecretLength = 32;
+
+  using HkdfType = HkdfImpl<Sha256>;
+  using AeadType = OpenSSLEVPCipher;
+  using CipherType = AESGCM128;
 
   /**
    * Set additional context strings for use with these tokens. The strings will
@@ -29,10 +35,10 @@ class AeadTokenCipher {
    * will result in different keys, preventing keys from one context from being
    * used for another.
    */
-  explicit AeadTokenCipher(std::vector<std::string> contextStrings)
+  explicit Aead128GCMTokenCipher(std::vector<std::string> contextStrings)
       : contextStrings_(std::move(contextStrings)) {}
 
-  ~AeadTokenCipher() {
+  ~Aead128GCMTokenCipher() {
     clearSecrets();
   }
 
@@ -54,7 +60,9 @@ class AeadTokenCipher {
   using SeqNum = uint32_t;
   static constexpr size_t kTokenHeaderLength = kSaltLength + sizeof(SeqNum);
 
-  AeadType createAead(folly::ByteRange secret, folly::ByteRange salt) const;
+  std::unique_ptr<AeadType> createAead(
+      folly::ByteRange secret,
+      folly::ByteRange salt) const;
 
   void clearSecrets();
 
@@ -65,5 +73,3 @@ class AeadTokenCipher {
 };
 } // namespace server
 } // namespace fizz
-
-#include <fizz/server/AeadTokenCipher-inl.h>

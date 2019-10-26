@@ -46,7 +46,7 @@ void encryptGCM(uint32_t n, size_t size) {
   std::vector<fizz::TLSMessage> msgs;
   EncryptedWriteRecordLayer write{EncryptionLevel::AppTraffic};
   BENCHMARK_SUSPEND {
-    aead = std::make_unique<OpenSSLEVPCipher<AESGCM128>>();
+    aead = OpenSSLEVPCipher::makeCipher<AESGCM128>();
     aead->setKey(getKey());
     write.setAead(folly::ByteRange(), std::move(aead));
     for (size_t i = 0; i < n; ++i) {
@@ -67,8 +67,8 @@ void decryptGCM(uint32_t n, size_t size) {
   EncryptedReadRecordLayer read{EncryptionLevel::AppTraffic};
   BENCHMARK_SUSPEND {
     EncryptedWriteRecordLayer write{EncryptionLevel::AppTraffic};
-    auto writeAead = std::make_unique<OpenSSLEVPCipher<AESGCM128>>();
-    auto readAead = std::make_unique<OpenSSLEVPCipher<AESGCM128>>();
+    auto writeAead = OpenSSLEVPCipher::makeCipher<AESGCM128>();
+    auto readAead = OpenSSLEVPCipher::makeCipher<AESGCM128>();
     writeAead->setKey(getKey());
     readAead->setKey(getKey());
     write.setAead(folly::ByteRange(), std::move(writeAead));
@@ -96,8 +96,8 @@ void decryptGCMNoRecord(uint32_t n, size_t size) {
   std::vector<std::unique_ptr<folly::IOBuf>> contents;
   auto aad = folly::IOBuf::copyBuffer("aad");
   BENCHMARK_SUSPEND {
-    auto writeAead = std::make_unique<OpenSSLEVPCipher<AESGCM128>>();
-    readAead = std::make_unique<OpenSSLEVPCipher<AESGCM128>>();
+    auto writeAead = OpenSSLEVPCipher::makeCipher<AESGCM128>();
+    readAead = OpenSSLEVPCipher::makeCipher<AESGCM128>();
     writeAead->setKey(getKey());
     readAead->setKey(getKey());
     for (size_t i = 0; i < n; ++i) {
@@ -154,7 +154,7 @@ void encryptOCB(uint32_t n, size_t size) {
   std::vector<fizz::TLSMessage> msgs;
   EncryptedWriteRecordLayer write{EncryptionLevel::AppTraffic};
   BENCHMARK_SUSPEND {
-    aead = std::make_unique<OpenSSLEVPCipher<AESOCB128>>();
+    aead = OpenSSLEVPCipher::makeCipher<AESOCB128>();
     aead->setKey(getKey());
     write.setAead(folly::ByteRange(), std::move(aead));
     for (size_t i = 0; i < n; ++i) {

@@ -72,10 +72,7 @@ class MockTicketCodec {
 MockTicketCodecInstance* MockTicketCodec::instance;
 constexpr folly::StringPiece MockTicketCodec::Label;
 
-using TestAeadTicketCipher = AeadTicketCipher<
-    OpenSSLEVPCipher<AESGCM128>,
-    MockTicketCodec,
-    HkdfImpl<Sha256>>;
+using TestAeadTicketCipher = Aead128GCMTicketCipher<MockTicketCodec>;
 
 class AeadTicketCipherTest : public Test {
  public:

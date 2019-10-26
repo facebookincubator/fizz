@@ -150,6 +150,8 @@ set(FIZZ_SOURCES
   record/RecordLayer.cpp
   record/EncryptedRecordLayer.cpp
   record/PlaintextRecordLayer.cpp
+  server/AeadTokenCipher.cpp
+  server/AeadCookieCipher.cpp
   server/ServerProtocol.cpp
   server/CertManager.cpp
   server/State.cpp

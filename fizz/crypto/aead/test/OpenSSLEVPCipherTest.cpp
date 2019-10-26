@@ -43,16 +43,16 @@ std::unique_ptr<Aead> getCipher(const CipherParams& params) {
   std::unique_ptr<Aead> cipher;
   switch (params.cipher) {
     case CipherSuite::TLS_AES_128_GCM_SHA256:
-      cipher = std::make_unique<OpenSSLEVPCipher<AESGCM128>>();
+      cipher = OpenSSLEVPCipher::makeCipher<AESGCM128>();
       break;
     case CipherSuite::TLS_AES_256_GCM_SHA384:
-      cipher = std::make_unique<OpenSSLEVPCipher<AESGCM256>>();
+      cipher = OpenSSLEVPCipher::makeCipher<AESGCM256>();
       break;
     case CipherSuite::TLS_CHACHA20_POLY1305_SHA256:
-      cipher = std::make_unique<OpenSSLEVPCipher<ChaCha20Poly1305>>();
+      cipher = OpenSSLEVPCipher::makeCipher<ChaCha20Poly1305>();
       break;
     case CipherSuite::TLS_AES_128_OCB_SHA256_EXPERIMENTAL:
-      cipher = std::make_unique<OpenSSLEVPCipher<AESOCB128>>();
+      cipher = OpenSSLEVPCipher::makeCipher<AESOCB128>();
       break;
     default:
       throw std::runtime_error("Invalid cipher");

@@ -320,4 +320,135 @@ folly::Optional<std::unique_ptr<folly::IOBuf>> evpDecrypt(
   return output;
 }
 } // namespace detail
+
+OpenSSLEVPCipher::OpenSSLEVPCipher(
+    size_t keyLength,
+    size_t ivLength,
+    size_t tagLength,
+    const EVP_CIPHER* cipher,
+    bool operatesInBlocks,
+    bool requiresPresetTagLen)
+    : keyLength_(keyLength),
+      ivLength_(ivLength),
+      tagLength_(tagLength),
+      cipher_(cipher),
+      operatesInBlocks_(operatesInBlocks),
+      requiresPresetTagLen_(requiresPresetTagLen) {
+  encryptCtx_.reset(EVP_CIPHER_CTX_new());
+  if (encryptCtx_ == nullptr) {
+    throw std::runtime_error("Unable to allocate an EVP_CIPHER_CTX object");
+  }
+  decryptCtx_.reset(EVP_CIPHER_CTX_new());
+  if (decryptCtx_ == nullptr) {
+    throw std::runtime_error("Unable to allocate an EVP_CIPHER_CTX object");
+  }
+  if (EVP_EncryptInit_ex(
+          encryptCtx_.get(), cipher_, nullptr, nullptr, nullptr) != 1) {
+    throw std::runtime_error("Init error");
+  }
+  if (EVP_CIPHER_CTX_ctrl(
+          encryptCtx_.get(), EVP_CTRL_GCM_SET_IVLEN, ivLength_, nullptr) != 1) {
+    throw std::runtime_error("Error setting iv length");
+  }
+  if (EVP_DecryptInit_ex(
+          decryptCtx_.get(), cipher_, nullptr, nullptr, nullptr) != 1) {
+    throw std::runtime_error("Init error");
+  }
+  if (EVP_CIPHER_CTX_ctrl(
+          decryptCtx_.get(), EVP_CTRL_GCM_SET_IVLEN, ivLength_, nullptr) != 1) {
+    throw std::runtime_error("Error setting iv length");
+  }
+
+  if (requiresPresetTagLen_) {
+    if (EVP_CIPHER_CTX_ctrl(
+            encryptCtx_.get(), EVP_CTRL_GCM_SET_TAG, tagLength_, nullptr) !=
+        1) {
+      throw std::runtime_error("Error setting enc tag length");
+    }
+
+    if (EVP_CIPHER_CTX_ctrl(
+            decryptCtx_.get(), EVP_CTRL_GCM_SET_TAG, tagLength_, nullptr) !=
+        1) {
+      throw std::runtime_error("Error setting dec tag length");
+    }
+  }
+}
+
+void OpenSSLEVPCipher::setKey(TrafficKey trafficKey) {
+  trafficKey.key->coalesce();
+  trafficKey.iv->coalesce();
+  if (trafficKey.key->length() != keyLength_) {
+    throw std::runtime_error("Invalid key");
+  }
+  if (trafficKey.iv->length() != ivLength_) {
+    throw std::runtime_error("Invalid IV");
+  }
+  trafficKey_ = std::move(trafficKey);
+  // Cache the IV key. calling coalesce() is not free.
+  trafficIvKey_ = trafficKey_.iv->coalesce();
+  if (EVP_EncryptInit_ex(
+          encryptCtx_.get(),
+          nullptr,
+          nullptr,
+          trafficKey_.key->data(),
+          nullptr) != 1) {
+    throw std::runtime_error("Error setting encrypt key");
+  }
+  if (EVP_DecryptInit_ex(
+          decryptCtx_.get(),
+          nullptr,
+          nullptr,
+          trafficKey_.key->data(),
+          nullptr) != 1) {
+    throw std::runtime_error("Error setting decrypt key");
+  }
+}
+
+std::unique_ptr<folly::IOBuf> OpenSSLEVPCipher::encrypt(
+    std::unique_ptr<folly::IOBuf>&& plaintext,
+    const folly::IOBuf* associatedData,
+    uint64_t seqNum) const {
+  auto iv = createIV(seqNum);
+  return detail::evpEncrypt(
+      std::move(plaintext),
+      associatedData,
+      folly::ByteRange(iv.data(), ivLength_),
+      tagLength_,
+      operatesInBlocks_,
+      headroom_,
+      encryptCtx_.get());
+}
+
+folly::Optional<std::unique_ptr<folly::IOBuf>> OpenSSLEVPCipher::tryDecrypt(
+    std::unique_ptr<folly::IOBuf>&& ciphertext,
+    const folly::IOBuf* associatedData,
+    uint64_t seqNum) const {
+  auto iv = createIV(seqNum);
+  std::array<uint8_t, kMaxTagLength> tag;
+  // buffer to copy the tag into when we decrypt
+  folly::MutableByteRange tagOut{tag.data(), tagLength_};
+  return detail::evpDecrypt(
+      std::move(ciphertext),
+      associatedData,
+      folly::ByteRange(iv.data(), ivLength_),
+      tagOut,
+      operatesInBlocks_,
+      decryptCtx_.get());
+}
+
+size_t OpenSSLEVPCipher::getCipherOverhead() const {
+  return tagLength_;
+}
+
+std::array<uint8_t, OpenSSLEVPCipher::kMaxIVLength> OpenSSLEVPCipher::createIV(
+    uint64_t seqNum) const {
+  std::array<uint8_t, kMaxIVLength> iv;
+  uint64_t bigEndianSeqNum = folly::Endian::big(seqNum);
+  const size_t prefixLength = ivLength_ - sizeof(uint64_t);
+  memset(iv.data(), 0, prefixLength);
+  memcpy(iv.data() + prefixLength, &bigEndianSeqNum, 8);
+  folly::MutableByteRange mutableIv{iv.data(), ivLength_};
+  XOR(trafficIvKey_, mutableIv);
+  return iv;
+}
 } // namespace fizz

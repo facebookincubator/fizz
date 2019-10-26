@@ -13,7 +13,6 @@
 
 namespace fizz {
 namespace server {
-using AES128CookieCipher =
-    AeadCookieCipher<OpenSSLEVPCipher<AESGCM128>, HkdfImpl<Sha256>>;
+using AES128CookieCipher = AeadCookieCipher;
 }
 } // namespace fizz

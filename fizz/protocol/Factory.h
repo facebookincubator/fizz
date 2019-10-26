@@ -83,13 +83,13 @@ class Factory {
   virtual std::unique_ptr<Aead> makeAead(CipherSuite cipher) const {
     switch (cipher) {
       case CipherSuite::TLS_CHACHA20_POLY1305_SHA256:
-        return std::make_unique<OpenSSLEVPCipher<ChaCha20Poly1305>>();
+        return OpenSSLEVPCipher::makeCipher<ChaCha20Poly1305>();
       case CipherSuite::TLS_AES_128_GCM_SHA256:
-        return std::make_unique<OpenSSLEVPCipher<AESGCM128>>();
+        return OpenSSLEVPCipher::makeCipher<AESGCM128>();
       case CipherSuite::TLS_AES_256_GCM_SHA384:
-        return std::make_unique<OpenSSLEVPCipher<AESGCM256>>();
+        return OpenSSLEVPCipher::makeCipher<AESGCM256>();
       case CipherSuite::TLS_AES_128_OCB_SHA256_EXPERIMENTAL:
-        return std::make_unique<OpenSSLEVPCipher<AESOCB128>>();
+        return OpenSSLEVPCipher::makeCipher<AESOCB128>();
       default:
         throw std::runtime_error("aead: not implemented");
     }

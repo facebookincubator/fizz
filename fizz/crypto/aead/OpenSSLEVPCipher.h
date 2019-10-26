@@ -35,13 +35,16 @@ namespace fizz {
  *   - kRequiresPresetTagLen: if the cipher requires setting the tag length
  *         explicitly
  */
-template <typename EVPImpl>
 class OpenSSLEVPCipher : public Aead {
-  static_assert(EVPImpl::kIVLength >= sizeof(uint64_t), "iv too small");
-
  public:
-  OpenSSLEVPCipher();
   ~OpenSSLEVPCipher() override = default;
+  OpenSSLEVPCipher() = default;
+
+  static constexpr size_t kMaxIVLength = 20;
+  static constexpr size_t kMaxTagLength = 20;
+
+  template <class EVPImpl>
+  static std::unique_ptr<OpenSSLEVPCipher> makeCipher();
 
   OpenSSLEVPCipher(OpenSSLEVPCipher&& other) = default;
   OpenSSLEVPCipher& operator=(OpenSSLEVPCipher&& other) = default;
@@ -49,11 +52,11 @@ class OpenSSLEVPCipher : public Aead {
   void setKey(TrafficKey trafficKey) override;
 
   size_t keyLength() const override {
-    return EVPImpl::kKeyLength;
+    return keyLength_;
   }
 
   size_t ivLength() const override {
-    return EVPImpl::kIVLength;
+    return ivLength_;
   }
 
   // If plaintext is not shared, encrypt in place and append a tag,
@@ -77,11 +80,27 @@ class OpenSSLEVPCipher : public Aead {
   }
 
  private:
-  std::array<uint8_t, EVPImpl::kIVLength> createIV(uint64_t seqNum) const;
+  OpenSSLEVPCipher(
+      size_t keyLength,
+      size_t ivLength,
+      size_t tagLength,
+      const EVP_CIPHER* cipher,
+      bool operatesInBlocks,
+      bool requiresPresetTagLen);
+
+  std::array<uint8_t, kMaxIVLength> createIV(uint64_t seqNum) const;
 
   TrafficKey trafficKey_;
   folly::ByteRange trafficIvKey_;
   size_t headroom_{5};
+
+  // set by the ctor
+  size_t keyLength_;
+  size_t ivLength_;
+  size_t tagLength_;
+  const EVP_CIPHER* cipher_;
+  bool operatesInBlocks_;
+  bool requiresPresetTagLen_;
 
   folly::ssl::EvpCipherCtxUniquePtr encryptCtx_;
   folly::ssl::EvpCipherCtxUniquePtr decryptCtx_;

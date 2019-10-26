@@ -6,6 +6,7 @@
  *  LICENSE file in the root directory of this source tree.
  */
 
+#include <fizz/server/AeadTokenCipher.h>
 #include <fizz/crypto/RandomGenerator.h>
 #include <fizz/crypto/Utils.h>
 #include <fizz/crypto/aead/Aead.h>
@@ -33,8 +34,7 @@ namespace server {
  * could be incremented to avoid an extra HKDF-Expand on every token.
  */
 
-template <typename AeadType, typename HkdfType>
-bool AeadTokenCipher<AeadType, HkdfType>::setSecrets(
+bool Aead128GCMTokenCipher::setSecrets(
     const std::vector<folly::ByteRange>& tokenSecrets) {
   VLOG(3) << "Updating token secrets";
 
@@ -58,9 +58,7 @@ bool AeadTokenCipher<AeadType, HkdfType>::setSecrets(
   return true;
 }
 
-template <typename AeadType, typename HkdfType>
-folly::Optional<Buf> AeadTokenCipher<AeadType, HkdfType>::encrypt(
-    Buf plaintext) const {
+folly::Optional<Buf> Aead128GCMTokenCipher::encrypt(Buf plaintext) const {
   if (secrets_.empty()) {
     return folly::none;
   }
@@ -74,14 +72,12 @@ folly::Optional<Buf> AeadTokenCipher<AeadType, HkdfType>::encrypt(
   folly::io::Appender appender(token.get(), kTokenHeaderLength);
   appender.push(folly::range(salt));
   appender.writeBE(seqNum);
-  token->prependChain(aead.encrypt(std::move(plaintext), nullptr, seqNum));
+  token->prependChain(aead->encrypt(std::move(plaintext), nullptr, seqNum));
 
   return std::move(token);
 }
 
-template <typename AeadType, typename HkdfType>
-folly::Optional<Buf> AeadTokenCipher<AeadType, HkdfType>::decrypt(
-    Buf token) const {
+folly::Optional<Buf> Aead128GCMTokenCipher::decrypt(Buf token) const {
   folly::io::Cursor cursor(token.get());
   if (secrets_.empty() || !cursor.canAdvance(kTokenHeaderLength)) {
     return folly::none;
@@ -95,9 +91,9 @@ folly::Optional<Buf> AeadTokenCipher<AeadType, HkdfType>::decrypt(
 
   for (const auto& secret : secrets_) {
     auto aead = createAead(folly::range(secret), folly::range(salt));
-    auto result = aead.tryDecrypt(ciphertext->clone(), nullptr, seqNum);
+    auto result = aead->tryDecrypt(ciphertext->clone(), nullptr, seqNum);
     if (result) {
-      return std::move(result);
+      return result;
     }
   }
 
@@ -105,24 +101,23 @@ folly::Optional<Buf> AeadTokenCipher<AeadType, HkdfType>::decrypt(
   return folly::none;
 }
 
-template <typename AeadType, typename HkdfType>
-AeadType AeadTokenCipher<AeadType, HkdfType>::createAead(
+std::unique_ptr<Aead128GCMTokenCipher::AeadType>
+Aead128GCMTokenCipher::createAead(
     folly::ByteRange secret,
     folly::ByteRange salt) const {
-  AeadType aead;
+  auto aead = AeadType::makeCipher<CipherType>();
   std::unique_ptr<folly::IOBuf> info = folly::IOBuf::wrapBuffer(salt);
   auto keys =
-      HkdfType().expand(secret, *info, aead.keyLength() + aead.ivLength());
+      HkdfType().expand(secret, *info, aead->keyLength() + aead->ivLength());
   folly::io::Cursor cursor(keys.get());
   TrafficKey key;
-  cursor.clone(key.key, aead.keyLength());
-  cursor.clone(key.iv, aead.ivLength());
-  aead.setKey(std::move(key));
+  cursor.clone(key.key, aead->keyLength());
+  cursor.clone(key.iv, aead->ivLength());
+  aead->setKey(std::move(key));
   return aead;
 }
 
-template <typename AeadType, typename HkdfType>
-void AeadTokenCipher<AeadType, HkdfType>::clearSecrets() {
+void Aead128GCMTokenCipher::clearSecrets() {
   for (auto& secret : secrets_) {
     CryptoUtils::clean(folly::range(secret));
   }
