@@ -12,6 +12,7 @@
 #include <fizz/client/PskCache.h>
 #include <fizz/protocol/Actions.h>
 #include <fizz/protocol/Params.h>
+#include <folly/CPortability.h>
 
 namespace fizz {
 namespace client {
@@ -89,7 +90,7 @@ using Actions = folly::small_vector<Action, 4>;
 namespace detail {
 
 template <typename... Args>
-Actions actions(Args&&... act) {
+FOLLY_ERASE Actions actions(Args&&... act) {
   Actions acts;
   fizz::detail::addAction(acts, std::forward<Args>(act)...);
   return acts;

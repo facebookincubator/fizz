@@ -11,10 +11,13 @@
 #include <fizz/protocol/KeyScheduler.h>
 #include <fizz/protocol/Types.h>
 #include <fizz/record/RecordLayer.h>
+#include <folly/CPortability.h>
 #include <folly/ExceptionWrapper.h>
+#include <folly/Range.h>
 #include <folly/io/IOBuf.h>
 #include <folly/io/async/AsyncTransport.h>
 #include <folly/small_vector.h>
+#include <array>
 #include <vector>
 
 namespace fizz {
@@ -89,13 +92,19 @@ struct EndOfData {
 };
 
 namespace detail {
-template <typename ActionsType>
-void addAction(ActionsType& /*acts*/) {}
+template <typename ActionsType, typename Action>
+FOLLY_NOINLINE void addAction1(ActionsType& acts, folly::Range<Action*> arr) {
+  for (auto& act : arr) {
+    acts.emplace_back(std::move(act));
+  }
+}
 
-template <typename ActionsType, typename ActionType, typename... Args>
-void addAction(ActionsType& acts, ActionType&& thisAct, Args&&... act) {
-  acts.emplace_back(std::forward<ActionType>(thisAct));
-  addAction(acts, std::forward<Args>(act)...);
+template <typename ActionsType, typename... ActionType>
+FOLLY_ERASE void addAction(ActionsType& acts, ActionType&&... act) {
+  using Action = typename ActionsType::value_type;
+  using Arr = std::array<Action, sizeof...(ActionType)>;
+  Arr arr{{std::forward<ActionType&&>(act)...}};
+  addAction1(acts, folly::range(arr));
 }
 } // namespace detail
 } // namespace fizz
