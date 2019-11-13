@@ -63,7 +63,7 @@ folly::ssl::EvpPkeyUniquePtr FizzUtil::readPrivateKey(
     } else {
       return FizzUtil::decryptPrivateKey(data, nullptr);
     }
-  } catch (std::runtime_error& e) {
+  } catch (std::runtime_error&) {
     auto ex = folly::sformat(
         "Failed to read private key from file: {}, password file: {}",
         filename,
