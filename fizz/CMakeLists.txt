@@ -41,6 +41,7 @@ if (NOT folly_FOUND)
   # folly was built with its older autoconf build files rather than with CMake.
   find_package(Folly MODULE REQUIRED)
 endif()
+find_package(fmt CONFIG REQUIRED)
 
 find_package(Boost REQUIRED COMPONENTS system thread filesystem regex context
                                        program_options)

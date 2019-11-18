@@ -13,6 +13,7 @@ from __future__ import unicode_literals
 'fbcode_builder steps to build & test Fizz'
 
 import specs.gmock as gmock
+import specs.fmt as fmt
 import specs.folly as folly
 import specs.sodium as sodium
 
@@ -28,7 +29,7 @@ def fbcode_builder_spec(builder):
         }
     )
     return {
-        'depends_on': [gmock, folly, sodium],
+        'depends_on': [gmock, fmt, folly, sodium],
         'steps': [
             builder.fb_github_cmake_install('fizz/_build', '../fizz', 'facebookincubator'),
             builder.step(
