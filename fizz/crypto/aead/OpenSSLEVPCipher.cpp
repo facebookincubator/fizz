@@ -7,7 +7,6 @@
  */
 
 #include <fizz/crypto/aead/OpenSSLEVPCipher.h>
-
 #include <functional>
 
 namespace fizz {
@@ -40,6 +39,9 @@ void encFuncBlocks(
       [&](uint8_t* cipher, const uint8_t* plain, size_t len) {
         if (len > std::numeric_limits<int>::max()) {
           throw std::runtime_error("Encryption error: too much plain text");
+        }
+        if (len == 0) {
+          return static_cast<size_t>(0);
         }
         if (EVP_EncryptUpdate(
                 encryptCtx, cipher, &outLen, plain, static_cast<int>(len)) !=
@@ -82,6 +84,9 @@ void encFunc(
       [&](uint8_t* cipher, const uint8_t* plain, size_t len) {
         if (len > std::numeric_limits<int>::max()) {
           throw std::runtime_error("Encryption error: too much plain text");
+        }
+        if (len == 0) {
+          return;
         }
         if (EVP_EncryptUpdate(
                 encryptCtx, cipher, &outLen, plain, static_cast<int>(len)) !=

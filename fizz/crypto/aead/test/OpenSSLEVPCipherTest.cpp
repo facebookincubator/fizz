@@ -153,6 +153,16 @@ TEST_P(OpenSSLEVPCipherTest, TestEncryptChunkedInput) {
   callEncrypt(cipher, GetParam(), std::move(chunkedInput));
 }
 
+TEST_P(OpenSSLEVPCipherTest, TestEncryptChunkedInputWithEmpty) {
+  auto cipher = getCipher(GetParam());
+  auto input = toIOBuf(GetParam().plaintext);
+  auto chunkedInput = chunkIOBuf(std::move(input), 3);
+  // add a zero length for the second node
+  chunkedInput->appendChain(IOBuf::create(0));
+  EXPECT_EQ(4, chunkedInput->countChainElements());
+  callEncrypt(cipher, GetParam(), std::move(chunkedInput));
+}
+
 TEST_P(OpenSSLEVPCipherTest, TestEncryptChunkedInputWithTagRoomHead) {
   auto cipher = getCipher(GetParam());
   auto input = toIOBuf(GetParam().plaintext);
