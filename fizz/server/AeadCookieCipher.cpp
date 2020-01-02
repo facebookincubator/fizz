@@ -69,7 +69,11 @@ AeadCookieCipher::getTokenOrRetry(Buf clientHello, Buf appToken) const {
     throw std::runtime_error("no TLS message in initial");
   }
 
-  auto chlo = std::move(boost::get<ClientHello>(*msg));
+  auto chloPtr = msg->asClientHello();
+  if (!chloPtr) {
+    throw std::runtime_error("Msg isn't client hello");
+  }
+  auto chlo = std::move(*chloPtr);
 
   auto cookie = getExtension<Cookie>(chlo.extensions);
   if (cookie) {

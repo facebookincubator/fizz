@@ -10,7 +10,6 @@
 #include <fizz/extensions/exportedauth/Util.h>
 #include <fizz/protocol/OpenSSLFactory.h>
 
-
 namespace fizz {
 
 Buf ExportedAuthenticator::getAuthenticatorRequest(
@@ -64,8 +63,11 @@ Buf ExportedAuthenticator::getAuthenticatorContext(Buf authenticator) {
   folly::IOBufQueue authQueue{folly::IOBufQueue::cacheChainLength()};
   authQueue.append(std::move(authenticator));
   auto param = fizz::ReadRecordLayer::decodeHandshakeMessage(authQueue);
-  auto& certMsg = boost::get<CertificateMsg>(*param);
-  return std::move(certMsg.certificate_request_context);
+  auto certMsgPtr = param->asCertificateMsg();
+  if (!certMsgPtr) {
+    throw std::runtime_error("Param isn't cert msg");
+  }
+  return std::move(certMsgPtr->certificate_request_context);
 }
 
 folly::Optional<std::vector<CertificateEntry>>
@@ -171,7 +173,7 @@ folly::Optional<std::vector<CertificateEntry>> ExportedAuthenticator::validate(
     return folly::none;
   }
   // First check if the authenticator is empty.
-  auto finished = boost::get<Finished>(&(*param));
+  auto finished = param->asFinished();
   if (finished) {
     auto emptyAuth = detail::getEmptyAuthenticator(
         kderiver,
@@ -192,9 +194,9 @@ folly::Optional<std::vector<CertificateEntry>> ExportedAuthenticator::validate(
   if (!param3) {
     return folly::none;
   }
-  auto certMsg = boost::get<CertificateMsg>(&(*param));
-  auto certVerify = boost::get<CertificateVerify>(&(*param2));
-  finished = boost::get<Finished>(&(*param3));
+  auto certMsg = param->asCertificateMsg();
+  auto certVerify = param2->asCertificateVerify();
+  finished = param3->asFinished();
   if (!certMsg || !certVerify || !finished) {
     return folly::none;
   }

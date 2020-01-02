@@ -21,7 +21,7 @@ folly::Optional<Param> ReadRecordLayer::readEvent(
     auto param = decodeHandshakeMessage(unparsedHandshakeData_);
     if (param) {
       VLOG(8) << "Received handshake message "
-              << toString(boost::apply_visitor(EventVisitor(), *param));
+              << toString(EventVisitor()(*param));
       return param;
     }
   }
@@ -80,7 +80,7 @@ folly::Optional<Param> ReadRecordLayer::readEvent(
         auto param = decodeHandshakeMessage(unparsedHandshakeData_);
         if (param) {
           VLOG(8) << "Received handshake message "
-                  << toString(boost::apply_visitor(EventVisitor(), *param));
+                  << toString(EventVisitor()(*param));
           return param;
         } else {
           // If we read handshake data but didn't have enough to get a full

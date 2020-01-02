@@ -8,11 +8,11 @@
 
 #pragma once
 
-#include <boost/variant.hpp>
 #include <fizz/client/ClientExtensions.h>
 #include <fizz/client/PskCache.h>
 #include <fizz/protocol/Events.h>
 #include <fizz/record/Types.h>
+#include <fizz/util/Variant.h>
 #include <folly/io/IOBuf.h>
 #include <folly/io/async/AsyncTransport.h>
 
@@ -68,34 +68,34 @@ struct WriteNewSessionTicket : EventType<Event::WriteNewSessionTicket> {
 /**
  * Parameters for each event that will be processed by the state machine.
  */
-using Param = boost::variant<
-    ClientHello,
-    ServerHello,
-    EndOfEarlyData,
-    HelloRetryRequest,
-    EncryptedExtensions,
-    CertificateRequest,
-    CompressedCertificate,
-    CertificateMsg,
-    CertificateVerify,
-    Finished,
-    NewSessionTicket,
-    KeyUpdate,
-    Alert,
-    CloseNotify,
-    Accept,
-    Connect,
-    AppData,
-    AppWrite,
-    EarlyAppWrite,
-    WriteNewSessionTicket>;
+#define FIZZ_PARAM(F, ...)              \
+  F(ClientHello, __VA_ARGS__)           \
+  F(ServerHello, __VA_ARGS__)           \
+  F(EndOfEarlyData, __VA_ARGS__)        \
+  F(HelloRetryRequest, __VA_ARGS__)     \
+  F(EncryptedExtensions, __VA_ARGS__)   \
+  F(CertificateRequest, __VA_ARGS__)    \
+  F(CompressedCertificate, __VA_ARGS__) \
+  F(CertificateMsg, __VA_ARGS__)        \
+  F(CertificateVerify, __VA_ARGS__)     \
+  F(Finished, __VA_ARGS__)              \
+  F(NewSessionTicket, __VA_ARGS__)      \
+  F(KeyUpdate, __VA_ARGS__)             \
+  F(Alert, __VA_ARGS__)                 \
+  F(CloseNotify, __VA_ARGS__)           \
+  F(Accept, __VA_ARGS__)                \
+  F(Connect, __VA_ARGS__)               \
+  F(AppData, __VA_ARGS__)               \
+  F(AppWrite, __VA_ARGS__)              \
+  F(EarlyAppWrite, __VA_ARGS__)         \
+  F(WriteNewSessionTicket, __VA_ARGS__)
 
-class EventVisitor : public boost::static_visitor<Event> {
+FIZZ_DECLARE_VARIANT_TYPE(Param, FIZZ_PARAM)
+
+// Given a Param variant, return the corresponding Event
+class EventVisitor {
  public:
-  template <class T>
-  Event operator()(const T&) const {
-    return T::event;
-  }
+  Event operator()(const Param& param) const;
 };
 
 // App closes bypass the state machine so aren't in the Param variant.

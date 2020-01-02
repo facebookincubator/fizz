@@ -233,7 +233,7 @@ Actions ClientStateMachine::processAppCloseImmediate(const State& state) {
 namespace detail {
 
 Actions processEvent(const State& state, Param param) {
-  auto event = boost::apply_visitor(EventVisitor(), param);
+  auto event = EventVisitor()(param);
   try {
     return sm::StateMachine<ClientTypes>::getHandler(state.state(), event)(
         state, std::move(param));
@@ -314,7 +314,7 @@ Actions handleAppClose(const State& state) {
 
 Actions handleInvalidEvent(const State& state, Event event, Param param) {
   if (event == Event::Alert) {
-    auto& alert = boost::get<Alert>(param);
+    auto& alert = *param.asAlert();
     throw FizzException(
         folly::to<std::string>(
             "received alert: ",
@@ -611,7 +611,7 @@ Actions
 EventHandler<ClientTypes, StateEnum::Uninitialized, Event::Connect>::handle(
     const State& /*state*/,
     Param param) {
-  auto& connect = boost::get<Connect>(param);
+  auto& connect = *param.asConnect();
 
   auto context = std::move(connect.context);
 
@@ -940,7 +940,7 @@ static NegotiatedPsk negotiatePsk(
 Actions
 EventHandler<ClientTypes, StateEnum::ExpectingServerHello, Event::ServerHello>::
     handle(const State& state, Param param) {
-  auto shlo = std::move(boost::get<ServerHello>(param));
+  auto shlo = std::move(*param.asServerHello());
 
   Protocol::checkAllowedExtensions(shlo, *state.requestedExtensions());
 
@@ -1158,7 +1158,7 @@ Actions EventHandler<
     ClientTypes,
     StateEnum::ExpectingServerHello,
     Event::HelloRetryRequest>::handle(const State& state, Param param) {
-  auto hrr = std::move(boost::get<HelloRetryRequest>(param));
+  auto hrr = std::move(*param.asHelloRetryRequest());
 
   Protocol::checkAllowedExtensions(hrr);
 
@@ -1319,7 +1319,7 @@ Actions EventHandler<
     ClientTypes,
     StateEnum::ExpectingEncryptedExtensions,
     Event::EncryptedExtensions>::handle(const State& state, Param param) {
-  auto ee = std::move(boost::get<EncryptedExtensions>(param));
+  auto ee = std::move(*param.asEncryptedExtensions());
 
   Protocol::checkAllowedExtensions(ee, *state.requestedExtensions());
 
@@ -1427,7 +1427,7 @@ Actions EventHandler<
         AlertDescription::unexpected_message);
   }
 
-  auto certRequest = std::move(boost::get<CertificateRequest>(param));
+  auto certRequest = std::move(*param.asCertificateRequest());
   state.handshakeContext()->appendToTranscript(*certRequest.originalEncoding);
 
   if (!certRequest.certificate_request_context->empty()) {
@@ -1534,7 +1534,7 @@ Actions EventHandler<
         AlertDescription::unexpected_message);
   }
 
-  auto compCert = std::move(boost::get<CompressedCertificate>(param));
+  auto compCert = std::move(*param.asCompressedCertificate());
   state.handshakeContext()->appendToTranscript(*compCert.originalEncoding);
 
   auto algos = state.context()->getSupportedCertDecompressionAlgorithms();
@@ -1567,7 +1567,7 @@ Actions EventHandler<
 Actions
 EventHandler<ClientTypes, StateEnum::ExpectingCertificate, Event::Certificate>::
     handle(const State& state, Param param) {
-  auto certMsg = std::move(boost::get<CertificateMsg>(param));
+  auto certMsg = std::move(*param.asCertificateMsg());
 
   state.handshakeContext()->appendToTranscript(*certMsg.originalEncoding);
 
@@ -1580,7 +1580,7 @@ Actions EventHandler<
     ClientTypes,
     StateEnum::ExpectingCertificateVerify,
     Event::CertificateVerify>::handle(const State& state, Param param) {
-  auto certVerify = std::move(boost::get<CertificateVerify>(param));
+  auto certVerify = std::move(*param.asCertificateVerify());
 
   if (std::find(
           state.context()->getSupportedSigSchemes().begin(),
@@ -1630,7 +1630,7 @@ Actions EventHandler<
 Actions
 EventHandler<ClientTypes, StateEnum::ExpectingFinished, Event::Finished>::
     handle(const State& state, Param param) {
-  auto finished = std::move(boost::get<Finished>(param));
+  auto finished = std::move(*param.asFinished());
 
   if (state.readRecordLayer()->hasUnparsedHandshakeData()) {
     throw FizzException(
@@ -1808,7 +1808,7 @@ static uint32_t getMaxEarlyDataSize(const NewSessionTicket& nst) {
 Actions
 EventHandler<ClientTypes, StateEnum::Established, Event::NewSessionTicket>::
     handle(const State& state, Param param) {
-  auto nst = std::move(boost::get<NewSessionTicket>(param));
+  auto nst = std::move(*param.asNewSessionTicket());
 
   auto derivedResumptionSecret = state.keyScheduler()->getResumptionSecret(
       state.resumptionSecret()->coalesce(), nst.ticket_nonce->coalesce());
@@ -1842,7 +1842,7 @@ Actions
 EventHandler<ClientTypes, StateEnum::Established, Event::AppData>::handle(
     const State&,
     Param param) {
-  auto& appData = boost::get<AppData>(param);
+  auto& appData = *param.asAppData();
 
   return actions(DeliverAppData{std::move(appData.data)});
 }
@@ -1851,7 +1851,7 @@ Actions
 EventHandler<ClientTypes, StateEnum::Established, Event::AppWrite>::handle(
     const State& state,
     Param param) {
-  auto& appWrite = boost::get<AppWrite>(param);
+  auto& appWrite = *param.asAppWrite();
 
   WriteToSocket write;
   write.callback = appWrite.callback;
@@ -1866,7 +1866,7 @@ Actions
 EventHandler<ClientTypes, StateEnum::Established, Event::KeyUpdate>::handle(
     const State& state,
     Param param) {
-  auto& keyUpdate = boost::get<KeyUpdate>(param);
+  auto& keyUpdate = *param.asKeyUpdate();
 
   if (state.readRecordLayer()->hasUnparsedHandshakeData()) {
     throw FizzException(
@@ -1983,46 +1983,41 @@ Actions EventHandler<
     ClientTypes,
     StateEnum::ExpectingServerHello,
     Event::EarlyAppWrite>::handle(const State& state, Param param) {
-  return handleEarlyAppWrite(
-      state, std::move(boost::get<EarlyAppWrite>(param)));
+  return handleEarlyAppWrite(state, std::move(*param.asEarlyAppWrite()));
 }
 
 Actions EventHandler<
     ClientTypes,
     StateEnum::ExpectingEncryptedExtensions,
     Event::EarlyAppWrite>::handle(const State& state, Param param) {
-  return handleEarlyAppWrite(
-      state, std::move(boost::get<EarlyAppWrite>(param)));
+  return handleEarlyAppWrite(state, std::move(*param.asEarlyAppWrite()));
 }
 
 Actions EventHandler<
     ClientTypes,
     StateEnum::ExpectingCertificate,
     Event::EarlyAppWrite>::handle(const State& state, Param param) {
-  return ignoreEarlyAppWrite(
-      state, std::move(boost::get<EarlyAppWrite>(param)));
+  return ignoreEarlyAppWrite(state, std::move(*param.asEarlyAppWrite()));
 }
 
 Actions EventHandler<
     ClientTypes,
     StateEnum::ExpectingCertificateVerify,
     Event::EarlyAppWrite>::handle(const State& state, Param param) {
-  return ignoreEarlyAppWrite(
-      state, std::move(boost::get<EarlyAppWrite>(param)));
+  return ignoreEarlyAppWrite(state, std::move(*param.asEarlyAppWrite()));
 }
 
 Actions
 EventHandler<ClientTypes, StateEnum::ExpectingFinished, Event::EarlyAppWrite>::
     handle(const State& state, Param param) {
-  return handleEarlyAppWrite(
-      state, std::move(boost::get<EarlyAppWrite>(param)));
+  return handleEarlyAppWrite(state, std::move(*param.asEarlyAppWrite()));
 }
 
 Actions
 EventHandler<ClientTypes, StateEnum::Established, Event::EarlyAppWrite>::handle(
     const State& state,
     Param param) {
-  auto appWrite = std::move(boost::get<EarlyAppWrite>(param));
+  auto appWrite = std::move(*param.asEarlyAppWrite());
   if (*state.earlyDataType() == EarlyDataType::Accepted) {
     // It's possible that we had queued early writes before full handshake
     // success. It's fine to write them on the normal record layer as long as
@@ -2044,7 +2039,7 @@ EventHandler<ClientTypes, StateEnum::Established, Event::CloseNotify>::handle(
     const State& state,
     Param param) {
   ensureNoUnparsedHandshakeData(state, Event::CloseNotify);
-  auto& closenotify = boost::get<CloseNotify>(param);
+  auto& closenotify = *param.asCloseNotify();
   auto eod = EndOfData(std::move(closenotify.ignoredPostCloseData));
 
   MutateState clearRecordLayers = ([](State& newState) {
@@ -2066,7 +2061,7 @@ Actions
 EventHandler<ClientTypes, StateEnum::ExpectingCloseNotify, Event::CloseNotify>::
     handle(const State& state, Param param) {
   ensureNoUnparsedHandshakeData(state, Event::CloseNotify);
-  auto& closenotify = boost::get<CloseNotify>(param);
+  auto& closenotify = *param.asCloseNotify();
   auto eod = EndOfData(std::move(closenotify.ignoredPostCloseData));
 
   MutateState clearRecordLayers([](State& newState) {

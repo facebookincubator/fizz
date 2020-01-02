@@ -67,7 +67,7 @@ TEST_F(RecordTest, TestReadAppData) {
     return TLSMessage{ContentType::application_data, IOBuf::copyBuffer("hi")};
   }));
   auto param = read_.readEvent(queue_);
-  auto& appData = boost::get<AppData>(*param);
+  auto& appData = *param->asAppData();
   EXPECT_TRUE(eq_(appData.data, IOBuf::copyBuffer("hi")));
 }
 
@@ -76,7 +76,7 @@ TEST_F(RecordTest, TestAlert) {
     return TLSMessage{ContentType::alert, getBuf("0202")};
   }));
   auto param = read_.readEvent(queue_);
-  boost::get<Alert>(*param);
+  EXPECT_TRUE(param->asAlert() != nullptr);
 }
 
 TEST_F(RecordTest, TestHandshake) {
@@ -84,7 +84,7 @@ TEST_F(RecordTest, TestHandshake) {
     return TLSMessage{ContentType::handshake, getBuf("140000023232")};
   }));
   auto param = read_.readEvent(queue_);
-  auto& finished = boost::get<Finished>(*param);
+  auto& finished = *param->asFinished();
   expectSame(finished.verify_data, "3232");
   expectSame(*finished.originalEncoding, "140000023232");
 }
@@ -106,7 +106,7 @@ TEST_F(RecordTest, TestHandshakeFragmentedImmediate) {
       }));
   auto param = read_.readEvent(queue_);
   EXPECT_FALSE(read_.hasUnparsedHandshakeData());
-  auto& finished = boost::get<Finished>(*param);
+  auto& finished = *param->asFinished();
   expectSame(finished.verify_data, "aabbccdd11223344");
 }
 
@@ -122,7 +122,7 @@ TEST_F(RecordTest, TestHandshakeFragmentedDelayed) {
     return TLSMessage{ContentType::handshake, getBuf("11223344")};
   }));
   auto param = read_.readEvent(queue_);
-  auto& finished = boost::get<Finished>(*param);
+  auto& finished = *param->asFinished();
   expectSame(finished.verify_data, "aabbccdd11223344");
 }
 
@@ -132,11 +132,11 @@ TEST_F(RecordTest, TestHandshakeCoalesced) {
                       getBuf("14000002aabb14000002ccdd")};
   }));
   auto param = read_.readEvent(queue_);
-  auto& finished = boost::get<Finished>(*param);
+  auto& finished = *param->asFinished();
   expectSame(finished.verify_data, "aabb");
   EXPECT_TRUE(read_.hasUnparsedHandshakeData());
   param = read_.readEvent(queue_);
-  auto& finished2 = boost::get<Finished>(*param);
+  auto& finished2 = *param->asFinished();
   expectSame(finished2.verify_data, "ccdd");
   EXPECT_FALSE(read_.hasUnparsedHandshakeData());
 }
@@ -171,11 +171,11 @@ TEST_F(RecordTest, TestMultipleHandshakeMessages) {
         return TLSMessage{ContentType::handshake, std::move(message)};
       }));
   auto param = read_.readEvent(queue_);
-  auto& finished = boost::get<Finished>(*param);
+  auto& finished = *param->asFinished();
   expectSame(finished.verify_data, "aabb");
   EXPECT_TRUE(read_.hasUnparsedHandshakeData());
   param = read_.readEvent(queue_);
-  auto& finished2 = boost::get<Finished>(*param);
+  auto& finished2 = *param->asFinished();
   expectSame(finished2.verify_data, "ccdd");
   EXPECT_TRUE(read_.hasUnparsedHandshakeData());
 }

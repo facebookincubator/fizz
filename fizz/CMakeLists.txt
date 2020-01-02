@@ -171,6 +171,7 @@ set(FIZZ_SOURCES
   protocol/KeyScheduler.cpp
   protocol/Certificate.cpp
   protocol/CertDecompressionManager.cpp
+  protocol/Params.cpp
   protocol/ZlibCertificateCompressor.cpp
   protocol/ZlibCertificateDecompressor.cpp
   protocol/clock/SystemClock.cpp
