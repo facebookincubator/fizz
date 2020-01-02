@@ -35,45 +35,45 @@ void KeyScheduler::deriveEarlySecret(folly::ByteRange psk) {
   }
 
   auto zeros = std::vector<uint8_t>(deriver_->hashLength(), 0);
-  secret_ = EarlySecret{deriver_->hkdfExtract(folly::range(zeros), psk)};
+  secret_.emplace(EarlySecret{deriver_->hkdfExtract(folly::range(zeros), psk)});
 }
 
 void KeyScheduler::deriveHandshakeSecret() {
-  auto& earlySecret = boost::get<EarlySecret>(*secret_);
+  auto& earlySecret = *secret_->asEarlySecret();
   auto zeros = std::vector<uint8_t>(deriver_->hashLength(), 0);
   auto preSecret = deriver_->deriveSecret(
       folly::range(earlySecret.secret), kDerivedSecret, deriver_->blankHash());
-  secret_ = HandshakeSecret{
-      deriver_->hkdfExtract(folly::range(preSecret), folly::range(zeros))};
+  secret_.emplace(HandshakeSecret{
+      deriver_->hkdfExtract(folly::range(preSecret), folly::range(zeros))});
 }
 
 void KeyScheduler::deriveHandshakeSecret(folly::ByteRange ecdhe) {
   if (!secret_) {
     auto zeros = std::vector<uint8_t>(deriver_->hashLength(), 0);
-    secret_ = EarlySecret{
-        deriver_->hkdfExtract(folly::range(zeros), folly::range(zeros))};
+    secret_.emplace(EarlySecret{
+        deriver_->hkdfExtract(folly::range(zeros), folly::range(zeros))});
   }
 
-  auto& earlySecret = boost::get<EarlySecret>(*secret_);
+  auto& earlySecret = secret_->tryAsEarlySecret();
   auto preSecret = deriver_->deriveSecret(
       folly::range(earlySecret.secret), kDerivedSecret, deriver_->blankHash());
-  secret_ =
-      HandshakeSecret{deriver_->hkdfExtract(folly::range(preSecret), ecdhe)};
+  secret_.emplace(
+      HandshakeSecret{deriver_->hkdfExtract(folly::range(preSecret), ecdhe)});
 }
 
 void KeyScheduler::deriveMasterSecret() {
   auto zeros = std::vector<uint8_t>(deriver_->hashLength(), 0);
-  auto& handshakeSecret = boost::get<HandshakeSecret>(*secret_);
+  auto& handshakeSecret = secret_->tryAsHandshakeSecret();
   auto preSecret = deriver_->deriveSecret(
       folly::range(handshakeSecret.secret),
       kDerivedSecret,
       deriver_->blankHash());
-  secret_ = MasterSecret{
-      deriver_->hkdfExtract(folly::range(preSecret), folly::range(zeros))};
+  secret_.emplace(MasterSecret{
+      deriver_->hkdfExtract(folly::range(preSecret), folly::range(zeros))});
 }
 
 void KeyScheduler::deriveAppTrafficSecrets(folly::ByteRange transcript) {
-  auto& masterSecret = boost::get<MasterSecret>(*secret_);
+  auto& masterSecret = *secret_->asMasterSecret();
   AppTrafficSecret trafficSecret;
   trafficSecret.client = deriver_->deriveSecret(
       folly::range(masterSecret.secret), kClientAppTraffic, transcript);
@@ -83,7 +83,9 @@ void KeyScheduler::deriveAppTrafficSecrets(folly::ByteRange transcript) {
 }
 
 void KeyScheduler::clearMasterSecret() {
-  boost::get<MasterSecret>(*secret_);
+  if (secret_->type() != KeySchedulerSecret::Type::MasterSecret_E) {
+    throw std::runtime_error("Secret isn't MasterSecret");
+  }
   secret_ = folly::none;
 }
 
@@ -132,7 +134,7 @@ DerivedSecret KeyScheduler::getSecret(
       LOG(FATAL) << "unknown secret";
   }
 
-  auto& earlySecret = boost::get<EarlySecret>(*secret_);
+  auto& earlySecret = *secret_->asEarlySecret();
   return DerivedSecret(
       deriver_->deriveSecret(
           folly::range(earlySecret.secret), label, transcript),
@@ -154,7 +156,7 @@ DerivedSecret KeyScheduler::getSecret(
       LOG(FATAL) << "unknown secret";
   }
 
-  auto& handshakeSecret = boost::get<HandshakeSecret>(*secret_);
+  auto& handshakeSecret = *secret_->asHandshakeSecret();
   return DerivedSecret(
       deriver_->deriveSecret(
           folly::range(handshakeSecret.secret), label, transcript),
@@ -176,7 +178,7 @@ DerivedSecret KeyScheduler::getSecret(
       LOG(FATAL) << "unknown secret";
   }
 
-  auto& masterSecret = boost::get<MasterSecret>(*secret_);
+  auto& masterSecret = *secret_->asMasterSecret();
   return DerivedSecret(
       deriver_->deriveSecret(
           folly::range(masterSecret.secret), label, transcript),

@@ -180,9 +180,82 @@ class AsyncFizzClientT : public AsyncFizzBase,
     AsyncFizzClientT<SM>& client_;
   };
 
-  folly::Optional<
-      boost::variant<HandshakeCallback*, folly::AsyncSocket::ConnectCallback*>>
-      callback_;
+  struct AsyncClientCallbackPtr {
+    ~AsyncClientCallbackPtr() = default;
+
+    explicit AsyncClientCallbackPtr(HandshakeCallback* in)
+        : handshakePtr_(in), ptrType_(Type::HandshakeCallback) {}
+
+    explicit AsyncClientCallbackPtr(folly::AsyncSocket::ConnectCallback* in)
+        : asyncSocketConnCallbackPtr_(in),
+          ptrType_(Type::AsyncSocketConnCallback) {}
+
+    AsyncClientCallbackPtr(const AsyncClientCallbackPtr& other) {
+      ptrType_ = other.ptrType_;
+      if (other.ptrType_ == Type::AsyncSocketConnCallback) {
+        asyncSocketConnCallbackPtr_ = other.asyncSocketConnCallbackPtr_;
+      } else {
+        handshakePtr_ = other.handshakePtr_;
+      }
+    }
+
+    AsyncClientCallbackPtr& operator=(const AsyncClientCallbackPtr& other) {
+      ptrType_ = other.ptrType_;
+      if (other.ptrType_ == Type::AsyncSocketConnCallback) {
+        asyncSocketConnCallbackPtr_ = other.asyncSocketConnCallbackPtr_;
+      } else {
+        handshakePtr_ = other.handshakePtr_;
+      }
+      return *this;
+    }
+
+    AsyncClientCallbackPtr& operator=(folly::AsyncSocket::ConnectCallback* in) {
+      ptrType_ = Type::AsyncSocketConnCallback;
+      handshakePtr_ = nullptr;
+      asyncSocketConnCallbackPtr_ = in;
+      return this;
+    }
+
+    AsyncClientCallbackPtr& operator=(HandshakeCallback* in) {
+      ptrType_ = Type::HandshakeCallback;
+      asyncSocketConnCallbackPtr_ = nullptr;
+      handshakePtr_ = in;
+      return this;
+    }
+
+    enum class Type : uint8_t {
+      HandshakeCallback,
+      AsyncSocketConnCallback,
+    };
+
+    HandshakeCallback* asHandshakeCallbackPtr() {
+      if (ptrType_ == Type::HandshakeCallback) {
+        return handshakePtr_;
+      }
+      return nullptr;
+    }
+
+    folly::AsyncSocket::ConnectCallback* asAsyncSocketConnCallbackPtr() {
+      if (ptrType_ == Type::AsyncSocketConnCallback) {
+        return asyncSocketConnCallbackPtr_;
+      }
+      return nullptr;
+    }
+
+    Type type() const {
+      return ptrType_;
+    }
+
+   private:
+    union {
+      HandshakeCallback* handshakePtr_;
+      folly::AsyncSocket::ConnectCallback* asyncSocketConnCallbackPtr_;
+    };
+
+    Type ptrType_;
+  };
+
+  folly::Optional<AsyncClientCallbackPtr> callback_;
 
   std::shared_ptr<const FizzClientContext> fizzContext_;
 

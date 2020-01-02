@@ -10,6 +10,7 @@
 
 #include <fizz/crypto/KeyDerivation.h>
 #include <fizz/crypto/aead/Aead.h>
+#include <fizz/util/Variant.h>
 #include <folly/Optional.h>
 
 namespace fizz {
@@ -27,8 +28,13 @@ enum class MasterSecrets { ExporterMaster, ResumptionMaster };
 
 enum class AppTrafficSecrets { ClientAppTraffic, ServerAppTraffic };
 
-using SecretType = boost::
-    variant<EarlySecrets, HandshakeSecrets, MasterSecrets, AppTrafficSecrets>;
+#define FIZZ_KEYSCHEDULER_SECRETTYPE(F, ...) \
+  F(EarlySecrets, __VA_ARGS__)               \
+  F(HandshakeSecrets, __VA_ARGS__)           \
+  F(MasterSecrets, __VA_ARGS__)              \
+  F(AppTrafficSecrets, __VA_ARGS__)
+
+FIZZ_DECLARE_COPYABLE_VARIANT_TYPE(SecretType, FIZZ_KEYSCHEDULER_SECRETTYPE)
 
 struct DerivedSecret {
   std::vector<uint8_t> secret;
@@ -149,8 +155,14 @@ class KeyScheduler {
     uint32_t serverGeneration{0};
   };
 
-  folly::Optional<boost::variant<EarlySecret, HandshakeSecret, MasterSecret>>
-      secret_;
+#define FIZZ_KEYSCHEDULER_SECRETS(F, ...) \
+  F(EarlySecret, __VA_ARGS__)             \
+  F(HandshakeSecret, __VA_ARGS__)         \
+  F(MasterSecret, __VA_ARGS__)
+
+  FIZZ_DECLARE_VARIANT_TYPE(KeySchedulerSecret, FIZZ_KEYSCHEDULER_SECRETS)
+
+  folly::Optional<KeySchedulerSecret> secret_;
   folly::Optional<AppTrafficSecret> appTrafficSecret_;
 
   std::unique_ptr<KeyDerivation> deriver_;

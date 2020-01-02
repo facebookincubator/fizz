@@ -6,9 +6,6 @@
  *  LICENSE file in the root directory of this source tree.
  */
 
-#include <fizz/util/Workarounds.h>
-#include <folly/Overload.h>
-
 namespace fizz {
 namespace client {
 
@@ -60,7 +57,7 @@ void AsyncFizzClientT<SM>::connect(
 
   // shouldn't attempt to connect a second time
   CHECK(!callback_.hasValue()) << "connect already called";
-  callback_ = callback;
+  callback_.emplace(callback);
 
   if (!transport_->good()) {
     folly::AsyncSocketException ase(
@@ -106,7 +103,7 @@ void AsyncFizzClientT<SM>::connect(
 
   // shouldn't attempt to connect a second time
   CHECK(!callback_.hasValue()) << "connect already called";
-  callback_ = callback;
+  callback_.emplace(callback);
 
   verifier_ = std::move(verifier);
   sni_ = sni;
@@ -371,34 +368,34 @@ template <typename SM>
 void AsyncFizzClientT<SM>::deliverHandshakeError(folly::exception_wrapper ex) {
   if (callback_) {
     cancelHandshakeTimeout();
-    auto cb = *callback_;
+    auto cb = callback_;
     callback_ = folly::none;
-    folly::variant_match(
-        cb,
-        ::fizz::detail::result_type<void>(),
-        [this, &ex](HandshakeCallback* callback) {
-          if (callback) {
-            callback->fizzHandshakeError(this, std::move(ex));
-          }
-        },
-        [&ex](folly::AsyncSocket::ConnectCallback* callback) {
-          if (callback) {
-            ex.handle(
-                [callback](const folly::AsyncSocketException& ase) {
-                  callback->connectErr(ase);
-                },
-                [callback](const std::exception& stdEx) {
-                  folly::AsyncSocketException ase(
-                      folly::AsyncSocketException::SSL_ERROR, stdEx.what());
-                  callback->connectErr(ase);
-                },
-                [callback](...) {
-                  folly::AsyncSocketException ase(
-                      folly::AsyncSocketException::SSL_ERROR, "unknown error");
-                  callback->connectErr(ase);
-                });
-          }
-        });
+    switch (cb->type()) {
+      case AsyncClientCallbackPtr::Type::HandshakeCallback:
+        if (cb->asHandshakeCallbackPtr()) {
+          cb->asHandshakeCallbackPtr()->fizzHandshakeError(this, std::move(ex));
+        }
+        break;
+      case AsyncClientCallbackPtr::Type::AsyncSocketConnCallback:
+        if (cb->asAsyncSocketConnCallbackPtr()) {
+          auto* callback = cb->asAsyncSocketConnCallbackPtr();
+          ex.handle(
+              [callback](const folly::AsyncSocketException& ase) {
+                callback->connectErr(ase);
+              },
+              [callback](const std::exception& stdEx) {
+                folly::AsyncSocketException ase(
+                    folly::AsyncSocketException::SSL_ERROR, stdEx.what());
+                callback->connectErr(ase);
+              },
+              [callback](...) {
+                folly::AsyncSocketException ase(
+                    folly::AsyncSocketException::SSL_ERROR, "unknown error");
+                callback->connectErr(ase);
+              });
+          break;
+        }
+    }
   }
 }
 
@@ -423,21 +420,20 @@ void AsyncFizzClientT<SM>::ActionMoveVisitor::operator()(
   client_.earlyDataState_ = EarlyDataState();
   client_.earlyDataState_->remainingEarlyData = earlySuccess.maxEarlyDataSize;
   if (client_.callback_) {
-    auto cb = *client_.callback_;
+    auto cb = client_.callback_;
     client_.callback_ = folly::none;
-    folly::variant_match(
-        cb,
-        ::fizz::detail::result_type<void>(),
-        [this](HandshakeCallback* callback) {
-          if (callback) {
-            callback->fizzHandshakeSuccess(&client_);
-          }
-        },
-        [](folly::AsyncSocket::ConnectCallback* callback) {
-          if (callback) {
-            callback->connectSuccess();
-          }
-        });
+    switch (cb->type()) {
+      case AsyncClientCallbackPtr::Type::HandshakeCallback:
+        if (cb->asHandshakeCallbackPtr()) {
+          cb->asHandshakeCallbackPtr()->fizzHandshakeSuccess(&client_);
+        }
+        break;
+      case AsyncClientCallbackPtr::Type::AsyncSocketConnCallback:
+        if (cb->asAsyncSocketConnCallbackPtr()) {
+          cb->asAsyncSocketConnCallbackPtr()->connectSuccess();
+        }
+        break;
+    }
   }
 }
 
@@ -503,21 +499,20 @@ void AsyncFizzClientT<SM>::ActionMoveVisitor::operator()(
     client_.earlyDataState_.clear();
   }
   if (client_.callback_) {
-    auto cb = *client_.callback_;
+    auto cb = client_.callback_;
     client_.callback_ = folly::none;
-    folly::variant_match(
-        cb,
-        ::fizz::detail::result_type<void>(),
-        [this](HandshakeCallback* callback) {
-          if (callback) {
-            callback->fizzHandshakeSuccess(&client_);
-          }
-        },
-        [](folly::AsyncSocket::ConnectCallback* callback) {
-          if (callback) {
-            callback->connectSuccess();
-          }
-        });
+    switch (cb->type()) {
+      case AsyncClientCallbackPtr::Type::HandshakeCallback:
+        if (cb->asHandshakeCallbackPtr()) {
+          cb->asHandshakeCallbackPtr()->fizzHandshakeSuccess(&client_);
+        }
+        break;
+      case AsyncClientCallbackPtr::Type::AsyncSocketConnCallback:
+        if (cb->asAsyncSocketConnCallbackPtr()) {
+          cb->asAsyncSocketConnCallbackPtr()->connectSuccess();
+        }
+        break;
+    }
   }
   if (client_.replaySafetyCallback_) {
     auto callback = client_.replaySafetyCallback_;

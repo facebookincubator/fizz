@@ -35,6 +35,14 @@ struct Dog {
   bool adopted{false};
 };
 
+bool operator==(const Cat& lhs, const Cat& rhs) {
+  return lhs.adopted == rhs.adopted;
+}
+
+bool operator==(const Dog& lhs, const Dog& rhs) {
+  return lhs.adopted == rhs.adopted;
+}
+
 #define FIZZ_TEST_VARIANT(F, ...) \
   F(Cat, __VA_ARGS__)             \
   F(Dog, __VA_ARGS__)
@@ -70,6 +78,16 @@ TEST(VariantTest, Magic) {
   EXPECT_EQ(TestVariant::Type::Cat_E, aCat.type());
   aDog = std::move(aCat);
   EXPECT_EQ(TestVariant::Type::Cat_E, aDog.type());
+}
+
+TEST(VariantTest, TryAs) {
+  TestVariant aDog{Dog()};
+  TestVariant aCat{Cat()};
+  EXPECT_THROW(aDog.tryAsCat(), std::runtime_error);
+  EXPECT_THROW(aCat.tryAsDog(), std::runtime_error);
+  auto& dogLeash = aDog.tryAsDog();
+  EXPECT_EQ("meow", aCat.tryAsCat().meow());
+  EXPECT_EQ("woof", dogLeash.woof());
 }
 
 } // namespace test

@@ -241,12 +241,29 @@ void AsyncFizzBase::handshakeTimeoutExpired() noexcept {
 
 // The below maps the secret type to the appropriate secret callback function.
 namespace {
-class SecretVisitor : public boost::static_visitor<> {
+class SecretVisitor {
  public:
   explicit SecretVisitor(
       AsyncFizzBase::SecretCallback* cb,
       const std::vector<uint8_t>& secretBuf)
       : callback_(cb), secretBuf_(secretBuf) {}
+  void operator()(const SecretType& secretType) {
+    switch (secretType.type()) {
+      case SecretType::Type::EarlySecrets_E:
+        operator()(*secretType.asEarlySecrets());
+        break;
+      case SecretType::Type::HandshakeSecrets_E:
+        operator()(*secretType.asHandshakeSecrets());
+        break;
+      case SecretType::Type::MasterSecrets_E:
+        operator()(*secretType.asMasterSecrets());
+        break;
+      case SecretType::Type::AppTrafficSecrets_E:
+        operator()(*secretType.asAppTrafficSecrets());
+        break;
+    }
+  }
+
   void operator()(const EarlySecrets& secret) {
     switch (secret) {
       case EarlySecrets::ExternalPskBinder:
@@ -303,7 +320,7 @@ class SecretVisitor : public boost::static_visitor<> {
 void AsyncFizzBase::secretAvailable(const DerivedSecret& secret) noexcept {
   if (secretCallback_) {
     SecretVisitor visitor(secretCallback_, secret.secret);
-    boost::apply_visitor(visitor, secret.type);
+    visitor(secret.type);
   }
 }
 } // namespace fizz
