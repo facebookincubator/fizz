@@ -7,7 +7,6 @@
  */
 
 #include <fizz/protocol/Exporter.h>
-#include <fizz/util/Workarounds.h>
 
 namespace fizz {
 template <typename Derived, typename ActionMoveVisitor, typename StateMachine>
@@ -32,13 +31,13 @@ void FizzBase<Derived, ActionMoveVisitor, StateMachine>::earlyAppWrite(
 
 template <typename Derived, typename ActionMoveVisitor, typename StateMachine>
 void FizzBase<Derived, ActionMoveVisitor, StateMachine>::appClose() {
-  pendingEvents_.push_back(AppClose::WAIT);
+  pendingEvents_.push_back(PendingEvent(AppClose::WAIT));
   processPendingEvents();
 }
 
 template <typename Derived, typename ActionMoveVisitor, typename StateMachine>
 void FizzBase<Derived, ActionMoveVisitor, StateMachine>::appCloseImmediate() {
-  pendingEvents_.push_back(AppClose::IMMEDIATE);
+  pendingEvents_.push_back(PendingEvent(AppClose::IMMEDIATE));
   processPendingEvents();
 }
 
@@ -62,20 +61,21 @@ void FizzBase<Derived, ActionMoveVisitor, StateMachine>::moveToErrorState(
   while (!pendingEvents_.empty()) {
     auto event = std::move(pendingEvents_.front());
     pendingEvents_.pop_front();
-    folly::variant_match(
-        event,
-        detail::result_type<void>(),
-        [&ex](AppWrite& write) {
-          if (write.callback) {
-            write.callback->writeErr(0, ex);
-          }
-        },
-        [&ex](EarlyAppWrite& write) {
-          if (write.callback) {
-            write.callback->writeErr(0, ex);
-          }
-        },
-        [](auto&) {});
+    switch (event.type()) {
+      case PendingEvent::Type::AppWrite_E:
+        if (event.asAppWrite()->callback) {
+          event.asAppWrite()->callback->writeErr(0, ex);
+        }
+        break;
+      case PendingEvent::Type::EarlyAppWrite_E:
+        if (event.asEarlyAppWrite()->callback) {
+          event.asEarlyAppWrite()->callback->writeErr(0, ex);
+        }
+        break;
+      case PendingEvent::Type::AppClose_E:
+      case PendingEvent::Type::WriteNewSessionTicket_E:
+        break;
+    }
   }
 }
 
@@ -143,27 +143,27 @@ void FizzBase<Derived, ActionMoveVisitor, StateMachine>::
     } else if (!pendingEvents_.empty()) {
       auto event = std::move(pendingEvents_.front());
       pendingEvents_.pop_front();
-      folly::variant_match(
-          event,
-          detail::result_type<void>(),
-          [&actions, this](WriteNewSessionTicket& write) {
-            actions.emplace(machine_.processWriteNewSessionTicket(
-                state_, std::move(write)));
-          },
-          [&actions, this](AppWrite& write) {
-            actions.emplace(machine_.processAppWrite(state_, std::move(write)));
-          },
-          [&actions, this](EarlyAppWrite& write) {
-            actions.emplace(
-                machine_.processEarlyAppWrite(state_, std::move(write)));
-          },
-          [&actions, this](AppClose& close) {
-            if (close.policy == AppClose::WAIT) {
-              actions.emplace(machine_.processAppClose(state_));
-            } else {
-              actions.emplace(machine_.processAppCloseImmediate(state_));
-            }
-          });
+      switch (event.type()) {
+        case PendingEvent::Type::WriteNewSessionTicket_E:
+          actions.emplace(machine_.processWriteNewSessionTicket(
+              state_, std::move(*event.asWriteNewSessionTicket())));
+          break;
+        case PendingEvent::Type::AppWrite_E:
+          actions.emplace(
+              machine_.processAppWrite(state_, std::move(*event.asAppWrite())));
+          break;
+        case PendingEvent::Type::EarlyAppWrite_E:
+          actions.emplace(machine_.processEarlyAppWrite(
+              state_, std::move(*event.asEarlyAppWrite())));
+          break;
+        case PendingEvent::Type::AppClose_E:
+          if (event.asAppClose()->policy == AppClose::WAIT) {
+            actions.emplace(machine_.processAppClose(state_));
+          } else {
+            actions.emplace(machine_.processAppCloseImmediate(state_));
+          }
+          break;
+      }
     } else {
       actionGuard_.clear();
       return;

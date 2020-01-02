@@ -6,6 +6,9 @@
  *  LICENSE file in the root directory of this source tree.
  */
 
+#include <fizz/util/Workarounds.h>
+#include <folly/Overload.h>
+
 namespace fizz {
 namespace server {
 

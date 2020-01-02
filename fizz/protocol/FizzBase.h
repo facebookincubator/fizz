@@ -10,7 +10,7 @@
 
 #include <fizz/protocol/Factory.h>
 #include <fizz/protocol/Params.h>
-#include <folly/Overload.h>
+#include <fizz/util/Variant.h>
 
 namespace fizz {
 
@@ -130,8 +130,14 @@ class FizzBase {
 
   folly::DelayedDestructionBase* owner_;
 
-  using PendingEvent =
-      boost::variant<AppWrite, EarlyAppWrite, AppClose, WriteNewSessionTicket>;
+#define FIZZ_PENDING_EVENT(F, ...) \
+  F(AppWrite, __VA_ARGS__)         \
+  F(EarlyAppWrite, __VA_ARGS__)    \
+  F(AppClose, __VA_ARGS__)         \
+  F(WriteNewSessionTicket, __VA_ARGS__)
+
+  FIZZ_DECLARE_VARIANT_TYPE(PendingEvent, FIZZ_PENDING_EVENT)
+
   std::deque<PendingEvent> pendingEvents_;
   bool waitForData_{true};
   folly::Optional<folly::DelayedDestruction::DestructorGuard> actionGuard_;

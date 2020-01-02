@@ -7,6 +7,7 @@
  */
 
 #include <fizz/util/Workarounds.h>
+#include <folly/Overload.h>
 
 namespace fizz {
 namespace client {
