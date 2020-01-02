@@ -8,7 +8,6 @@
 
 #pragma once
 
-#include <boost/variant.hpp>
 #include <folly/Optional.h>
 #include <folly/io/Cursor.h>
 #include <folly/io/IOBuf.h>

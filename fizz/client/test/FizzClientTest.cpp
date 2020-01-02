@@ -29,7 +29,7 @@ class MockClientStateMachineInstance : public MockClientStateMachine {
 };
 MockClientStateMachineInstance* MockClientStateMachineInstance::instance;
 
-class ActionMoveVisitor : public boost::static_visitor<> {
+class ActionMoveVisitor {
  public:
   template <typename T>
   void operator()(T&) {}
