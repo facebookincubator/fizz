@@ -32,7 +32,8 @@ void FizzServer<ActionMoveVisitor, SM>::newTransportData() {
       AttemptVersionFallback fallback;
       fallback.clientHello = this->transportReadBuf_.move();
       return this->addProcessingActions(detail::actions(
-          [](State& newState) { newState.state() = StateEnum::Error; },
+          MutateState(
+              [](State& newState) { newState.state() = StateEnum::Error; }),
           std::move(fallback)));
     }
     checkV2Hello_ = false;
@@ -78,5 +79,45 @@ void FizzServer<ActionMoveVisitor, SM>::startActions(AsyncActions actions) {
         this->processActions(std::move(immediateActions));
       });
 }
+
+template <typename ActionMoveVisitor, typename SM>
+void FizzServer<ActionMoveVisitor, SM>::visitActions(
+    typename SM::CompletedActions& actions) {
+  for (auto& action : actions) {
+    switch (action.type()) {
+      case Action::Type::DeliverAppData_E:
+        this->visitor_(*action.asDeliverAppData());
+        break;
+      case Action::Type::WriteToSocket_E:
+        this->visitor_(*action.asWriteToSocket());
+        break;
+      case Action::Type::ReportHandshakeSuccess_E:
+        this->visitor_(*action.asReportHandshakeSuccess());
+        break;
+      case Action::Type::ReportEarlyHandshakeSuccess_E:
+        this->visitor_(*action.asReportEarlyHandshakeSuccess());
+        break;
+      case Action::Type::ReportError_E:
+        this->visitor_(*action.asReportError());
+        break;
+      case Action::Type::EndOfData_E:
+        this->visitor_(*action.asEndOfData());
+        break;
+      case Action::Type::MutateState_E:
+        this->visitor_(*action.asMutateState());
+        break;
+      case Action::Type::WaitForData_E:
+        this->visitor_(*action.asWaitForData());
+        break;
+      case Action::Type::AttemptVersionFallback_E:
+        this->visitor_(*action.asAttemptVersionFallback());
+        break;
+      case Action::Type::SecretAvailable_E:
+        this->visitor_(*action.asSecretAvailable());
+        break;
+    }
+  }
+}
+
 } // namespace server
 } // namespace fizz

@@ -257,11 +257,11 @@ Actions handleError(
   if (state.state() == StateEnum::Error) {
     return actions(std::move(error));
   }
-  auto transition = [](State& newState) {
+  MutateState transition([](State& newState) {
     newState.state() = StateEnum::Error;
     newState.writeRecordLayer() = nullptr;
     newState.readRecordLayer() = nullptr;
-  };
+  });
   if (alertDesc && state.writeRecordLayer()) {
     Alert alert(*alertDesc);
     WriteToSocket write;
@@ -274,11 +274,11 @@ Actions handleError(
 }
 
 Actions handleAppCloseImmediate(const State& state) {
-  auto transition = [](State& newState) {
+  MutateState transition([](State& newState) {
     newState.state() = StateEnum::Closed;
     newState.writeRecordLayer() = nullptr;
     newState.readRecordLayer() = nullptr;
-  };
+  });
   if (state.writeRecordLayer()) {
     Alert alert(AlertDescription::close_notify);
     WriteToSocket write;
@@ -292,10 +292,10 @@ Actions handleAppCloseImmediate(const State& state) {
 
 Actions handleAppClose(const State& state) {
   if (state.writeRecordLayer()) {
-    auto transition = [](State& newState) {
+    MutateState transition([](State& newState) {
       newState.state() = StateEnum::ExpectingCloseNotify;
       newState.writeRecordLayer() = nullptr;
-    };
+    });
 
     Alert alert(AlertDescription::close_notify);
     WriteToSocket write;
@@ -303,11 +303,11 @@ Actions handleAppClose(const State& state) {
         state.writeRecordLayer()->writeAlert(std::move(alert)));
     return actions(std::move(transition), std::move(write));
   } else {
-    auto transition = [](State& newState) {
+    MutateState transition([](State& newState) {
       newState.state() = StateEnum::Closed;
       newState.writeRecordLayer() = nullptr;
       newState.readRecordLayer() = nullptr;
-    };
+    });
     return actions(std::move(transition));
   }
 }
@@ -729,19 +729,19 @@ EventHandler<ClientTypes, StateEnum::Uninitialized, Event::Connect>::handle(
   EarlyDataType earlyDataType =
       earlyDataParams ? EarlyDataType::Attempted : EarlyDataType::NotAttempted;
 
-  auto saveState = [context = std::move(context),
-                    verifier = connect.verifier,
-                    encodedClientHello = std::move(encodedClientHello),
-                    readRecordLayer = std::move(readRecordLayer),
-                    writeRecordLayer = std::move(writeRecordLayer),
-                    keyExchangers = std::move(keyExchangers),
-                    sni = std::move(connect.sni),
-                    random = std::move(random),
-                    legacySessionId = std::move(legacySessionId),
-                    psk = std::move(psk),
-                    extensions = connect.extensions,
-                    requestedExtensions = std::move(requestedExtensions),
-                    earlyDataType](State& newState) mutable {
+  MutateState saveState([context = std::move(context),
+                         verifier = connect.verifier,
+                         encodedClientHello = std::move(encodedClientHello),
+                         readRecordLayer = std::move(readRecordLayer),
+                         writeRecordLayer = std::move(writeRecordLayer),
+                         keyExchangers = std::move(keyExchangers),
+                         sni = std::move(connect.sni),
+                         random = std::move(random),
+                         legacySessionId = std::move(legacySessionId),
+                         psk = std::move(psk),
+                         extensions = connect.extensions,
+                         requestedExtensions = std::move(requestedExtensions),
+                         earlyDataType](State& newState) mutable {
     newState.context() = std::move(context);
     newState.verifier() = verifier;
     newState.encodedClientHello() = std::move(encodedClientHello);
@@ -755,26 +755,26 @@ EventHandler<ClientTypes, StateEnum::Uninitialized, Event::Connect>::handle(
     newState.extensions() = extensions;
     newState.requestedExtensions() = std::move(requestedExtensions);
     newState.earlyDataType() = earlyDataType;
-  };
+  });
 
   if (reportEarlySuccess) {
     return actions(
         std::move(saveState),
-        [earlyDataParams = std::move(*earlyDataParams),
-         earlyWriteRecordLayer =
-             std::move(earlyWriteRecordLayer)](State& newState) mutable {
+        MutateState([earlyDataParams = std::move(*earlyDataParams),
+                     earlyWriteRecordLayer = std::move(earlyWriteRecordLayer)](
+                        State& newState) mutable {
           newState.earlyDataParams() = std::move(earlyDataParams);
           newState.earlyWriteRecordLayer() = std::move(earlyWriteRecordLayer);
-        },
+        }),
         std::move(write),
         std::move(*earlyWriteSecretAvailable),
         std::move(*reportEarlySuccess),
-        &Transition<StateEnum::ExpectingServerHello>);
+        MutateState(&Transition<StateEnum::ExpectingServerHello>));
   } else {
     return actions(
         std::move(saveState),
         std::move(write),
-        &Transition<StateEnum::ExpectingServerHello>);
+        MutateState(&Transition<StateEnum::ExpectingServerHello>));
   }
 }
 
@@ -1064,44 +1064,45 @@ EventHandler<ClientTypes, StateEnum::ExpectingServerHello, Event::ServerHello>::
   }
 
   return actions(
-      [keyScheduler = std::move(scheduler),
-       readRecordLayer = std::move(handshakeReadRecordLayer),
-       writeRecordLayer = std::move(handshakeWriteRecordLayer),
-       handshakeContext = std::move(handshakeContext),
-       version,
-       cipher,
-       group,
-       clientHandshakeSecret = std::move(clientHandshakeSecret),
-       serverHandshakeSecret = std::move(serverHandshakeSecret),
-       keyExchangeType,
-       pskType = negotiatedPsk.type,
-       pskMode = negotiatedPsk.mode,
-       serverCert = std::move(negotiatedPsk.serverCert),
-       clientCert = std::move(negotiatedPsk.clientCert),
-       authType = std::move(authType),
-       handshakeTime = std::move(handshakeTime)](State& newState) mutable {
-        newState.keyScheduler() = std::move(keyScheduler);
-        newState.readRecordLayer() = std::move(readRecordLayer);
-        newState.writeRecordLayer() = std::move(writeRecordLayer);
-        newState.handshakeContext() = std::move(handshakeContext);
-        newState.version() = version;
-        newState.cipher() = cipher;
-        newState.group() = group;
-        newState.encodedClientHello() = folly::none;
-        newState.keyExchangers() = folly::none;
-        newState.clientHandshakeSecret() = std::move(clientHandshakeSecret);
-        newState.serverHandshakeSecret() = std::move(serverHandshakeSecret);
-        newState.keyExchangeType() = keyExchangeType;
-        newState.pskType() = pskType;
-        newState.pskMode() = pskMode;
-        newState.serverCert() = std::move(serverCert);
-        newState.clientCert() = std::move(clientCert);
-        newState.clientAuthRequested() = std::move(authType);
-        newState.handshakeTime() = std::move(handshakeTime);
-      },
+      MutateState(
+          [keyScheduler = std::move(scheduler),
+           readRecordLayer = std::move(handshakeReadRecordLayer),
+           writeRecordLayer = std::move(handshakeWriteRecordLayer),
+           handshakeContext = std::move(handshakeContext),
+           version,
+           cipher,
+           group,
+           clientHandshakeSecret = std::move(clientHandshakeSecret),
+           serverHandshakeSecret = std::move(serverHandshakeSecret),
+           keyExchangeType,
+           pskType = negotiatedPsk.type,
+           pskMode = negotiatedPsk.mode,
+           serverCert = std::move(negotiatedPsk.serverCert),
+           clientCert = std::move(negotiatedPsk.clientCert),
+           authType = std::move(authType),
+           handshakeTime = std::move(handshakeTime)](State& newState) mutable {
+            newState.keyScheduler() = std::move(keyScheduler);
+            newState.readRecordLayer() = std::move(readRecordLayer);
+            newState.writeRecordLayer() = std::move(writeRecordLayer);
+            newState.handshakeContext() = std::move(handshakeContext);
+            newState.version() = version;
+            newState.cipher() = cipher;
+            newState.group() = group;
+            newState.encodedClientHello() = folly::none;
+            newState.keyExchangers() = folly::none;
+            newState.clientHandshakeSecret() = std::move(clientHandshakeSecret);
+            newState.serverHandshakeSecret() = std::move(serverHandshakeSecret);
+            newState.keyExchangeType() = keyExchangeType;
+            newState.pskType() = pskType;
+            newState.pskMode() = pskMode;
+            newState.serverCert() = std::move(serverCert);
+            newState.clientCert() = std::move(clientCert);
+            newState.clientAuthRequested() = std::move(authType);
+            newState.handshakeTime() = std::move(handshakeTime);
+          }),
       SecretAvailable(std::move(handshakeReadSecret)),
       SecretAvailable(std::move(handshakeWriteSecret)),
-      &Transition<StateEnum::ExpectingEncryptedExtensions>);
+      MutateState(&Transition<StateEnum::ExpectingEncryptedExtensions>));
 }
 
 namespace {
@@ -1259,15 +1260,15 @@ Actions EventHandler<
   clientFlight.contents.emplace_back(std::move(chloWrite));
 
   return actions(
-      [version,
-       cipher,
-       earlyDataType,
-       encodedClientHello = std::move(encodedClientHello),
-       keyExchangers = std::move(keyExchangers),
-       handshakeContext = std::move(handshakeContext),
-       attemptedPsk = std::move(attemptedPsk),
-       requestedExtensions = std::move(requestedExtensions),
-       sentCCS](State& newState) mutable {
+      MutateState([version,
+                   cipher,
+                   earlyDataType,
+                   encodedClientHello = std::move(encodedClientHello),
+                   keyExchangers = std::move(keyExchangers),
+                   handshakeContext = std::move(handshakeContext),
+                   attemptedPsk = std::move(attemptedPsk),
+                   requestedExtensions = std::move(requestedExtensions),
+                   sentCCS](State& newState) mutable {
         newState.version() = version;
         newState.cipher() = cipher;
         newState.earlyDataType() = earlyDataType;
@@ -1279,9 +1280,9 @@ Actions EventHandler<
         newState.attemptedPsk() = std::move(attemptedPsk);
         newState.requestedExtensions() = std::move(requestedExtensions);
         newState.sentCCS() = sentCCS;
-      },
+      }),
       std::move(clientFlight),
-      &Transition<StateEnum::ExpectingServerHello>);
+      MutateState(&Transition<StateEnum::ExpectingServerHello>));
 }
 
 static void validateAcceptedEarly(
@@ -1365,20 +1366,22 @@ Actions EventHandler<
     state.extensions()->onEncryptedExtensions(ee.extensions);
   }
 
-  auto mutateState = [appProto = std::move(appProto),
-                      earlyDataType](State& newState) mutable {
-    newState.alpn() = std::move(appProto);
-    newState.requestedExtensions() = folly::none;
-    newState.earlyDataType() = earlyDataType;
-  };
+  MutateState mutateState(
+      [appProto = std::move(appProto), earlyDataType](State& newState) mutable {
+        newState.alpn() = std::move(appProto);
+        newState.requestedExtensions() = folly::none;
+        newState.earlyDataType() = earlyDataType;
+      });
 
   if (state.pskType() == PskType::Resumption ||
       state.pskType() == PskType::External) {
     return actions(
-        std::move(mutateState), &Transition<StateEnum::ExpectingFinished>);
+        std::move(mutateState),
+        MutateState(&Transition<StateEnum::ExpectingFinished>));
   } else {
     return actions(
-        std::move(mutateState), &Transition<StateEnum::ExpectingCertificate>);
+        std::move(mutateState),
+        MutateState(&Transition<StateEnum::ExpectingCertificate>));
   }
 }
 
@@ -1448,16 +1451,17 @@ Actions EventHandler<
   ClientAuthType authType =
       scheme ? ClientAuthType::Sent : ClientAuthType::RequestedNoMatch;
 
-  auto mutateState = [scheme = std::move(scheme),
-                      cert = std::move(cert),
-                      authType](State& newState) mutable {
+  MutateState mutateState([scheme = std::move(scheme),
+                           cert = std::move(cert),
+                           authType](State& newState) mutable {
     newState.clientAuthRequested() = authType;
     newState.selectedClientCert() = std::move(cert);
     newState.clientAuthSigScheme() = std::move(scheme);
-  };
+  });
 
   return actions(
-      std::move(mutateState), &Transition<StateEnum::ExpectingCertificate>);
+      std::move(mutateState),
+      MutateState(&Transition<StateEnum::ExpectingCertificate>));
 }
 
 static MutateState handleCertMsg(
@@ -1557,7 +1561,7 @@ Actions EventHandler<
 
   return actions(
       handleCertMsg(state, std::move(msg), compCert.algorithm),
-      &Transition<StateEnum::ExpectingCertificateVerify>);
+      MutateState(&Transition<StateEnum::ExpectingCertificateVerify>));
 }
 
 Actions
@@ -1569,7 +1573,7 @@ EventHandler<ClientTypes, StateEnum::ExpectingCertificate, Event::Certificate>::
 
   return actions(
       handleCertMsg(state, std::move(certMsg), folly::none),
-      &Transition<StateEnum::ExpectingCertificateVerify>);
+      MutateState(&Transition<StateEnum::ExpectingCertificateVerify>));
 }
 
 Actions EventHandler<
@@ -1614,13 +1618,13 @@ Actions EventHandler<
   state.handshakeContext()->appendToTranscript(*certVerify.originalEncoding);
 
   return actions(
-      [sigScheme = certVerify.algorithm,
-       serverCert = std::move(leaf)](State& newState) mutable {
+      MutateState([sigScheme = certVerify.algorithm,
+                   serverCert = std::move(leaf)](State& newState) mutable {
         newState.sigScheme() = sigScheme;
         newState.serverCert() = std::move(serverCert);
         newState.unverifiedCertChain() = folly::none;
-      },
-      &Transition<StateEnum::ExpectingFinished>);
+      }),
+      MutateState(&Transition<StateEnum::ExpectingFinished>));
 }
 
 Actions
@@ -1768,12 +1772,12 @@ EventHandler<ClientTypes, StateEnum::ExpectingFinished, Event::Finished>::
       state.earlyDataType() == EarlyDataType::Accepted;
 
   return actions(
-      [readRecordLayer = std::move(readRecordLayer),
-       writeRecordLayer = std::move(writeRecordLayer),
-       resumptionSecret = std::move(resumptionSecret),
-       exporterMaster = std::move(exporterMaster),
-       clientCert = std::move(clientCert),
-       sentCCS](State& newState) mutable {
+      MutateState([readRecordLayer = std::move(readRecordLayer),
+                   writeRecordLayer = std::move(writeRecordLayer),
+                   resumptionSecret = std::move(resumptionSecret),
+                   exporterMaster = std::move(exporterMaster),
+                   clientCert = std::move(clientCert),
+                   sentCCS](State& newState) mutable {
         newState.readRecordLayer() = std::move(readRecordLayer);
         newState.writeRecordLayer() = std::move(writeRecordLayer);
         newState.earlyWriteRecordLayer() = nullptr;
@@ -1784,8 +1788,8 @@ EventHandler<ClientTypes, StateEnum::ExpectingFinished, Event::Finished>::
         newState.selectedClientCert() = nullptr;
         newState.clientCert() = std::move(clientCert);
         newState.sentCCS() = sentCCS;
-      },
-      &Transition<StateEnum::Established>,
+      }),
+      MutateState(&Transition<StateEnum::Established>),
       SecretAvailable(std::move(readSecret)),
       SecretAvailable(std::move(writeSecret)),
       std::move(clientFlight),
@@ -1883,10 +1887,10 @@ EventHandler<ClientTypes, StateEnum::Established, Event::KeyUpdate>::handle(
       *state.keyScheduler());
 
   if (keyUpdate.request_update == KeyUpdateRequest::update_not_requested) {
-    return actions(
+    return actions(MutateState(
         [rRecordLayer = std::move(readRecordLayer)](State& newState) mutable {
           newState.readRecordLayer() = std::move(rRecordLayer);
-        });
+        }));
   }
 
   auto encodedKeyUpdated =
@@ -1911,11 +1915,12 @@ EventHandler<ClientTypes, StateEnum::Established, Event::KeyUpdate>::handle(
       *state.keyScheduler());
 
   return actions(
-      [rRecordLayer = std::move(readRecordLayer),
-       wRecordLayer = std::move(writeRecordLayer)](State& newState) mutable {
+      MutateState([rRecordLayer = std::move(readRecordLayer),
+                   wRecordLayer =
+                       std::move(writeRecordLayer)](State& newState) mutable {
         newState.readRecordLayer() = std::move(rRecordLayer);
         newState.writeRecordLayer() = std::move(wRecordLayer);
-      },
+      }),
       SecretAvailable(std::move(readSecret)),
       SecretAvailable(std::move(writeSecret)),
       std::move(write));
@@ -1963,7 +1968,7 @@ static Actions handleEarlyAppWrite(const State& state, EarlyAppWrite appWrite) {
         write.contents.emplace_back(std::move(writeCCS));
         write.contents.emplace_back(std::move(appData));
         return actions(
-            [](State& newState) { newState.sentCCS() = true; },
+            MutateState([](State& newState) { newState.sentCCS() = true; }),
             std::move(write));
       } else {
         write.contents.emplace_back(std::move(appData));
@@ -2042,10 +2047,10 @@ EventHandler<ClientTypes, StateEnum::Established, Event::CloseNotify>::handle(
   auto& closenotify = boost::get<CloseNotify>(param);
   auto eod = EndOfData(std::move(closenotify.ignoredPostCloseData));
 
-  auto clearRecordLayers = [](State& newState) {
+  MutateState clearRecordLayers = ([](State& newState) {
     newState.writeRecordLayer() = nullptr;
     newState.readRecordLayer() = nullptr;
-  };
+  });
 
   WriteToSocket write;
   write.contents.emplace_back(state.writeRecordLayer()->writeAlert(
@@ -2053,7 +2058,7 @@ EventHandler<ClientTypes, StateEnum::Established, Event::CloseNotify>::handle(
   return actions(
       std::move(write),
       std::move(clearRecordLayers),
-      &Transition<StateEnum::Closed>,
+      MutateState(&Transition<StateEnum::Closed>),
       std::move(eod));
 }
 
@@ -2064,13 +2069,13 @@ EventHandler<ClientTypes, StateEnum::ExpectingCloseNotify, Event::CloseNotify>::
   auto& closenotify = boost::get<CloseNotify>(param);
   auto eod = EndOfData(std::move(closenotify.ignoredPostCloseData));
 
-  auto clearRecordLayers = [](State& newState) {
+  MutateState clearRecordLayers([](State& newState) {
     newState.readRecordLayer() = nullptr;
     newState.writeRecordLayer() = nullptr;
-  };
+  });
   return actions(
       std::move(clearRecordLayers),
-      &Transition<StateEnum::Closed>,
+      MutateState(&Transition<StateEnum::Closed>),
       std::move(eod));
 }
 

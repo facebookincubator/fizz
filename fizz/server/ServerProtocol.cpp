@@ -251,13 +251,13 @@ Actions handleError(
     ReportError error,
     Optional<AlertDescription> alertDesc) {
   if (state.state() == StateEnum::Error) {
-    return actions();
+    return Actions();
   }
-  auto transition = [](State& newState) {
+  MutateState transition([](State& newState) {
     newState.state() = StateEnum::Error;
     newState.writeRecordLayer() = nullptr;
     newState.readRecordLayer() = nullptr;
-  };
+  });
   if (alertDesc && state.writeRecordLayer()) {
     Alert alert(*alertDesc);
     WriteToSocket write;
@@ -270,11 +270,11 @@ Actions handleError(
 }
 
 Actions handleAppCloseImmediate(const State& state) {
-  auto transition = [](State& newState) {
+  MutateState transition([](State& newState) {
     newState.state() = StateEnum::Closed;
     newState.readRecordLayer() = nullptr;
     newState.writeRecordLayer() = nullptr;
-  };
+  });
 
   if (state.writeRecordLayer()) {
     Alert alert(AlertDescription::close_notify);
@@ -289,10 +289,10 @@ Actions handleAppCloseImmediate(const State& state) {
 
 Actions handleAppClose(const State& state) {
   if (state.writeRecordLayer()) {
-    auto transition = [](State& newState) {
+    MutateState transition([](State& newState) {
       newState.state() = StateEnum::ExpectingCloseNotify;
       newState.writeRecordLayer() = nullptr;
-    };
+    });
 
     Alert alert(AlertDescription::close_notify);
     WriteToSocket write;
@@ -300,11 +300,11 @@ Actions handleAppClose(const State& state) {
         state.writeRecordLayer()->writeAlert(std::move(alert)));
     return actions(std::move(transition), std::move(write));
   } else {
-    auto transition = [](State& newState) {
+    MutateState transition([](State& newState) {
       newState.state() = StateEnum::Closed;
       newState.writeRecordLayer() = nullptr;
       newState.readRecordLayer() = nullptr;
-    };
+    });
     return actions(std::move(transition));
   }
 }
@@ -357,20 +357,20 @@ EventHandler<ServerTypes, StateEnum::Uninitialized, Event::Accept>::handle(
   auto writeRecordLayer = factory->makePlaintextWriteRecordLayer();
   auto handshakeLogging = std::make_unique<HandshakeLogging>();
   return actions(
-      [executor = accept.executor,
-       rrl = std::move(readRecordLayer),
-       wrl = std::move(writeRecordLayer),
-       context = std::move(accept.context),
-       handshakeLogging = std::move(handshakeLogging),
-       extensions = accept.extensions](State& newState) mutable {
+      MutateState([executor = accept.executor,
+                   rrl = std::move(readRecordLayer),
+                   wrl = std::move(writeRecordLayer),
+                   context = std::move(accept.context),
+                   handshakeLogging = std::move(handshakeLogging),
+                   extensions = accept.extensions](State& newState) mutable {
         newState.executor() = executor;
         newState.context() = std::move(context);
         newState.readRecordLayer() = std::move(rrl);
         newState.writeRecordLayer() = std::move(wrl);
         newState.handshakeLogging() = std::move(handshakeLogging);
         newState.extensions() = std::move(extensions);
-      },
-      &Transition<StateEnum::ExpectingClientHello>);
+      }),
+      MutateState(&Transition<StateEnum::ExpectingClientHello>));
 }
 
 static void addHandshakeLogging(const State& state, const ClientHello& chlo) {
@@ -997,7 +997,8 @@ EventHandler<ServerTypes, StateEnum::ExpectingClientHello, Event::ClientHello>::
           PlaintextWriteRecordLayer()
               .writeInitialClientHello(std::move(*chlo.originalEncoding))
               .data;
-      return actions(&Transition<StateEnum::Error>, std::move(fallback));
+      return actions(
+          MutateState(&Transition<StateEnum::Error>), std::move(fallback));
     } else {
       throw FizzException(
           "supported version mismatch", AlertDescription::protocol_version);
@@ -1189,18 +1190,18 @@ EventHandler<ServerTypes, StateEnum::ExpectingClientHello, Event::ClientHello>::
                 earlyDataType == EarlyDataType::Rejected);
 
             return Future<Actions>(actions(
-                [handshakeContext = std::move(handshakeContext),
-                 version,
-                 cipher,
-                 group,
-                 earlyDataType,
-                 replayCacheResult,
-                 newReadRecordLayer =
-                     std::move(newReadRecordLayer)](State& newState) mutable {
+                MutateState([handshakeContext = std::move(handshakeContext),
+                             version,
+                             cipher,
+                             group,
+                             earlyDataType,
+                             replayCacheResult,
+                             newReadRecordLayer = std::move(
+                                 newReadRecordLayer)](State& newState) mutable {
                   // Save some information about the current state to be
                   // validated when we get the second client hello. We don't
-                  // validate that the second client hello matches the first as
-                  // strictly as we could according to the spec however.
+                  // validate that the second client hello matches the first
+                  // as strictly as we could according to the spec however.
                   newState.handshakeContext() = std::move(handshakeContext);
                   newState.version() = version;
                   newState.cipher() = cipher;
@@ -1210,9 +1211,9 @@ EventHandler<ServerTypes, StateEnum::ExpectingClientHello, Event::ClientHello>::
                   newState.earlyDataType() = earlyDataType;
                   newState.replayCacheResult() = replayCacheResult;
                   newState.readRecordLayer() = std::move(newReadRecordLayer);
-                },
+                }),
                 std::move(serverFlight),
-                &Transition<StateEnum::ExpectingClientHello>));
+                MutateState(&Transition<StateEnum::ExpectingClientHello>)));
           }
 
           if (state.keyExchangeType().hasValue()) {
@@ -1487,7 +1488,7 @@ EventHandler<ServerTypes, StateEnum::ExpectingClientHello, Event::ClientHello>::
               // Save all the necessary state except for the read record layer,
               // which is done separately as it varies if early data was
               // accepted.
-              auto saveState =
+              MutateState saveState(
                   [appTrafficWriteRecordLayer =
                        std::move(appTrafficWriteRecordLayer),
                    handshakeContext = std::move(handshakeContext),
@@ -1534,50 +1535,53 @@ EventHandler<ServerTypes, StateEnum::ExpectingClientHello, Event::ClientHello>::
                     newState.appToken() = std::move(appToken);
                     newState.serverCertCompAlgo() = serverCertCompAlgo;
                     newState.handshakeTime() = std::move(handshakeTime);
-                  };
+                  });
 
               if (earlyDataType == EarlyDataType::Accepted) {
                 if (state.context()->getOmitEarlyRecordLayer()) {
                   return actions(
-                      [handshakeReadRecordLayer =
-                           std::move(handshakeReadRecordLayer),
-                       earlyExporterMaster = std::move(earlyExporterMaster)](
-                          State& newState) mutable {
+                      MutateState([handshakeReadRecordLayer =
+                                       std::move(handshakeReadRecordLayer),
+                                   earlyExporterMaster =
+                                       std::move(earlyExporterMaster)](
+                                      State& newState) mutable {
                         newState.readRecordLayer() =
                             std::move(handshakeReadRecordLayer);
                         newState.earlyExporterMasterSecret() =
                             std::move(earlyExporterMaster);
-                      },
+                      }),
                       std::move(saveState),
                       std::move(*earlyReadSecretAvailable),
                       std::move(handshakeReadSecretAvailable),
                       std::move(handshakeWriteSecretAvailable),
                       std::move(appWriteSecretAvailable),
                       std::move(serverFlight),
-                      &Transition<StateEnum::ExpectingFinished>,
+                      MutateState(&Transition<StateEnum::ExpectingFinished>),
                       ReportEarlyHandshakeSuccess());
 
                 } else {
                   return actions(
-                      [handshakeReadRecordLayer =
-                           std::move(handshakeReadRecordLayer),
-                       earlyReadRecordLayer = std::move(earlyReadRecordLayer),
-                       earlyExporterMaster = std::move(earlyExporterMaster)](
-                          State& newState) mutable {
+                      MutateState([handshakeReadRecordLayer =
+                                       std::move(handshakeReadRecordLayer),
+                                   earlyReadRecordLayer =
+                                       std::move(earlyReadRecordLayer),
+                                   earlyExporterMaster =
+                                       std::move(earlyExporterMaster)](
+                                      State& newState) mutable {
                         newState.readRecordLayer() =
                             std::move(earlyReadRecordLayer);
                         newState.handshakeReadRecordLayer() =
                             std::move(handshakeReadRecordLayer);
                         newState.earlyExporterMasterSecret() =
                             std::move(earlyExporterMaster);
-                      },
+                      }),
                       std::move(saveState),
                       std::move(*earlyReadSecretAvailable),
                       std::move(handshakeReadSecretAvailable),
                       std::move(handshakeWriteSecretAvailable),
                       std::move(appWriteSecretAvailable),
                       std::move(serverFlight),
-                      &Transition<StateEnum::AcceptingEarlyData>,
+                      MutateState(&Transition<StateEnum::AcceptingEarlyData>),
                       ReportEarlyHandshakeSuccess());
                 }
               } else {
@@ -1585,17 +1589,18 @@ EventHandler<ServerTypes, StateEnum::ExpectingClientHello, Event::ClientHello>::
                     ? Transition<StateEnum::ExpectingCertificate>
                     : Transition<StateEnum::ExpectingFinished>;
                 return actions(
-                    [handshakeReadRecordLayer = std::move(
-                         handshakeReadRecordLayer)](State& newState) mutable {
+                    MutateState([handshakeReadRecordLayer =
+                                     std::move(handshakeReadRecordLayer)](
+                                    State& newState) mutable {
                       newState.readRecordLayer() =
                           std::move(handshakeReadRecordLayer);
-                    },
+                    }),
                     std::move(saveState),
                     std::move(handshakeReadSecretAvailable),
                     std::move(handshakeWriteSecretAvailable),
                     std::move(appWriteSecretAvailable),
                     std::move(serverFlight),
-                    transition);
+                    MutateState(transition));
               }
             });
       });
@@ -1639,10 +1644,11 @@ AsyncActions EventHandler<
   auto readRecordLayer = std::move(state.handshakeReadRecordLayer());
 
   return actions(
-      [readRecordLayer = std::move(readRecordLayer)](State& newState) mutable {
+      MutateState([readRecordLayer =
+                       std::move(readRecordLayer)](State& newState) mutable {
         newState.readRecordLayer() = std::move(readRecordLayer);
-      },
-      &Transition<StateEnum::ExpectingFinished>);
+      }),
+      MutateState(&Transition<StateEnum::ExpectingFinished>));
 }
 
 AsyncActions
@@ -1767,8 +1773,10 @@ EventHandler<ServerTypes, StateEnum::ExpectingCertificate, Event::Certificate>::
     if (state.context()->getClientAuthMode() == ClientAuthMode::Optional) {
       VLOG(6) << "Client authentication not sent";
       return actions(
-          [](State& newState) { newState.unverifiedCertChain() = folly::none; },
-          &Transition<StateEnum::ExpectingFinished>);
+          MutateState([](State& newState) {
+            newState.unverifiedCertChain() = folly::none;
+          }),
+          MutateState(&Transition<StateEnum::ExpectingFinished>));
     } else {
       throw FizzException(
           "certificate requested but none received",
@@ -1776,10 +1784,10 @@ EventHandler<ServerTypes, StateEnum::ExpectingCertificate, Event::Certificate>::
     }
   } else {
     return actions(
-        [certs = std::move(clientCerts)](State& newState) mutable {
+        MutateState([certs = std::move(clientCerts)](State& newState) mutable {
           newState.unverifiedCertChain() = std::move(certs);
-        },
-        &Transition<StateEnum::ExpectingCertificateVerify>);
+        }),
+        MutateState(&Transition<StateEnum::ExpectingCertificateVerify>));
   }
 }
 
@@ -1825,11 +1833,11 @@ AsyncActions EventHandler<
   state.handshakeContext()->appendToTranscript(*certVerify.originalEncoding);
 
   return actions(
-      [cert = std::move(leafCert)](State& newState) {
+      MutateState([cert = std::move(leafCert)](State& newState) {
         newState.unverifiedCertChain() = folly::none;
         newState.clientCert() = std::move(cert);
-      },
-      &Transition<StateEnum::ExpectingFinished>);
+      }),
+      MutateState(&Transition<StateEnum::ExpectingFinished>));
 }
 
 AsyncActions
@@ -1871,11 +1879,11 @@ EventHandler<ServerTypes, StateEnum::ExpectingFinished, Event::Finished>::
           .secret;
   state.keyScheduler()->clearMasterSecret();
 
-  auto saveState = [readRecordLayer = std::move(readRecordLayer),
-                    resumptionMasterSecret](State& newState) mutable {
+  MutateState saveState([readRecordLayer = std::move(readRecordLayer),
+                         resumptionMasterSecret](State& newState) mutable {
     newState.readRecordLayer() = std::move(readRecordLayer);
     newState.resumptionMasterSecret() = std::move(resumptionMasterSecret);
-  };
+  });
 
   SecretAvailable appReadTrafficSecretAvailable(std::move(readSecret));
 
@@ -1883,7 +1891,7 @@ EventHandler<ServerTypes, StateEnum::ExpectingFinished, Event::Finished>::
     return actions(
         std::move(saveState),
         std::move(appReadTrafficSecretAvailable),
-        &Transition<StateEnum::AcceptingData>,
+        MutateState(&Transition<StateEnum::AcceptingData>),
         ReportHandshakeSuccess());
   } else {
     auto ticketFuture = generateTicket(state, resumptionMasterSecret);
@@ -1895,14 +1903,14 @@ EventHandler<ServerTypes, StateEnum::ExpectingFinished, Event::Finished>::
           if (!nstWrite) {
             return actions(
                 std::move(saveState),
-                &Transition<StateEnum::AcceptingData>,
+                MutateState(&Transition<StateEnum::AcceptingData>),
                 std::move(appReadTrafficSecretAvailable),
                 ReportHandshakeSuccess());
           }
 
           return actions(
               std::move(saveState),
-              &Transition<StateEnum::AcceptingData>,
+              MutateState(&Transition<StateEnum::AcceptingData>),
               std::move(appReadTrafficSecretAvailable),
               std::move(*nstWrite),
               ReportHandshakeSuccess());
@@ -1922,7 +1930,7 @@ AsyncActions EventHandler<
   return ticketFuture.via(state.executor())
       .thenValue([](Optional<WriteToSocket> nstWrite) {
         if (!nstWrite) {
-          return actions();
+          return Actions();
         }
         return actions(std::move(*nstWrite));
       });
@@ -1976,10 +1984,10 @@ EventHandler<ServerTypes, StateEnum::AcceptingData, Event::KeyUpdate>::handle(
       *state.keyScheduler());
 
   if (keyUpdate.request_update == KeyUpdateRequest::update_not_requested) {
-    return actions(
+    return actions(MutateState(
         [rRecordLayer = std::move(readRecordLayer)](State& newState) mutable {
           newState.readRecordLayer() = std::move(rRecordLayer);
-        });
+        }));
   }
 
   auto encodedKeyUpdated =
@@ -2004,11 +2012,12 @@ EventHandler<ServerTypes, StateEnum::AcceptingData, Event::KeyUpdate>::handle(
       *state.keyScheduler());
 
   return actions(
-      [rRecordLayer = std::move(readRecordLayer),
-       wRecordLayer = std::move(writeRecordLayer)](State& newState) mutable {
+      MutateState([rRecordLayer = std::move(readRecordLayer),
+                   wRecordLayer =
+                       std::move(writeRecordLayer)](State& newState) mutable {
         newState.readRecordLayer() = std::move(rRecordLayer);
         newState.writeRecordLayer() = std::move(wRecordLayer);
-      },
+      }),
       SecretAvailable(std::move(writeSecret)),
       SecretAvailable(std::move(readSecret)),
       std::move(write));
@@ -2022,10 +2031,10 @@ EventHandler<ServerTypes, StateEnum::AcceptingData, Event::CloseNotify>::handle(
   auto& closenotify = boost::get<CloseNotify>(param);
   auto eod = EndOfData(std::move(closenotify.ignoredPostCloseData));
 
-  auto clearRecordLayers = [](State& newState) {
+  MutateState clearRecordLayers([](State& newState) {
     newState.writeRecordLayer() = nullptr;
     newState.readRecordLayer() = nullptr;
-  };
+  });
 
   WriteToSocket write;
   write.contents.emplace_back(state.writeRecordLayer()->writeAlert(
@@ -2033,7 +2042,7 @@ EventHandler<ServerTypes, StateEnum::AcceptingData, Event::CloseNotify>::handle(
   return actions(
       std::move(write),
       std::move(clearRecordLayers),
-      &Transition<StateEnum::Closed>,
+      MutateState(&Transition<StateEnum::Closed>),
       std::move(eod));
 }
 
@@ -2044,13 +2053,13 @@ EventHandler<ServerTypes, StateEnum::ExpectingCloseNotify, Event::CloseNotify>::
   auto& closenotify = boost::get<CloseNotify>(param);
   auto eod = EndOfData(std::move(closenotify.ignoredPostCloseData));
 
-  auto clearRecordLayers = [](State& newState) {
+  MutateState clearRecordLayers([](State& newState) {
     newState.readRecordLayer() = nullptr;
     newState.writeRecordLayer() = nullptr;
-  };
+  });
   return actions(
       std::move(clearRecordLayers),
-      &Transition<StateEnum::Closed>,
+      MutateState(&Transition<StateEnum::Closed>),
       std::move(eod));
 }
 

@@ -159,7 +159,7 @@ class AsyncFizzClientT : public AsyncFizzBase,
 
   folly::Optional<folly::AsyncSocketException> handleEarlyReject();
 
-  class ActionMoveVisitor : public boost::static_visitor<> {
+  class ActionMoveVisitor {
    public:
     explicit ActionMoveVisitor(AsyncFizzClientT<SM>& client)
         : client_(client) {}

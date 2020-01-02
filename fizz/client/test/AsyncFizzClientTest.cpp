@@ -81,7 +81,8 @@ class AsyncFizzClientTest : public Test {
           WriteToSocket write;
           write.contents.emplace_back(std::move(record));
           return detail::actions(
-              [](State& newState) { newState.state() = StateEnum::Error; },
+              MutateState(
+                  [](State& newState) { newState.state() = StateEnum::Error; }),
               std::move(write));
         }));
   }
@@ -102,7 +103,7 @@ class AsyncFizzClientTest : public Test {
       bool pskResumed = false) {
     EXPECT_CALL(*machine_, _processSocketData(_, _))
         .WillOnce(InvokeWithoutArgs([=]() {
-          auto addToState = [=](State& newState) {
+          MutateState addToState([=](State& newState) {
             newState.exporterMasterSecret() =
                 folly::IOBuf::copyBuffer("12345678901234567890123456789012");
             newState.cipher() = CipherSuite::TLS_AES_128_GCM_SHA256;
@@ -123,7 +124,7 @@ class AsyncFizzClientTest : public Test {
             } else {
               newState.handshakeTime() = std::chrono::system_clock::now();
             }
-          };
+          });
           ReportHandshakeSuccess reportSuccess;
           reportSuccess.earlyDataAccepted = acceptEarlyData;
           return detail::actions(
@@ -150,10 +151,10 @@ class AsyncFizzClientTest : public Test {
     connect();
     EXPECT_CALL(*machine_, _processSocketData(_, _))
         .WillOnce(InvokeWithoutArgs([&params]() {
-          auto addParamsToState =
+          MutateState addParamsToState(
               [params = std::move(params)](State& newState) mutable {
                 newState.earlyDataParams() = std::move(params);
-              };
+              });
           ReportEarlyHandshakeSuccess reportSuccess;
           reportSuccess.maxEarlyDataSize = 1000;
           return detail::actions(
@@ -363,10 +364,10 @@ TEST_F(AsyncFizzClientTest, TestMutateState) {
   EXPECT_CALL(*machine_, _processSocketData(_, _))
       .WillOnce(InvokeWithoutArgs([&numTimesRun]() {
         return detail::actions(
-            [&numTimesRun](State& newState) {
+            MutateState([&numTimesRun](State& newState) {
               numTimesRun++;
               newState.state() = StateEnum::Error;
-            },
+            }),
             WaitForData());
       }));
   socketReadCallback_->readBufferAvailable(IOBuf::copyBuffer("ClientHello"));
@@ -411,8 +412,8 @@ TEST_F(AsyncFizzClientTest, TestGoodState) {
   EXPECT_TRUE(client_->good());
   EXPECT_CALL(*machine_, _processSocketData(_, _))
       .WillOnce(InvokeWithoutArgs([]() {
-        return detail::actions(
-            [](State& newState) { newState.state() = StateEnum::Error; });
+        return detail::actions(MutateState(
+            [](State& newState) { newState.state() = StateEnum::Error; }));
       }));
   socketReadCallback_->readBufferAvailable(IOBuf::copyBuffer("Data"));
   EXPECT_FALSE(client_->good());
@@ -1012,7 +1013,8 @@ TEST_F(AsyncFizzClientTest, TestErrorStopsActions) {
   EXPECT_CALL(*machine_, _processSocketData(_, _))
       .WillOnce(InvokeWithoutArgs([]() {
         return detail::actions(
-            [](State& newState) { newState.state() = StateEnum::Error; },
+            MutateState(
+                [](State& newState) { newState.state() = StateEnum::Error; }),
             ReportError("unit test"));
       }));
   EXPECT_FALSE(client_->error());

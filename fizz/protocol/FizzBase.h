@@ -35,6 +35,7 @@ class FizzBase {
         transportReadBuf_(transportReadBuf),
         visitor_(visitor),
         owner_(owner) {}
+  virtual ~FizzBase() = default;
 
   /**
    * Server only: Called to write new session ticket to client.
@@ -115,14 +116,18 @@ class FizzBase {
 
   void addProcessingActions(typename StateMachine::ProcessingActions actions);
 
+  virtual void visitActions(
+      typename StateMachine::CompletedActions& actions) = 0;
+
   StateMachine machine_;
   const typename StateMachine::StateType& state_;
   folly::IOBufQueue& transportReadBuf_;
 
+  ActionMoveVisitor& visitor_;
+
  private:
   void processPendingEvents();
 
-  ActionMoveVisitor& visitor_;
   folly::DelayedDestructionBase* owner_;
 
   using PendingEvent =

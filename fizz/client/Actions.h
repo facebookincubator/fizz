@@ -8,10 +8,10 @@
 
 #pragma once
 
-#include <boost/variant.hpp>
 #include <fizz/client/PskCache.h>
 #include <fizz/protocol/Actions.h>
 #include <fizz/protocol/Params.h>
+#include <fizz/util/Variant.h>
 #include <folly/CPortability.h>
 
 namespace fizz {
@@ -68,18 +68,20 @@ struct NewCachedPsk {
   CachedPsk psk;
 };
 
-using Action = boost::variant<
-    DeliverAppData,
-    WriteToSocket,
-    ReportHandshakeSuccess,
-    ReportEarlyHandshakeSuccess,
-    ReportEarlyWriteFailed,
-    ReportError,
-    EndOfData,
-    MutateState,
-    WaitForData,
-    NewCachedPsk,
-    SecretAvailable>;
+#define FIZZ_CLIENT_ACTIONS(F, ...)           \
+  F(DeliverAppData, __VA_ARGS__)              \
+  F(WriteToSocket, __VA_ARGS__)               \
+  F(ReportHandshakeSuccess, __VA_ARGS__)      \
+  F(ReportEarlyHandshakeSuccess, __VA_ARGS__) \
+  F(ReportEarlyWriteFailed, __VA_ARGS__)      \
+  F(ReportError, __VA_ARGS__)                 \
+  F(EndOfData, __VA_ARGS__)                   \
+  F(MutateState, __VA_ARGS__)                 \
+  F(WaitForData, __VA_ARGS__)                 \
+  F(NewCachedPsk, __VA_ARGS__)                \
+  F(SecretAvailable, __VA_ARGS__)
+
+FIZZ_DECLARE_VARIANT_TYPE(Action, FIZZ_CLIENT_ACTIONS)
 
 #if FOLLY_MOBILE
 using Actions = std::vector<Action>;

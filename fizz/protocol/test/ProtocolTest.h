@@ -34,9 +34,9 @@ class ProtocolTest : public testing::Test {
   template <typename T>
   T expectAction(Actions& actions) {
     for (auto& action : actions) {
-      try {
-        return std::move(boost::get<T>(action));
-      } catch (const boost::bad_get&) {
+      auto val = action.template getType<T>();
+      if (val) {
+        return std::move(*val);
       }
     }
     throw std::runtime_error("did not find expected action");
@@ -49,7 +49,7 @@ class ProtocolTest : public testing::Test {
       folly::ByteRange expectedSecret) {
     DerivedSecret expectedDerivedSecret(expectedSecret, SecretType(secretType));
     for (auto& action : actions) {
-      auto trySecret = boost::get<SecretAvailable>(&action);
+      auto trySecret = action.asSecretAvailable();
       if (trySecret) {
         bool match = trySecret->secret.secret == expectedDerivedSecret.secret &&
             trySecret->secret.type == expectedDerivedSecret.type;
@@ -69,9 +69,9 @@ class ProtocolTest : public testing::Test {
 
   void processStateMutations(Actions& actions) {
     for (auto& action : actions) {
-      try {
-        boost::get<MutateState>(action)(state_);
-      } catch (const boost::bad_get&) {
+      auto mutateState = action.asMutateState();
+      if (mutateState) {
+        (*mutateState)(state_);
       }
     }
   }
@@ -80,10 +80,8 @@ class ProtocolTest : public testing::Test {
   uint32_t getNumActions(const Actions& actions, bool expectNonZero) {
     uint32_t count = 0;
     for (const auto& action : actions) {
-      try {
-        boost::get<T>(action);
+      if (action.template getType<T>()) {
         count++;
-      } catch (const boost::bad_get&) {
       }
     }
     if (expectNonZero) {

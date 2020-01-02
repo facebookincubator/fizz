@@ -50,6 +50,9 @@ class FizzClient : public FizzBase<
       const Buf& context,
       uint16_t length) const;
 
+ protected:
+  void visitActions(typename SM::CompletedActions& actions) override;
+
  private:
   friend class FizzBase<
       FizzClient<ActionMoveVisitor, SM>,

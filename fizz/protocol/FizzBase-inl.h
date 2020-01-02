@@ -104,9 +104,7 @@ void FizzBase<Derived, ActionMoveVisitor, StateMachine>::processActions(
   // actionGuard_ and potentially processing another action.
   folly::DelayedDestruction::DestructorGuard dg(owner_);
 
-  for (auto& action : actions) {
-    boost::apply_visitor(visitor_, action);
-  }
+  visitActions(actions);
 
   actionGuard_.clear();
   processPendingEvents();
@@ -141,7 +139,7 @@ void FizzBase<Derived, ActionMoveVisitor, StateMachine>::
     folly::Optional<typename StateMachine::ProcessingActions> actions;
     actionGuard_ = folly::DelayedDestruction::DestructorGuard(owner_);
     if (!waitForData_) {
-      actions = machine_.processSocketData(state_, transportReadBuf_);
+      actions.emplace(machine_.processSocketData(state_, transportReadBuf_));
     } else if (!pendingEvents_.empty()) {
       auto event = std::move(pendingEvents_.front());
       pendingEvents_.pop_front();
@@ -149,20 +147,21 @@ void FizzBase<Derived, ActionMoveVisitor, StateMachine>::
           event,
           detail::result_type<void>(),
           [&actions, this](WriteNewSessionTicket& write) {
-            actions =
-                machine_.processWriteNewSessionTicket(state_, std::move(write));
+            actions.emplace(machine_.processWriteNewSessionTicket(
+                state_, std::move(write)));
           },
           [&actions, this](AppWrite& write) {
-            actions = machine_.processAppWrite(state_, std::move(write));
+            actions.emplace(machine_.processAppWrite(state_, std::move(write)));
           },
           [&actions, this](EarlyAppWrite& write) {
-            actions = machine_.processEarlyAppWrite(state_, std::move(write));
+            actions.emplace(
+                machine_.processEarlyAppWrite(state_, std::move(write)));
           },
           [&actions, this](AppClose& close) {
             if (close.policy == AppClose::WAIT) {
-              actions = machine_.processAppClose(state_);
+              actions.emplace(machine_.processAppClose(state_));
             } else {
-              actions = machine_.processAppCloseImmediate(state_);
+              actions.emplace(machine_.processAppCloseImmediate(state_));
             }
           });
     } else {

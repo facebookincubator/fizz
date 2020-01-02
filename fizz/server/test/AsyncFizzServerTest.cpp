@@ -69,7 +69,8 @@ class AsyncFizzServerTest : public Test {
           record.data = IOBuf::copyBuffer("closenotify");
           write.contents.emplace_back(std::move(record));
           return detail::actions(
-              [](State& newState) { newState.state() = StateEnum::Error; },
+              MutateState(
+                  [](State& newState) { newState.state() = StateEnum::Error; }),
               std::move(write));
         }));
   }
@@ -84,7 +85,8 @@ class AsyncFizzServerTest : public Test {
           record.data = IOBuf::copyBuffer("closenotify");
           write.contents.emplace_back(std::move(record));
           return detail::actions(
-              [](State& newState) { newState.state() = StateEnum::Error; },
+              MutateState(
+                  [](State& newState) { newState.state() = StateEnum::Error; }),
               std::move(write));
         }));
   }
@@ -105,7 +107,7 @@ class AsyncFizzServerTest : public Test {
                                      serverCert,
                                      cipher = negotiatedCipher_,
                                      protocolVersion = protocolVersion_]() {
-          auto addExporterToState = [=](State& newState) {
+          MutateState addExporterToState([=](State& newState) {
             auto exporterMaster =
                 folly::IOBuf::copyBuffer("12345678901234567890123456789012");
             newState.exporterMasterSecret() = std::move(exporterMaster);
@@ -113,7 +115,7 @@ class AsyncFizzServerTest : public Test {
             newState.version() = protocolVersion;
             newState.clientCert() = clientCert;
             newState.serverCert() = serverCert;
-          };
+          });
           return actions(
               std::move(addExporterToState),
               ReportHandshakeSuccess(),
@@ -271,10 +273,10 @@ TEST_F(AsyncFizzServerTest, TestMutateState) {
   EXPECT_CALL(*machine_, _processSocketData(_, _))
       .WillOnce(InvokeWithoutArgs([&numTimesRun]() {
         return actions(
-            [&numTimesRun](State& newState) {
+            MutateState([&numTimesRun](State& newState) {
               numTimesRun++;
               newState.state() = StateEnum::Error;
-            },
+            }),
             WaitForData());
       }));
   socketReadCallback_->readBufferAvailable(IOBuf::copyBuffer("ClientHello"));
@@ -287,7 +289,8 @@ TEST_F(AsyncFizzServerTest, TestAttemptVersionFallback) {
   EXPECT_CALL(*machine_, _processSocketData(_, _))
       .WillOnce(InvokeWithoutArgs([]() {
         return actions(
-            [](State& newState) { newState.state() = StateEnum::Error; },
+            MutateState(
+                [](State& newState) { newState.state() = StateEnum::Error; }),
             AttemptVersionFallback{IOBuf::copyBuffer("ClientHello")});
       }));
   EXPECT_CALL(handshakeCallback_, _fizzHandshakeAttemptFallback(_))
@@ -405,8 +408,8 @@ TEST_F(AsyncFizzServerTest, TestGoodState) {
   EXPECT_TRUE(server_->good());
   EXPECT_CALL(*machine_, _processSocketData(_, _))
       .WillOnce(InvokeWithoutArgs([]() {
-        return actions(
-            [](State& newState) { newState.state() = StateEnum::Error; });
+        return actions(MutateState(
+            [](State& newState) { newState.state() = StateEnum::Error; }));
       }));
   socketReadCallback_->readBufferAvailable(IOBuf::copyBuffer("Data"));
   EXPECT_FALSE(server_->good());
@@ -430,7 +433,8 @@ TEST_F(AsyncFizzServerTest, TestErrorStopsActions) {
   EXPECT_CALL(*machine_, _processSocketData(_, _))
       .WillOnce(InvokeWithoutArgs([]() {
         return actions(
-            [](State& newState) { newState.state() = StateEnum::Error; },
+            MutateState(
+                [](State& newState) { newState.state() = StateEnum::Error; }),
             ReportError("unit test"));
       }));
   EXPECT_FALSE(server_->error());
@@ -520,7 +524,8 @@ TEST_F(AsyncFizzServerTest, TestRemoteClosed) {
   EXPECT_CALL(*machine_, _processSocketData(_, _))
       .WillOnce(InvokeWithoutArgs([]() {
         return actions(
-            [](State& s) { s.state() = StateEnum::Closed; }, EndOfData());
+            MutateState([](State& s) { s.state() = StateEnum::Closed; }),
+            EndOfData());
       }));
   EXPECT_CALL(*socket_, closeNow());
   EXPECT_TRUE(server_->good());

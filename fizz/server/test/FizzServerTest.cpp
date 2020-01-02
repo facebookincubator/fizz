@@ -28,7 +28,7 @@ class MockServerStateMachineInstance : public MockServerStateMachine {
 };
 MockServerStateMachineInstance* MockServerStateMachineInstance::instance;
 
-class ActionMoveVisitor : public boost::static_visitor<> {
+class ActionMoveVisitor {
  public:
   MOCK_METHOD0(fallback, void());
 
@@ -140,7 +140,7 @@ TEST_F(FizzServerTest, TestSSLV2AfterData) {
 TEST(FizzServerContextTest, TestCopy) {
   FizzServerContext ctx;
   auto ctx2 = ctx;
-  (void) ctx2;
+  (void)ctx2;
 }
 } // namespace test
 } // namespace server
