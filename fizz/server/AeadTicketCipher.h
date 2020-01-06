@@ -11,7 +11,6 @@
 #include <fizz/protocol/clock/SystemClock.h>
 #include <fizz/server/AeadTokenCipher.h>
 #include <fizz/server/FizzServerContext.h>
-#include <fizz/server/State.h>
 #include <fizz/server/TicketCipher.h>
 
 namespace fizz {
@@ -98,8 +97,7 @@ class Aead128GCMTicketCipher : public TicketCipher {
   }
 
   folly::Future<std::pair<PskType, folly::Optional<ResumptionState>>> decrypt(
-      std::unique_ptr<folly::IOBuf> encryptedTicket,
-      const State* /*state*/ = nullptr) const override {
+      std::unique_ptr<folly::IOBuf> encryptedTicket) const override {
     auto plaintext = tokenCipher_.decrypt(std::move(encryptedTicket));
     if (plaintext) {
       try {

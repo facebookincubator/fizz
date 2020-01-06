@@ -466,9 +466,8 @@ struct ResumptionStateResult {
 
 static ResumptionStateResult getResumptionState(
     const ClientHello& chlo,
-    const State& state) {
-  auto ticketCipher = state.context()->getTicketCipher();
-  const auto& supportedModes = state.context()->getSupportedPskModes();
+    const TicketCipher* ticketCipher,
+    const std::vector<PskKeyExchangeMode>& supportedModes) {
   auto psks = getExtension<ClientPresharedKey>(chlo.extensions);
   auto clientModes = getExtension<PskKeyExchangeModes>(chlo.extensions);
   if (psks && !clientModes) {
@@ -496,7 +495,7 @@ static ResumptionStateResult getResumptionState(
   } else {
     const auto& ident = psks->identities[kPskIndex].psk_identity;
     return ResumptionStateResult(
-        ticketCipher->decrypt(ident->clone(), &state),
+        ticketCipher->decrypt(ident->clone()),
         pskMode,
         psks->identities[kPskIndex].obfuscated_ticket_age);
   }
@@ -1014,7 +1013,10 @@ EventHandler<ServerTypes, StateEnum::ExpectingClientHello, Event::ClientHello>::
   auto cookieState = getCookieState(
       chlo, *version, cipher, state.context()->getCookieCipher());
 
-  auto resStateResult = getResumptionState(chlo, state);
+  auto resStateResult = getResumptionState(
+      chlo,
+      state.context()->getTicketCipher(),
+      state.context()->getSupportedPskModes());
 
   auto replayCacheResultFuture = getReplayCacheResult(
       chlo,

@@ -1245,7 +1245,7 @@ TEST_F(ServerProtocolTest, TestClientHelloCertRequestFlow) {
 TEST_F(ServerProtocolTest, TestClientHelloPskFlow) {
   context_->setSupportedPskModes({PskKeyExchangeMode::psk_ke});
   setUpExpectingClientHello();
-  EXPECT_CALL(*mockTicketCipher_, _decrypt(_, _))
+  EXPECT_CALL(*mockTicketCipher_, _decrypt(_))
       .WillOnce(InvokeWithoutArgs([=]() {
         ResumptionState res;
         res.version = TestProtocolVersion;
@@ -1462,7 +1462,7 @@ TEST_F(ServerProtocolTest, TestClientHelloPskFlow) {
 TEST_F(ServerProtocolTest, TestClientHelloPskDheFlow) {
   context_->setSupportedPskModes({PskKeyExchangeMode::psk_dhe_ke});
   setUpExpectingClientHello();
-  EXPECT_CALL(*mockTicketCipher_, _decrypt(_, _))
+  EXPECT_CALL(*mockTicketCipher_, _decrypt(_))
       .WillOnce(InvokeWithoutArgs([=]() {
         ResumptionState res;
         res.version = TestProtocolVersion;
@@ -1986,7 +1986,7 @@ TEST_F(ServerProtocolTest, TestRetryClientHelloFullHandshakeFlow) {
 TEST_F(ServerProtocolTest, TestRetryClientHelloPskDheFlow) {
   context_->setSupportedPskModes({PskKeyExchangeMode::psk_dhe_ke});
   setUpExpectingClientHelloRetry();
-  EXPECT_CALL(*mockTicketCipher_, _decrypt(_, _))
+  EXPECT_CALL(*mockTicketCipher_, _decrypt(_))
       .WillOnce(InvokeWithoutArgs([=]() {
         ResumptionState res;
         res.version = TestProtocolVersion;
@@ -2203,7 +2203,7 @@ TEST_F(ServerProtocolTest, TestClientHelloPskDheEarlyFlow) {
   context_->setSupportedPskModes({PskKeyExchangeMode::psk_dhe_ke});
   acceptEarlyData();
   setUpExpectingClientHello();
-  EXPECT_CALL(*mockTicketCipher_, _decrypt(_, _))
+  EXPECT_CALL(*mockTicketCipher_, _decrypt(_))
       .WillOnce(InvokeWithoutArgs([=]() {
         ResumptionState res;
         res.version = TestProtocolVersion;
@@ -2478,7 +2478,7 @@ TEST_F(ServerProtocolTest, TestClientHelloPskEarlyFlow) {
   context_->setSupportedPskModes({PskKeyExchangeMode::psk_ke});
   acceptEarlyData();
   setUpExpectingClientHello();
-  EXPECT_CALL(*mockTicketCipher_, _decrypt(_, _))
+  EXPECT_CALL(*mockTicketCipher_, _decrypt(_))
       .WillOnce(InvokeWithoutArgs([=]() {
         ResumptionState res;
         res.version = TestProtocolVersion;
@@ -2828,9 +2828,9 @@ TEST_F(ServerProtocolTest, TestClientHelloNoSni) {
 
 TEST_F(ServerProtocolTest, TestClientHelloFullHandshakeRejectedPsk) {
   setUpExpectingClientHello();
-  EXPECT_CALL(*mockTicketCipher_, _decrypt(_, _))
-      .WillOnce(InvokeWithoutArgs(
-          []() { return std::make_pair(PskType::Rejected, none); }));
+  EXPECT_CALL(*mockTicketCipher_, _decrypt(_)).WillOnce(InvokeWithoutArgs([]() {
+    return std::make_pair(PskType::Rejected, none);
+  }));
 
   auto actions =
       getActions(detail::processEvent(state_, TestMessages::clientHelloPsk()));
@@ -3125,7 +3125,7 @@ TEST_F(ServerProtocolTest, TestClientHelloAcceptEarlyDataWithValidAppToken) {
             resumptionState.appToken, IOBuf::copyBuffer(appTokenStr)));
         return true;
       }));
-  EXPECT_CALL(*mockTicketCipher_, _decrypt(_, _))
+  EXPECT_CALL(*mockTicketCipher_, _decrypt(_))
       .WillOnce(InvokeWithoutArgs([=]() {
         ResumptionState res;
         res.version = TestProtocolVersion;
@@ -3246,9 +3246,9 @@ TEST_F(ServerProtocolTest, TestClientHelloRejectEarlyDataPskRejected) {
   acceptEarlyData();
   setUpExpectingClientHello();
 
-  EXPECT_CALL(*mockTicketCipher_, _decrypt(_, _))
-      .WillOnce(InvokeWithoutArgs(
-          []() { return std::make_pair(PskType::Rejected, none); }));
+  EXPECT_CALL(*mockTicketCipher_, _decrypt(_)).WillOnce(InvokeWithoutArgs([]() {
+    return std::make_pair(PskType::Rejected, none);
+  }));
 
   std::chrono::milliseconds age =
       std::chrono::minutes(5) - std::chrono::seconds(10);
@@ -3397,7 +3397,7 @@ TEST_F(ServerProtocolTest, TestClientHelloRejectEarlyDataTicketAgeOverflow) {
   acceptEarlyData();
   setUpExpectingClientHello();
 
-  EXPECT_CALL(*mockTicketCipher_, _decrypt(_, _))
+  EXPECT_CALL(*mockTicketCipher_, _decrypt(_))
       .WillOnce(InvokeWithoutArgs([=]() {
         ResumptionState res;
         res.version = TestProtocolVersion;
@@ -3429,7 +3429,7 @@ TEST_F(ServerProtocolTest, TestClientHelloRejectEarlyDataNegativeExpectedAge) {
   acceptEarlyData();
   setUpExpectingClientHello();
 
-  EXPECT_CALL(*mockTicketCipher_, _decrypt(_, _))
+  EXPECT_CALL(*mockTicketCipher_, _decrypt(_))
       .WillOnce(InvokeWithoutArgs([=]() {
         ResumptionState res;
         res.version = TestProtocolVersion;
@@ -3473,7 +3473,7 @@ TEST_F(ServerProtocolTest, TestClientHelloRejectEarlyDataInvalidAppToken) {
         return false;
       }));
 
-  EXPECT_CALL(*mockTicketCipher_, _decrypt(_, _))
+  EXPECT_CALL(*mockTicketCipher_, _decrypt(_))
       .WillOnce(InvokeWithoutArgs([=]() {
         ResumptionState res;
         res.version = TestProtocolVersion;
@@ -3648,7 +3648,7 @@ TEST_F(ServerProtocolTest, TestRetryClientHelloDifferentVersion) {
 TEST_F(ServerProtocolTest, TestClientHelloRenegotiatePskCipher) {
   setUpExpectingClientHello();
 
-  EXPECT_CALL(*mockTicketCipher_, _decrypt(_, _))
+  EXPECT_CALL(*mockTicketCipher_, _decrypt(_))
       .WillOnce(InvokeWithoutArgs([=]() {
         ResumptionState res;
         res.version = TestProtocolVersion;
@@ -3675,7 +3675,7 @@ TEST_F(ServerProtocolTest, TestClientHelloRenegotiatePskCipher) {
 TEST_F(ServerProtocolTest, TestClientHelloRenegotiatePskCipherIncompatible) {
   setUpExpectingClientHello();
 
-  EXPECT_CALL(*mockTicketCipher_, _decrypt(_, _))
+  EXPECT_CALL(*mockTicketCipher_, _decrypt(_))
       .WillOnce(InvokeWithoutArgs([=]() {
         ResumptionState res;
         res.version = TestProtocolVersion;

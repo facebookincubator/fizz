@@ -8,7 +8,6 @@
 
 #pragma once
 
-#include <fizz/server/State.h>
 #include <fizz/server/TicketCipher.h>
 
 namespace fizz {
@@ -34,15 +33,14 @@ class DualTicketCipher : public TicketCipher {
   }
 
   folly::Future<std::pair<PskType, folly::Optional<ResumptionState>>> decrypt(
-      std::unique_ptr<folly::IOBuf> encryptedTicket,
-      const State* state = nullptr) const override {
+      std::unique_ptr<folly::IOBuf> encryptedTicket) const override {
     auto bufClone = encryptedTicket->clone();
-    return cipher_->decrypt(std::move(encryptedTicket), state)
-        .thenValue([this, ticket = std::move(bufClone), state](
+    return cipher_->decrypt(std::move(encryptedTicket))
+        .thenValue([this, ticket = std::move(bufClone)](
                        std::pair<PskType, folly::Optional<ResumptionState>>
                            res) mutable {
           if (std::get<0>(res) == PskType::Rejected) {
-            return fallbackCipher_->decrypt(std::move(ticket), state);
+            return fallbackCipher_->decrypt(std::move(ticket));
           }
           return folly::makeFuture(std::move(res));
         });

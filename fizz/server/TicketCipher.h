@@ -16,8 +16,6 @@
 namespace fizz {
 namespace server {
 
-class State;
-
 /**
  * Interface for turning PSKs into ResumptionState, and vice versa.
  */
@@ -38,9 +36,7 @@ class TicketCipher {
    * Returns Rejected if the PSK is not recognized or not valid.
    */
   virtual folly::Future<std::pair<PskType, folly::Optional<ResumptionState>>>
-  decrypt(
-      std::unique_ptr<folly::IOBuf> encryptedTicket,
-      const State* state = nullptr) const = 0;
+  decrypt(std::unique_ptr<folly::IOBuf> encryptedTicket) const = 0;
 };
 } // namespace server
 } // namespace fizz
