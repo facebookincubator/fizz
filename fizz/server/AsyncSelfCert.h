@@ -12,6 +12,9 @@
 #include <folly/futures/Future.h>
 
 namespace fizz {
+namespace server {
+class State;
+}
 
 /**
  * SelfCert with an asynchronous sign method. This is useful when the private
