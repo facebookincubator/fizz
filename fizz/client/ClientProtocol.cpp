@@ -1977,6 +1977,7 @@ static Actions handleEarlyAppWrite(const State& state, EarlyAppWrite appWrite) {
     }
   }
   LOG(FATAL) << "Bad EarlyDataType";
+  folly::assume_unreachable();
 }
 
 Actions EventHandler<
