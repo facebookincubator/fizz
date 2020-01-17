@@ -21,9 +21,7 @@
 #include <fizz/util/Workarounds.h>
 #include <folly/executors/ManualExecutor.h>
 
-using namespace fizz::test;
 using namespace folly;
-using namespace testing;
 
 namespace fizz {
 namespace server {

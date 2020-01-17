@@ -16,7 +16,6 @@
 #include <fizz/protocol/clock/test/Mocks.h>
 
 using namespace folly;
-using namespace folly::ssl;
 
 using namespace testing;
 using namespace fizz::test;

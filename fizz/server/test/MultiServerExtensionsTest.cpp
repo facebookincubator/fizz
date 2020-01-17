@@ -13,8 +13,6 @@
 
 using namespace testing;
 
-using fizz::Extension;
-
 namespace fizz {
 namespace server {
 namespace test {

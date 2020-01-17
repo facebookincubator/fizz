@@ -11,8 +11,6 @@
 #include <fizz/protocol/CertDecompressionManager.h>
 #include <fizz/protocol/test/Mocks.h>
 
-using namespace testing;
-
 namespace fizz {
 namespace test {
 

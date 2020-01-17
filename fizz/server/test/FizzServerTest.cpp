@@ -13,7 +13,6 @@
 #include <fizz/server/test/Mocks.h>
 
 using namespace folly;
-using namespace testing;
 
 namespace fizz {
 namespace server {

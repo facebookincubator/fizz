@@ -20,7 +20,6 @@
 
 using namespace fizz::test;
 using namespace folly;
-using namespace testing;
 
 namespace fizz {
 namespace client {

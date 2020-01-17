@@ -7,12 +7,6 @@
  */
 #include <fizz/test/HandshakeTest.h>
 
-using namespace folly;
-using namespace folly::test;
-using namespace fizz::client;
-using namespace fizz::extensions;
-using namespace fizz::server;
-
 namespace fizz {
 namespace test {
 

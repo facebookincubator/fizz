@@ -16,7 +16,6 @@
 
 using namespace fizz::test;
 using namespace folly;
-using namespace testing;
 
 static constexpr StringPiece statelessHrr{
     "020000380303cf21ad74e59a6111be1d8c021e65b891c2a211167abb8c5e079e09e2c8a8339c001301000010002b00020304002c0006000474657374"};

@@ -16,7 +16,6 @@
 
 using namespace fizz::test;
 using namespace folly;
-using namespace testing;
 
 static constexpr StringPiece ticket{
     "03041301000673656372657400056964656e74004444444400000000000000190268320000000000000000000f"};

@@ -14,7 +14,6 @@
 #include <fizz/extensions/delegatedcred/PeerDelegatedCredential.h>
 
 using namespace folly;
-using namespace folly::ssl;
 
 using namespace testing;
 using namespace fizz::test;

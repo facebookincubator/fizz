@@ -16,9 +16,6 @@
 
 using namespace folly;
 
-using testing::_;
-using namespace testing;
-
 namespace fizz {
 namespace test {
 
