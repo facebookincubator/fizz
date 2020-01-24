@@ -19,7 +19,7 @@ BrotliCertificateCompressor::BrotliCertificateCompressor(
     : level_(compressLevel), windowSize_(windowSize) {}
 
 BrotliCertificateCompressor::BrotliCertificateCompressor()
-    : level_(11), windowSize_(22) {}
+    : level_(kDefaultCompressionLevel), windowSize_(kDefaultWindowSize) {}
 
 CertificateCompressionAlgorithm BrotliCertificateCompressor::getAlgorithm()
     const {

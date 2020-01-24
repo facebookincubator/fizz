@@ -21,6 +21,9 @@ class BrotliCertificateCompressor : public CertificateCompressor {
 
   CompressedCertificate compress(const CertificateMsg&) override;
 
+  static constexpr int kDefaultCompressionLevel = 5;
+  static constexpr int kDefaultWindowSize = 22;
+
  private:
   const int level_;
   const int windowSize_;
