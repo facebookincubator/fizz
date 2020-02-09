@@ -43,6 +43,7 @@ if [ ! -d "$FOLLY_DIR" ] ; then
     cmake \
     boost \
     double-conversion \
+    fmt \
     gflags \
     glog \
     libevent \
@@ -56,6 +57,7 @@ if [ ! -d "$FOLLY_DIR" ] ; then
     boost \
     double-conversion \
     gflags \
+    fmt \
     glog \
     libevent \
     lz4 \
