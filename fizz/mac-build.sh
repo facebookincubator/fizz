@@ -21,6 +21,8 @@ FOLLY_DIR=$DEPS_DIR/folly
 FOLLY_BUILD_DIR=$DEPS_DIR/folly/build/
 FIZZ_BUILD_DIR=$BWD/build
 
+NCPU=$(sysctl -n hw.ncpu || printf 1)
+
 mkdir -p "$FIZZ_BUILD_DIR"
 
 # OpenSSL dirs. If you have OpenSSL installed somewhere
@@ -65,14 +67,14 @@ if [ ! -d "$FOLLY_DIR" ] ; then
 
   # build folly
   git clone https://github.com/facebook/folly.git "$FOLLY_DIR"
-  echo "Building Folly"
+  echo "Building Folly ($NCPU cores)"
   mkdir -p "$FOLLY_BUILD_DIR"
   cd "$FOLLY_BUILD_DIR" || exit
   cmake -DCMAKE_BUILD_TYPE=RelWithDebInfo \
     -DCMAKE_INSTALL_PREFIX="$FOLLY_INSTALL_DIR" \
     -DOPENSSL_ROOT_DIR="$OPENSSL_ROOT_DIR" \
     -DOPENSSL_LIBRARIES="$OPENSSL_LIB_DIR" ..
-  make install
+  make -j${NCPU} install
   cd "$BWD" || exit
 fi
 
@@ -85,7 +87,8 @@ cmake \
   -DOPENSSL_ROOT_DIR="$OPENSSL_ROOT_DIR" \
   -DOPENSSL_LIBRARIES="$OPENSSL_LIB_DIR" ../..
 
-make install
+echo "Building Fizz ($NCPU cores)"
+make -j${NCPU} install
 
 rm -rf "${BWD:?}"/bin
 cp -R "$FIZZ_BUILD_DIR"/bin/ "$BWD"/bin/
