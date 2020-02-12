@@ -19,6 +19,15 @@ folly::Optional<CachedPsk> SynchronizedLruPskCache::getPsk(
   auto cacheMap = cache_.wlock();
   auto result = cacheMap->find(identity);
   if (result != cacheMap->end()) {
+    if (std::chrono::system_clock::now() >
+        result->second.ticketExpirationTime) {
+      VLOG(1) << "PSK expired: " << identity << ", id: "
+              << (result->second.serverCert
+                      ? result->second.serverCert->getIdentity()
+                      : "none");
+      cacheMap->erase(result);
+      return folly::none;
+    }
     return result->second;
   } else {
     return folly::none;

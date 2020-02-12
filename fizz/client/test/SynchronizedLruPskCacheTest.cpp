@@ -64,6 +64,16 @@ TEST_F(SynchronizedLruPskCacheTest, TestEviction) {
   EXPECT_FALSE(psk1);
 }
 
+TEST_F(SynchronizedLruPskCacheTest, TestExpiredGet) {
+  auto pskName = "let_it_expire_psk";
+  auto psk = getCachedPsk(pskName);
+  psk.ticketExpirationTime =
+      std::chrono::system_clock::now() - std::chrono::seconds(10);
+  cache_->putPsk(pskName, psk);
+  auto expired_psk = cache_->getPsk(pskName);
+  EXPECT_FALSE(expired_psk);
+}
+
 } // namespace test
 } // namespace client
 } // namespace fizz
