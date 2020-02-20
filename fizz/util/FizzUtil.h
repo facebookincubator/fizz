@@ -16,6 +16,7 @@
 #include <fizz/extensions/tokenbinding/TokenBindingContext.h>
 #include <fizz/protocol/Certificate.h>
 #include <fizz/server/FizzServerContext.h>
+#include <fizz/server/TicketPolicy.h>
 
 namespace fizz {
 
@@ -55,8 +56,10 @@ class FizzUtil {
     }
     cipher->setTicketSecrets(
         compileSecrets(oldSecrets, currentSecret, newSecrets));
-    cipher->setTicketValidity(ticketValidity);
-    cipher->setHandshakeValidity(handshakeValidity);
+    server::TicketPolicy policy;
+    policy.setTicketValidity(ticketValidity);
+    policy.setHandshakeValidity(handshakeValidity);
+    cipher->setPolicy(std::move(policy));
     return cipher;
   }
 

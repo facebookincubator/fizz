@@ -303,7 +303,9 @@ int serverTest() {
   auto ticketCipher = std::make_shared<AES128TicketCipher>();
   auto ticketSeed = RandomGenerator<32>().generateRandom();
   ticketCipher->setTicketSecrets({{range(ticketSeed)}});
-  ticketCipher->setTicketValidity(std::chrono::seconds(60));
+  server::TicketPolicy policy;
+  policy.setTicketValidity(std::chrono::seconds(60));
+  ticketCipher->setPolicy(std::move(policy));
 
   auto serverContext = std::make_shared<FizzServerContext>();
   serverContext->setCertManager(std::move(certManager));

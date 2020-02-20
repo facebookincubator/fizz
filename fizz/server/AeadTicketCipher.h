@@ -8,10 +8,10 @@
 
 #pragma once
 
-#include <fizz/protocol/clock/SystemClock.h>
 #include <fizz/server/AeadTokenCipher.h>
 #include <fizz/server/FizzServerContext.h>
 #include <fizz/server/TicketCipher.h>
+#include <fizz/server/TicketPolicy.h>
 
 namespace fizz {
 namespace server {
@@ -28,11 +28,11 @@ class Aead128GCMTicketCipher : public TicketCipher {
   explicit Aead128GCMTicketCipher(std::string pskContext)
       : tokenCipher_(std::vector<std::string>(
             {CodecType::Label.toString(), pskContext})),
-        clock_(std::make_shared<SystemClock>()) {}
+        policy_() {}
 
   Aead128GCMTicketCipher()
       : tokenCipher_(std::vector<std::string>({CodecType::Label.toString()})),
-        clock_(std::make_shared<SystemClock>()) {}
+        policy_() {}
 
   /**
    * Set ticket secrets to use for ticket encryption/decryption.
@@ -47,81 +47,57 @@ class Aead128GCMTicketCipher : public TicketCipher {
     context_ = context;
   }
 
-  /**
-   * These two settings control the ticket's validity period. The handshake
-   * validity refers to how long a ticket is considered valid from the initial
-   * full handshake that authenticated it. This time carries over when a new
-   * ticket is issued on a resumed connection. In practice, this means a full
-   * handshake will be forced when a ticket's handshake is considered stale.
-   *
-   * A given ticket's ticket_lifetime is the remaining handshake validity
-   * period, capped at the configured ticket validity.
+  /*
+   * The ticket policy determines when tickets get rejected (even if they can be
+   * encrypted/decrypted), for example if too much time has elapsed since the
+   * full handshake that originally authenticated the server and/or client for
+   * the session.
    */
-
-  void setHandshakeValidity(std::chrono::seconds validity) {
-    handshakeValidity_ = validity;
-  }
-
-  void setTicketValidity(std::chrono::seconds validity) {
-    ticketValidity_ = validity;
-  }
-
-  void setClock(std::shared_ptr<Clock> clock) {
-    clock_ = std::move(clock);
+  void setPolicy(TicketPolicy policy) {
+    policy_ = std::move(policy);
   }
 
   folly::Future<folly::Optional<std::pair<Buf, std::chrono::seconds>>> encrypt(
       ResumptionState resState) const override {
+    auto validity = policy_.remainingValidity(resState);
+    if (validity <= std::chrono::system_clock::duration::zero()) {
+      return folly::none;
+    }
+
     auto encoded = CodecType::encode(std::move(resState));
     auto ticket = tokenCipher_.encrypt(std::move(encoded));
     if (!ticket) {
       return folly::none;
     }
-    auto now = clock_->getCurrentTime();
-
-    auto remainingValid = std::chrono::duration_cast<std::chrono::seconds>(
-        (resState.handshakeTime + handshakeValidity_) - now);
-
-    // If handshake is in future, remainingValid will be longer than the actual
-    // validity period. Set maximum to err on the safe side.
-    if (remainingValid > handshakeValidity_) {
-      remainingValid = handshakeValidity_;
-    }
-
-    if (remainingValid <= std::chrono::system_clock::duration::zero()) {
-      return folly::none;
-    } else {
-      return std::make_pair(
-          std::move(*ticket), std::min(remainingValid, ticketValidity_));
-    }
+    return std::make_pair(std::move(*ticket), validity);
   }
 
   folly::Future<std::pair<PskType, folly::Optional<ResumptionState>>> decrypt(
       std::unique_ptr<folly::IOBuf> encryptedTicket) const override {
     auto plaintext = tokenCipher_.decrypt(std::move(encryptedTicket));
-    if (plaintext) {
-      try {
-        auto decoded = CodecType::decode(std::move(*plaintext), context_);
-        if (decoded.handshakeTime + handshakeValidity_ <
-            clock_->getCurrentTime()) {
-          VLOG(6) << "Ticket handshake stale, rejecting.";
-          return std::make_pair(PskType::Rejected, folly::none);
-        }
-        return std::make_pair(PskType::Resumption, std::move(decoded));
-      } catch (const std::exception& ex) {
-        VLOG(6) << "Failed to decode ticket, ex=" << ex.what();
-      }
+    if (!plaintext) {
+      return std::make_pair(PskType::Rejected, folly::none);
     }
 
-    return std::make_pair(PskType::Rejected, folly::none);
+    ResumptionState resState;
+    try {
+      resState = CodecType::decode(std::move(*plaintext), context_);
+    } catch (const std::exception& ex) {
+      VLOG(6) << "Failed to decode ticket, ex=" << ex.what();
+      return std::make_pair(PskType::Rejected, folly::none);
+    }
+
+    if (!policy_.shouldAccept(resState)) {
+      VLOG(6) << "Ticket failed acceptance policy.";
+      return std::make_pair(PskType::Rejected, folly::none);
+    }
+
+    return std::make_pair(PskType::Resumption, std::move(resState));
   }
 
  private:
   Aead128GCMTokenCipher tokenCipher_;
-
-  std::chrono::seconds ticketValidity_{std::chrono::hours(1)};
-  std::chrono::seconds handshakeValidity_{std::chrono::hours(72)};
-  std::shared_ptr<Clock> clock_;
+  TicketPolicy policy_;
 
   const FizzServerContext* context_ = nullptr;
 };

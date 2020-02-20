@@ -15,7 +15,6 @@
 #include <folly/FileUtil.h>
 #include <folly/experimental/TestUtil.h>
 
-
 namespace fizz {
 namespace test {
 
@@ -48,7 +47,9 @@ TEST(UtilTest, CreateTicketCipher) {
       std::chrono::minutes(100),
       folly::Optional<std::string>("fakeContext"));
   auto clock = std::make_shared<MockClock>();
-  cipher->setClock(clock);
+  server::TicketPolicy policy;
+  policy.setClock(clock);
+  cipher->setPolicy(policy);
   {
     server::ResumptionState state;
     auto blob = cipher->encrypt(std::move(state)).get();
@@ -64,7 +65,7 @@ TEST(UtilTest, CreateTicketCipher) {
         std::chrono::seconds(100),
         std::chrono::minutes(100),
         folly::Optional<std::string>("fakeContext"));
-    newCipher->setClock(clock);
+    newCipher->setPolicy(std::move(policy));
     server::ResumptionState state;
     auto blob = cipher->encrypt(std::move(state)).get();
     EXPECT_EQ(

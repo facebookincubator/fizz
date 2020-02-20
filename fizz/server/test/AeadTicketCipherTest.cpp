@@ -80,21 +80,23 @@ class AeadTicketCipherTest : public Test {
   void SetUp() override {
     MockTicketCodec::instance = &codec_;
     clock_ = std::make_shared<MockClock>();
-    cipher_.setClock(clock_);
+    policy_.setClock(clock_);
+    cipher_.setPolicy(policy_);
   }
 
  protected:
+  TicketPolicy policy_;
   TestAeadTicketCipher cipher_;
   MockTicketCodecInstance codec_;
   std::shared_ptr<MockClock> clock_;
 
-  void setTicketSecrets(std::string pskContext = "") {
+  void rebuildCipher(std::string pskContext = "") {
     if (!pskContext.empty()) {
       cipher_ = TestAeadTicketCipher(pskContext);
     } else {
       cipher_ = TestAeadTicketCipher();
     }
-    cipher_.setClock(clock_);
+    cipher_.setPolicy(policy_);
     auto s1 = toIOBuf(ticketSecret1);
     auto s2 = toIOBuf(ticketSecret2);
     std::vector<ByteRange> ticketSecrets{{s1->coalesce(), s2->coalesce()}};
@@ -115,6 +117,15 @@ class AeadTicketCipherTest : public Test {
     ResumptionState state;
     EXPECT_FALSE(cipher_.encrypt(std::move(state)).get().hasValue());
   }
+
+  void updatePolicy(
+      std::chrono::seconds ticketValidity,
+      folly::Optional<std::chrono::seconds> handshakeValidity = folly::none) {
+    policy_.setTicketValidity(ticketValidity);
+    if (handshakeValidity.hasValue()) {
+      policy_.setHandshakeValidity(*handshakeValidity);
+    }
+  }
 };
 
 TEST_F(AeadTicketCipherTest, TestEncryptNoTicketSecrets) {
@@ -122,9 +133,9 @@ TEST_F(AeadTicketCipherTest, TestEncryptNoTicketSecrets) {
 }
 
 TEST_F(AeadTicketCipherTest, TestEncrypt) {
-  setTicketSecrets();
   useMockRandom();
-  cipher_.setTicketValidity(std::chrono::seconds(5));
+  updatePolicy(std::chrono::seconds(5));
+  rebuildCipher();
   EXPECT_CALL(codec_, _encode(_)).WillOnce(InvokeWithoutArgs([]() {
     return IOBuf::copyBuffer("encodedticket");
   }));
@@ -136,10 +147,9 @@ TEST_F(AeadTicketCipherTest, TestEncrypt) {
 }
 
 TEST_F(AeadTicketCipherTest, TestHandshakeExpiration) {
-  setTicketSecrets();
   useMockRandom();
-  cipher_.setHandshakeValidity(std::chrono::seconds(4));
-  cipher_.setTicketValidity(std::chrono::seconds(2));
+  updatePolicy(std::chrono::seconds(2), std::chrono::seconds(4));
+  rebuildCipher();
   auto time = std::chrono::system_clock::now();
   EXPECT_CALL(*clock_, getCurrentTime()).WillOnce(Return(time));
 
@@ -172,14 +182,13 @@ TEST_F(AeadTicketCipherTest, TestHandshakeExpiration) {
 }
 
 TEST_F(AeadTicketCipherTest, TestTicketLifetime) {
-  setTicketSecrets();
   useMockRandom();
-  cipher_.setHandshakeValidity(std::chrono::seconds(4));
-  cipher_.setTicketValidity(std::chrono::seconds(2));
+  updatePolicy(std::chrono::seconds(2), std::chrono::seconds(4));
+  rebuildCipher();
   auto time = std::chrono::system_clock::now();
 
   EXPECT_CALL(codec_, _encode(_))
-      .Times(3)
+      .Times(2)
       .WillRepeatedly(InvokeWithoutArgs(
           []() { return IOBuf::copyBuffer("encodedticket"); }));
 
@@ -208,15 +217,12 @@ TEST_F(AeadTicketCipherTest, TestTicketLifetime) {
 }
 
 TEST_F(AeadTicketCipherTest, TestEncryptExpiredHandshakeTicket) {
-  setTicketSecrets();
   useMockRandom();
-  cipher_.setHandshakeValidity(std::chrono::seconds(4));
+  updatePolicy(std::chrono::hours(1), std::chrono::seconds(4));
+  rebuildCipher();
   auto time = std::chrono::system_clock::now();
   EXPECT_CALL(*clock_, getCurrentTime()).WillOnce(Return(time));
 
-  EXPECT_CALL(codec_, _encode(_)).WillOnce(InvokeWithoutArgs([]() {
-    return IOBuf::copyBuffer("encodedticket");
-  }));
   ResumptionState state;
   state.handshakeTime = time - std::chrono::seconds(5);
   auto result = cipher_.encrypt(std::move(state)).get();
@@ -224,10 +230,9 @@ TEST_F(AeadTicketCipherTest, TestEncryptExpiredHandshakeTicket) {
 }
 
 TEST_F(AeadTicketCipherTest, TestEncryptTicketFromFuture) {
-  setTicketSecrets();
   useMockRandom();
-  cipher_.setTicketValidity(std::chrono::seconds(2));
-  cipher_.setHandshakeValidity(std::chrono::seconds(4));
+  updatePolicy(std::chrono::seconds(2), std::chrono::seconds(4));
+  rebuildCipher();
   auto time = std::chrono::system_clock::now();
   EXPECT_CALL(*clock_, getCurrentTime()).WillOnce(Return(time));
 
@@ -251,7 +256,7 @@ TEST_F(AeadTicketCipherTest, TestDecryptNoTicketSecrets) {
 }
 
 TEST_F(AeadTicketCipherTest, TestDecryptFirst) {
-  setTicketSecrets();
+  rebuildCipher();
   expectDecode();
   auto result = cipher_.decrypt(toIOBuf(ticket1)).get();
   EXPECT_EQ(result.first, PskType::Resumption);
@@ -259,7 +264,7 @@ TEST_F(AeadTicketCipherTest, TestDecryptFirst) {
 }
 
 TEST_F(AeadTicketCipherTest, TestDecryptSecond) {
-  setTicketSecrets();
+  rebuildCipher();
   expectDecode();
   auto result = cipher_.decrypt(toIOBuf(ticket3)).get();
   EXPECT_EQ(result.first, PskType::Resumption);
@@ -267,7 +272,7 @@ TEST_F(AeadTicketCipherTest, TestDecryptSecond) {
 }
 
 TEST_F(AeadTicketCipherTest, TestDecryptWithContext) {
-  setTicketSecrets("foobar");
+  rebuildCipher("foobar");
   expectDecode();
   auto result = cipher_.decrypt(toIOBuf(ticket4)).get();
   EXPECT_EQ(result.first, PskType::Resumption);
@@ -275,7 +280,7 @@ TEST_F(AeadTicketCipherTest, TestDecryptWithContext) {
 }
 
 TEST_F(AeadTicketCipherTest, TestDecryptWithoutContext) {
-  setTicketSecrets();
+  rebuildCipher();
   // Ticket 4 needs context 'foobar'
   auto result = cipher_.decrypt(toIOBuf(ticket4)).get();
   EXPECT_EQ(result.first, PskType::Rejected);
@@ -283,7 +288,7 @@ TEST_F(AeadTicketCipherTest, TestDecryptWithoutContext) {
 }
 
 TEST_F(AeadTicketCipherTest, TestDecryptWithWrongContext) {
-  setTicketSecrets("barbaz");
+  rebuildCipher("barbaz");
   // barbaz =/= foobar
   auto result = cipher_.decrypt(toIOBuf(ticket4)).get();
   EXPECT_EQ(result.first, PskType::Rejected);
@@ -291,7 +296,7 @@ TEST_F(AeadTicketCipherTest, TestDecryptWithWrongContext) {
 }
 
 TEST_F(AeadTicketCipherTest, TestDecryptWithUnneededContext) {
-  setTicketSecrets("foobar");
+  rebuildCipher("foobar");
   // Now test that ticket 3 with context 'foobar' doesn't work
   auto result = cipher_.decrypt(toIOBuf(ticket3)).get();
   EXPECT_EQ(result.first, PskType::Rejected);
@@ -299,7 +304,7 @@ TEST_F(AeadTicketCipherTest, TestDecryptWithUnneededContext) {
 }
 
 TEST_F(AeadTicketCipherTest, TestDecryptSeqNum) {
-  setTicketSecrets();
+  rebuildCipher();
   expectDecode();
   auto result = cipher_.decrypt(toIOBuf(ticket2)).get();
   EXPECT_EQ(result.first, PskType::Resumption);
@@ -307,21 +312,21 @@ TEST_F(AeadTicketCipherTest, TestDecryptSeqNum) {
 }
 
 TEST_F(AeadTicketCipherTest, TestDecryptFailed) {
-  setTicketSecrets();
+  rebuildCipher();
   auto result = cipher_.decrypt(toIOBuf(badTicket)).get();
   EXPECT_EQ(result.first, PskType::Rejected);
   EXPECT_FALSE(result.second.hasValue());
 }
 
 TEST_F(AeadTicketCipherTest, TestDecryptTooShort) {
-  setTicketSecrets();
+  rebuildCipher();
   auto result = cipher_.decrypt(IOBuf::copyBuffer("short")).get();
   EXPECT_EQ(result.first, PskType::Rejected);
   EXPECT_FALSE(result.second.hasValue());
 }
 
 TEST_F(AeadTicketCipherTest, TestUnsetTicketSecrets) {
-  setTicketSecrets();
+  rebuildCipher();
   EXPECT_TRUE(cipher_.setTicketSecrets(std::vector<ByteRange>()));
   checkUnsetEncrypt();
 }
