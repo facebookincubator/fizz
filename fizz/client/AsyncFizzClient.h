@@ -8,6 +8,7 @@
 
 #pragma once
 
+#include <folly/io/SocketOptionMap.h>
 #include <fizz/client/ClientExtensions.h>
 #include <fizz/client/ClientProtocol.h>
 #include <fizz/client/EarlyDataRejectionPolicy.h>
@@ -77,8 +78,8 @@ class AsyncFizzClientT : public AsyncFizzBase,
       folly::Optional<std::string> pskIdentity,
       std::chrono::milliseconds totalTimeout = std::chrono::milliseconds(0),
       std::chrono::milliseconds socketTimeout = std::chrono::milliseconds(0),
-      const folly::AsyncSocket::OptionMap& options =
-          folly::AsyncSocket::emptyOptionMap,
+      const folly::SocketOptionMap& options =
+          folly::emptySocketOptionMap,
       const folly::SocketAddress& bindAddr = folly::AsyncSocket::anyAddress());
 
   /**

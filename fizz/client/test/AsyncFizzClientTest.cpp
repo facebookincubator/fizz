@@ -13,6 +13,7 @@
 
 #include <fizz/client/test/Mocks.h>
 #include <fizz/protocol/test/Mocks.h>
+#include <folly/io/SocketOptionMap.h>
 #include <folly/io/async/test/AsyncSocketTest.h>
 #include <folly/io/async/test/MockAsyncSocket.h>
 #include <folly/io/async/test/MockAsyncTransport.h>
@@ -495,7 +496,7 @@ TEST_F(AsyncFizzClientTest, TestSocketConnectWithOpenSocket) {
       .WillOnce(Invoke([](AsyncSocket::ConnectCallback* cb,
                           const SocketAddress&,
                           int,
-                          const AsyncSocket::OptionMap&,
+                          const SocketOptionMap&,
                           const SocketAddress&) {
         cb->connectErr(AsyncSocketException(
             AsyncSocketException::ALREADY_OPEN, "socket already open"));

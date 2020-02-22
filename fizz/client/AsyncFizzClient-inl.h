@@ -97,7 +97,7 @@ void AsyncFizzClientT<SM>::connect(
     folly::Optional<std::string> pskIdentity,
     std::chrono::milliseconds totalTimeout,
     std::chrono::milliseconds socketTimeout,
-    const folly::AsyncSocket::OptionMap& options,
+    const folly::SocketOptionMap& options,
     const folly::SocketAddress& bindAddr) {
   DelayedDestruction::DestructorGuard dg(this);
 
