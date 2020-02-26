@@ -42,7 +42,7 @@ class TokenBindingServerExtensionTest : public Test {
       const folly::Optional<TokenBindingParameters>& actual,
       TokenBindingProtocolVersion expectedVersion,
       TokenBindingKeyParameters expectedParams) {
-    EXPECT_TRUE(actual.hasValue());
+    EXPECT_TRUE(actual.has_value());
     EXPECT_EQ(actual->version, expectedVersion);
     EXPECT_EQ(actual->key_parameters_list.size(), 1);
     EXPECT_EQ(actual->key_parameters_list[0], expectedParams);

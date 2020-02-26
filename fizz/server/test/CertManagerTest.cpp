@@ -67,7 +67,7 @@ TEST_F(CertManagerTest, TestUppercaseDefault) {
 }
 
 TEST_F(CertManagerTest, TestNoDefault) {
-  EXPECT_FALSE(manager_.getCert(std::string("blah.com"), {}, {}).hasValue());
+  EXPECT_FALSE(manager_.getCert(std::string("blah.com"), {}, {}).has_value());
 }
 
 TEST_F(CertManagerTest, TestSigSchemesServerPref) {
@@ -156,8 +156,8 @@ TEST_F(CertManagerTest, TestWildcard) {
   auto res = manager_.getCert(std::string("bar.test.com"), kRsa, kRsa);
   EXPECT_EQ(res->first, cert);
 
-  EXPECT_FALSE(
-      manager_.getCert(std::string("foo.bar.test.com"), kRsa, kRsa).hasValue());
+  EXPECT_FALSE(manager_.getCert(std::string("foo.bar.test.com"), kRsa, kRsa)
+                   .has_value());
 }
 
 TEST_F(CertManagerTest, TestExactMatch) {
@@ -175,9 +175,9 @@ TEST_F(CertManagerTest, TestNoWildcard) {
   manager_.addCert(cert);
 
   EXPECT_FALSE(
-      manager_.getCert(std::string("blah.test.com"), kRsa, kRsa).hasValue());
+      manager_.getCert(std::string("blah.test.com"), kRsa, kRsa).has_value());
   EXPECT_FALSE(
-      manager_.getCert(std::string("test.com"), kRsa, kRsa).hasValue());
+      manager_.getCert(std::string("test.com"), kRsa, kRsa).has_value());
 }
 
 TEST_F(CertManagerTest, TestGetByIdentity) {

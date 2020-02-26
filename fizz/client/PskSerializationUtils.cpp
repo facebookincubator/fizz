@@ -31,7 +31,7 @@ std::string serializePsk(const fizz::client::CachedPsk& psk) {
       folly::IOBuf::wrapBuffer(StringPiece(psk.secret)), appender);
   fizz::detail::write(psk.version, appender);
   fizz::detail::write(psk.cipher, appender);
-  if (psk.group.hasValue()) {
+  if (psk.group.has_value()) {
     fizz::detail::write(static_cast<uint8_t>(1), appender);
     fizz::detail::write(*psk.group, appender);
   } else {

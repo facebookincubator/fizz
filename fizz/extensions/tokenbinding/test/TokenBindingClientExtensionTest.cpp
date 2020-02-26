@@ -43,11 +43,11 @@ TEST_F(TokenBindingClientExtensionTest, TestValidCheckExtensions) {
       TokenBindingProtocolVersion::token_binding_0_14,
       TokenBindingKeyParameters::ecdsap256);
   extensions_->onEncryptedExtensions(serverExtensions_);
-  EXPECT_TRUE(extensions_->getVersion().hasValue());
+  EXPECT_TRUE(extensions_->getVersion().has_value());
   EXPECT_EQ(
       extensions_->getVersion(),
       TokenBindingProtocolVersion::token_binding_0_14);
-  EXPECT_TRUE(extensions_->getNegotiatedKeyParam().hasValue());
+  EXPECT_TRUE(extensions_->getNegotiatedKeyParam().has_value());
   EXPECT_EQ(
       extensions_->getNegotiatedKeyParam(),
       TokenBindingKeyParameters::ecdsap256);
@@ -55,8 +55,8 @@ TEST_F(TokenBindingClientExtensionTest, TestValidCheckExtensions) {
 
 TEST_F(TokenBindingClientExtensionTest, TestNoExtensions) {
   extensions_->onEncryptedExtensions(serverExtensions_);
-  EXPECT_FALSE(extensions_->getVersion().hasValue());
-  EXPECT_FALSE(extensions_->getNegotiatedKeyParam().hasValue());
+  EXPECT_FALSE(extensions_->getVersion().has_value());
+  EXPECT_FALSE(extensions_->getNegotiatedKeyParam().has_value());
 }
 
 TEST_F(TokenBindingClientExtensionTest, TestServerBadKeyParam) {
@@ -70,8 +70,8 @@ TEST_F(TokenBindingClientExtensionTest, TestServerBadKeyParam) {
 
   EXPECT_THROW(
       extensions_->onEncryptedExtensions(serverExtensions_), FizzException);
-  EXPECT_FALSE(extensions_->getVersion().hasValue());
-  EXPECT_FALSE(extensions_->getNegotiatedKeyParam().hasValue());
+  EXPECT_FALSE(extensions_->getVersion().has_value());
+  EXPECT_FALSE(extensions_->getNegotiatedKeyParam().has_value());
 }
 
 TEST_F(TokenBindingClientExtensionTest, TestServerHigherVersion) {
@@ -83,8 +83,8 @@ TEST_F(TokenBindingClientExtensionTest, TestServerHigherVersion) {
 
   EXPECT_THROW(
       extensions_->onEncryptedExtensions(serverExtensions_), FizzException);
-  EXPECT_FALSE(extensions_->getVersion().hasValue());
-  EXPECT_FALSE(extensions_->getNegotiatedKeyParam().hasValue());
+  EXPECT_FALSE(extensions_->getVersion().has_value());
+  EXPECT_FALSE(extensions_->getNegotiatedKeyParam().has_value());
 }
 
 TEST_F(TokenBindingClientExtensionTest, TestServerLowerVersion) {
@@ -95,8 +95,8 @@ TEST_F(TokenBindingClientExtensionTest, TestServerLowerVersion) {
       TokenBindingProtocolVersion::token_binding_0_14});
 
   extensions_->onEncryptedExtensions(serverExtensions_);
-  EXPECT_FALSE(extensions_->getVersion().hasValue());
-  EXPECT_FALSE(extensions_->getNegotiatedKeyParam().hasValue());
+  EXPECT_FALSE(extensions_->getVersion().has_value());
+  EXPECT_FALSE(extensions_->getNegotiatedKeyParam().has_value());
 }
 } // namespace test
 } // namespace extensions

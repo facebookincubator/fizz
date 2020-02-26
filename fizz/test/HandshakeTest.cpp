@@ -247,9 +247,9 @@ TEST_F(HandshakeTest, TestExtensions) {
   serverExtensions_ = serverTokBind;
   resetTransports();
   doHandshake();
-  EXPECT_TRUE(clientTokBind->getNegotiatedKeyParam().hasValue());
-  EXPECT_TRUE(clientTokBind->getVersion().hasValue());
-  EXPECT_TRUE(serverTokBind->getNegotiatedKeyParam().hasValue());
+  EXPECT_TRUE(clientTokBind->getNegotiatedKeyParam().has_value());
+  EXPECT_TRUE(clientTokBind->getVersion().has_value());
+  EXPECT_TRUE(serverTokBind->getNegotiatedKeyParam().has_value());
   EXPECT_EQ(
       *clientTokBind->getNegotiatedKeyParam(),
       TokenBindingKeyParameters::ecdsap256);

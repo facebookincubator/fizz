@@ -94,7 +94,7 @@ bool FizzBase<Derived, ActionMoveVisitor, StateMachine>::inTerminalState()
 template <typename Derived, typename ActionMoveVisitor, typename StateMachine>
 bool FizzBase<Derived, ActionMoveVisitor, StateMachine>::actionProcessing()
     const {
-  return actionGuard_.hasValue();
+  return actionGuard_.has_value();
 }
 
 template <typename Derived, typename ActionMoveVisitor, typename StateMachine>

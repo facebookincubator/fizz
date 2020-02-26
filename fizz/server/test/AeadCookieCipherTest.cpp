@@ -110,14 +110,14 @@ TEST_F(AeadCookieCipherTest, TestGetPartial) {
 
 TEST_F(AeadCookieCipherTest, TestDecrypt) {
   auto state = cipher_->decrypt(toIOBuf(testCookie));
-  EXPECT_TRUE(state.hasValue());
+  EXPECT_TRUE(state.has_value());
   EXPECT_TRUE(IOBufEqualTo()(state->appToken, IOBuf::copyBuffer("test")));
-  EXPECT_FALSE(state->group.hasValue());
+  EXPECT_FALSE(state->group.has_value());
 }
 
 TEST_F(AeadCookieCipherTest, TestDecryptGroup) {
   auto state = cipher_->decrypt(toIOBuf(testCookieGroup));
-  EXPECT_TRUE(state.hasValue());
+  EXPECT_TRUE(state.has_value());
   EXPECT_TRUE(IOBufEqualTo()(state->appToken, IOBuf::copyBuffer("test")));
   EXPECT_EQ(*state->group, NamedGroup::secp256r1);
 }
@@ -130,9 +130,9 @@ TEST_F(AeadCookieCipherTest, TestDecryptMultipleSecrets) {
   EXPECT_TRUE(cipher_->setCookieSecrets(std::move(cookieSecrets)));
 
   auto state = cipher_->decrypt(toIOBuf(testCookie));
-  EXPECT_TRUE(state.hasValue());
+  EXPECT_TRUE(state.has_value());
   EXPECT_TRUE(IOBufEqualTo()(state->appToken, IOBuf::copyBuffer("test")));
-  EXPECT_FALSE(state->group.hasValue());
+  EXPECT_FALSE(state->group.has_value());
 }
 
 TEST_F(AeadCookieCipherTest, TestDecryptFailed) {
@@ -142,7 +142,7 @@ TEST_F(AeadCookieCipherTest, TestDecryptFailed) {
   EXPECT_TRUE(cipher_->setCookieSecrets(std::move(cookieSecrets)));
 
   auto state = cipher_->decrypt(toIOBuf(testCookie));
-  EXPECT_FALSE(state.hasValue());
+  EXPECT_FALSE(state.has_value());
 }
 } // namespace test
 } // namespace server

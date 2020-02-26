@@ -70,7 +70,7 @@ TEST_F(ValidatorTest, TestBadKeySent) {
   EXPECT_FALSE(
       Validator::validateTokenBinding(
           std::move(binding), ekm_, TokenBindingKeyParameters::ecdsap256)
-          .hasValue());
+          .has_value());
 }
 
 TEST_F(ValidatorTest, TestMismatchKeyParams) {
@@ -78,7 +78,7 @@ TEST_F(ValidatorTest, TestMismatchKeyParams) {
   EXPECT_FALSE(
       Validator::validateTokenBinding(
           std::move(binding), ekm_, TokenBindingKeyParameters::rsa2048_pss)
-          .hasValue());
+          .has_value());
 }
 
 TEST_F(ValidatorTest, TestChromeSignature) {
@@ -86,7 +86,7 @@ TEST_F(ValidatorTest, TestChromeSignature) {
   EXPECT_TRUE(
       Validator::validateTokenBinding(
           std::move(binding), ekm_, TokenBindingKeyParameters::ecdsap256)
-          .hasValue());
+          .has_value());
 }
 
 TEST_F(ValidatorTest, TestInvalidSignature) {
@@ -95,7 +95,7 @@ TEST_F(ValidatorTest, TestInvalidSignature) {
   EXPECT_FALSE(
       Validator::validateTokenBinding(
           std::move(binding), ekm_, TokenBindingKeyParameters::ecdsap256)
-          .hasValue());
+          .has_value());
 }
 
 TEST_F(ValidatorTest, TestTruncatedSignature) {
@@ -104,7 +104,7 @@ TEST_F(ValidatorTest, TestTruncatedSignature) {
   EXPECT_FALSE(
       Validator::validateTokenBinding(
           std::move(binding), ekm_, TokenBindingKeyParameters::ecdsap256)
-          .hasValue());
+          .has_value());
 }
 } // namespace test
 } // namespace extensions

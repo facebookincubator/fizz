@@ -115,14 +115,14 @@ class AeadTicketCipherTest : public Test {
 
   void checkUnsetEncrypt() {
     ResumptionState state;
-    EXPECT_FALSE(cipher_.encrypt(std::move(state)).get().hasValue());
+    EXPECT_FALSE(cipher_.encrypt(std::move(state)).get().has_value());
   }
 
   void updatePolicy(
       std::chrono::seconds ticketValidity,
       folly::Optional<std::chrono::seconds> handshakeValidity = folly::none) {
     policy_.setTicketValidity(ticketValidity);
-    if (handshakeValidity.hasValue()) {
+    if (handshakeValidity.has_value()) {
       policy_.setHandshakeValidity(*handshakeValidity);
     }
   }
@@ -141,7 +141,7 @@ TEST_F(AeadTicketCipherTest, TestEncrypt) {
   }));
   ResumptionState state;
   auto result = cipher_.encrypt(std::move(state)).get();
-  EXPECT_TRUE(result.hasValue());
+  EXPECT_TRUE(result.has_value());
   EXPECT_TRUE(IOBufEqualTo()(result->first, toIOBuf(ticket1)));
   EXPECT_EQ(result->second, std::chrono::seconds(5));
 }
@@ -166,19 +166,19 @@ TEST_F(AeadTicketCipherTest, TestHandshakeExpiration) {
   ResumptionState state;
   state.handshakeTime = time;
   auto result = cipher_.encrypt(std::move(state)).get();
-  EXPECT_TRUE(result.hasValue());
+  EXPECT_TRUE(result.has_value());
   EXPECT_TRUE(IOBufEqualTo()(result->first, toIOBuf(ticket1)));
   EXPECT_EQ(result->second, std::chrono::seconds(2));
   EXPECT_CALL(*clock_, getCurrentTime())
       .WillOnce(Return(time + std::chrono::seconds(1)));
   auto decResult = cipher_.decrypt(result->first->clone()).get();
   EXPECT_EQ(decResult.first, PskType::Resumption);
-  EXPECT_TRUE(decResult.second.hasValue());
+  EXPECT_TRUE(decResult.second.has_value());
   EXPECT_CALL(*clock_, getCurrentTime())
       .WillOnce(Return(time + std::chrono::seconds(5)));
   auto badResult = cipher_.decrypt(result->first->clone()).get();
   EXPECT_EQ(badResult.first, PskType::Rejected);
-  EXPECT_FALSE(badResult.second.hasValue());
+  EXPECT_FALSE(badResult.second.has_value());
 }
 
 TEST_F(AeadTicketCipherTest, TestTicketLifetime) {
@@ -197,7 +197,7 @@ TEST_F(AeadTicketCipherTest, TestTicketLifetime) {
   ResumptionState state;
   state.handshakeTime = time;
   auto result = cipher_.encrypt(std::move(state)).get();
-  EXPECT_TRUE(result.hasValue());
+  EXPECT_TRUE(result.has_value());
   EXPECT_TRUE(IOBufEqualTo()(result->first, toIOBuf(ticket1)));
   EXPECT_EQ(result->second, std::chrono::seconds(2));
 
@@ -205,7 +205,7 @@ TEST_F(AeadTicketCipherTest, TestTicketLifetime) {
   EXPECT_CALL(*clock_, getCurrentTime())
       .WillOnce(Return(time + std::chrono::seconds(3)));
   auto result2 = cipher_.encrypt(std::move(state)).get();
-  EXPECT_TRUE(result2.hasValue());
+  EXPECT_TRUE(result2.has_value());
   EXPECT_TRUE(IOBufEqualTo()(result2->first, toIOBuf(ticket1)));
   EXPECT_EQ(result2->second, std::chrono::seconds(1));
 
@@ -213,7 +213,7 @@ TEST_F(AeadTicketCipherTest, TestTicketLifetime) {
   EXPECT_CALL(*clock_, getCurrentTime())
       .WillOnce(Return(time + std::chrono::seconds(5)));
   auto result3 = cipher_.encrypt(std::move(state)).get();
-  EXPECT_FALSE(result3.hasValue());
+  EXPECT_FALSE(result3.has_value());
 }
 
 TEST_F(AeadTicketCipherTest, TestEncryptExpiredHandshakeTicket) {
@@ -226,7 +226,7 @@ TEST_F(AeadTicketCipherTest, TestEncryptExpiredHandshakeTicket) {
   ResumptionState state;
   state.handshakeTime = time - std::chrono::seconds(5);
   auto result = cipher_.encrypt(std::move(state)).get();
-  EXPECT_FALSE(result.hasValue());
+  EXPECT_FALSE(result.has_value());
 }
 
 TEST_F(AeadTicketCipherTest, TestEncryptTicketFromFuture) {
@@ -244,7 +244,7 @@ TEST_F(AeadTicketCipherTest, TestEncryptTicketFromFuture) {
   // to maximum (as we can't be sure how old it really is)
   state.handshakeTime = time + std::chrono::seconds(5);
   auto result = cipher_.encrypt(std::move(state)).get();
-  EXPECT_TRUE(result.hasValue());
+  EXPECT_TRUE(result.has_value());
   EXPECT_TRUE(IOBufEqualTo()(result->first, toIOBuf(ticket1)));
   EXPECT_EQ(result->second, std::chrono::seconds(2));
 }
@@ -252,7 +252,7 @@ TEST_F(AeadTicketCipherTest, TestEncryptTicketFromFuture) {
 TEST_F(AeadTicketCipherTest, TestDecryptNoTicketSecrets) {
   auto result = cipher_.decrypt(toIOBuf(ticket1)).get();
   EXPECT_EQ(result.first, PskType::Rejected);
-  EXPECT_FALSE(result.second.hasValue());
+  EXPECT_FALSE(result.second.has_value());
 }
 
 TEST_F(AeadTicketCipherTest, TestDecryptFirst) {
@@ -260,7 +260,7 @@ TEST_F(AeadTicketCipherTest, TestDecryptFirst) {
   expectDecode();
   auto result = cipher_.decrypt(toIOBuf(ticket1)).get();
   EXPECT_EQ(result.first, PskType::Resumption);
-  EXPECT_TRUE(result.second.hasValue());
+  EXPECT_TRUE(result.second.has_value());
 }
 
 TEST_F(AeadTicketCipherTest, TestDecryptSecond) {
@@ -268,7 +268,7 @@ TEST_F(AeadTicketCipherTest, TestDecryptSecond) {
   expectDecode();
   auto result = cipher_.decrypt(toIOBuf(ticket3)).get();
   EXPECT_EQ(result.first, PskType::Resumption);
-  EXPECT_TRUE(result.second.hasValue());
+  EXPECT_TRUE(result.second.has_value());
 }
 
 TEST_F(AeadTicketCipherTest, TestDecryptWithContext) {
@@ -276,7 +276,7 @@ TEST_F(AeadTicketCipherTest, TestDecryptWithContext) {
   expectDecode();
   auto result = cipher_.decrypt(toIOBuf(ticket4)).get();
   EXPECT_EQ(result.first, PskType::Resumption);
-  EXPECT_TRUE(result.second.hasValue());
+  EXPECT_TRUE(result.second.has_value());
 }
 
 TEST_F(AeadTicketCipherTest, TestDecryptWithoutContext) {
@@ -284,7 +284,7 @@ TEST_F(AeadTicketCipherTest, TestDecryptWithoutContext) {
   // Ticket 4 needs context 'foobar'
   auto result = cipher_.decrypt(toIOBuf(ticket4)).get();
   EXPECT_EQ(result.first, PskType::Rejected);
-  EXPECT_FALSE(result.second.hasValue());
+  EXPECT_FALSE(result.second.has_value());
 }
 
 TEST_F(AeadTicketCipherTest, TestDecryptWithWrongContext) {
@@ -292,7 +292,7 @@ TEST_F(AeadTicketCipherTest, TestDecryptWithWrongContext) {
   // barbaz =/= foobar
   auto result = cipher_.decrypt(toIOBuf(ticket4)).get();
   EXPECT_EQ(result.first, PskType::Rejected);
-  EXPECT_FALSE(result.second.hasValue());
+  EXPECT_FALSE(result.second.has_value());
 }
 
 TEST_F(AeadTicketCipherTest, TestDecryptWithUnneededContext) {
@@ -300,7 +300,7 @@ TEST_F(AeadTicketCipherTest, TestDecryptWithUnneededContext) {
   // Now test that ticket 3 with context 'foobar' doesn't work
   auto result = cipher_.decrypt(toIOBuf(ticket3)).get();
   EXPECT_EQ(result.first, PskType::Rejected);
-  EXPECT_FALSE(result.second.hasValue());
+  EXPECT_FALSE(result.second.has_value());
 }
 
 TEST_F(AeadTicketCipherTest, TestDecryptSeqNum) {
@@ -308,21 +308,21 @@ TEST_F(AeadTicketCipherTest, TestDecryptSeqNum) {
   expectDecode();
   auto result = cipher_.decrypt(toIOBuf(ticket2)).get();
   EXPECT_EQ(result.first, PskType::Resumption);
-  EXPECT_TRUE(result.second.hasValue());
+  EXPECT_TRUE(result.second.has_value());
 }
 
 TEST_F(AeadTicketCipherTest, TestDecryptFailed) {
   rebuildCipher();
   auto result = cipher_.decrypt(toIOBuf(badTicket)).get();
   EXPECT_EQ(result.first, PskType::Rejected);
-  EXPECT_FALSE(result.second.hasValue());
+  EXPECT_FALSE(result.second.has_value());
 }
 
 TEST_F(AeadTicketCipherTest, TestDecryptTooShort) {
   rebuildCipher();
   auto result = cipher_.decrypt(IOBuf::copyBuffer("short")).get();
   EXPECT_EQ(result.first, PskType::Rejected);
-  EXPECT_FALSE(result.second.hasValue());
+  EXPECT_FALSE(result.second.has_value());
 }
 
 TEST_F(AeadTicketCipherTest, TestUnsetTicketSecrets) {

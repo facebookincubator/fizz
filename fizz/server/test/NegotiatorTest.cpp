@@ -27,7 +27,7 @@ TEST(NegotiatorTest, TestSingleMismatch) {
   std::vector<std::vector<int>> server = {{1}};
   std::vector<int> client = {2};
 
-  EXPECT_FALSE(negotiate(server, client).hasValue());
+  EXPECT_FALSE(negotiate(server, client).has_value());
 }
 
 TEST(NegotiatorTest, TestServerPref) {
@@ -62,7 +62,7 @@ TEST(NegotiateTest, TestSingleOrderingNoMatch) {
   std::vector<int> server = {1, 5, 6};
   std::vector<int> client = {3, 4, 2};
 
-  EXPECT_FALSE(negotiate(server, client).hasValue());
+  EXPECT_FALSE(negotiate(server, client).has_value());
 }
 
 TEST(NegotiateTest, TestServerEmptyTier) {

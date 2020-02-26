@@ -79,7 +79,7 @@ TEST_F(GetCookieStateTest, TestBasic) {
       IOBuf::copyBuffer("token"));
   EXPECT_EQ(state.version, TestProtocolVersion);
   EXPECT_EQ(state.cipher, CipherSuite::TLS_AES_128_GCM_SHA256);
-  EXPECT_FALSE(state.group.hasValue());
+  EXPECT_FALSE(state.group.has_value());
   EXPECT_TRUE(IOBufEqualTo()(state.chloHash, IOBuf::copyBuffer("context")));
   EXPECT_TRUE(IOBufEqualTo()(state.appToken, IOBuf::copyBuffer("token")));
 }
@@ -182,7 +182,7 @@ TEST_F(GetCookieStateTest, TestNoGroups) {
       {NamedGroup::x25519},
       chlo,
       IOBuf::copyBuffer("token"));
-  EXPECT_FALSE(state.group.hasValue());
+  EXPECT_FALSE(state.group.has_value());
 }
 
 TEST_F(GetCookieStateTest, TestNoKeyShare) {
@@ -207,7 +207,7 @@ TEST_F(GetCookieStateTest, TestGroupMismatch) {
       {},
       TestMessages::clientHello(),
       IOBuf::copyBuffer("token"));
-  EXPECT_FALSE(state.group.hasValue());
+  EXPECT_FALSE(state.group.has_value());
 }
 } // namespace test
 } // namespace server

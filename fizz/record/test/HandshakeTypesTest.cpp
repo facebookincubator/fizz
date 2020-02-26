@@ -197,9 +197,9 @@ TEST_F(HandshakeTypesTest, EncodeAndDecodeServerHello) {
   EXPECT_EQ(shlo.random.back(), 0x5b);
   EXPECT_EQ(shlo.cipher_suite, CipherSuite::TLS_AES_128_GCM_SHA256);
   EXPECT_EQ(shlo.extensions.size(), 2);
-  EXPECT_TRUE(getExtension<ServerKeyShare>(shlo.extensions).hasValue());
+  EXPECT_TRUE(getExtension<ServerKeyShare>(shlo.extensions).has_value());
   EXPECT_TRUE(
-      getExtension<ServerSupportedVersions>(shlo.extensions).hasValue());
+      getExtension<ServerSupportedVersions>(shlo.extensions).has_value());
   auto reencoded = encodeHex(std::move(shlo));
   EXPECT_EQ(reencoded, encodedShlo);
 }
@@ -213,7 +213,7 @@ TEST_F(HandshakeTypesTest, EncodeAndDecodeEndOfEarlyData) {
 TEST_F(HandshakeTypesTest, EncodeAndDecodeEncryptedExtensions) {
   auto ee = decodeHex<EncryptedExtensions>(encodedEncryptedExtensions);
   EXPECT_EQ(ee.extensions.size(), 2);
-  EXPECT_TRUE(getExtension<SupportedGroups>(ee.extensions).hasValue());
+  EXPECT_TRUE(getExtension<SupportedGroups>(ee.extensions).has_value());
   auto reencoded = encodeHex(std::move(ee));
   EXPECT_EQ(reencoded, encodedEncryptedExtensions);
 }
@@ -247,7 +247,7 @@ TEST_F(HandshakeTypesTest, EncodedAndDecodeCertificateRequest) {
   auto cr = decodeHex<CertificateRequest>(encodedCertRequest);
   EXPECT_TRUE(cr.certificate_request_context->empty());
   EXPECT_EQ(cr.extensions.size(), 1);
-  EXPECT_TRUE(getExtension<SignatureAlgorithms>(cr.extensions).hasValue());
+  EXPECT_TRUE(getExtension<SignatureAlgorithms>(cr.extensions).has_value());
   auto reencoded = encodeHex(std::move(cr));
   EXPECT_EQ(reencoded, encodedCertRequest);
 }

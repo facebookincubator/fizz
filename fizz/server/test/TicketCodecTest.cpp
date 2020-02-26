@@ -175,7 +175,7 @@ TEST(TicketCodecTest, TestDecode) {
 TEST(TicketCodecTest, TestDecodeNoAlpn) {
   auto rs = TicketCodec<CertificateStorage::X509>::decode(
       toIOBuf(ticketNoAlpn), nullptr);
-  EXPECT_FALSE(rs.alpn.hasValue());
+  EXPECT_FALSE(rs.alpn.has_value());
 }
 
 TEST(TicketCodecTest, TestDecodeTooShort) {

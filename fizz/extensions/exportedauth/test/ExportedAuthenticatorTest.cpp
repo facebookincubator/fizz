@@ -39,7 +39,7 @@ TEST(ExportedAuthenticatorTest, TestAuthenticatorRequest) {
   CertificateRequest cr = decode<CertificateRequest>(cursor);
   EXPECT_EQ(cr.certificate_request_context->computeChainDataLength(), 20);
   EXPECT_EQ(cr.extensions.size(), 1);
-  EXPECT_TRUE(getExtension<SignatureAlgorithms>(cr.extensions).hasValue());
+  EXPECT_TRUE(getExtension<SignatureAlgorithms>(cr.extensions).has_value());
   auto encodedAuthRequest = ExportedAuthenticator::getAuthenticatorRequest(
       std::move(cr.certificate_request_context), std::move(cr.extensions));
   EXPECT_EQ(
@@ -193,7 +193,7 @@ TEST_F(ValidateAuthenticatorTest, TestValidateValidAuthenticator) {
       std::move(handshakeContext),
       std::move(finishedMacKey),
       CertificateVerifyContext::Authenticator);
-  EXPECT_TRUE(decodedCerts.hasValue());
+  EXPECT_TRUE(decodedCerts.has_value());
   EXPECT_EQ((*decodedCerts).size(), 1);
   EXPECT_EQ(
       expected_cert,
@@ -230,7 +230,7 @@ TEST_F(ValidateAuthenticatorTest, TestValidateEmptyAuthenticator) {
       std::move(handshakeContext),
       std::move(finishedMacKey),
       CertificateVerifyContext::Authenticator);
-  EXPECT_TRUE(decodedCerts.hasValue());
+  EXPECT_TRUE(decodedCerts.has_value());
   EXPECT_EQ((*decodedCerts).size(), 0);
 }
 

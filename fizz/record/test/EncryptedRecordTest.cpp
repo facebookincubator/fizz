@@ -56,7 +56,7 @@ class EncryptedRecordTest : public testing::Test {
 };
 
 TEST_F(EncryptedRecordTest, TestReadEmpty) {
-  EXPECT_FALSE(read_.read(queue_).hasValue());
+  EXPECT_FALSE(read_.read(queue_).has_value());
 }
 
 TEST_F(EncryptedRecordTest, TestReadHandshake) {
@@ -111,19 +111,19 @@ TEST_F(EncryptedRecordTest, TestReadUnknown) {
 
 TEST_F(EncryptedRecordTest, TestWaitForData) {
   addToQueue("1703010010012345");
-  EXPECT_FALSE(read_.read(queue_).hasValue());
+  EXPECT_FALSE(read_.read(queue_).has_value());
   EXPECT_EQ(queue_.chainLength(), 8);
 }
 
 TEST_F(EncryptedRecordTest, TestWaitForHeader) {
   addToQueue("16030102");
-  EXPECT_FALSE(read_.read(queue_).hasValue());
+  EXPECT_FALSE(read_.read(queue_).has_value());
   EXPECT_EQ(queue_.chainLength(), 4);
 }
 
 TEST_F(EncryptedRecordTest, TestMaxSize) {
   addToQueue("1603014100");
-  EXPECT_FALSE(read_.read(queue_).hasValue());
+  EXPECT_FALSE(read_.read(queue_).has_value());
   EXPECT_EQ(queue_.chainLength(), 5);
 }
 
@@ -210,7 +210,7 @@ TEST_F(EncryptedRecordTest, TestSkipAndWait) {
           Invoke([](std::unique_ptr<IOBuf>& /*buf*/, const IOBuf*, uint64_t) {
             return folly::none;
           }));
-  EXPECT_FALSE(read_.read(queue_).hasValue());
+  EXPECT_FALSE(read_.read(queue_).has_value());
   EXPECT_TRUE(queue_.empty());
 }
 

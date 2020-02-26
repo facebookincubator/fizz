@@ -28,7 +28,7 @@ std::vector<Extension> TokenBindingClientExtension::getClientHelloExtensions()
 void TokenBindingClientExtension::onEncryptedExtensions(
     const std::vector<Extension>& extensions) {
   auto serverParams = getExtension<TokenBindingParameters>(extensions);
-  if (!serverParams.hasValue()) {
+  if (!serverParams.has_value()) {
     VLOG(6) << "Server did not negotiate token binding";
     return;
   }

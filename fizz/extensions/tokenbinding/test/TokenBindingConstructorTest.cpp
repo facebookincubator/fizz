@@ -59,7 +59,7 @@ TEST_F(TokenBindingConstructorTest, TestSignAndValidate) {
   EXPECT_TRUE(
       Validator::validateTokenBinding(
           std::move(binding), ekmBuf, TokenBindingKeyParameters::ecdsap256)
-          .hasValue());
+          .has_value());
 }
 
 TEST_F(TokenBindingConstructorTest, TestBadEcKey) {

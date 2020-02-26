@@ -56,7 +56,7 @@ TEST_F(RecordTest, TestNoData) {
   EXPECT_CALL(read_, read(_)).WillOnce(InvokeWithoutArgs([]() {
     return none;
   }));
-  EXPECT_FALSE(read_.readEvent(queue_).hasValue());
+  EXPECT_FALSE(read_.readEvent(queue_).has_value());
 }
 
 TEST_F(RecordTest, TestReadAppData) {
@@ -113,7 +113,7 @@ TEST_F(RecordTest, TestHandshakeFragmentedDelayed) {
         return TLSMessage{ContentType::handshake, getBuf("14000008aabbccdd")};
       }))
       .WillOnce(InvokeWithoutArgs([]() { return folly::none; }));
-  EXPECT_FALSE(read_.readEvent(queue_).hasValue());
+  EXPECT_FALSE(read_.readEvent(queue_).has_value());
   EXPECT_TRUE(read_.hasUnparsedHandshakeData());
   EXPECT_CALL(read_, read(_)).WillOnce(InvokeWithoutArgs([]() {
     return TLSMessage{ContentType::handshake, getBuf("11223344")};

@@ -181,7 +181,7 @@ Actions ClientStateMachine::processSocketData(
           folly::none);
     }
     auto param = state.readRecordLayer()->readEvent(buf);
-    if (!param.hasValue()) {
+    if (!param.has_value()) {
       return actions(WaitForData());
     }
     return detail::processEvent(state, std::move(*param));
@@ -967,7 +967,7 @@ EventHandler<ClientTypes, StateEnum::ExpectingServerHello, Event::ServerHello>::
       shlo,
       version,
       cipher,
-      exchange.hasValue());
+      exchange.has_value());
 
   if (!exchange &&
       !(negotiatedPsk.mode &&
@@ -995,7 +995,7 @@ EventHandler<ClientTypes, StateEnum::ExpectingServerHello, Event::ServerHello>::
   Optional<NamedGroup> group;
   Optional<KeyExchangeType> keyExchangeType;
   if (exchange) {
-    if (state.keyExchangeType().hasValue()) {
+    if (state.keyExchangeType().has_value()) {
       keyExchangeType = *state.keyExchangeType();
     } else {
       keyExchangeType = KeyExchangeType::OneRtt;
@@ -1162,7 +1162,7 @@ Actions EventHandler<
 
   Protocol::checkAllowedExtensions(hrr);
 
-  if (state.keyExchangeType().hasValue()) {
+  if (state.keyExchangeType().has_value()) {
     throw FizzException("two HRRs", AlertDescription::unexpected_message);
   }
 

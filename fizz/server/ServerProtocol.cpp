@@ -154,7 +154,7 @@ AsyncActions ServerStateMachine::processSocketData(
           folly::none);
     }
     auto param = state.readRecordLayer()->readEvent(buf);
-    if (!param.hasValue()) {
+    if (!param.has_value()) {
       return actions(WaitForData());
     }
     return detail::processEvent(state, std::move(*param));
@@ -775,7 +775,7 @@ static Optional<std::chrono::milliseconds> getClockSkew(
 }
 
 static Optional<Buf> getAppToken(const Optional<ResumptionState>& psk) {
-  if (!psk.hasValue() || !psk->appToken) {
+  if (!psk.has_value() || !psk->appToken) {
     return folly::none;
   }
   return psk->appToken->clone();
@@ -974,7 +974,7 @@ EventHandler<ServerTypes, StateEnum::ExpectingClientHello, Event::ClientHello>::
   auto version =
       negotiateVersion(chlo, state.context()->getSupportedVersions());
 
-  if (state.version().hasValue() &&
+  if (state.version().has_value() &&
       (!version || *version != *state.version())) {
     throw FizzException(
         "version mismatch with previous negotiation",
@@ -1077,7 +1077,7 @@ EventHandler<ServerTypes, StateEnum::ExpectingClientHello, Event::ClientHello>::
             std::move(state.handshakeContext()),
             version);
 
-        if (state.cipher().hasValue() && cipher != *state.cipher()) {
+        if (state.cipher().has_value() && cipher != *state.cipher()) {
           throw FizzException(
               "cipher mismatch with previous negotiation",
               AlertDescription::illegal_parameter);
@@ -1144,7 +1144,7 @@ EventHandler<ServerTypes, StateEnum::ExpectingClientHello, Event::ClientHello>::
               version, chlo, state.context()->getSupportedGroups());
           if (!clientShare) {
             VLOG(8) << "Did not find key share for " << toString(*group);
-            if (state.group().hasValue() || cookieState) {
+            if (state.group().has_value() || cookieState) {
               throw FizzException(
                   "key share not found for already negotiated group",
                   AlertDescription::illegal_parameter);
@@ -1218,7 +1218,7 @@ EventHandler<ServerTypes, StateEnum::ExpectingClientHello, Event::ClientHello>::
                 MutateState(&Transition<StateEnum::ExpectingClientHello>)));
           }
 
-          if (state.keyExchangeType().hasValue()) {
+          if (state.keyExchangeType().has_value()) {
             keyExchangeType = *state.keyExchangeType();
           } else {
             keyExchangeType = KeyExchangeType::OneRtt;
@@ -1236,7 +1236,7 @@ EventHandler<ServerTypes, StateEnum::ExpectingClientHello, Event::ClientHello>::
           additionalExtensions = state.extensions()->getExtensions(chlo);
         }
 
-        if (state.group().hasValue() && (!group || *group != *state.group())) {
+        if (state.group().has_value() && (!group || *group != *state.group())) {
           throw FizzException(
               "group mismatch with previous negotiation",
               AlertDescription::illegal_parameter);
@@ -1256,7 +1256,7 @@ EventHandler<ServerTypes, StateEnum::ExpectingClientHello, Event::ClientHello>::
             version,
             state.context()->getFactory()->makeRandom(),
             cipher,
-            resState.hasValue(),
+            resState.has_value(),
             group,
             std::move(serverShare),
             legacySessionId ? legacySessionId->clone() : nullptr,

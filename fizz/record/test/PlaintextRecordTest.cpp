@@ -44,7 +44,7 @@ class PlaintextRecordTest : public testing::Test {
 };
 
 TEST_F(PlaintextRecordTest, TestReadEmpty) {
-  EXPECT_FALSE(read_.read(queue_).hasValue());
+  EXPECT_FALSE(read_.read(queue_).has_value());
 }
 
 TEST_F(PlaintextRecordTest, TestReadHandshake) {
@@ -70,19 +70,19 @@ TEST_F(PlaintextRecordTest, TestReadAppData) {
 
 TEST_F(PlaintextRecordTest, TestWaitForData) {
   addToQueue("160301000512345678");
-  EXPECT_FALSE(read_.read(queue_).hasValue());
+  EXPECT_FALSE(read_.read(queue_).has_value());
   EXPECT_EQ(queue_.chainLength(), 9);
 }
 
 TEST_F(PlaintextRecordTest, TestWaitForHeader) {
   addToQueue("16030102");
-  EXPECT_FALSE(read_.read(queue_).hasValue());
+  EXPECT_FALSE(read_.read(queue_).has_value());
   EXPECT_EQ(queue_.chainLength(), 4);
 }
 
 TEST_F(PlaintextRecordTest, TestMaxSize) {
   addToQueue("1603014000");
-  EXPECT_FALSE(read_.read(queue_).hasValue());
+  EXPECT_FALSE(read_.read(queue_).has_value());
   EXPECT_EQ(queue_.chainLength(), 5);
 }
 
@@ -108,7 +108,7 @@ TEST_F(PlaintextRecordTest, TestDataRemaining) {
 TEST_F(PlaintextRecordTest, TestSkipAndWait) {
   read_.setSkipEncryptedRecords(true);
   addToQueue("17030100050123456789");
-  EXPECT_FALSE(read_.read(queue_).hasValue());
+  EXPECT_FALSE(read_.read(queue_).has_value());
   EXPECT_TRUE(queue_.empty());
 }
 
@@ -118,14 +118,14 @@ TEST_F(PlaintextRecordTest, TestSkipOversizedRecord) {
   auto longBuf = IOBuf::create(0xfffb);
   longBuf->append(0xfffb);
   queue_.append(std::move(longBuf));
-  EXPECT_FALSE(read_.read(queue_).hasValue());
+  EXPECT_FALSE(read_.read(queue_).has_value());
   EXPECT_TRUE(queue_.empty());
 }
 
 TEST_F(PlaintextRecordTest, TestWaitBeforeSkip) {
   read_.setSkipEncryptedRecords(true);
   addToQueue("170301000501234567");
-  EXPECT_FALSE(read_.read(queue_).hasValue());
+  EXPECT_FALSE(read_.read(queue_).has_value());
   expectSame(queue_.move(), "170301000501234567");
 }
 

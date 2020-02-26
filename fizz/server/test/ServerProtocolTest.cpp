@@ -729,17 +729,17 @@ TEST_F(ServerProtocolTest, TestClientHelloFullHandshakeFlow) {
   EXPECT_EQ(state_.group(), NamedGroup::x25519);
   EXPECT_EQ(state_.sigScheme(), SignatureScheme::ecdsa_secp256r1_sha256);
   EXPECT_EQ(state_.pskType(), PskType::NotAttempted);
-  EXPECT_FALSE(state_.pskMode().hasValue());
+  EXPECT_FALSE(state_.pskMode().has_value());
   EXPECT_EQ(state_.keyExchangeType(), KeyExchangeType::OneRtt);
   EXPECT_EQ(state_.earlyDataType(), EarlyDataType::NotAttempted);
   EXPECT_EQ(state_.replayCacheResult(), ReplayCacheResult::NotChecked);
-  EXPECT_FALSE(state_.clientClockSkew().hasValue());
+  EXPECT_FALSE(state_.clientClockSkew().has_value());
   EXPECT_EQ(*state_.alpn(), "h2");
   EXPECT_TRUE(IOBufEqualTo()(
       *state_.clientHandshakeSecret(), IOBuf::copyBuffer("cht")));
   EXPECT_TRUE(IOBufEqualTo()(
       *state_.exporterMasterSecret(), IOBuf::copyBuffer("expm")));
-  EXPECT_FALSE(state_.earlyExporterMasterSecret().hasValue());
+  EXPECT_FALSE(state_.earlyExporterMasterSecret().has_value());
 }
 
 TEST_F(ServerProtocolTest, TestClientHelloCompressedCertFlow) {
@@ -981,17 +981,17 @@ TEST_F(ServerProtocolTest, TestClientHelloCompressedCertFlow) {
   EXPECT_EQ(state_.group(), NamedGroup::x25519);
   EXPECT_EQ(state_.sigScheme(), SignatureScheme::ecdsa_secp256r1_sha256);
   EXPECT_EQ(state_.pskType(), PskType::NotAttempted);
-  EXPECT_FALSE(state_.pskMode().hasValue());
+  EXPECT_FALSE(state_.pskMode().has_value());
   EXPECT_EQ(state_.keyExchangeType(), KeyExchangeType::OneRtt);
   EXPECT_EQ(state_.earlyDataType(), EarlyDataType::NotAttempted);
   EXPECT_EQ(state_.replayCacheResult(), ReplayCacheResult::NotChecked);
-  EXPECT_FALSE(state_.clientClockSkew().hasValue());
+  EXPECT_FALSE(state_.clientClockSkew().has_value());
   EXPECT_EQ(*state_.alpn(), "h2");
   EXPECT_TRUE(IOBufEqualTo()(
       *state_.clientHandshakeSecret(), IOBuf::copyBuffer("cht")));
   EXPECT_TRUE(IOBufEqualTo()(
       *state_.exporterMasterSecret(), IOBuf::copyBuffer("expm")));
-  EXPECT_FALSE(state_.earlyExporterMasterSecret().hasValue());
+  EXPECT_FALSE(state_.earlyExporterMasterSecret().has_value());
 }
 
 TEST_F(ServerProtocolTest, TestClientHelloCertRequestFlow) {
@@ -1227,17 +1227,17 @@ TEST_F(ServerProtocolTest, TestClientHelloCertRequestFlow) {
   EXPECT_EQ(state_.group(), NamedGroup::x25519);
   EXPECT_EQ(state_.sigScheme(), SignatureScheme::ecdsa_secp256r1_sha256);
   EXPECT_EQ(state_.pskType(), PskType::NotAttempted);
-  EXPECT_FALSE(state_.pskMode().hasValue());
+  EXPECT_FALSE(state_.pskMode().has_value());
   EXPECT_EQ(state_.keyExchangeType(), KeyExchangeType::OneRtt);
   EXPECT_EQ(state_.earlyDataType(), EarlyDataType::NotAttempted);
   EXPECT_EQ(state_.replayCacheResult(), ReplayCacheResult::NotChecked);
-  EXPECT_FALSE(state_.clientClockSkew().hasValue());
+  EXPECT_FALSE(state_.clientClockSkew().has_value());
   EXPECT_EQ(*state_.alpn(), "h2");
   EXPECT_TRUE(IOBufEqualTo()(
       *state_.clientHandshakeSecret(), IOBuf::copyBuffer("cht")));
   EXPECT_TRUE(IOBufEqualTo()(
       *state_.exporterMasterSecret(), IOBuf::copyBuffer("expm")));
-  EXPECT_FALSE(state_.earlyExporterMasterSecret().hasValue());
+  EXPECT_FALSE(state_.earlyExporterMasterSecret().has_value());
 }
 
 TEST_F(ServerProtocolTest, TestClientHelloPskFlow) {
@@ -1441,20 +1441,20 @@ TEST_F(ServerProtocolTest, TestClientHelloPskFlow) {
   EXPECT_EQ(state_.serverCert(), cert_);
   EXPECT_EQ(state_.version(), TestProtocolVersion);
   EXPECT_EQ(state_.cipher(), CipherSuite::TLS_AES_128_GCM_SHA256);
-  EXPECT_FALSE(state_.group().hasValue());
-  EXPECT_FALSE(state_.sigScheme().hasValue());
+  EXPECT_FALSE(state_.group().has_value());
+  EXPECT_FALSE(state_.sigScheme().has_value());
   EXPECT_EQ(state_.pskType(), PskType::Resumption);
   EXPECT_EQ(state_.pskMode(), PskKeyExchangeMode::psk_ke);
   EXPECT_EQ(state_.keyExchangeType(), KeyExchangeType::None);
   EXPECT_EQ(state_.earlyDataType(), EarlyDataType::NotAttempted);
   EXPECT_EQ(state_.replayCacheResult(), ReplayCacheResult::NotChecked);
-  EXPECT_TRUE(state_.clientClockSkew().hasValue());
+  EXPECT_TRUE(state_.clientClockSkew().has_value());
   EXPECT_EQ(*state_.alpn(), "h2");
   EXPECT_TRUE(IOBufEqualTo()(
       *state_.clientHandshakeSecret(), IOBuf::copyBuffer("cht")));
   EXPECT_TRUE(IOBufEqualTo()(
       *state_.exporterMasterSecret(), IOBuf::copyBuffer("expm")));
-  EXPECT_FALSE(state_.earlyExporterMasterSecret().hasValue());
+  EXPECT_FALSE(state_.earlyExporterMasterSecret().has_value());
 }
 
 TEST_F(ServerProtocolTest, TestClientHelloPskDheFlow) {
@@ -1670,19 +1670,19 @@ TEST_F(ServerProtocolTest, TestClientHelloPskDheFlow) {
   EXPECT_EQ(state_.serverCert(), cert_);
   EXPECT_EQ(state_.cipher(), CipherSuite::TLS_AES_128_GCM_SHA256);
   EXPECT_EQ(state_.group(), NamedGroup::x25519);
-  EXPECT_FALSE(state_.sigScheme().hasValue());
+  EXPECT_FALSE(state_.sigScheme().has_value());
   EXPECT_EQ(state_.pskType(), PskType::Resumption);
   EXPECT_EQ(state_.pskMode(), PskKeyExchangeMode::psk_dhe_ke);
   EXPECT_EQ(state_.keyExchangeType(), KeyExchangeType::OneRtt);
   EXPECT_EQ(state_.earlyDataType(), EarlyDataType::NotAttempted);
   EXPECT_EQ(state_.replayCacheResult(), ReplayCacheResult::NotChecked);
-  EXPECT_TRUE(state_.clientClockSkew().hasValue());
+  EXPECT_TRUE(state_.clientClockSkew().has_value());
   EXPECT_EQ(*state_.alpn(), "h2");
   EXPECT_TRUE(IOBufEqualTo()(
       *state_.clientHandshakeSecret(), IOBuf::copyBuffer("cht")));
   EXPECT_TRUE(IOBufEqualTo()(
       *state_.exporterMasterSecret(), IOBuf::copyBuffer("expm")));
-  EXPECT_FALSE(state_.earlyExporterMasterSecret().hasValue());
+  EXPECT_FALSE(state_.earlyExporterMasterSecret().has_value());
 }
 
 TEST_F(ServerProtocolTest, TestClientHelloHelloRetryRequestFlow) {
@@ -1756,7 +1756,7 @@ TEST_F(ServerProtocolTest, TestClientHelloHelloRetryRequestFlow) {
   EXPECT_EQ(state_.keyExchangeType(), KeyExchangeType::HelloRetryRequest);
   EXPECT_EQ(state_.earlyDataType(), EarlyDataType::NotAttempted);
   EXPECT_EQ(state_.replayCacheResult(), ReplayCacheResult::NotChecked);
-  EXPECT_FALSE(state_.earlyExporterMasterSecret().hasValue());
+  EXPECT_FALSE(state_.earlyExporterMasterSecret().has_value());
 }
 
 TEST_F(ServerProtocolTest, TestRetryClientHelloFullHandshakeFlow) {
@@ -1968,17 +1968,17 @@ TEST_F(ServerProtocolTest, TestRetryClientHelloFullHandshakeFlow) {
   EXPECT_EQ(state_.group(), NamedGroup::x25519);
   EXPECT_EQ(state_.sigScheme(), SignatureScheme::ecdsa_secp256r1_sha256);
   EXPECT_EQ(state_.pskType(), PskType::NotAttempted);
-  EXPECT_FALSE(state_.pskMode().hasValue());
+  EXPECT_FALSE(state_.pskMode().has_value());
   EXPECT_EQ(state_.keyExchangeType(), KeyExchangeType::HelloRetryRequest);
   EXPECT_EQ(state_.earlyDataType(), EarlyDataType::NotAttempted);
   EXPECT_EQ(state_.replayCacheResult(), ReplayCacheResult::NotChecked);
-  EXPECT_FALSE(state_.clientClockSkew().hasValue());
+  EXPECT_FALSE(state_.clientClockSkew().has_value());
   EXPECT_EQ(*state_.alpn(), "h2");
   EXPECT_TRUE(IOBufEqualTo()(
       *state_.clientHandshakeSecret(), IOBuf::copyBuffer("cht")));
   EXPECT_TRUE(IOBufEqualTo()(
       *state_.exporterMasterSecret(), IOBuf::copyBuffer("expm")));
-  EXPECT_FALSE(state_.earlyExporterMasterSecret().hasValue());
+  EXPECT_FALSE(state_.earlyExporterMasterSecret().has_value());
 }
 
 TEST_F(ServerProtocolTest, TestRetryClientHelloPskDheFlow) {
@@ -2182,19 +2182,19 @@ TEST_F(ServerProtocolTest, TestRetryClientHelloPskDheFlow) {
   EXPECT_EQ(state_.serverCert(), cert_);
   EXPECT_EQ(state_.cipher(), CipherSuite::TLS_AES_128_GCM_SHA256);
   EXPECT_EQ(state_.group(), NamedGroup::x25519);
-  EXPECT_FALSE(state_.sigScheme().hasValue());
+  EXPECT_FALSE(state_.sigScheme().has_value());
   EXPECT_EQ(state_.pskType(), PskType::Resumption);
   EXPECT_EQ(state_.pskMode(), PskKeyExchangeMode::psk_dhe_ke);
   EXPECT_EQ(state_.keyExchangeType(), KeyExchangeType::HelloRetryRequest);
   EXPECT_EQ(state_.earlyDataType(), EarlyDataType::NotAttempted);
   EXPECT_EQ(state_.replayCacheResult(), ReplayCacheResult::NotChecked);
-  EXPECT_TRUE(state_.clientClockSkew().hasValue());
+  EXPECT_TRUE(state_.clientClockSkew().has_value());
   EXPECT_EQ(*state_.alpn(), "h2");
   EXPECT_TRUE(IOBufEqualTo()(
       *state_.clientHandshakeSecret(), IOBuf::copyBuffer("cht")));
   EXPECT_TRUE(IOBufEqualTo()(
       *state_.exporterMasterSecret(), IOBuf::copyBuffer("expm")));
-  EXPECT_FALSE(state_.earlyExporterMasterSecret().hasValue());
+  EXPECT_FALSE(state_.earlyExporterMasterSecret().has_value());
 }
 
 TEST_F(ServerProtocolTest, TestClientHelloPskDheEarlyFlow) {
@@ -2456,13 +2456,13 @@ TEST_F(ServerProtocolTest, TestClientHelloPskDheEarlyFlow) {
   EXPECT_EQ(state_.serverCert(), cert_);
   EXPECT_EQ(state_.cipher(), CipherSuite::TLS_AES_128_GCM_SHA256);
   EXPECT_EQ(state_.group(), NamedGroup::x25519);
-  EXPECT_FALSE(state_.sigScheme().hasValue());
+  EXPECT_FALSE(state_.sigScheme().has_value());
   EXPECT_EQ(state_.pskType(), PskType::Resumption);
   EXPECT_EQ(state_.pskMode(), PskKeyExchangeMode::psk_dhe_ke);
   EXPECT_EQ(state_.keyExchangeType(), KeyExchangeType::OneRtt);
   EXPECT_EQ(state_.earlyDataType(), EarlyDataType::Accepted);
   EXPECT_EQ(state_.replayCacheResult(), ReplayCacheResult::NotReplay);
-  EXPECT_TRUE(state_.clientClockSkew().hasValue());
+  EXPECT_TRUE(state_.clientClockSkew().has_value());
   EXPECT_EQ(*state_.alpn(), "h2");
   EXPECT_TRUE(IOBufEqualTo()(
       *state_.clientHandshakeSecret(), IOBuf::copyBuffer("cht")));
@@ -2720,14 +2720,14 @@ TEST_F(ServerProtocolTest, TestClientHelloPskEarlyFlow) {
   EXPECT_EQ(state_.serverCert(), cert_);
   EXPECT_EQ(state_.version(), TestProtocolVersion);
   EXPECT_EQ(state_.cipher(), CipherSuite::TLS_AES_128_GCM_SHA256);
-  EXPECT_FALSE(state_.group().hasValue());
-  EXPECT_FALSE(state_.sigScheme().hasValue());
+  EXPECT_FALSE(state_.group().has_value());
+  EXPECT_FALSE(state_.sigScheme().has_value());
   EXPECT_EQ(state_.pskType(), PskType::Resumption);
   EXPECT_EQ(state_.pskMode(), PskKeyExchangeMode::psk_ke);
   EXPECT_EQ(state_.keyExchangeType(), KeyExchangeType::None);
   EXPECT_EQ(state_.earlyDataType(), EarlyDataType::Accepted);
   EXPECT_EQ(state_.replayCacheResult(), ReplayCacheResult::NotReplay);
-  EXPECT_TRUE(state_.clientClockSkew().hasValue());
+  EXPECT_TRUE(state_.clientClockSkew().has_value());
   EXPECT_EQ(*state_.alpn(), "h2");
   EXPECT_TRUE(IOBufEqualTo()(
       *state_.clientHandshakeSecret(), IOBuf::copyBuffer("cht")));
@@ -2856,7 +2856,7 @@ TEST_F(ServerProtocolTest, TestClientHelloPskNotSupported) {
   processStateMutations(actions);
   EXPECT_EQ(state_.state(), StateEnum::ExpectingFinished);
   EXPECT_EQ(state_.pskType(), PskType::NotSupported);
-  EXPECT_FALSE(state_.pskMode().hasValue());
+  EXPECT_FALSE(state_.pskMode().has_value());
 }
 
 TEST_F(ServerProtocolTest, TestClientHelloPskBadBinder) {
@@ -2995,7 +2995,7 @@ TEST_F(ServerProtocolTest, TestClientHelloNoAlpn) {
   auto actions = getActions(detail::processEvent(state_, std::move(chlo)));
   expectActions<MutateState, WriteToSocket, SecretAvailable>(actions);
   processStateMutations(actions);
-  EXPECT_FALSE(state_.alpn().hasValue());
+  EXPECT_FALSE(state_.alpn().has_value());
 }
 
 TEST_F(ServerProtocolTest, TestClientHelloAlpnMismatch) {
@@ -3011,7 +3011,7 @@ TEST_F(ServerProtocolTest, TestClientHelloAlpnMismatch) {
   auto actions = getActions(detail::processEvent(state_, std::move(chlo)));
   expectActions<MutateState, WriteToSocket, SecretAvailable>(actions);
   processStateMutations(actions);
-  EXPECT_FALSE(state_.alpn().hasValue());
+  EXPECT_FALSE(state_.alpn().has_value());
 }
 
 TEST_F(ServerProtocolTest, TestClientHelloServerPref) {
@@ -3057,7 +3057,7 @@ TEST_F(ServerProtocolTest, TestClientHelloAcceptEarlyData) {
   EXPECT_EQ(
       state_.readRecordLayer()->getEncryptionLevel(),
       EncryptionLevel::EarlyData);
-  EXPECT_FALSE(state_.appToken().hasValue());
+  EXPECT_FALSE(state_.appToken().has_value());
 }
 
 TEST_F(ServerProtocolTest, TestClientHelloAcceptEarlyDataOmitEarlyRecort) {
@@ -3156,7 +3156,7 @@ TEST_F(ServerProtocolTest, TestClientHelloAcceptEarlyDataWithValidAppToken) {
   EXPECT_EQ(state_.pskType(), PskType::Resumption);
   EXPECT_EQ(state_.earlyDataType(), EarlyDataType::Accepted);
   EXPECT_EQ(state_.replayCacheResult(), ReplayCacheResult::NotReplay);
-  EXPECT_TRUE(state_.appToken().hasValue());
+  EXPECT_TRUE(state_.appToken().has_value());
   EXPECT_TRUE(
       IOBufEqualTo()(*state_.appToken(), IOBuf::copyBuffer(appTokenStr)));
 }
@@ -3178,7 +3178,7 @@ TEST_F(ServerProtocolTest, TestClientHelloRejectEarlyData) {
   EXPECT_EQ(state_.readRecordLayer().get(), rrl);
   EXPECT_EQ(state_.pskType(), PskType::Resumption);
   EXPECT_EQ(state_.earlyDataType(), EarlyDataType::Rejected);
-  EXPECT_FALSE(state_.earlyExporterMasterSecret().hasValue());
+  EXPECT_FALSE(state_.earlyExporterMasterSecret().has_value());
   EXPECT_EQ(
       state_.readRecordLayer()->getEncryptionLevel(),
       EncryptionLevel::Handshake);
@@ -3204,7 +3204,7 @@ TEST_F(ServerProtocolTest, TestClientHelloHrrRejectEarlyData) {
   EXPECT_EQ(state_.state(), StateEnum::ExpectingClientHello);
   EXPECT_EQ(state_.readRecordLayer().get(), rrl);
   EXPECT_EQ(state_.earlyDataType(), EarlyDataType::Rejected);
-  EXPECT_FALSE(state_.earlyExporterMasterSecret().hasValue());
+  EXPECT_FALSE(state_.earlyExporterMasterSecret().has_value());
   EXPECT_EQ(
       state_.readRecordLayer()->getEncryptionLevel(),
       EncryptionLevel::Plaintext);
@@ -3496,7 +3496,7 @@ TEST_F(ServerProtocolTest, TestClientHelloRejectEarlyDataInvalidAppToken) {
   EXPECT_EQ(state_.state(), StateEnum::ExpectingFinished);
   EXPECT_EQ(state_.pskType(), PskType::Resumption);
   EXPECT_EQ(state_.earlyDataType(), EarlyDataType::Rejected);
-  EXPECT_TRUE(state_.appToken().hasValue());
+  EXPECT_TRUE(state_.appToken().has_value());
   EXPECT_TRUE(
       IOBufEqualTo()(*state_.appToken(), IOBuf::copyBuffer(appTokenStr)));
 }
@@ -3531,7 +3531,7 @@ TEST_F(ServerProtocolTest, TestClientHelloHandshakeLogging) {
       std::vector<SignatureScheme>({SignatureScheme::ecdsa_secp256r1_sha256,
                                     SignatureScheme::rsa_pss_sha256}));
   EXPECT_EQ(*state_.handshakeLogging()->clientSessionIdSent, false);
-  EXPECT_TRUE(state_.handshakeLogging()->clientRandom.hasValue());
+  EXPECT_TRUE(state_.handshakeLogging()->clientRandom.has_value());
 }
 
 TEST_F(ServerProtocolTest, TestClientHelloTestByte) {
@@ -3545,7 +3545,7 @@ TEST_F(ServerProtocolTest, TestClientHelloTestByte) {
   auto actions = getActions(detail::processEvent(state_, std::move(chlo)));
   processStateMutations(actions);
 
-  EXPECT_TRUE(state_.handshakeLogging()->testExtensionByte.hasValue());
+  EXPECT_TRUE(state_.handshakeLogging()->testExtensionByte.has_value());
   EXPECT_EQ(state_.handshakeLogging()->testExtensionByte.value(), 0);
 }
 
@@ -4017,7 +4017,7 @@ TEST_F(ServerProtocolTest, TestFullHandshakeFinished) {
       state_.readRecordLayer()->getEncryptionLevel(),
       EncryptionLevel::AppTraffic);
   EXPECT_EQ(state_.writeRecordLayer().get(), mockWrite_);
-  EXPECT_TRUE(state_.handshakeTime().hasValue());
+  EXPECT_TRUE(state_.handshakeTime().has_value());
   EXPECT_EQ(
       *state_.handshakeTime(),
       std::chrono::system_clock::time_point(std::chrono::seconds(10)));
@@ -4490,7 +4490,7 @@ TEST_F(ServerProtocolTest, TestCertificateEmptyPermitted) {
 
   expectActions<MutateState>(actions);
   processStateMutations(actions);
-  EXPECT_FALSE(state_.unverifiedCertChain().hasValue());
+  EXPECT_FALSE(state_.unverifiedCertChain().has_value());
   EXPECT_EQ(state_.clientCert(), nullptr);
   EXPECT_EQ(state_.state(), StateEnum::ExpectingFinished);
 }
@@ -4745,7 +4745,7 @@ TEST_F(ServerProtocolTest, TestDecodeErrorAlert) {
   auto exc = expectError<FizzException>(
       actions, AlertDescription::decode_error, "read record layer error");
 
-  ASSERT_TRUE(exc.getAlert().hasValue());
+  ASSERT_TRUE(exc.getAlert().has_value());
   EXPECT_EQ(AlertDescription::decode_error, exc.getAlert().value());
 }
 
@@ -4765,7 +4765,7 @@ TEST_F(ServerProtocolTest, TestSocketDataFizzExceptionAlert) {
       AlertDescription::internal_error,
       "arbitrary fizzexception with alert");
 
-  ASSERT_TRUE(exc.getAlert().hasValue());
+  ASSERT_TRUE(exc.getAlert().has_value());
   EXPECT_EQ(AlertDescription::internal_error, exc.getAlert().value());
 }
 
@@ -4782,7 +4782,7 @@ TEST_F(ServerProtocolTest, TestSocketDataFizzExceptionNoAlert) {
   auto exc = expectError<FizzException>(
       actions, folly::none, "arbitrary fizzexception without alert");
 
-  EXPECT_FALSE(exc.getAlert().hasValue());
+  EXPECT_FALSE(exc.getAlert().has_value());
 }
 } // namespace test
 } // namespace server
