@@ -7,7 +7,7 @@
  */
 
 #include <fizz/protocol/BrotliCertificateCompressor.h>
-#include <brotli/encode.h>
+#include <enc/encode.h>
 
 using namespace folly;
 
@@ -27,45 +27,71 @@ CertificateCompressionAlgorithm BrotliCertificateCompressor::getAlgorithm()
 }
 
 namespace {
-namespace brotli1 {
-std::unique_ptr<IOBuf>
-brotliCompressImpl(int level, int windowSize, folly::ByteRange input) {
-  size_t upperBound = ::BrotliEncoderMaxCompressedSize(input.size());
-  if (upperBound == 0) {
-    throw std::runtime_error(
-        "Failed to compress certificate: could not calculate upper bound");
+class IOBufIn : public brotli::BrotliIn {
+ public:
+  explicit IOBufIn(IOBuf* src)
+      : originalLength_(src->computeChainDataLength()), cursor_(src) {}
+
+  const void* Read(size_t n, size_t* nread) override {
+    if (cursor_.isAtEnd()) {
+      return nullptr;
+    }
+    if (n == 0) {
+      *nread = 0;
+      return buf_.data();
+    }
+    buf_.resize(std::min(n, cursor_.totalLength()));
+    *nread = cursor_.pullAtMost(buf_.data(), buf_.size());
+    return buf_.data();
   }
 
-  size_t size = input.size();
-  auto compressed = IOBuf::create(upperBound);
-  if (!BrotliEncoderCompress(
-          level,
-          windowSize,
-          BROTLI_MODE_GENERIC,
-          input.size(),
-          input.data(),
-          &size,
-          compressed->writableTail())) {
-    throw std::runtime_error("Failed to compress certificate");
+  const size_t originalLength() {
+    return originalLength_;
   }
 
-  // |size|, if the BrotliEncoderCompress call succeeds, is modified to contain
-  // the compressed size.
-  compressed->append(size);
-  return compressed;
-}
-} // namespace brotli1
-using brotli1::brotliCompressImpl;
+ private:
+  std::vector<char> buf_{0};
+  size_t originalLength_;
+  folly::io::Cursor cursor_;
+};
+
+class IOBufOut : public brotli::BrotliOut {
+ public:
+  bool Write(const void* buf, size_t n) override {
+    queue_.append(buf, n);
+    return true;
+  }
+
+  std::unique_ptr<IOBuf> getBuffer() {
+    return queue_.move();
+  }
+
+ private:
+  IOBufQueue queue_;
+};
 } // namespace
 
 CompressedCertificate BrotliCertificateCompressor::compress(
     const CertificateMsg& cert) {
   auto encoded = encode(cert);
-  auto encodedRange = encoded->coalesce();
-  auto compressedCert = brotliCompressImpl(level_, windowSize_, encodedRange);
+  brotli::BrotliParams params;
+  params.quality = level_;
+  params.lgwin = windowSize_;
 
+  IOBufIn inputStream(encoded.get());
+  IOBufOut outputStream;
+  auto status = BrotliCompress(params, &inputStream, &outputStream);
+
+  if (status != 1) {
+    throw std::runtime_error("Failed to compress certificate");
+  }
+
+  auto compressedCert = outputStream.getBuffer();
+  if (!compressedCert) {
+    throw std::runtime_error("Failed to compress certificate: no output");
+  }
   CompressedCertificate cc;
-  cc.uncompressed_length = encodedRange.size();
+  cc.uncompressed_length = inputStream.originalLength();
   cc.algorithm = getAlgorithm();
   cc.compressed_certificate_message = std::move(compressedCert);
   return cc;

@@ -7,26 +7,11 @@
  */
 
 #include <fizz/protocol/BrotliCertificateDecompressor.h>
-
-#include <brotli/decode.h>
+#include <dec/decode.h>
 
 using namespace folly;
 
 namespace fizz {
-
-namespace {
-size_t brotliDecompressImpl(
-    folly::ByteRange input,
-    uint8_t* output,
-    size_t outputSize) {
-  auto status =
-      BrotliDecoderDecompress(input.size(), input.data(), &outputSize, output);
-  if (status != BrotliDecoderResult::BROTLI_DECODER_RESULT_SUCCESS) {
-    throw std::runtime_error("Decompressing certificate failed");
-  }
-  return outputSize;
-}
-} // namespace
 
 CertificateCompressionAlgorithm BrotliCertificateDecompressor::getAlgorithm()
     const {
@@ -47,14 +32,20 @@ CertificateMsg BrotliCertificateDecompressor::decompress(
   }
 
   auto rawCertMessage = IOBuf::create(cc.uncompressed_length);
+  size_t size = cc.uncompressed_length;
   auto compRange = cc.compressed_certificate_message->coalesce();
-  auto decompressedSize = brotliDecompressImpl(
-      compRange, rawCertMessage->writableData(), cc.uncompressed_length);
-  if (decompressedSize != cc.uncompressed_length) {
+  auto status = BrotliDecompressBuffer(
+      compRange.size(),
+      compRange.data(),
+      &size,
+      rawCertMessage->writableData());
+  if (status != BrotliResult::BROTLI_RESULT_SUCCESS) {
+    throw std::runtime_error("Decompressing certificate failed");
+  } else if (size != cc.uncompressed_length) {
     throw std::runtime_error("Uncompressed length incorrect");
   }
 
-  rawCertMessage->append(decompressedSize);
+  rawCertMessage->append(size);
   return decode<CertificateMsg>(std::move(rawCertMessage));
 }
 
