@@ -1024,7 +1024,7 @@ EventHandler<ServerTypes, StateEnum::ExpectingClientHello, Event::ClientHello>::
       state.context()->getReplayCache());
 
   auto results =
-      collectAll(resStateResult.futureResState, replayCacheResultFuture);
+      collectAllUnsafe(resStateResult.futureResState, replayCacheResultFuture);
 
   using FutureResultType = std::tuple<
       folly::Try<std::pair<PskType, Optional<ResumptionState>>>,
