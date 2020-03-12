@@ -53,23 +53,29 @@ std::vector<folly::ssl::X509UniquePtr> FizzUtil::readChainFile(
 
 folly::ssl::EvpPkeyUniquePtr FizzUtil::readPrivateKey(
     const std::string& filename,
-    const std::string& passwordFilename) {
+    const std::shared_ptr<folly::PasswordInFile>& pf) {
   std::string data;
   folly::readFile(filename.c_str(), data);
   try {
-    if (!passwordFilename.empty()) {
-      folly::PasswordInFile pf(passwordFilename);
-      return FizzUtil::decryptPrivateKey(data, &pf);
-    } else {
-      return FizzUtil::decryptPrivateKey(data, nullptr);
-    }
+    return FizzUtil::decryptPrivateKey(data, pf.get());
   } catch (std::runtime_error&) {
+    const char* pwFile = pf ? pf->describe().c_str() : "(none)";
     auto ex = folly::sformat(
         "Failed to read private key from file: {}, password file: {}",
         filename,
-        passwordFilename);
+        pwFile);
     std::throw_with_nested(std::runtime_error(ex));
   }
+}
+
+folly::ssl::EvpPkeyUniquePtr FizzUtil::readPrivateKey(
+    const std::string& filename,
+    const std::string& passwordFilename) {
+  std::shared_ptr<folly::PasswordInFile> pf;
+  if (!passwordFilename.empty()) {
+    pf = std::make_shared<folly::PasswordInFile>(passwordFilename);
+  }
+  return readPrivateKey(filename, pf);
 }
 
 folly::ssl::EvpPkeyUniquePtr FizzUtil::decryptPrivateKey(

@@ -28,6 +28,10 @@ class FizzUtil {
 
   static folly::ssl::EvpPkeyUniquePtr readPrivateKey(
       const std::string& filename,
+      const std::shared_ptr<folly::PasswordInFile>& pf);
+
+  static folly::ssl::EvpPkeyUniquePtr readPrivateKey(
+      const std::string& filename,
       const std::string& passwordFilename);
 
   // Fizz does not yet support randomized next protocols so we use the highest
