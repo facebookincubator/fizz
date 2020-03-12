@@ -106,7 +106,7 @@ void FizzBase<Derived, ActionMoveVisitor, StateMachine>::processActions(
 
   visitActions(actions);
 
-  actionGuard_.clear();
+  actionGuard_.reset();
   processPendingEvents();
 }
 
@@ -165,7 +165,7 @@ void FizzBase<Derived, ActionMoveVisitor, StateMachine>::
           break;
       }
     } else {
-      actionGuard_.clear();
+      actionGuard_.reset();
       return;
     }
 
