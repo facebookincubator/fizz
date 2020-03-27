@@ -16,7 +16,7 @@ namespace fizz {
 using folly::AsyncSocketException;
 
 /**
- * Min and max read buffer sizes when using non-mo
+ * Min and max read buffer sizes when using non-movable buffer.
  */
 static const uint32_t kMinReadSize = 1460;
 static const uint32_t kMaxReadSize = 4000;
@@ -27,6 +27,12 @@ static const uint32_t kMaxReadSize = 4000;
  */
 static const uint32_t kMaxBufSize = 64 * 1024;
 
+/**
+ * Buffer size above which we should break up shared writes, to avoid storing
+ * entire unencrypted and encrypted buffer simultaneously.
+ */
+static const uint32_t kPartialWriteThreshold = 128 * 1024;
+
 AsyncFizzBase::AsyncFizzBase(folly::AsyncTransportWrapper::UniquePtr transport)
     : folly::WriteChainAsyncTransportWrapper<folly::AsyncTransportWrapper>(
           std::move(transport)),
@@ -34,6 +40,9 @@ AsyncFizzBase::AsyncFizzBase(folly::AsyncTransportWrapper::UniquePtr transport)
 
 AsyncFizzBase::~AsyncFizzBase() {
   transport_->setReadCB(nullptr);
+  if (tailWriteRequest_) {
+    tailWriteRequest_->unlinkFromBase();
+  }
 }
 
 void AsyncFizzBase::destroy() {
@@ -66,15 +75,113 @@ void AsyncFizzBase::setReadCB(AsyncFizzBase::ReadCallback* callback) {
   }
 }
 
+AsyncFizzBase::QueuedWriteRequest::QueuedWriteRequest(
+    AsyncFizzBase* base,
+    folly::AsyncTransportWrapper::WriteCallback* callback,
+    std::unique_ptr<folly::IOBuf> data,
+    folly::WriteFlags flags)
+    : asyncFizzBase_(base), callback_(callback), flags_(flags) {
+  data_.append(std::move(data));
+}
+
+void AsyncFizzBase::QueuedWriteRequest::startWriting() {
+  auto buf = data_.splitAtMost(kPartialWriteThreshold);
+
+  auto flags = flags_;
+  if (!data_.empty()) {
+    flags |= folly::WriteFlags::CORK;
+  }
+  dataWritten_ += buf->computeChainDataLength();
+
+  CHECK(asyncFizzBase_);
+  asyncFizzBase_->writeAppData(this, std::move(buf), flags);
+}
+
+void AsyncFizzBase::QueuedWriteRequest::append(QueuedWriteRequest* request) {
+  if (next_) {
+    next_->append(request);
+  } else {
+    next_ = request;
+  }
+}
+
+void AsyncFizzBase::QueuedWriteRequest::unlinkFromBase() {
+  asyncFizzBase_ = nullptr;
+}
+
+void AsyncFizzBase::QueuedWriteRequest::writeSuccess() noexcept {
+  if (!data_.empty()) {
+    startWriting();
+  } else {
+    advanceOnBase();
+    auto callback = callback_;
+    auto next = next_;
+    auto base = asyncFizzBase_;
+    delete this;
+
+    DelayedDestruction::DestructorGuard dg(base);
+
+    if (callback) {
+      callback->writeSuccess();
+    }
+    if (next) {
+      next->startWriting();
+    }
+  }
+}
+
+void AsyncFizzBase::QueuedWriteRequest::writeErr(
+    size_t /* written */,
+    const folly::AsyncSocketException& ex) noexcept {
+  advanceOnBase();
+  auto callback = callback_;
+  auto next = next_;
+  auto dataWritten = dataWritten_;
+  delete this;
+
+  if (callback) {
+    callback->writeErr(dataWritten, ex);
+  }
+  if (next) {
+    next->writeErr(0, ex);
+  }
+}
+
+void AsyncFizzBase::QueuedWriteRequest::advanceOnBase() {
+  if (!next_ && asyncFizzBase_) {
+    CHECK_EQ(asyncFizzBase_->tailWriteRequest_, this);
+    asyncFizzBase_->tailWriteRequest_ = nullptr;
+  }
+}
+
 void AsyncFizzBase::writeChain(
     folly::AsyncTransportWrapper::WriteCallback* callback,
     std::unique_ptr<folly::IOBuf>&& buf,
     folly::WriteFlags flags) {
-  appBytesWritten_ += buf->computeChainDataLength();
+  auto writeSize = buf->computeChainDataLength();
+  appBytesWritten_ += writeSize;
 
-  // TODO: break up buf into multiple records
+  // We want to split up and queue large writes to avoid simultaneously storing
+  // unencrypted and encrypted large buffer in memory. We can skip this if the
+  // buffer is unshared (because we can encrypt in-place). We also skip this
+  // when sending early data to avoid the possibility of splitting writes
+  // between early data and normal data.
+  bool needsToQueue = writeSize > kPartialWriteThreshold && buf->isShared() &&
+      !connecting() && isReplaySafe();
+  if (tailWriteRequest_ || needsToQueue) {
+    auto newWriteRequest =
+        new QueuedWriteRequest(this, callback, std::move(buf), flags);
 
-  writeAppData(callback, std::move(buf), flags);
+    if (tailWriteRequest_) {
+      tailWriteRequest_->append(newWriteRequest);
+      tailWriteRequest_ = newWriteRequest;
+    } else {
+      tailWriteRequest_ = newWriteRequest;
+      newWriteRequest->startWriting();
+    }
+  } else {
+    writeAppData(callback, std::move(buf), flags);
+  }
 }
 
 size_t AsyncFizzBase::getAppBytesWritten() const {

@@ -261,6 +261,38 @@ class AsyncFizzBase : public folly::WriteChainAsyncTransportWrapper<
   folly::IOBufQueue transportReadBuf_{folly::IOBufQueue::cacheChainLength()};
 
  private:
+  class QueuedWriteRequest
+      : private folly::AsyncTransportWrapper::WriteCallback {
+   public:
+    QueuedWriteRequest(
+        AsyncFizzBase* base,
+        folly::AsyncTransportWrapper::WriteCallback* callback,
+        std::unique_ptr<folly::IOBuf> data,
+        folly::WriteFlags flags);
+
+    void startWriting();
+
+    void append(QueuedWriteRequest* request);
+
+    void unlinkFromBase();
+
+   private:
+    void writeSuccess() noexcept override;
+
+    void writeErr(size_t, const folly::AsyncSocketException&) noexcept override;
+
+    void advanceOnBase();
+
+    AsyncFizzBase* asyncFizzBase_;
+    folly::AsyncTransportWrapper::WriteCallback* callback_;
+    folly::IOBufQueue data_{folly::IOBufQueue::cacheChainLength()};
+    folly::WriteFlags flags_;
+
+    size_t dataWritten_{0};
+
+    QueuedWriteRequest* next_{nullptr};
+  };
+
   /**
    * ReadCallback implementation.
    */
@@ -289,6 +321,8 @@ class AsyncFizzBase : public folly::WriteChainAsyncTransportWrapper<
 
   size_t appBytesWritten_{0};
   size_t appBytesReceived_{0};
+
+  QueuedWriteRequest* tailWriteRequest_{nullptr};
 
   HandshakeTimeout handshakeTimeout_;
 

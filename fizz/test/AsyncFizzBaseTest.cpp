@@ -21,6 +21,8 @@ using namespace folly;
 using namespace folly::test;
 using namespace testing;
 
+static const uint32_t kPartialWriteThreshold = 128 * 1024;
+
 /**
  * The test class itself implements AsyncFizzBase so that it has access to the
  * app data interfaces.
@@ -33,6 +35,8 @@ class AsyncFizzBaseTest : public testing::Test, public AsyncFizzBase {
             AsyncTransportWrapper::UniquePtr(new MockAsyncTransport())) {
     socket_ = getUnderlyingTransport<MockAsyncTransport>();
     ON_CALL(*this, good()).WillByDefault(Return(true));
+    ON_CALL(*this, isReplaySafe()).WillByDefault(Return(true));
+    ON_CALL(*this, connecting()).WillByDefault(Return(false));
   }
 
   void TearDown() override {
@@ -102,16 +106,50 @@ class AsyncFizzBaseTest : public testing::Test, public AsyncFizzBase {
         .WillOnce(SaveArg<0>(&transportReadCallback_));
   }
 
+  void expectWrite(
+      char repeatedData,
+      size_t len,
+      folly::AsyncTransportWrapper::WriteCallback** callbackToSave = nullptr) {
+    EXPECT_CALL(*this, writeAppDataInternal(_, _, _))
+        .InSequence(writeSeq_)
+        .WillOnce(
+            Invoke([repeatedData, len, callbackToSave](
+                       folly::AsyncTransportWrapper::WriteCallback* callback,
+                       std::shared_ptr<folly::IOBuf> buf,
+                       folly::WriteFlags) {
+              EXPECT_EQ(buf->computeChainDataLength(), len);
+              folly::io::Cursor c(buf.get());
+              while (!c.isAtEnd()) {
+                EXPECT_EQ(c.read<char>(), repeatedData);
+              }
+
+              if (callbackToSave) {
+                *callbackToSave = callback;
+              } else if (callback) {
+                callback->writeSuccess();
+              }
+            }));
+  }
+
   MockAsyncTransport* socket_;
   StrictMock<folly::test::MockReadCallback> readCallback_;
   ReadCallback* transportReadCallback_;
   AsyncSocketException ase_{AsyncSocketException::UNKNOWN, "unit test"};
   AsyncSocketException eof_{AsyncSocketException::END_OF_FILE, "unit test eof"};
   Sequence readBufSeq_;
+  Sequence writeSeq_;
   std::vector<uint8_t> readBuf_;
 };
 
 namespace {
+
+std::unique_ptr<folly::IOBuf> getBuf(char repeatedData, size_t len) {
+  auto buf = folly::IOBuf::create(len);
+  memset(buf->writableData(), repeatedData, len);
+  buf->append(len);
+  return buf;
+}
+
 class MockSecretCallback : public AsyncFizzBase::SecretCallback {
  public:
   MOCK_METHOD1(externalPskBinderAvailable_, void(const std::vector<uint8_t>&));
@@ -613,6 +651,179 @@ TEST_F(AsyncFizzBaseTest, TestSecretAvailable) {
   EXPECT_CALL(cb, serverAppTrafficSecretAvailable_(_))
       .WillOnce(Invoke(checkSecret(serverAppSecret)));
   secretAvailable(serverAppSecret);
+}
+
+TEST_F(AsyncFizzBaseTest, TestWriteBuffering) {
+  AsyncTransportWrapper::WriteCallback* wcb;
+
+  expectWrite('a', kPartialWriteThreshold, &wcb);
+  auto buf = getBuf('a', kPartialWriteThreshold + 1);
+  writeChain(nullptr, buf->clone());
+
+  expectWrite('a', 1);
+  wcb->writeSuccess();
+}
+
+TEST_F(AsyncFizzBaseTest, TestNoWriteBufferingUnshared) {
+  expectWrite('a', kPartialWriteThreshold * 10);
+  auto buf = getBuf('a', kPartialWriteThreshold * 10);
+  writeChain(nullptr, std::move(buf));
+}
+
+TEST_F(AsyncFizzBaseTest, TestNoWriteBufferingConnecting) {
+  EXPECT_CALL(*this, connecting()).WillRepeatedly(Return(true));
+
+  expectWrite('a', kPartialWriteThreshold * 10);
+  auto buf = getBuf('a', kPartialWriteThreshold * 10);
+  writeChain(nullptr, buf->clone());
+}
+
+TEST_F(AsyncFizzBaseTest, TestNoWriteBufferingReplayUnsafe) {
+  EXPECT_CALL(*this, isReplaySafe()).WillRepeatedly(Return(false));
+
+  expectWrite('a', kPartialWriteThreshold * 10);
+  auto buf = getBuf('a', kPartialWriteThreshold * 10);
+  writeChain(nullptr, buf->clone());
+}
+
+TEST_F(AsyncFizzBaseTest, TestWriteBufferingUnbufferedAfter) {
+  AsyncTransportWrapper::WriteCallback* wcb;
+
+  expectWrite('a', kPartialWriteThreshold, &wcb);
+  auto buf = getBuf('a', kPartialWriteThreshold + 1);
+  writeChain(nullptr, buf->clone());
+
+  expectWrite('a', 1);
+  wcb->writeSuccess();
+
+  expectWrite('b', 100);
+  writeChain(nullptr, getBuf('b', 100));
+}
+
+TEST_F(AsyncFizzBaseTest, TestWriteBufferingSmallWritesFollowing) {
+  AsyncTransportWrapper::WriteCallback* wcb;
+
+  expectWrite('a', kPartialWriteThreshold, &wcb);
+  auto buf = getBuf('a', kPartialWriteThreshold * 3);
+  writeChain(nullptr, buf->clone());
+
+  expectWrite('a', kPartialWriteThreshold);
+  expectWrite('a', kPartialWriteThreshold);
+  expectWrite('b', 200);
+  expectWrite('c', 75);
+
+  writeChain(nullptr, getBuf('b', 200));
+  writeChain(nullptr, getBuf('c', 75));
+
+  wcb->writeSuccess();
+}
+
+TEST_F(AsyncFizzBaseTest, TestWriteBufferingSuccessCallbacks) {
+  AsyncTransportWrapper::WriteCallback* wcb;
+  StrictMock<folly::test::MockWriteCallback> cb1;
+  StrictMock<folly::test::MockWriteCallback> cb2;
+
+  expectWrite('a', kPartialWriteThreshold, &wcb);
+  auto buf = getBuf('a', kPartialWriteThreshold * 3);
+  writeChain(&cb1, buf->clone());
+
+  expectWrite('a', kPartialWriteThreshold);
+  expectWrite('a', kPartialWriteThreshold);
+  EXPECT_CALL(cb1, writeSuccess_()).InSequence(writeSeq_);
+  expectWrite('b', 200);
+  EXPECT_CALL(cb2, writeSuccess_()).InSequence(writeSeq_);
+
+  writeChain(&cb2, getBuf('b', 200));
+
+  wcb->writeSuccess();
+}
+
+TEST_F(AsyncFizzBaseTest, TestWriteBufferingError) {
+  AsyncTransportWrapper::WriteCallback* wcb;
+  StrictMock<folly::test::MockWriteCallback> cb1;
+  StrictMock<folly::test::MockWriteCallback> cb2;
+
+  expectWrite('a', kPartialWriteThreshold, &wcb);
+  auto buf = getBuf('a', kPartialWriteThreshold * 3);
+  writeChain(&cb1, buf->clone());
+
+  writeChain(&cb2, getBuf('b', 100));
+
+  EXPECT_CALL(cb1, writeErr_(kPartialWriteThreshold, _)).InSequence(writeSeq_);
+  EXPECT_CALL(cb2, writeErr_(0, _)).InSequence(writeSeq_);
+
+  wcb->writeErr(kPartialWriteThreshold, ase_);
+}
+
+TEST_F(AsyncFizzBaseTest, TestWriteBufferingMixedSuccessError) {
+  AsyncTransportWrapper::WriteCallback* wcb;
+  AsyncTransportWrapper::WriteCallback* wcb2;
+  StrictMock<folly::test::MockWriteCallback> cb1;
+  StrictMock<folly::test::MockWriteCallback> cb2;
+
+  expectWrite('a', kPartialWriteThreshold, &wcb);
+  auto buf = getBuf('a', kPartialWriteThreshold * 3);
+  writeChain(&cb1, buf->clone());
+
+  expectWrite('a', kPartialWriteThreshold);
+  expectWrite('a', kPartialWriteThreshold);
+  EXPECT_CALL(cb1, writeSuccess_()).InSequence(writeSeq_);
+
+  auto buf2 = getBuf('b', kPartialWriteThreshold * 3);
+  writeChain(&cb2, buf2->clone());
+
+  expectWrite('b', kPartialWriteThreshold);
+  expectWrite('b', kPartialWriteThreshold, &wcb2);
+
+  wcb->writeSuccess();
+
+  EXPECT_CALL(cb2, writeErr_(kPartialWriteThreshold * 2, _))
+      .InSequence(writeSeq_);
+  wcb2->writeErr(kPartialWriteThreshold, ase_);
+}
+
+TEST_F(AsyncFizzBaseTest, TestWriteBufferingCork) {
+  EXPECT_CALL(*this, writeAppDataInternal(_, _, _))
+      .InSequence(writeSeq_)
+      .WillOnce(Invoke([](folly::AsyncTransportWrapper::WriteCallback* callback,
+                          std::shared_ptr<folly::IOBuf> buf,
+                          folly::WriteFlags flags) {
+        EXPECT_EQ(buf->computeChainDataLength(), kPartialWriteThreshold);
+        EXPECT_EQ(flags, folly::WriteFlags::CORK);
+        callback->writeSuccess();
+      }));
+
+  EXPECT_CALL(*this, writeAppDataInternal(_, _, _))
+      .InSequence(writeSeq_)
+      .WillOnce(Invoke([](folly::AsyncTransportWrapper::WriteCallback* callback,
+                          std::shared_ptr<folly::IOBuf> buf,
+                          folly::WriteFlags flags) {
+        EXPECT_EQ(buf->computeChainDataLength(), 1);
+        EXPECT_EQ(flags, folly::WriteFlags::NONE);
+        callback->writeSuccess();
+      }));
+
+  auto buf = getBuf('a', kPartialWriteThreshold + 1);
+  writeChain(nullptr, buf->clone());
+}
+
+TEST_F(AsyncFizzBaseTest, TestWriteBufferingWriteInCallback) {
+  AsyncTransportWrapper::WriteCallback* wcb;
+  StrictMock<folly::test::MockWriteCallback> cb;
+
+  expectWrite('a', kPartialWriteThreshold, &wcb);
+  auto buf = getBuf('a', kPartialWriteThreshold + 1);
+  writeChain(&cb, buf->clone());
+
+  expectWrite('a', 1);
+  EXPECT_CALL(cb, writeSuccess_())
+      .InSequence(writeSeq_)
+      .WillOnce(Invoke([this]() {
+        expectWrite('b', 200);
+        writeChain(nullptr, getBuf('b', 200));
+      }));
+
+  wcb->writeSuccess();
 }
 } // namespace test
 } // namespace fizz
