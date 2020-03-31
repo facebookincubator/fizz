@@ -92,6 +92,7 @@ enum class ExtensionType : uint16_t {
   application_layer_protocol_negotiation = 16,
   token_binding = 24,
   compress_certificate = 27,
+  delegated_credential = 34,
   pre_shared_key = 41,
   early_data = 42,
   supported_versions = 43,
@@ -104,7 +105,7 @@ enum class ExtensionType : uint16_t {
   quic_transport_parameters = 0xffa5,
 
   // alternate_server_name = 0xfb00,
-  delegated_credential = 0xff02,
+  // draft_delegated_credential = 0xff02,
   test_extension = 0xff03,
   thrift_parameters = 0xff41,
 };

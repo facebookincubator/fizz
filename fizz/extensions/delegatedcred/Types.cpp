@@ -39,14 +39,17 @@ folly::Optional<DelegatedCredentialSupport> getExtension(
   if (it == extensions.end()) {
     return folly::none;
   }
-  return DelegatedCredentialSupport();
+  DelegatedCredentialSupport supp;
+  folly::io::Cursor cursor(it->extension_data.get());
+  detail::readVector<uint16_t>(supp.supported_signature_algorithms, cursor);
+  return supp;
 }
 
 namespace extensions {
 Extension encodeExtension(const DelegatedCredential& cred) {
   Extension ext;
   ext.extension_type = ExtensionType::delegated_credential;
-  ext.extension_data = folly::IOBuf::create(0);
+  ext.extension_data = folly::IOBuf::create(10);
   folly::io::Appender appender(ext.extension_data.get(), 10);
   detail::write(cred.valid_time, appender);
   detail::write(cred.expected_verify_scheme, appender);
@@ -56,10 +59,12 @@ Extension encodeExtension(const DelegatedCredential& cred) {
   return ext;
 }
 
-Extension encodeExtension(const DelegatedCredentialSupport&) {
+Extension encodeExtension(const DelegatedCredentialSupport& supp) {
   Extension ext;
   ext.extension_type = ExtensionType::delegated_credential;
-  ext.extension_data = folly::IOBuf::create(0);
+  ext.extension_data = folly::IOBuf::create(10);
+  folly::io::Appender appender(ext.extension_data.get(), 10);
+  detail::writeVector<uint16_t>(supp.supported_signature_algorithms, appender);
   return ext;
 }
 } // namespace extensions

@@ -27,6 +27,7 @@ struct DelegatedCredential {
 struct DelegatedCredentialSupport {
   static constexpr ExtensionType extension_type =
       ExtensionType::delegated_credential;
+  std::vector<SignatureScheme> supported_signature_algorithms;
 };
 
 Extension encodeExtension(const extensions::DelegatedCredential& cred);

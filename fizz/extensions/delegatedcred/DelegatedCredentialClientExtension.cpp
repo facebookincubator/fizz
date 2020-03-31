@@ -13,7 +13,9 @@ namespace extensions {
 std::vector<Extension>
 DelegatedCredentialClientExtension::getClientHelloExtensions() const {
   std::vector<Extension> clientExtensions;
-  clientExtensions.push_back(encodeExtension(DelegatedCredentialSupport()));
+  DelegatedCredentialSupport supp;
+  supp.supported_signature_algorithms = supportedSchemes_;
+  clientExtensions.push_back(encodeExtension(std::move(supp)));
   return clientExtensions;
 }
 

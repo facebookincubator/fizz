@@ -15,9 +15,14 @@ namespace extensions {
 
 class DelegatedCredentialClientExtension : public ClientExtensions {
  public:
+  explicit DelegatedCredentialClientExtension(
+      std::vector<SignatureScheme> schemes)
+      : supportedSchemes_(std::move(schemes)) {}
+
   std::vector<Extension> getClientHelloExtensions() const override;
 
   void onEncryptedExtensions(const std::vector<Extension>& extensions) override;
+  std::vector<SignatureScheme> supportedSchemes_;
 };
 } // namespace extensions
 } // namespace fizz

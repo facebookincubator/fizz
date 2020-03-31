@@ -556,7 +556,8 @@ int fizzClientCommand(const std::vector<std::string>& args) {
     clientContext->setFactory(
         std::make_shared<extensions::DelegatedCredentialFactory>());
     extensions =
-        std::make_shared<extensions::DelegatedCredentialClientExtension>();
+        std::make_shared<extensions::DelegatedCredentialClientExtension>(
+            clientContext->getSupportedSigSchemes());
   }
 
   try {
