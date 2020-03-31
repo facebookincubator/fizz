@@ -42,7 +42,7 @@ folly::Optional<DelegatedCredentialSupport> getExtension(
   return DelegatedCredentialSupport();
 }
 
-template <>
+namespace extensions {
 Extension encodeExtension(const DelegatedCredential& cred) {
   Extension ext;
   ext.extension_type = ExtensionType::delegated_credential;
@@ -56,12 +56,12 @@ Extension encodeExtension(const DelegatedCredential& cred) {
   return ext;
 }
 
-template <>
 Extension encodeExtension(const DelegatedCredentialSupport&) {
   Extension ext;
   ext.extension_type = ExtensionType::delegated_credential;
   ext.extension_data = folly::IOBuf::create(0);
   return ext;
 }
+} // namespace extensions
 
 } // namespace fizz

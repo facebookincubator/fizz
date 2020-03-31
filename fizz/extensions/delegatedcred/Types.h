@@ -20,10 +20,18 @@ struct DelegatedCredential {
   Buf public_key;
   SignatureScheme credential_scheme;
   Buf signature;
+  static constexpr ExtensionType extension_type =
+      ExtensionType::delegated_credential;
 };
 
-struct DelegatedCredentialSupport {};
+struct DelegatedCredentialSupport {
+  static constexpr ExtensionType extension_type =
+      ExtensionType::delegated_credential;
+};
 
+Extension encodeExtension(const extensions::DelegatedCredential& cred);
+
+Extension encodeExtension(const extensions::DelegatedCredentialSupport& cs);
 } // namespace extensions
 
 template <>
@@ -31,6 +39,7 @@ folly::Optional<extensions::DelegatedCredential> getExtension(
     const std::vector<Extension>& extensions);
 
 template <>
-Extension encodeExtension(const extensions::DelegatedCredential& cred);
+folly::Optional<extensions::DelegatedCredentialSupport> getExtension(
+    const std::vector<Extension>& extensions);
 
 } // namespace fizz
