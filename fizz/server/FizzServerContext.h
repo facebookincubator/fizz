@@ -187,13 +187,16 @@ class FizzServerContext {
   }
 
   /**
-   * Chooses a certificate based on given sni and peer signature schemes.
+   * Chooses a certificate based on given sni and peer signature schemes +
+   * extensions.
    */
   folly::Optional<std::pair<std::shared_ptr<SelfCert>, SignatureScheme>>
   getCert(
       const folly::Optional<std::string>& sni,
-      const std::vector<SignatureScheme>& peerSigSchemes) const {
-    return certManager_->getCert(sni, supportedSigSchemes_, peerSigSchemes);
+      const std::vector<SignatureScheme>& peerSigSchemes,
+      const std::vector<Extension>& peerExtensions) const {
+    return certManager_->getCert(
+        sni, supportedSigSchemes_, peerSigSchemes, peerExtensions);
   }
 
   /**

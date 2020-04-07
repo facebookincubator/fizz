@@ -45,7 +45,8 @@ CertManager::CertMatch CertManager::findCert(
 CertManager::CertMatch CertManager::getCert(
     const Optional<std::string>& sni,
     const std::vector<SignatureScheme>& supportedSigSchemes,
-    const std::vector<SignatureScheme>& peerSigSchemes) const {
+    const std::vector<SignatureScheme>& peerSigSchemes,
+    const std::vector<Extension>& /*peerExtensions*/) const {
   CertMatch lastResort;
   if (sni) {
     auto key = *sni;

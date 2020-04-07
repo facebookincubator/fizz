@@ -894,8 +894,8 @@ static std::pair<std::shared_ptr<SelfCert>, SignatureScheme> chooseCert(
               .toStdString();
   }
 
-  auto certAndScheme =
-      context.getCert(sni, clientSigSchemes->supported_signature_algorithms);
+  auto certAndScheme = context.getCert(
+      sni, clientSigSchemes->supported_signature_algorithms, chlo.extensions);
   if (!certAndScheme) {
     throw FizzException(
         "could not find suitable cert", AlertDescription::handshake_failure);

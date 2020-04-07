@@ -25,14 +25,15 @@ class CertManager {
 
   /**
    * Select a cert given a client supplied SNI value, server
-   * supportedSigSchemes, and client peerSigSchemes.
+   * supportedSigSchemes, client peerSigSchemes, and client peerExtensions
    *
    * Will ignore peerSigSchemes if no matching certificate is found.
    */
   virtual CertMatch getCert(
       const folly::Optional<std::string>& sni,
       const std::vector<SignatureScheme>& supportedSigSchemes,
-      const std::vector<SignatureScheme>& peerSigSchemes) const;
+      const std::vector<SignatureScheme>& peerSigSchemes,
+      const std::vector<Extension>& peerExtensions) const;
 
   /**
    * Return a certificate with the a primary identity exactly matching identity.

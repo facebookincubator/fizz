@@ -186,12 +186,13 @@ using MockAsyncFizzServer = MockAsyncFizzServerT<ServerStateMachine>;
 
 class MockCertManager : public CertManager {
  public:
-  MOCK_CONST_METHOD3(
+  MOCK_CONST_METHOD4(
       getCert,
       CertMatch(
           const folly::Optional<std::string>& sni,
           const std::vector<SignatureScheme>& supportedSigSchemes,
-          const std::vector<SignatureScheme>& peerSigSchemes));
+          const std::vector<SignatureScheme>& peerSigSchemes,
+          const std::vector<Extension>& peerExtensions));
   MOCK_CONST_METHOD1(
       getCert,
       std::shared_ptr<SelfCert>(const std::string& identity));

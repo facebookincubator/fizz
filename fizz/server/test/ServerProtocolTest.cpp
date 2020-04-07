@@ -51,7 +51,7 @@ class ServerProtocolTest : public ProtocolTest<ServerTypes, Actions> {
     clock_ = std::make_shared<MockClock>();
     context_->setClock(clock_);
 
-    ON_CALL(*certManager_, getCert(_, _, _))
+    ON_CALL(*certManager_, getCert(_, _, _, _))
         .WillByDefault(Return(CertManager::CertMatch(
             std::make_pair(cert_, SignatureScheme::ecdsa_secp256r1_sha256))));
     ON_CALL(*certManager_, getCert(_)).WillByDefault(Return(cert_));
@@ -621,11 +621,12 @@ TEST_F(ServerProtocolTest, TestClientHelloFullHandshakeFlow) {
       &appwrl, &appwaead, StringPiece("sat"), nullptr, &recSeq);
   EXPECT_CALL(*mockHandshakeContext_, appendToTranscript(_))
       .InSequence(contextSeq);
-  EXPECT_CALL(*certManager_, getCert(_, _, _))
+  EXPECT_CALL(*certManager_, getCert(_, _, _, _))
       .WillOnce(Invoke(
           [=](const folly::Optional<std::string>& sni,
               const std::vector<SignatureScheme>& /* supportedSigSchemes */,
-              const std::vector<SignatureScheme>& peerSigSchemes) {
+              const std::vector<SignatureScheme>& peerSigSchemes,
+              const std::vector<Extension>& /* peerExtensions */) {
             EXPECT_EQ(*sni, "www.hostname.com");
             EXPECT_EQ(peerSigSchemes.size(), 2);
             EXPECT_EQ(
@@ -872,11 +873,12 @@ TEST_F(ServerProtocolTest, TestClientHelloCompressedCertFlow) {
       &appwrl, &appwaead, StringPiece("sat"), nullptr, &recSeq);
   EXPECT_CALL(*mockHandshakeContext_, appendToTranscript(_))
       .InSequence(contextSeq);
-  EXPECT_CALL(*certManager_, getCert(_, _, _))
+  EXPECT_CALL(*certManager_, getCert(_, _, _, _))
       .WillOnce(Invoke(
           [=](const folly::Optional<std::string>& sni,
               const std::vector<SignatureScheme>& /* supportedSigSchemes */,
-              const std::vector<SignatureScheme>& peerSigSchemes) {
+              const std::vector<SignatureScheme>& peerSigSchemes,
+              const std::vector<Extension>& /* peerExtensions */) {
             EXPECT_EQ(*sni, "www.hostname.com");
             EXPECT_EQ(peerSigSchemes.size(), 2);
             EXPECT_EQ(
@@ -1127,11 +1129,12 @@ TEST_F(ServerProtocolTest, TestClientHelloCertRequestFlow) {
       .InSequence(contextSeq);
   EXPECT_CALL(*mockHandshakeContext_, appendToTranscript(_))
       .InSequence(contextSeq);
-  EXPECT_CALL(*certManager_, getCert(_, _, _))
+  EXPECT_CALL(*certManager_, getCert(_, _, _, _))
       .WillOnce(Invoke(
           [=](const folly::Optional<std::string>& sni,
               const std::vector<SignatureScheme>& /* supportedSigSchemes */,
-              const std::vector<SignatureScheme>& peerSigSchemes) {
+              const std::vector<SignatureScheme>& peerSigSchemes,
+              const std::vector<Extension>& /* peerExtensions */) {
             EXPECT_EQ(*sni, "www.hostname.com");
             EXPECT_EQ(peerSigSchemes.size(), 2);
             EXPECT_EQ(
@@ -1868,11 +1871,12 @@ TEST_F(ServerProtocolTest, TestRetryClientHelloFullHandshakeFlow) {
       &appwrl, &appwaead, StringPiece("sat"), nullptr, &recSeq);
   EXPECT_CALL(*mockHandshakeContext_, appendToTranscript(_))
       .InSequence(contextSeq);
-  EXPECT_CALL(*certManager_, getCert(_, _, _))
+  EXPECT_CALL(*certManager_, getCert(_, _, _, _))
       .WillOnce(Invoke(
           [=](const folly::Optional<std::string>& sni,
               const std::vector<SignatureScheme>& /* supportedSigSchemes */,
-              const std::vector<SignatureScheme>& peerSigSchemes) {
+              const std::vector<SignatureScheme>& peerSigSchemes,
+              const std::vector<Extension>& /* peerExtensions */) {
             EXPECT_EQ(*sni, "www.hostname.com");
             EXPECT_EQ(peerSigSchemes.size(), 2);
             EXPECT_EQ(
