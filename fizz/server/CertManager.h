@@ -41,9 +41,11 @@ class CertManager {
    */
   virtual std::shared_ptr<SelfCert> getCert(const std::string& identity) const;
 
-  void addCert(std::shared_ptr<SelfCert> cert, bool defaultCert = false);
+  virtual void addCert(
+      std::shared_ptr<SelfCert> cert,
+      bool defaultCert = false);
 
- private:
+ protected:
   CertMatch findCert(
       const std::string& key,
       const std::vector<SignatureScheme>& supportedSigSchemes,
@@ -53,6 +55,8 @@ class CertManager {
   void addCertIdentity(
       std::shared_ptr<SelfCert> cert,
       const std::string& ident);
+
+  static std::string getKeyFromIdent(const std::string& ident);
 
   using SigSchemeMap = std::map<SignatureScheme, std::shared_ptr<SelfCert>>;
   std::unordered_map<std::string, SigSchemeMap> certs_;

@@ -91,7 +91,7 @@ std::shared_ptr<SelfCert> CertManager::getCert(
   return it->second;
 }
 
-static std::string getKeyFromIdent(const std::string& ident) {
+std::string CertManager::getKeyFromIdent(const std::string& ident) {
   if (ident.empty()) {
     throw std::runtime_error("empty identity");
   }
