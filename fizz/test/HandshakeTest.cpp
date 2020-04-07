@@ -111,9 +111,8 @@ TEST_F(HandshakeTest, SchemeMismatch) {
       {SignatureScheme::ecdsa_secp256r1_sha256});
   serverContext_->setSupportedSigSchemes({SignatureScheme::rsa_pss_sha256});
 
-  // The server will try using its RSA cert anyway, so it will be the client
-  // that actually rejects that.
-  expectError("unsupported sig scheme", "alert: illegal_parameter");
+  // Server will fail to negotiate a cert match
+  expectError("alert: handshake_failure", "could not find suitable cert");
   doHandshake();
 }
 

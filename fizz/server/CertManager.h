@@ -18,8 +18,13 @@ namespace server {
 
 class CertManager {
  public:
-  using CertMatch =
-      folly::Optional<std::pair<std::shared_ptr<SelfCert>, SignatureScheme>>;
+  enum class MatchType { Direct, Default };
+  struct CertMatchStruct {
+    std::shared_ptr<SelfCert> cert;
+    SignatureScheme scheme;
+    MatchType type;
+  };
+  using CertMatch = folly::Optional<CertMatchStruct>;
 
   virtual ~CertManager() = default;
 
@@ -49,8 +54,7 @@ class CertManager {
   CertMatch findCert(
       const std::string& key,
       const std::vector<SignatureScheme>& supportedSigSchemes,
-      const std::vector<SignatureScheme>& peerSigSchemes,
-      CertMatch& lastResort) const;
+      const std::vector<SignatureScheme>& peerSigSchemes) const;
 
   void addCertIdentity(
       std::shared_ptr<SelfCert> cert,

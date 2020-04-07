@@ -52,8 +52,11 @@ class ServerProtocolTest : public ProtocolTest<ServerTypes, Actions> {
     context_->setClock(clock_);
 
     ON_CALL(*certManager_, getCert(_, _, _, _))
-        .WillByDefault(Return(CertManager::CertMatch(
-            std::make_pair(cert_, SignatureScheme::ecdsa_secp256r1_sha256))));
+        .WillByDefault(
+            Return(CertManager::CertMatch(CertManager::CertMatchStruct{
+                cert_,
+                SignatureScheme::ecdsa_secp256r1_sha256,
+                CertManager::MatchType::Direct})));
     ON_CALL(*certManager_, getCert(_)).WillByDefault(Return(cert_));
 
     ON_CALL(*clock_, getCurrentTime())
@@ -632,8 +635,10 @@ TEST_F(ServerProtocolTest, TestClientHelloFullHandshakeFlow) {
             EXPECT_EQ(
                 peerSigSchemes[0], SignatureScheme::ecdsa_secp256r1_sha256);
             EXPECT_EQ(peerSigSchemes[1], SignatureScheme::rsa_pss_sha256);
-            return CertManager::CertMatch(
-                std::make_pair(cert_, SignatureScheme::ecdsa_secp256r1_sha256));
+            return CertManager::CertMatch(CertManager::CertMatchStruct{
+                cert_,
+                SignatureScheme::ecdsa_secp256r1_sha256,
+                CertManager::MatchType::Direct});
           }));
   EXPECT_CALL(*cert_, _getCertMessage(_));
   EXPECT_CALL(*mockHandshakeContext_, appendToTranscript(_))
@@ -884,8 +889,10 @@ TEST_F(ServerProtocolTest, TestClientHelloCompressedCertFlow) {
             EXPECT_EQ(
                 peerSigSchemes[0], SignatureScheme::ecdsa_secp256r1_sha256);
             EXPECT_EQ(peerSigSchemes[1], SignatureScheme::rsa_pss_sha256);
-            return CertManager::CertMatch(
-                std::make_pair(cert_, SignatureScheme::ecdsa_secp256r1_sha256));
+            return CertManager::CertMatch(CertManager::CertMatchStruct{
+                cert_,
+                SignatureScheme::ecdsa_secp256r1_sha256,
+                CertManager::MatchType::Direct});
           }));
   context_->setSupportedCompressionAlgorithms(
       {CertificateCompressionAlgorithm::zlib});
@@ -1140,8 +1147,10 @@ TEST_F(ServerProtocolTest, TestClientHelloCertRequestFlow) {
             EXPECT_EQ(
                 peerSigSchemes[0], SignatureScheme::ecdsa_secp256r1_sha256);
             EXPECT_EQ(peerSigSchemes[1], SignatureScheme::rsa_pss_sha256);
-            return CertManager::CertMatch(
-                std::make_pair(cert_, SignatureScheme::ecdsa_secp256r1_sha256));
+            return CertManager::CertMatch(CertManager::CertMatchStruct{
+                cert_,
+                SignatureScheme::ecdsa_secp256r1_sha256,
+                CertManager::MatchType::Direct});
           }));
   EXPECT_CALL(*cert_, _getCertMessage(_));
   EXPECT_CALL(*mockHandshakeContext_, appendToTranscript(_))
@@ -1882,8 +1891,10 @@ TEST_F(ServerProtocolTest, TestRetryClientHelloFullHandshakeFlow) {
             EXPECT_EQ(
                 peerSigSchemes[0], SignatureScheme::ecdsa_secp256r1_sha256);
             EXPECT_EQ(peerSigSchemes[1], SignatureScheme::rsa_pss_sha256);
-            return CertManager::CertMatch(
-                std::make_pair(cert_, SignatureScheme::ecdsa_secp256r1_sha256));
+            return CertManager::CertMatch(CertManager::CertMatchStruct{
+                cert_,
+                SignatureScheme::ecdsa_secp256r1_sha256,
+                CertManager::MatchType::Direct});
           }));
   EXPECT_CALL(*cert_, _getCertMessage(_));
   EXPECT_CALL(*mockHandshakeContext_, appendToTranscript(_))

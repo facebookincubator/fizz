@@ -15,14 +15,11 @@ using namespace folly;
 namespace fizz {
 namespace server {
 
-// Find a matching cert given a key. If lastResort is none the first cert found
-// (by supportedSigSchemes priority) matching key but not peerSigSchemes will be
-// saved in lastResort.
+// Find a matching cert given a key.
 CertManager::CertMatch CertManager::findCert(
     const std::string& key,
     const std::vector<SignatureScheme>& supportedSigSchemes,
-    const std::vector<SignatureScheme>& peerSigSchemes,
-    CertMatch& lastResort) const {
+    const std::vector<SignatureScheme>& peerSigSchemes) const {
   auto it = certs_.find(key);
   if (it == certs_.end()) {
     return none;
@@ -34,9 +31,7 @@ CertManager::CertMatch CertManager::findCert(
     }
     if (std::find(peerSigSchemes.begin(), peerSigSchemes.end(), scheme) !=
         peerSigSchemes.end()) {
-      return std::make_pair(cert->second, scheme);
-    } else if (!lastResort) {
-      lastResort = std::make_pair(cert->second, scheme);
+      return CertMatchStruct{cert->second, scheme, MatchType::Direct};
     }
   }
   return none;
@@ -47,12 +42,11 @@ CertManager::CertMatch CertManager::getCert(
     const std::vector<SignatureScheme>& supportedSigSchemes,
     const std::vector<SignatureScheme>& peerSigSchemes,
     const std::vector<Extension>& /*peerExtensions*/) const {
-  CertMatch lastResort;
   if (sni) {
     auto key = *sni;
     toLowerAscii(key);
 
-    auto ret = findCert(key, supportedSigSchemes, peerSigSchemes, lastResort);
+    auto ret = findCert(key, supportedSigSchemes, peerSigSchemes);
     if (ret) {
       VLOG(8) << "Found exact SNI match for: " << key;
       return ret;
@@ -62,7 +56,7 @@ CertManager::CertMatch CertManager::getCert(
     if (dot != std::string::npos) {
       std::string wildcardKey(key, dot);
       ret = findCert(
-          wildcardKey, supportedSigSchemes, peerSigSchemes, lastResort);
+          wildcardKey, supportedSigSchemes, peerSigSchemes);
       if (ret) {
         VLOG(8) << "Found wildcard SNI match for: " << key;
         return ret;
@@ -73,13 +67,14 @@ CertManager::CertMatch CertManager::getCert(
   }
 
   auto ret =
-      findCert(default_, supportedSigSchemes, peerSigSchemes, lastResort);
+      findCert(default_, supportedSigSchemes, peerSigSchemes);
   if (ret) {
+    ret->type = MatchType::Default;
     return ret;
   }
 
   VLOG(8) << "No matching cert for client sig schemes found";
-  return lastResort;
+  return folly::none;
 }
 
 std::shared_ptr<SelfCert> CertManager::getCert(
