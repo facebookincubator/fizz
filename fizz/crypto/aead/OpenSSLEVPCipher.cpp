@@ -195,13 +195,14 @@ std::unique_ptr<folly::IOBuf> evpEncrypt(
     size_t tagLen,
     bool useBlockOps,
     size_t headroom,
-    EVP_CIPHER_CTX* encryptCtx) {
+    EVP_CIPHER_CTX* encryptCtx,
+    bool forceInplace) {
   auto inputLength = plaintext->computeChainDataLength();
   // Setup input and output buffers.
   std::unique_ptr<folly::IOBuf> output;
   folly::IOBuf* input;
 
-  if (plaintext->isShared()) {
+  if (!forceInplace && plaintext->isShared()) {
     // create enough to also fit the tag and headroom
     output = folly::IOBuf::create(headroom + inputLength + tagLen);
     output->advance(headroom);
@@ -243,6 +244,9 @@ std::unique_ptr<folly::IOBuf> evpEncrypt(
   // output is always something we can modify
   auto tailRoom = output->prev()->tailroom();
   if (tailRoom < tagLen) {
+    if (forceInplace) {
+      throw std::runtime_error("Cannot encrypt inplace.");
+    }
     std::unique_ptr<folly::IOBuf> tag = folly::IOBuf::create(tagLen);
     tag->append(tagLen);
     if (EVP_CIPHER_CTX_ctrl(
@@ -421,7 +425,24 @@ std::unique_ptr<folly::IOBuf> OpenSSLEVPCipher::encrypt(
       tagLength_,
       operatesInBlocks_,
       headroom_,
-      encryptCtx_.get());
+      encryptCtx_.get(),
+      false /*forceInplace*/);
+}
+
+std::unique_ptr<folly::IOBuf> OpenSSLEVPCipher::inplaceEncrypt(
+    std::unique_ptr<folly::IOBuf>&& plaintext,
+    const folly::IOBuf* associatedData,
+    uint64_t seqNum) const {
+  auto iv = createIV(seqNum);
+  return detail::evpEncrypt(
+      std::move(plaintext),
+      associatedData,
+      folly::ByteRange(iv.data(), ivLength_),
+      tagLength_,
+      operatesInBlocks_,
+      headroom_,
+      encryptCtx_.get(),
+      true /*forceInplace*/);
 }
 
 folly::Optional<std::unique_ptr<folly::IOBuf>> OpenSSLEVPCipher::tryDecrypt(

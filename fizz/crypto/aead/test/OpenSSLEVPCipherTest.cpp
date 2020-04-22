@@ -91,7 +91,17 @@ std::unique_ptr<folly::IOBuf> callEncrypt(
     aad = toIOBuf(params.aad);
   }
   auto ptCopy = copyBuffer(*plaintext);
+  // Make two versions, one for each encrypt API.
+  auto ptInplace = copyBuffer(*plaintext);
+  auto ptInplaceShared = ptInplace->cloneAsValue();
+  ptInplace->prependChain(folly::IOBuf::create(cipher->getCipherOverhead()));
+  EXPECT_TRUE(ptInplace->isShared());
+  auto inplaceData = ptInplace->data();
   auto out = cipher->encrypt(std::move(plaintext), aad.get(), params.seqNum);
+  auto inplaceOut =
+      cipher->inplaceEncrypt(std::move(ptInplace), aad.get(), params.seqNum);
+  EXPECT_EQ(inplaceOut->data(), inplaceData);
+  EXPECT_TRUE(IOBufEqualTo()(out, inplaceOut));
   bool valid = IOBufEqualTo()(toIOBuf(params.ciphertext), out);
 
   EXPECT_EQ(valid, params.valid);

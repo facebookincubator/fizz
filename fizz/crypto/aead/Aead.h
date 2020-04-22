@@ -50,6 +50,15 @@ class Aead {
       uint64_t seqNum) const = 0;
 
   /**
+   * Version of encrypt which is guaranteed to be inplace. Will throw an
+   * exception if the inplace encryption cannot be done.
+   */
+  virtual std::unique_ptr<folly::IOBuf> inplaceEncrypt(
+      std::unique_ptr<folly::IOBuf>&& plaintext,
+      const folly::IOBuf* associatedData,
+      uint64_t seqNum) const = 0;
+
+  /**
    * Set a hint to the AEAD about how much space to try to leave as headroom for
    * ciphertexts returned from encrypt.  Implementations may or may not honor
    * this.

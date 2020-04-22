@@ -23,7 +23,8 @@ std::unique_ptr<folly::IOBuf> evpEncrypt(
     size_t tagLen,
     bool useBlockOps,
     size_t headroom,
-    EVP_CIPHER_CTX* encryptCtx);
+    EVP_CIPHER_CTX* encryptCtx,
+    bool forceInplace);
 } // namespace detail
 
 template <typename EVPImpl>

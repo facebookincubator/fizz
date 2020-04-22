@@ -43,6 +43,19 @@ class MockAead : public Aead {
   }
 
   MOCK_CONST_METHOD3(
+      _inplaceEncrypt,
+      std::unique_ptr<folly::IOBuf>(
+          std::unique_ptr<folly::IOBuf>& plaintext,
+          const folly::IOBuf* associatedData,
+          uint64_t seqNum));
+  std::unique_ptr<folly::IOBuf> inplaceEncrypt(
+      std::unique_ptr<folly::IOBuf>&& plaintext,
+      const folly::IOBuf* associatedData,
+      uint64_t seqNum) const override {
+    return _inplaceEncrypt(plaintext, associatedData, seqNum);
+  }
+
+  MOCK_CONST_METHOD3(
       _decrypt,
       std::unique_ptr<folly::IOBuf>(
           std::unique_ptr<folly::IOBuf>& ciphertext,
