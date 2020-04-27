@@ -33,18 +33,9 @@ set(LIB_INSTALL_DIR lib CACHE STRING
 set(CMAKE_INSTALL_DIR lib/cmake/fizz CACHE STRING
     "The subdirectory where CMake package config files should be installed")
 
-# Try finding folly via its installed CMake configuration file first.
-# This should work if folly was built with CMake.
-find_package(folly CONFIG)
-if (NOT folly_FOUND)
-  # Look for folly using our FindFolly.cmake module.  This may work if the
-  # folly was built with its older autoconf build files rather than with CMake.
-  find_package(Folly MODULE REQUIRED)
-endif()
+find_package(folly CONFIG REQUIRED)
 find_package(fmt CONFIG REQUIRED)
 
-find_package(Boost REQUIRED COMPONENTS system thread filesystem regex context
-                                       program_options)
 find_package(OpenSSL REQUIRED)
 find_package(Glog REQUIRED)
 find_package(DoubleConversion REQUIRED)
@@ -210,7 +201,6 @@ target_include_directories(
     $<BUILD_INTERFACE:${FIZZ_BASE_DIR}>
     $<INSTALL_INTERFACE:${INCLUDE_INSTALL_DIR}>
     ${FOLLY_INCLUDE_DIR}
-    ${Boost_INCLUDE_DIR}
     ${OPENSSL_INCLUDE_DIR}
     ${sodium_INCLUDE_DIR}
   PRIVATE
@@ -223,7 +213,6 @@ target_include_directories(
 target_link_libraries(fizz
   PUBLIC
     ${FOLLY_LIBRARIES}
-    ${Boost_LIBRARIES}
     ${OPENSSL_LIBRARIES}
     # Don't use the sodium target here because it will break clients that
     # consume fizz's exported targets (fizz-targets.cmake) since the sodium
