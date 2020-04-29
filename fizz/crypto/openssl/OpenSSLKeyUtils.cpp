@@ -31,6 +31,18 @@ void validateECKey(const folly::ssl::EvpPkeyUniquePtr& key, int curveNid) {
   }
 }
 
+#if FIZZ_OPENSSL_HAS_ED25519
+void validateEdKey(const folly::ssl::EvpPkeyUniquePtr& key, int curveNid) {
+  int pkeyNid = EVP_PKEY_base_id(key.get());
+  if (pkeyNid != NID_ED25519 && pkeyNid != NID_ED448) {
+    throw std::runtime_error("Wrong key type");
+  }
+  if (pkeyNid != curveNid) {
+    throw std::runtime_error("Invalid group");
+  }
+}
+#endif
+
 std::unique_ptr<folly::IOBuf> generateEvpSharedSecret(
     const folly::ssl::EvpPkeyUniquePtr& key,
     const folly::ssl::EvpPkeyUniquePtr& peerKey) {

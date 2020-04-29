@@ -17,6 +17,32 @@
 namespace fizz {
 namespace test {
 
+constexpr folly::StringPiece kEd25519Key = R"(
+-----BEGIN PRIVATE KEY-----
+MC4CAQAwBQYDK2VwBCIEINDCVMS1CMCgqf2SUdOQl/1ilCd67zNqlImeOBP8DJFr
+-----END PRIVATE KEY-----
+)";
+
+constexpr folly::StringPiece kEd25519PublicKey = R"(
+-----BEGIN PUBLIC KEY-----
+MCowBQYDK2VwAyEAvXS5jZQpYCHV3DziV9F6PrH7zmd44/jO793mczej1+o=
+-----END PUBLIC KEY-----
+)";
+
+constexpr folly::StringPiece kEd448Key = R"(
+-----BEGIN PRIVATE KEY-----
+MEcCAQAwBQYDK2VxBDsEOWdYg9tVktUUJwpDTtti6D2MuDb1M7rZ+uIhZSddLhu0
+375Dom/0xZsdKhEuisrgYNJa9OH7ST7YOA==
+-----END PRIVATE KEY-----
+)";
+
+constexpr folly::StringPiece kEd448PublicKey = R"(
+-----BEGIN PUBLIC KEY-----
+MEMwBQYDK2VxAzoAHIz+4aGo1599po9r6UXFle3rwi/CnyESbACf4SwNLQX+fIZL
+j/XXTLbAqyQUskY6VdUc1olg4ssA
+-----END PUBLIC KEY-----
+)";
+
 constexpr folly::StringPiece kP256Key = R"(
 -----BEGIN EC PRIVATE KEY-----
 MHcCAQEEIHMPeLV/nP/gkcgU2weiXl198mEX8RbFjPRoXuGcpxMXoAoGCCqGSM49
