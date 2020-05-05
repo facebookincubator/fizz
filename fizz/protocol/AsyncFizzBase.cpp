@@ -133,6 +133,18 @@ void AsyncFizzBase::QueuedWriteRequest::writeSuccess() noexcept {
 void AsyncFizzBase::QueuedWriteRequest::writeErr(
     size_t /* written */,
     const folly::AsyncSocketException& ex) noexcept {
+  // Deliver the error to all queued writes, starting with this one. We avoid
+  // recursively calling writeErr as that can cause excesssive stack usage if
+  // there are a large number of queued writes.
+  QueuedWriteRequest* errorToDeliver = this;
+  while (errorToDeliver) {
+    errorToDeliver = errorToDeliver->deliverSingleWriteErr(ex);
+  }
+}
+
+AsyncFizzBase::QueuedWriteRequest*
+AsyncFizzBase::QueuedWriteRequest::deliverSingleWriteErr(
+    const folly::AsyncSocketException& ex) {
   advanceOnBase();
   auto callback = callback_;
   auto next = next_;
@@ -142,9 +154,8 @@ void AsyncFizzBase::QueuedWriteRequest::writeErr(
   if (callback) {
     callback->writeErr(dataWritten, ex);
   }
-  if (next) {
-    next->writeErr(0, ex);
-  }
+
+  return next;
 }
 
 void AsyncFizzBase::QueuedWriteRequest::advanceOnBase() {

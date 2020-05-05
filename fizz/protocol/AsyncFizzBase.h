@@ -281,6 +281,9 @@ class AsyncFizzBase : public folly::WriteChainAsyncTransportWrapper<
 
     void writeErr(size_t, const folly::AsyncSocketException&) noexcept override;
 
+    QueuedWriteRequest* deliverSingleWriteErr(
+        const folly::AsyncSocketException&);
+
     void advanceOnBase();
 
     AsyncFizzBase* asyncFizzBase_;
