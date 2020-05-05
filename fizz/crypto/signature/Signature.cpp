@@ -8,6 +8,7 @@
 
 #include <fizz/crypto/signature/Signature.h>
 #include <fizz/crypto/openssl/OpenSSLKeyUtils.h>
+#include <openssl/crypto.h>
 
 #include <folly/Conv.h>
 #include <folly/ScopeGuard.h>
@@ -80,6 +81,65 @@ void ecVerify(
     throw std::runtime_error("Signature verification failed");
   }
 }
+
+#if FIZZ_OPENSSL_HAS_ED25519
+std::unique_ptr<folly::IOBuf> edSign(
+    folly::ByteRange data,
+    const folly::ssl::EvpPkeyUniquePtr& pkey) {
+  folly::ssl::EvpMdCtxUniquePtr mdCtx(EVP_MD_CTX_new());
+  if (!mdCtx) {
+    throw std::runtime_error(
+        to<std::string>("Could not allocate EVP_MD_CTX", getOpenSSLError()));
+  }
+  if (EVP_DigestSignInit(mdCtx.get(), NULL, NULL, NULL, pkey.get()) != 1) {
+    throw std::runtime_error("Could not initialize digest signature");
+  }
+  auto out = folly::IOBuf::create(EVP_PKEY_size(pkey.get()));
+  size_t bytesWritten = out->capacity();
+
+  // Sign & verify APIs for EdDSA exist in OpenSSL only as one-shot digest APIs
+  // because they are implemented using PureEdDSA, which only provides one-shot
+  // digest APIs. See https://www.openssl.org/docs/manmaster/man7/Ed25519.html
+  // for more details on this constraint.
+  if (EVP_DigestSign(
+          mdCtx.get(),
+          out->writableData(),
+          &bytesWritten,
+          data.data(),
+          data.size()) != 1) {
+    throw std::runtime_error("Failed to sign");
+  }
+  out->append(bytesWritten);
+  return out;
+}
+
+void edVerify(
+    folly::ByteRange data,
+    folly::ByteRange signature,
+    const folly::ssl::EvpPkeyUniquePtr& pkey) {
+  folly::ssl::EvpMdCtxUniquePtr mdCtx(EVP_MD_CTX_new());
+  if (!mdCtx) {
+    throw std::runtime_error(
+        to<std::string>("Could not allocate EVP_MD_CTX", getOpenSSLError()));
+  }
+  if (EVP_DigestVerifyInit(mdCtx.get(), NULL, NULL, NULL, pkey.get()) != 1) {
+    throw std::runtime_error("Could not initialize digest signature");
+  }
+
+  // Sign & verify APIs for EdDSA exist in OpenSSL only as one-shot digest APIs
+  // because they are implemented using PureEdDSA, which only provides one-shot
+  // digest APIs. See https://www.openssl.org/docs/manmaster/man7/Ed25519.html
+  // for more details on this constraint.
+  if (EVP_DigestVerify(
+          mdCtx.get(),
+          signature.data(),
+          signature.size(),
+          data.data(),
+          data.size()) != 1) {
+    throw std::runtime_error("Signature verification failed");
+  }
+}
+#endif
 
 std::unique_ptr<folly::IOBuf> rsaPssSign(
     folly::ByteRange data,

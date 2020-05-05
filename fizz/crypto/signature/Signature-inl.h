@@ -6,6 +6,7 @@
  *  LICENSE file in the root directory of this source tree.
  */
 
+#include <fizz/crypto/openssl/OpenSSL.h>
 #include <fizz/crypto/openssl/OpenSSLKeyUtils.h>
 #include <folly/io/IOBuf.h>
 #include <folly/lang/Assume.h>
@@ -24,6 +25,17 @@ void ecVerify(
     folly::ByteRange signature,
     const folly::ssl::EvpPkeyUniquePtr& pkey,
     int hashNid);
+
+#if FIZZ_OPENSSL_HAS_ED25519
+std::unique_ptr<folly::IOBuf> edSign(
+    folly::ByteRange data,
+    const folly::ssl::EvpPkeyUniquePtr& pkey);
+
+void edVerify(
+    folly::ByteRange data,
+    folly::ByteRange signature,
+    const folly::ssl::EvpPkeyUniquePtr& pkey);
+#endif
 
 std::unique_ptr<folly::IOBuf> rsaPssSign(
     folly::ByteRange data,
