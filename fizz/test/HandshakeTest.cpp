@@ -254,7 +254,7 @@ TEST_F(HandshakeTest, TestExtensions) {
       TokenBindingKeyParameters::ecdsap256);
   EXPECT_EQ(
       *clientTokBind->getVersion(),
-      TokenBindingProtocolVersion::token_binding_0_14);
+      TokenBindingProtocolVersion::token_binding_1_0);
   EXPECT_EQ(
       *serverTokBind->getNegotiatedKeyParam(),
       TokenBindingKeyParameters::ecdsap256);

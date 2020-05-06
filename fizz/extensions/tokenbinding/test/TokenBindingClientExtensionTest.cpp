@@ -40,13 +40,13 @@ class TokenBindingClientExtensionTest : public Test {
 
 TEST_F(TokenBindingClientExtensionTest, TestValidCheckExtensions) {
   setUpServerHelloExtensions(
-      TokenBindingProtocolVersion::token_binding_0_14,
+      TokenBindingProtocolVersion::token_binding_1_0,
       TokenBindingKeyParameters::ecdsap256);
   extensions_->onEncryptedExtensions(serverExtensions_);
   EXPECT_TRUE(extensions_->getVersion().has_value());
   EXPECT_EQ(
       extensions_->getVersion(),
-      TokenBindingProtocolVersion::token_binding_0_14);
+      TokenBindingProtocolVersion::token_binding_1_0);
   EXPECT_TRUE(extensions_->getNegotiatedKeyParam().has_value());
   EXPECT_EQ(
       extensions_->getNegotiatedKeyParam(),
@@ -61,40 +61,15 @@ TEST_F(TokenBindingClientExtensionTest, TestNoExtensions) {
 
 TEST_F(TokenBindingClientExtensionTest, TestServerBadKeyParam) {
   setUpServerHelloExtensions(
-      TokenBindingProtocolVersion::token_binding_0_14,
+      TokenBindingProtocolVersion::token_binding_1_0,
       TokenBindingKeyParameters::rsa2048_pss);
   context_->setSupportedVersions(std::vector<TokenBindingProtocolVersion>{
-      TokenBindingProtocolVersion::token_binding_0_12});
+      TokenBindingProtocolVersion::token_binding_1_0});
   context_->setSupportedKeyParameters(std::vector<TokenBindingKeyParameters>{
       TokenBindingKeyParameters::rsa2048_pkcs1_5});
 
   EXPECT_THROW(
       extensions_->onEncryptedExtensions(serverExtensions_), FizzException);
-  EXPECT_FALSE(extensions_->getVersion().has_value());
-  EXPECT_FALSE(extensions_->getNegotiatedKeyParam().has_value());
-}
-
-TEST_F(TokenBindingClientExtensionTest, TestServerHigherVersion) {
-  setUpServerHelloExtensions(
-      TokenBindingProtocolVersion::token_binding_0_14,
-      TokenBindingKeyParameters::ecdsap256);
-  context_->setSupportedVersions(std::vector<TokenBindingProtocolVersion>{
-      TokenBindingProtocolVersion::token_binding_0_12});
-
-  EXPECT_THROW(
-      extensions_->onEncryptedExtensions(serverExtensions_), FizzException);
-  EXPECT_FALSE(extensions_->getVersion().has_value());
-  EXPECT_FALSE(extensions_->getNegotiatedKeyParam().has_value());
-}
-
-TEST_F(TokenBindingClientExtensionTest, TestServerLowerVersion) {
-  setUpServerHelloExtensions(
-      TokenBindingProtocolVersion::token_binding_0_12,
-      TokenBindingKeyParameters::ecdsap256);
-  context_->setSupportedVersions(std::vector<TokenBindingProtocolVersion>{
-      TokenBindingProtocolVersion::token_binding_0_14});
-
-  extensions_->onEncryptedExtensions(serverExtensions_);
   EXPECT_FALSE(extensions_->getVersion().has_value());
   EXPECT_FALSE(extensions_->getNegotiatedKeyParam().has_value());
 }

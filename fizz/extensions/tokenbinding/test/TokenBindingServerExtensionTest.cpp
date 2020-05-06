@@ -15,7 +15,6 @@
 #include <fizz/record/Extensions.h>
 #include <fizz/server/ServerExtensions.h>
 
-
 using namespace testing;
 
 namespace fizz {
@@ -56,7 +55,7 @@ class TokenBindingServerExtensionTest : public Test {
 
 TEST_F(TokenBindingServerExtensionTest, TestFullNegotiationFlow) {
   setUpTokenBindingWithParameters(
-      TokenBindingProtocolVersion::token_binding_0_14,
+      TokenBindingProtocolVersion::token_binding_1_0,
       TokenBindingKeyParameters::ecdsap256);
   auto exts = extensions_->getExtensions(chlo_);
   EXPECT_EQ(exts.size(), 1);
@@ -64,7 +63,7 @@ TEST_F(TokenBindingServerExtensionTest, TestFullNegotiationFlow) {
   auto tokenBindingExtension = getExtension<TokenBindingParameters>(exts);
   verifyExtensionFields(
       tokenBindingExtension,
-      TokenBindingProtocolVersion::token_binding_0_14,
+      TokenBindingProtocolVersion::token_binding_1_0,
       TokenBindingKeyParameters::ecdsap256);
 }
 
@@ -75,7 +74,7 @@ TEST_F(TokenBindingServerExtensionTest, TestNoExtensions) {
 
 TEST_F(TokenBindingServerExtensionTest, TestIncompatibleKeyParam) {
   setUpTokenBindingWithParameters(
-      TokenBindingProtocolVersion::token_binding_0_14,
+      TokenBindingProtocolVersion::token_binding_1_0,
       TokenBindingKeyParameters::ecdsap256);
   std::vector<TokenBindingKeyParameters> keyParams = {
       TokenBindingKeyParameters::rsa2048_pss};
@@ -85,32 +84,6 @@ TEST_F(TokenBindingServerExtensionTest, TestIncompatibleKeyParam) {
   EXPECT_EQ(exts.size(), 0);
 }
 
-TEST_F(TokenBindingServerExtensionTest, TestIncompatibleVersion) {
-  setUpTokenBindingWithParameters(
-      TokenBindingProtocolVersion::token_binding_0_13,
-      TokenBindingKeyParameters::ecdsap256);
-
-  auto exts = extensions_->getExtensions(chlo_);
-  EXPECT_EQ(exts.size(), 0);
-}
-
-TEST_F(TokenBindingServerExtensionTest, TestServerLowerVersion) {
-  setUpTokenBindingWithParameters(
-      TokenBindingProtocolVersion::token_binding_0_14,
-      TokenBindingKeyParameters::ecdsap256);
-  std::vector<TokenBindingProtocolVersion> versions = {
-      TokenBindingProtocolVersion::token_binding_0_13};
-
-  tokenBindingContext_->setSupportedVersions(std::move(versions));
-  auto exts = extensions_->getExtensions(chlo_);
-  EXPECT_EQ(exts.size(), 1);
-
-  auto tokenBindingExtension = getExtension<TokenBindingParameters>(exts);
-  verifyExtensionFields(
-      tokenBindingExtension,
-      TokenBindingProtocolVersion::token_binding_0_13,
-      TokenBindingKeyParameters::ecdsap256);
-}
 } // namespace test
 } // namespace extensions
 } // namespace fizz

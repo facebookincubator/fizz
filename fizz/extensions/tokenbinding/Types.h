@@ -20,12 +20,7 @@ constexpr folly::StringPiece kTokenBindingExporterLabel{
     "EXPORTER-Token-Binding"};
 
 enum class TokenBindingProtocolVersion : uint16_t {
-  token_binding_0_10 = 0x000a,
-  token_binding_0_11 = 0x000b,
-  token_binding_0_12 = 0x000c,
-  token_binding_0_13 = 0x000d,
-  token_binding_0_14 = 0x000e,
-  token_binding_0_15 = 0x000f,
+  token_binding_1_0 = 0x0100,
 };
 
 std::string toString(TokenBindingProtocolVersion);

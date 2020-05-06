@@ -52,7 +52,7 @@ class TokenBindingContext {
 
  private:
   std::vector<TokenBindingProtocolVersion> supportedVersions_ = {
-      TokenBindingProtocolVersion::token_binding_0_14};
+      TokenBindingProtocolVersion::token_binding_1_0};
 
   std::vector<TokenBindingKeyParameters> supportedKeyParams_ = {
       TokenBindingKeyParameters::ecdsap256};

@@ -66,18 +66,8 @@ size_t getSize<TokenBinding>(const TokenBinding& tokenBinding) {
 
 std::string extensions::toString(TokenBindingProtocolVersion version) {
   switch (version) {
-    case TokenBindingProtocolVersion::token_binding_0_10:
-      return "Token Binding v1-draft-10";
-    case TokenBindingProtocolVersion::token_binding_0_11:
-      return "Token Binding v1-draft-11";
-    case TokenBindingProtocolVersion::token_binding_0_12:
-      return "Token Binding v1-draft-12";
-    case TokenBindingProtocolVersion::token_binding_0_13:
-      return "Token Binding v1-draft-13";
-    case TokenBindingProtocolVersion::token_binding_0_14:
-      return "Token Binding v1-draft-14";
-    case TokenBindingProtocolVersion::token_binding_0_15:
-      return "Token Binding v1-draft-15";
+    case TokenBindingProtocolVersion::token_binding_1_0:
+      return "Token Binding v1";
   }
 
   return enumToHex(version);

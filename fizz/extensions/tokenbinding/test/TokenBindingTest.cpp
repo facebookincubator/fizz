@@ -19,8 +19,7 @@ using namespace fizz::extensions;
 
 using namespace folly;
 
-
-StringPiece tokenBinding{"00180004000d0102"};
+StringPiece tokenBinding{"0018000401000102"};
 
 // Received from chrome using ServerSocket.cpp
 StringPiece tokenBindingMessage{
@@ -33,7 +32,7 @@ TEST_F(ExtensionsTest, TokenBindingParameters) {
   auto exts = getExtensions(tokenBinding);
   auto ext = getExtension<TokenBindingParameters>(exts);
 
-  EXPECT_EQ(ext->version, TokenBindingProtocolVersion::token_binding_0_13);
+  EXPECT_EQ(ext->version, TokenBindingProtocolVersion::token_binding_1_0);
   EXPECT_EQ(ext->key_parameters_list.size(), 1);
   EXPECT_EQ(ext->key_parameters_list[0], TokenBindingKeyParameters::ecdsap256);
 
@@ -87,34 +86,10 @@ TEST_F(ExtensionsTest, TokenBindingMessageSelfCreated) {
       decodedId.key_parameters, TokenBindingKeyParameters::rsa2048_pkcs1_5);
 }
 
-TEST(ContextTest, TestAscendingVersionsNotSet) {
-  std::vector<TokenBindingProtocolVersion> ascending{
-      TokenBindingProtocolVersion::token_binding_0_10,
-      TokenBindingProtocolVersion::token_binding_0_11,
-      TokenBindingProtocolVersion::token_binding_0_12};
-  TokenBindingContext ctx;
-  auto before = ctx.getSupportedVersions();
-  EXPECT_THROW(ctx.setSupportedVersions(ascending), std::runtime_error);
-  auto after = ctx.getSupportedVersions();
-  EXPECT_EQ(before, after);
-}
-
-TEST(ContextTest, TestShuffledNotSet) {
-  std::vector<TokenBindingProtocolVersion> shuffled{
-      TokenBindingProtocolVersion::token_binding_0_10,
-      TokenBindingProtocolVersion::token_binding_0_13,
-      TokenBindingProtocolVersion::token_binding_0_12};
-  TokenBindingContext ctx;
-  auto before = ctx.getSupportedVersions();
-  EXPECT_THROW(ctx.setSupportedVersions(shuffled), std::runtime_error);
-  auto after = ctx.getSupportedVersions();
-  EXPECT_EQ(before, after);
-}
-
 TEST(ContextTest, TestDoubleNotSet) {
   std::vector<TokenBindingProtocolVersion> two{
-      TokenBindingProtocolVersion::token_binding_0_10,
-      TokenBindingProtocolVersion::token_binding_0_11};
+      TokenBindingProtocolVersion::token_binding_1_0,
+      TokenBindingProtocolVersion::token_binding_1_0};
   TokenBindingContext ctx;
   auto before = ctx.getSupportedVersions();
   EXPECT_THROW(ctx.setSupportedVersions(two), std::runtime_error);
@@ -132,44 +107,12 @@ TEST(ContextTest, TestEmptySet) {
 
 TEST(ContextTest, TestSingleSet) {
   std::vector<TokenBindingProtocolVersion> single{
-      TokenBindingProtocolVersion::token_binding_0_10};
+      TokenBindingProtocolVersion::token_binding_1_0};
   TokenBindingContext ctx;
   ctx.setSupportedVersions(single);
   auto after = ctx.getSupportedVersions();
   EXPECT_EQ(single, after);
 }
 
-TEST(ContextTest, TestDescendingVersionsSet) {
-  std::vector<TokenBindingProtocolVersion> descending{
-      TokenBindingProtocolVersion::token_binding_0_12,
-      TokenBindingProtocolVersion::token_binding_0_11,
-      TokenBindingProtocolVersion::token_binding_0_10};
-  TokenBindingContext ctx;
-  ctx.setSupportedVersions(descending);
-  auto after = ctx.getSupportedVersions();
-  EXPECT_EQ(descending, after);
-}
-
-TEST(ContextTest, TestDoubleSet) {
-  std::vector<TokenBindingProtocolVersion> two{
-      TokenBindingProtocolVersion::token_binding_0_11,
-      TokenBindingProtocolVersion::token_binding_0_10};
-  TokenBindingContext ctx;
-  ctx.setSupportedVersions(two);
-  auto after = ctx.getSupportedVersions();
-  EXPECT_EQ(two, after);
-}
-
-TEST(ContextTest, TestDescendingDuplicatesNotSet) {
-  std::vector<TokenBindingProtocolVersion> duplicate{
-      TokenBindingProtocolVersion::token_binding_0_12,
-      TokenBindingProtocolVersion::token_binding_0_11,
-      TokenBindingProtocolVersion::token_binding_0_11};
-  TokenBindingContext ctx;
-  auto before = ctx.getSupportedVersions();
-  EXPECT_THROW(ctx.setSupportedVersions(duplicate), std::runtime_error);
-  auto after = ctx.getSupportedVersions();
-  EXPECT_EQ(before, after);
-}
 } // namespace test
 } // namespace fizz
