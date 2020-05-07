@@ -129,19 +129,9 @@ std::unique_ptr<PeerCert> CertUtils::makePeerCert(
   throw std::runtime_error("unknown peer cert type");
 }
 
-namespace {
-
-std::unique_ptr<SelfCert> selfCertFromDataInternal(
-    std::string certData,
+folly::ssl::EvpPkeyUniquePtr CertUtils::readPrivateKeyFromBuffer(
     std::string keyData,
-    char* password,
-    const std::vector<std::shared_ptr<CertificateCompressor>>& compressors) {
-  auto certs = folly::ssl::OpenSSLCertUtils::readCertsFromBuffer(
-      folly::StringPiece(certData));
-  if (certs.empty()) {
-    throw std::runtime_error("no certificates read");
-  }
-
+    char* password) {
   folly::ssl::BioUniquePtr b(BIO_new_mem_buf(
       const_cast<void*>( // needed by openssl 1.0.2d at least
           reinterpret_cast<const void*>(keyData.data())),
@@ -157,6 +147,24 @@ std::unique_ptr<SelfCert> selfCertFromDataInternal(
   if (!key) {
     throw std::runtime_error("Failed to read key");
   }
+
+  return key;
+}
+
+namespace {
+
+std::unique_ptr<SelfCert> selfCertFromDataInternal(
+    std::string certData,
+    std::string keyData,
+    char* password,
+    const std::vector<std::shared_ptr<CertificateCompressor>>& compressors) {
+  auto certs = folly::ssl::OpenSSLCertUtils::readCertsFromBuffer(
+      folly::StringPiece(certData));
+  if (certs.empty()) {
+    throw std::runtime_error("no certificates read");
+  }
+
+  auto key = CertUtils::readPrivateKeyFromBuffer(std::move(keyData), password);
 
   return CertUtils::makeSelfCert(std::move(certs), std::move(key), compressors);
 }

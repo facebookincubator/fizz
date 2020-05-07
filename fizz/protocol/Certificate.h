@@ -119,6 +119,10 @@ class CertUtils {
       const std::vector<std::shared_ptr<CertificateCompressor>>& compressors =
           {});
 
+  static folly::ssl::EvpPkeyUniquePtr readPrivateKeyFromBuffer(
+      std::string keyData,
+      char* password = nullptr);
+
   /**
    * Returns the key type for a public/private key.
    */
