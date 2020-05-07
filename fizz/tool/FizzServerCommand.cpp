@@ -8,6 +8,8 @@
 
 #include <fizz/crypto/aead/AESGCM128.h>
 #include <fizz/crypto/aead/OpenSSLEVPCipher.h>
+#include <fizz/extensions/delegatedcred/DelegatedCredentialCertManager.h>
+#include <fizz/extensions/delegatedcred/SelfDelegatedCredential.h>
 #ifdef FIZZ_TOOL_ENABLE_BROTLI
 #include <fizz/protocol/BrotliCertificateCompressor.h>
 #endif
@@ -62,7 +64,8 @@ void printUsage() {
     << " -quiet                   (hide informational logging. Default: false)\n"
     << " -v verbosity             (set verbose log level for VLOG macros. Default: 0)\n"
     << " -vmodule m1=N,...        (set per-module verbose log level for VLOG macros. Default: none)\n"
-    << " -http                    (run a crude HTTP server that returns stats for GET requests. Default: false)\n";
+    << " -http                    (run a crude HTTP server that returns stats for GET requests. Default: false)\n"
+    << " -delegatedcred cred      (use a delegated credential. If set, -cert and -key must also be set. Default: none)\n";
   // clang-format on
 }
 
@@ -439,6 +442,7 @@ int fizzServerCommand(const std::vector<std::string>& args) {
     {CipherSuite::TLS_CHACHA20_POLY1305_SHA256}
 #endif
   };
+  std::string credPath;
 
   // clang-format off
   FizzArgHandlerMap handlers = {
@@ -493,6 +497,9 @@ int fizzServerCommand(const std::vector<std::string>& args) {
     {"-http", {false, [&http](const std::string&) { http = true; }}},
     {"-early_max", {true, [&earlyDataSize](const std::string& arg) {
         earlyDataSize = folly::to<uint32_t>(arg);
+    }}},
+    {"-delegatedcred", {true, [&credPath](const std::string& arg) {
+        credPath = arg;
     }}}
   };
   // clang-format on
@@ -510,6 +517,12 @@ int fizzServerCommand(const std::vector<std::string>& args) {
   // Sanity check input.
   if (certPath.empty() != keyPath.empty()) {
     LOG(ERROR) << "-cert and -key are both required when specified";
+    return 1;
+  }
+
+  if (!credPath.empty() && (certPath.empty() || keyPath.empty())) {
+    LOG(ERROR)
+        << "-cert and -key are both required when delegated credentials are in use";
     return 1;
   }
 
@@ -548,7 +561,8 @@ int fizzServerCommand(const std::vector<std::string>& args) {
 
   // Store a vector of compressors and algorithms for which there are
   // compressors.
-  auto certManager = std::make_unique<CertManager>();
+  std::unique_ptr<CertManager> certManager =
+      std::make_unique<fizz::extensions::DelegatedCredentialCertManager>();
   std::vector<std::shared_ptr<CertificateCompressor>> compressors;
   std::vector<CertificateCompressionAlgorithm> finalAlgos;
   if (compAlgos) {
@@ -592,10 +606,71 @@ int fizzServerCommand(const std::vector<std::string>& args) {
       return 1;
     }
     std::unique_ptr<SelfCert> cert;
-    if (!keyPass.empty()) {
-      cert = CertUtils::makeSelfCert(certData, keyData, keyPass, compressors);
+    if (credPath.empty()) {
+      if (!keyPass.empty()) {
+        cert = CertUtils::makeSelfCert(certData, keyData, keyPass, compressors);
+      } else {
+        cert = CertUtils::makeSelfCert(certData, keyData, compressors);
+      }
     } else {
-      cert = CertUtils::makeSelfCert(certData, keyData, compressors);
+      std::string credData;
+      if (!readFile(credPath.c_str(), credData)) {
+        LOG(ERROR) << "Failed to read credential";
+        return 1;
+      }
+      std::vector<Extension> credVec;
+      credVec.emplace_back(
+          Extension{ExtensionType::delegated_credential,
+                    folly::IOBuf::copyBuffer(std::move(credData))});
+
+      auto certs = folly::ssl::OpenSSLCertUtils::readCertsFromBuffer(
+          folly::StringPiece(certData));
+
+      folly::ssl::EvpPkeyUniquePtr credPrivKey =
+          CertUtils::readPrivateKeyFromBuffer(
+              keyData, keyPass.empty() ? nullptr : &keyPass[0]);
+
+      try {
+        auto cred = getExtension<fizz::extensions::DelegatedCredential>(
+            std::move(credVec));
+        switch (CertUtils::getKeyType(credPrivKey)) {
+          case KeyType::RSA:
+            cert = std::make_unique<
+                fizz::extensions::SelfDelegatedCredentialImpl<KeyType::RSA>>(
+                std::move(certs),
+                std::move(credPrivKey),
+                std::move(*cred),
+                compressors);
+            break;
+          case KeyType::P256:
+            cert = std::make_unique<
+                fizz::extensions::SelfDelegatedCredentialImpl<KeyType::P256>>(
+                std::move(certs),
+                std::move(credPrivKey),
+                std::move(*cred),
+                compressors);
+            break;
+          case KeyType::P384:
+            cert = std::make_unique<
+                fizz::extensions::SelfDelegatedCredentialImpl<KeyType::P384>>(
+                std::move(certs),
+                std::move(credPrivKey),
+                std::move(*cred),
+                compressors);
+            break;
+          case KeyType::P521:
+            cert = std::make_unique<
+                fizz::extensions::SelfDelegatedCredentialImpl<KeyType::P521>>(
+                std::move(certs),
+                std::move(credPrivKey),
+                std::move(*cred),
+                compressors);
+            break;
+        }
+      } catch (const std::exception& e) {
+        LOG(ERROR) << "Credential parsing failed: " << e.what();
+        return 1;
+      }
     }
     certManager->addCert(std::move(cert), true);
   } else {
