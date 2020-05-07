@@ -9,6 +9,7 @@
 #pragma once
 
 #include <fizz/extensions/delegatedcred/Types.h>
+#include <fizz/protocol/Certificate.h>
 #include <folly/ssl/OpenSSLPtrTypes.h>
 
 namespace fizz {
@@ -35,6 +36,18 @@ class DelegatedCredentialUtils {
   static Buf prepareSignatureBuffer(
       const DelegatedCredential& cred,
       Buf certData);
+
+  /*
+   * Generates a delegated credential for a given cert, private key, and
+   * delegated private key.
+   */
+  static DelegatedCredential generateCredential(
+      std::shared_ptr<SelfCert> cert,
+      const folly::ssl::EvpPkeyUniquePtr& certKey,
+      const folly::ssl::EvpPkeyUniquePtr& credKey,
+      SignatureScheme signScheme,
+      SignatureScheme verifyScheme,
+      std::chrono::seconds validSeconds);
 };
 } // namespace extensions
 } // namespace fizz

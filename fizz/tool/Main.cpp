@@ -22,8 +22,9 @@ using namespace fizz::tool;
 
 void showUsage() {
   std::cerr << "Supported commands:" << std::endl;
-  for (const auto& command : fizzUtilities) {
-    std::cerr << "  - " << command.first << std::endl;
+  for (const auto& command : utilityNames) {
+    std::cerr << "  - " << command << ": " << utilityDescriptions.at(command)
+              << std::endl;
   }
   std::cerr << std::endl;
 }

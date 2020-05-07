@@ -40,7 +40,7 @@ namespace {
 void printUsage() {
   // clang-format off
   std::cerr
-    << "Usage: s_server args\n"
+    << "Usage: server args\n"
     << "\n"
     << "Supported arguments:\n"
     << " -accept port             (set port to accept connections on. Default: 8443)\n"

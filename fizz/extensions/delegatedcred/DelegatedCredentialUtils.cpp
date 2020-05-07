@@ -71,5 +71,87 @@ Buf DelegatedCredentialUtils::prepareSignatureBuffer(
   detail::write(cred.credential_scheme, appender);
   return toSign;
 }
+
+DelegatedCredential DelegatedCredentialUtils::generateCredential(
+    std::shared_ptr<SelfCert> cert,
+    const folly::ssl::EvpPkeyUniquePtr& certKey,
+    const folly::ssl::EvpPkeyUniquePtr& credKey,
+    SignatureScheme signScheme,
+    SignatureScheme verifyScheme,
+    std::chrono::seconds validSeconds) {
+  DelegatedCredential cred;
+  if (validSeconds > std::chrono::hours(24 * 7)) {
+    // Can't be valid longer than a week!
+    throw std::runtime_error(
+        "Requested credential with exceedingly large validity");
+  }
+
+  checkExtensions(cert->getX509());
+
+  if (X509_check_private_key(cert->getX509().get(), certKey.get()) != 1) {
+    throw std::runtime_error("Cert does not match private key");
+  }
+
+  std::vector<SignatureScheme> credKeySchemes;
+  switch (CertUtils::getKeyType(credKey)) {
+    case KeyType::RSA:
+      credKeySchemes = CertUtils::getSigSchemes<KeyType::RSA>();
+      break;
+    case KeyType::P256:
+      credKeySchemes = CertUtils::getSigSchemes<KeyType::P256>();
+      break;
+    case KeyType::P384:
+      credKeySchemes = CertUtils::getSigSchemes<KeyType::P384>();
+      break;
+    case KeyType::P521:
+      credKeySchemes = CertUtils::getSigSchemes<KeyType::P521>();
+      break;
+  }
+
+  if (std::find(credKeySchemes.begin(), credKeySchemes.end(), verifyScheme) ==
+      credKeySchemes.end()) {
+    throw std::runtime_error(
+        "selected verification scheme not supported by credential key");
+  }
+
+  auto certSchemes = cert->getSigSchemes();
+  if (std::find(certSchemes.begin(), certSchemes.end(), signScheme) ==
+      certSchemes.end()) {
+    throw std::runtime_error(
+        "credential signature scheme not valid for parent cert");
+  }
+
+  cred.credential_scheme = signScheme;
+  cred.expected_verify_scheme = verifyScheme;
+
+  auto notBefore = X509_get0_notBefore(cert->getX509().get());
+  auto notBeforeTime =
+      folly::ssl::OpenSSLCertUtils::asnTimeToTimepoint(notBefore);
+  auto credentialExpiresTime = std::chrono::system_clock::now() + validSeconds;
+  cred.valid_time = std::chrono::duration_cast<std::chrono::seconds>(
+                        credentialExpiresTime - notBeforeTime)
+                        .count();
+
+  int sz = i2d_PUBKEY(credKey.get(), nullptr);
+  if (sz < 0) {
+    throw std::runtime_error("failed to get delegated pkey size");
+  }
+  unsigned int uSz = static_cast<unsigned int>(sz);
+  cred.public_key = folly::IOBuf::create(uSz);
+  auto ptr = reinterpret_cast<unsigned char*>(cred.public_key->writableData());
+  if (i2d_PUBKEY(credKey.get(), &ptr) < 0) {
+    throw std::runtime_error("failed to convert delegated key to der");
+  }
+  cred.public_key->append(uSz);
+
+  auto toSign = prepareSignatureBuffer(
+      cred, folly::ssl::OpenSSLCertUtils::derEncode(*cert->getX509()));
+  cred.signature = cert->sign(
+      cred.credential_scheme,
+      CertificateVerifyContext::DelegatedCredential,
+      toSign->coalesce());
+
+  return cred;
+}
 } // namespace extensions
 } // namespace fizz

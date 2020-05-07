@@ -37,7 +37,7 @@ namespace {
 void printUsage() {
   // clang-format off
   std::cerr
-    << "Usage: s_client args\n"
+    << "Usage: client args\n"
     << "\n"
     << "Supported arguments:\n"
     << " -host host               (use connect instead)\n"

@@ -435,7 +435,12 @@ option(BUILD_EXAMPLES "BUILD_EXAMPLES" ON)
 if(BUILD_EXAMPLES)
   add_executable(BogoShim test/BogoShim.cpp)
   target_link_libraries(BogoShim fizz sodium)
-  add_executable(FizzTool tool/Main.cpp tool/FizzClientCommand.cpp tool/FizzCommandCommon.cpp tool/FizzServerCommand.cpp)
+  add_executable(FizzTool
+      tool/Main.cpp
+      tool/FizzClientCommand.cpp
+      tool/FizzCommandCommon.cpp
+      tool/FizzGenerateDelegatedCredentialCommand.cpp
+      tool/FizzServerCommand.cpp)
   target_link_libraries(FizzTool fizz sodium)
   set_target_properties(FizzTool PROPERTIES OUTPUT_NAME fizz)
 endif()
