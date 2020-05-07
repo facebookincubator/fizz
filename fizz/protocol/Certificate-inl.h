@@ -34,6 +34,10 @@ inline std::vector<SignatureScheme> CertUtils::getSigSchemes<KeyType::RSA>() {
 }
 
 template <KeyType T>
+SelfCertImpl<T>::SelfCertImpl(std::vector<folly::ssl::X509UniquePtr> certs)
+    : certs_(std::move(certs)) {}
+
+template <KeyType T>
 SelfCertImpl<T>::SelfCertImpl(
     folly::ssl::EvpPkeyUniquePtr pkey,
     std::vector<folly::ssl::X509UniquePtr> certs,

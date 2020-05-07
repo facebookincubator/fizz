@@ -103,7 +103,11 @@ std::unique_ptr<PeerCert> CertUtils::makePeerCert(Buf certData) {
   if (begin != range.data() + range.size()) {
     VLOG(1) << "Did not read to end of certificate";
   }
+  return makePeerCert(std::move(cert));
+}
 
+std::unique_ptr<PeerCert> CertUtils::makePeerCert(
+    folly::ssl::X509UniquePtr cert) {
   folly::ssl::EvpPkeyUniquePtr pubKey(X509_get_pubkey(cert.get()));
   if (!pubKey) {
     throw std::runtime_error("couldn't get pubkey from peer cert");

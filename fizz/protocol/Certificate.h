@@ -104,6 +104,11 @@ class CertUtils {
   static std::unique_ptr<PeerCert> makePeerCert(Buf certData);
 
   /**
+   * Create a PeerCert from a given X509
+   */
+  static std::unique_ptr<PeerCert> makePeerCert(folly::ssl::X509UniquePtr cert);
+
+  /**
    * Creates a SelfCert using the supplied certificate/key file data and
    * compressors.
    * Throws std::runtime_error on error.
@@ -178,7 +183,9 @@ class SelfCertImpl : public SelfCert {
 
   folly::ssl::X509UniquePtr getX509() const override;
 
- private:
+ protected:
+  // Allows derived classes to handle init
+  explicit SelfCertImpl(std::vector<folly::ssl::X509UniquePtr> certs);
   OpenSSLSignature<T> signature_;
   std::vector<folly::ssl::X509UniquePtr> certs_;
   std::map<CertificateCompressionAlgorithm, CompressedCertificate>

@@ -55,7 +55,7 @@ StringPiece kSignature{
     "bcf2b08a87022100a963412a349e5d1b763e722103a6c0c7e7ec577240b0bb05"
     "b323cf17b4705d80"};
 
-class DelegatedCredentialFactoryTest : public Test {
+class PeerDelegatedCredentialTest : public Test {
  public:
   void SetUp() override {
     CryptoUtils::init();
@@ -87,7 +87,7 @@ class DelegatedCredentialFactoryTest : public Test {
   }
 };
 
-TEST_F(DelegatedCredentialFactoryTest, TestCredentialVerify) {
+TEST_F(PeerDelegatedCredentialTest, TestCredentialVerify) {
   auto cred = getCredential();
   auto cert = getCert(kCredCert);
   auto pubKeyRange = cred.public_key->coalesce();
@@ -104,7 +104,7 @@ TEST_F(DelegatedCredentialFactoryTest, TestCredentialVerify) {
       toBuf(kSignature)->coalesce());
 }
 
-TEST_F(DelegatedCredentialFactoryTest, TestCredentialVerifyWrongCert) {
+TEST_F(PeerDelegatedCredentialTest, TestCredentialVerifyWrongCert) {
   auto cred = getCredential();
   auto cert = getCert(kP256Certificate);
   auto pubKeyRange = cred.public_key->coalesce();
@@ -125,7 +125,7 @@ TEST_F(DelegatedCredentialFactoryTest, TestCredentialVerifyWrongCert) {
       "failed to verify signature on credential");
 }
 
-TEST_F(DelegatedCredentialFactoryTest, TestCredentialVerifyWrongAlgo) {
+TEST_F(PeerDelegatedCredentialTest, TestCredentialVerifyWrongAlgo) {
   auto cred = getCredential();
   auto cert = getCert(kCredCert);
   auto pubKeyRange = cred.public_key->coalesce();
@@ -147,7 +147,7 @@ TEST_F(DelegatedCredentialFactoryTest, TestCredentialVerifyWrongAlgo) {
       "certificate verify didn't use credential's algorithm");
 }
 
-TEST_F(DelegatedCredentialFactoryTest, TestCredentialVerifyBitFlip) {
+TEST_F(PeerDelegatedCredentialTest, TestCredentialVerifyBitFlip) {
   auto cred = getCredential();
   auto cert = getCert(kCredCert);
   auto pubKeyRange = cred.public_key->coalesce();
@@ -168,7 +168,7 @@ TEST_F(DelegatedCredentialFactoryTest, TestCredentialVerifyBitFlip) {
       std::runtime_error);
 }
 
-TEST_F(DelegatedCredentialFactoryTest, TestCredentialVerifySizeMismatch) {
+TEST_F(PeerDelegatedCredentialTest, TestCredentialVerifySizeMismatch) {
   auto cred = getCredential();
   auto cert = getCert(kCredCert);
   auto pubKeyRange = cred.public_key->coalesce();
