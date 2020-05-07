@@ -29,6 +29,27 @@ inline CipherSuite parse(folly::StringPiece s) {
 }
 
 template <>
+inline SignatureScheme parse(folly::StringPiece s) {
+  static const std::map<folly::StringPiece, SignatureScheme> stringToSchemes = {
+      {"ecdsa_secp256r1_sha256", SignatureScheme::ecdsa_secp256r1_sha256},
+      {"ecdsa_secp384r1_sha384", SignatureScheme::ecdsa_secp384r1_sha384},
+      {"ecdsa_secp521r1_sha512", SignatureScheme::ecdsa_secp521r1_sha512},
+      {"rsa_pss_sha256", SignatureScheme::rsa_pss_sha256},
+      {"rsa_pss_sha384", SignatureScheme::rsa_pss_sha384},
+      {"rsa_pss_sha512", SignatureScheme::rsa_pss_sha512},
+      {"ed25519", SignatureScheme::ed25519},
+      {"ed448", SignatureScheme::ed448}};
+
+  auto location = stringToSchemes.find(s);
+  if (location != stringToSchemes.end()) {
+    return location->second;
+  }
+
+  throw std::runtime_error(
+      folly::to<std::string>("Unknown signature scheme: ", s));
+}
+
+template <>
 inline NamedGroup parse(folly::StringPiece s) {
   static const std::map<folly::StringPiece, NamedGroup> stringToGroups = {
       {"secp256r1", NamedGroup::secp256r1}, {"x25519", NamedGroup::x25519}};
