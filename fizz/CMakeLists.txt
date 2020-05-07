@@ -166,6 +166,7 @@ set(FIZZ_SOURCES
   protocol/ZlibCertificateCompressor.cpp
   protocol/ZlibCertificateDecompressor.cpp
   protocol/clock/SystemClock.cpp
+  extensions/delegatedcred/DelegatedCredentialCertManager.cpp
   extensions/delegatedcred/DelegatedCredentialClientExtension.cpp
   extensions/delegatedcred/DelegatedCredentialFactory.cpp
   extensions/delegatedcred/DelegatedCredentialUtils.cpp
@@ -389,6 +390,7 @@ if(BUILD_TESTS)
   add_gtest(crypto/test/UtilsTest.cpp UtilsTest)
   add_gtest(extensions/delegatedcred/test/DelegatedCredTypesTest.cpp DelegatedCredTypesTest)
   add_gtest(extensions/delegatedcred/test/DelegatedCredentialFactoryTest.cpp DelegatedCredentialFactoryTest)
+  add_gtest(extensions/delegatedcred/test/DelegatedCredentialCertManagerTest.cpp DelegatedCredentialCertManagerTest)
   add_gtest(extensions/delegatedcred/test/PeerDelegatedCredentialTest.cpp PeerDelegatedCredentialTest)
   add_gtest(extensions/delegatedcred/test/SelfDelegatedCredentialTest.cpp SelfDelegatedCredentialTest)
   add_gtest(extensions/tokenbinding/test/TokenBindingConstructorTest.cpp TokenBindingConstructorTest)
