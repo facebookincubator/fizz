@@ -29,6 +29,7 @@ enum class TokenBindingKeyParameters : uint8_t {
   rsa2048_pkcs1_5 = 0,
   rsa2048_pss = 1,
   ecdsap256 = 2,
+  ed25519_experimental = 239,
 };
 
 std::string toString(TokenBindingKeyParameters);

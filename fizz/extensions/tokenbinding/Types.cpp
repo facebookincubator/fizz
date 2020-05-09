@@ -81,6 +81,8 @@ std::string extensions::toString(TokenBindingKeyParameters keyParams) {
       return "RSA2048 pss";
     case TokenBindingKeyParameters::ecdsap256:
       return "ECDSA p256";
+    case TokenBindingKeyParameters::ed25519_experimental:
+      return "Ed25519 (Experimental)";
   }
   return enumToHex(keyParams);
 }

@@ -27,6 +27,10 @@ StringPiece chrome_session_key{
     "40dd2fa2430a0f54ca96454bdf23c264353a252812bc5fa7b851a6fa9d620424bf43e20e50a4ca0a1769f4024db346ca5075eecdb7f62d0018cf1642b75f679d98"};
 StringPiece chrome_session_signature{
     "d2c9c04957013f38369a18a5d5b47d6492f0f0f5c8772a27cc3770f23dda94d30fc3a6d0dc110c78e668a44c3b8b61842a6e72795f61f51f398f8dedd2ceb9a3"};
+StringPiece ed25519_session_key{
+    "20fc51cd8e6218a1a38da47ed00230f0580816ed13ba3303ac5deb911548908025"};
+StringPiece ed25519_session_signature{
+    "ccf3489b6880d1151d6cb99d2989dca8531fbd9867715995f81b6b037ac7559a7fc89e71a5c1c5194fa142175fd09f7c1dc696563cf161771e809cc40b592900"};
 
 class ValidatorTest : public Test {
  public:
@@ -48,6 +52,14 @@ class ValidatorTest : public Test {
         tokenBinding.signature = getBuf(chrome_session_signature);
         return tokenBinding;
       }
+#if FIZZ_OPENSSL_HAS_ED25519
+      case TokenBindingKeyParameters::ed25519_experimental: {
+        id.key = getBuf(ed25519_session_key);
+        tokenBinding.tokenbindingid = std::move(id);
+        tokenBinding.signature = getBuf(ed25519_session_signature);
+        return tokenBinding;
+      }
+#endif
       default: // rsa_pss and rsa_pkcs
         throw std::runtime_error("not implemented");
     }
@@ -106,6 +118,71 @@ TEST_F(ValidatorTest, TestTruncatedSignature) {
           std::move(binding), ekm_, TokenBindingKeyParameters::ecdsap256)
           .has_value());
 }
+
+#if FIZZ_OPENSSL_HAS_ED25519
+// The tests below are mostly Ed25519 variants of the tests above
+TEST_F(ValidatorTest, TestValidEd25519Signature) {
+  auto binding =
+      setUpWithKeyParameters(TokenBindingKeyParameters::ed25519_experimental);
+  EXPECT_TRUE(Validator::validateTokenBinding(
+                  std::move(binding),
+                  ekm_,
+                  TokenBindingKeyParameters::ed25519_experimental)
+                  .has_value());
+}
+
+TEST_F(ValidatorTest, TestBadEd25519KeySent) {
+  // Some random key with length specified correctly as 0x20
+  StringPiece bad_ed25519_key{
+      "204ccd089b28ff96da9db6c346ec114e0f5b8a319f35aba624da8cf6ed4fb8a6fb"};
+  auto binding =
+      setUpWithKeyParameters(TokenBindingKeyParameters::ed25519_experimental);
+
+  binding.tokenbindingid.key = getBuf(bad_ed25519_key);
+  EXPECT_FALSE(Validator::validateTokenBinding(
+                   std::move(binding),
+                   ekm_,
+                   TokenBindingKeyParameters::ed25519_experimental)
+                   .has_value());
+}
+
+TEST_F(ValidatorTest, TestBadEd25519KeyLength) {
+  // Key length specified as 0x21 instead of 0x20
+  StringPiece bad_ed25519_key{
+      "21fc51cd8e6218a1a38da47ed00230f0580816ed13ba3303ac5deb911548908025"};
+  auto binding =
+      setUpWithKeyParameters(TokenBindingKeyParameters::ed25519_experimental);
+
+  binding.tokenbindingid.key = getBuf(bad_ed25519_key);
+  EXPECT_FALSE(Validator::validateTokenBinding(
+                   std::move(binding),
+                   ekm_,
+                   TokenBindingKeyParameters::ed25519_experimental)
+                   .has_value());
+}
+
+TEST_F(ValidatorTest, TestInvalidEd25519Signature) {
+  auto binding =
+      setUpWithKeyParameters(TokenBindingKeyParameters::ed25519_experimental);
+  *binding.signature->writableData() ^= 0x04;
+  EXPECT_FALSE(Validator::validateTokenBinding(
+                   std::move(binding),
+                   ekm_,
+                   TokenBindingKeyParameters::ed25519_experimental)
+                   .has_value());
+}
+
+TEST_F(ValidatorTest, TestTruncatedEd25519Signature) {
+  auto binding =
+      setUpWithKeyParameters(TokenBindingKeyParameters::ed25519_experimental);
+  binding.signature->trimEnd(4);
+  EXPECT_FALSE(Validator::validateTokenBinding(
+                   std::move(binding),
+                   ekm_,
+                   TokenBindingKeyParameters::ed25519_experimental)
+                   .has_value());
+}
+#endif
 } // namespace test
 } // namespace extensions
 } // namespace fizz

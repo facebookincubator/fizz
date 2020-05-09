@@ -16,6 +16,7 @@ namespace extensions {
 class TokenBindingUtils {
  public:
   static constexpr uint8_t kP256EcKeySize = 64;
+  static constexpr uint8_t kEd25519KeySize = 32;
 
   static Buf constructMessage(
       const TokenBindingType& type,

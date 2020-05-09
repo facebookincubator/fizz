@@ -69,6 +69,38 @@ void Validator::verify(
       throw std::runtime_error(folly::to<std::string>(
           "Verification failed: ", detail::getOpenSSLError()));
     }
+#if FIZZ_OPENSSL_HAS_ED25519
+  } else if (keyParams == TokenBindingKeyParameters::ed25519_experimental) {
+    // Read the first byte from `key`, which denotes the size of the key
+    Cursor keyReader(key.get());
+    auto keyLen = keyReader.readBE<uint8_t>();
+
+    // Verify that the key size matches the size of an Ed25519 key
+    if (keyLen != TokenBindingUtils::kEd25519KeySize) {
+      throw std::runtime_error(
+          folly::to<std::string>("Incorrect key size for Ed25519: ", keyLen));
+    }
+
+    // Instantiate a EvpPkeyUniquePtr from the rest of the bytes
+    auto keyRange = keyReader.peekBytes();
+    if (keyRange.size() != keyLen) {
+      throw std::runtime_error(folly::to<std::string>(
+          "Key string of length ",
+          keyRange.size(),
+          " differs in length from the size specified: ",
+          keyLen));
+    }
+    folly::ssl::EvpPkeyUniquePtr pkey(EVP_PKEY_new_raw_public_key(
+        EVP_PKEY_ED25519, nullptr, keyRange.data(), keyLen));
+
+    // Verify the signature
+    try {
+      fizz::detail::edVerify(message->coalesce(), signature->coalesce(), pkey);
+    } catch (const std::exception&) {
+      throw std::runtime_error(folly::to<std::string>(
+          "Verification failed: ", detail::getOpenSSLError()));
+    }
+#endif
   } else {
     // rsa_pss and rsa_pkcs
     throw std::runtime_error(
