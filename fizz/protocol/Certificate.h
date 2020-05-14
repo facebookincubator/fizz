@@ -98,6 +98,8 @@ class CertUtils {
   template <KeyType T>
   static std::vector<SignatureScheme> getSigSchemes();
 
+  static std::vector<SignatureScheme> getSigSchemes(KeyType type);
+
   /**
    * Create a PeerCert from the ASN1 encoded certData.
    */

@@ -208,6 +208,21 @@ KeyType CertUtils::getKeyType(const folly::ssl::EvpPkeyUniquePtr& key) {
   throw std::runtime_error("unknown key type");
 }
 
+std::vector<SignatureScheme> CertUtils::getSigSchemes(KeyType type) {
+  switch (type) {
+    case KeyType::RSA:
+      return getSigSchemes<KeyType::RSA>();
+    case KeyType::P256:
+      return getSigSchemes<KeyType::P256>();
+    case KeyType::P384:
+      return getSigSchemes<KeyType::P384>();
+    case KeyType::P521:
+      return getSigSchemes<KeyType::P521>();
+  }
+
+  throw std::runtime_error("unknown key type");
+}
+
 std::unique_ptr<SelfCert> CertUtils::makeSelfCert(
     std::vector<folly::ssl::X509UniquePtr> certs,
     folly::ssl::EvpPkeyUniquePtr key,
