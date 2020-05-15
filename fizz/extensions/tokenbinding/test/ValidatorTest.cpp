@@ -119,6 +119,28 @@ TEST_F(ValidatorTest, TestTruncatedSignature) {
           .has_value());
 }
 
+TEST_F(ValidatorTest, TestMultipleSupportedParameters) {
+  auto binding = setUpWithKeyParameters(TokenBindingKeyParameters::ecdsap256);
+  EXPECT_TRUE(Validator::validateTokenBinding(
+                  std::move(binding),
+                  ekm_,
+                  {TokenBindingKeyParameters::rsa2048_pkcs1_5,
+                   TokenBindingKeyParameters::ecdsap256,
+                   TokenBindingKeyParameters::ed25519_experimental})
+                  .has_value());
+}
+
+TEST_F(ValidatorTest, TestSentParameterNotSupported) {
+  auto binding = setUpWithKeyParameters(TokenBindingKeyParameters::ecdsap256);
+  EXPECT_FALSE(Validator::validateTokenBinding(
+                   std::move(binding),
+                   ekm_,
+                   {TokenBindingKeyParameters::rsa2048_pkcs1_5,
+                    TokenBindingKeyParameters::rsa2048_pss,
+                    TokenBindingKeyParameters::ed25519_experimental})
+                   .has_value());
+}
+
 #if FIZZ_OPENSSL_HAS_ED25519
 // The tests below are mostly Ed25519 variants of the tests above
 TEST_F(ValidatorTest, TestValidEd25519Signature) {

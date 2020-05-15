@@ -30,7 +30,29 @@ Optional<TokenBindingID> Validator::validateTokenBinding(
             << toString(negotiatedParameters);
     return folly::none;
   }
+  return constructAndVerifyMessage(std::move(tokenBinding), ekm);
+}
 
+Optional<TokenBindingID> Validator::validateTokenBinding(
+    TokenBinding tokenBinding,
+    const Buf& ekm,
+    const std::vector<TokenBindingKeyParameters>& supportedParameters) {
+  if (find(
+          supportedParameters.begin(),
+          supportedParameters.end(),
+          tokenBinding.tokenbindingid.key_parameters) ==
+      supportedParameters.end()) {
+    VLOG(2) << "Supported key parameters (" << join(", ", supportedParameters)
+            << ") does not include client's key parameter ("
+            << toString(tokenBinding.tokenbindingid.key_parameters) << ")";
+    return folly::none;
+  }
+  return constructAndVerifyMessage(std::move(tokenBinding), ekm);
+}
+
+Optional<TokenBindingID> Validator::constructAndVerifyMessage(
+    TokenBinding tokenBinding,
+    const Buf& ekm) {
   try {
     auto message = TokenBindingUtils::constructMessage(
         tokenBinding.tokenbinding_type,

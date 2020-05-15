@@ -28,7 +28,18 @@ class Validator {
       const Buf& ekm,
       const TokenBindingKeyParameters& negotiatedParameters);
 
+  static folly::Optional<TokenBindingID> validateTokenBinding(
+      TokenBinding tokenBinding,
+      const Buf& ekm,
+      // vector is used instead of set because `supportedParameters` is expected
+      // to be small in size
+      const std::vector<TokenBindingKeyParameters>& supportedParameters);
+
  private:
+  static folly::Optional<TokenBindingID> constructAndVerifyMessage(
+      TokenBinding tokenBinding,
+      const Buf& ekm);
+
   static void verify(
       const TokenBindingKeyParameters& keyParams,
       const Buf& key,
