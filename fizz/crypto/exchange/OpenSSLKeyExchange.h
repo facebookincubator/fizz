@@ -41,7 +41,12 @@ class OpenSSLKeyExchange : public KeyExchange {
   std::unique_ptr<folly::IOBuf> generateSharedSecret(
       folly::ByteRange keyShare) const override {
     auto key = detail::OpenSSLECKeyDecoder<T>::decode(keyShare);
-    return keyExchange_.generateSharedSecret(key);
+    return generateSharedSecret(key);
+  }
+
+  std::unique_ptr<folly::IOBuf> generateSharedSecret(
+      const folly::ssl::EvpPkeyUniquePtr& peerKey) const {
+    return keyExchange_.generateSharedSecret(peerKey);
   }
 
  private:
