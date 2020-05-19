@@ -169,17 +169,7 @@ class AsyncFizzBase : public folly::WriteChainAsyncTransportWrapper<
     transport_->detachEventBase();
   }
   bool isDetachable() const override {
-    if (handshakeTimeout_.isScheduled()) {
-      return false;
-    }
-    // Since we always have a read callback on the underlying transport,
-    // transport_->isDetachable() would always return false.  We need to see if
-    // the transport is detachable independent of our callback.
-    auto readCb = transport_->getReadCallback();
-    transport_->setReadCB(nullptr);
-    auto result = transport_->isDetachable();
-    transport_->setReadCB(readCb);
-    return result;
+    return !handshakeTimeout_.isScheduled() && transport_->isDetachable();
   }
 
   void setSecretCallback(SecretCallback* cb) {
