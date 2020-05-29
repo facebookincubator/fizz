@@ -75,13 +75,17 @@ struct Writer {
           T>::type& in,
       folly::io::Appender& appender) {
     using UT = typename std::underlying_type<U>::type;
+    static_assert(
+        std::is_unsigned<UT>::value,
+        "enums meant to be serialized should be unsigned");
     appender.writeBE<UT>(static_cast<UT>(in));
   }
 
   template <class T>
   void write(
       const typename std::enable_if<
-          std::is_unsigned<T>::value && std::is_same<U, T>::value,
+          !std::is_enum<T>::value && std::is_unsigned<T>::value &&
+              std::is_same<U, T>::value,
           T>::type& in,
       folly::io::Appender& appender) {
     appender.writeBE<U>(in);
@@ -239,6 +243,9 @@ struct Reader {
           T>::type& out,
       folly::io::Cursor& cursor) {
     using UT = typename std::underlying_type<U>::type;
+    static_assert(
+        std::is_unsigned<UT>::value,
+        "enums meant to be deserialized should be unsigned");
     out = static_cast<U>(cursor.readBE<UT>());
     return sizeof(U);
   }
@@ -246,7 +253,8 @@ struct Reader {
   template <class T>
   size_t read(
       typename std::enable_if<
-          std::is_unsigned<T>::value && std::is_same<U, T>::value,
+          !std::is_enum<T>::value && std::is_unsigned<T>::value &&
+              std::is_same<U, T>::value,
           T>::type& out,
       folly::io::Cursor& cursor) {
     out = cursor.readBE<U>();
