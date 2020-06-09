@@ -281,7 +281,7 @@ class MockCertificateCompressor : public CertificateCompressor {
 class MockAsyncFizzBase : public AsyncFizzBase {
  public:
   MockAsyncFizzBase()
-      : AsyncFizzBase(AsyncTransportWrapper::UniquePtr(
+      : AsyncFizzBase(folly::AsyncTransport::UniquePtr(
             new folly::test::MockAsyncTransport())) {}
   MOCK_CONST_METHOD0(good, bool());
   MOCK_CONST_METHOD0(readable, bool());
@@ -308,12 +308,12 @@ class MockAsyncFizzBase : public AsyncFizzBase {
   MOCK_METHOD3(
       writeAppDataInternal,
       void(
-          folly::AsyncTransportWrapper::WriteCallback*,
+          folly::AsyncTransport::WriteCallback*,
           std::shared_ptr<folly::IOBuf>,
           folly::WriteFlags));
 
   void writeAppData(
-      folly::AsyncTransportWrapper::WriteCallback* callback,
+      folly::AsyncTransport::WriteCallback* callback,
       std::unique_ptr<folly::IOBuf>&& buf,
       folly::WriteFlags flags = folly::WriteFlags::NONE) override {
     writeAppDataInternal(
