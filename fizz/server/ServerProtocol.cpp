@@ -747,10 +747,19 @@ static Optional<std::string> negotiateAlpn(
     }
   } else {
     VLOG(6) << "Client did not send ALPN extension";
+    if (context.getRequireAlpn()) {
+      throw FizzException(
+          "ALPN is required", AlertDescription::no_application_protocol);
+    }
   }
   auto selected = context.negotiateAlpn(clientProtocols, zeroRttAlpn);
   if (!selected) {
     VLOG(6) << "ALPN mismatch";
+    if (context.getRequireAlpn()) {
+      throw FizzException(
+          "ALPN mismatch when required",
+          AlertDescription::no_application_protocol);
+    }
   } else {
     VLOG(6) << "ALPN: " << *selected;
   }

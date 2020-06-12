@@ -167,6 +167,10 @@ class ServerProtocolTest : public ProtocolTest<ServerTypes, Actions> {
         replayCache_);
   }
 
+  void requireAlpn() {
+    context_->setRequireAlpn(true);
+  }
+
   void acceptCookies() {
     mockCookieCipher_ = std::make_shared<MockCookieCipher>();
     context_->setCookieCipher(mockCookieCipher_);
@@ -3013,6 +3017,17 @@ TEST_F(ServerProtocolTest, TestClientHelloNoAlpn) {
   EXPECT_FALSE(state_.alpn().has_value());
 }
 
+TEST_F(ServerProtocolTest, TestClientHelloRequireAlpn) {
+  requireAlpn();
+  setUpExpectingClientHello();
+  auto chlo = TestMessages::clientHello();
+  TestMessages::removeExtension(
+      chlo, ExtensionType::application_layer_protocol_negotiation);
+  auto actions = getActions(detail::processEvent(state_, std::move(chlo)));
+  expectError<FizzException>(
+      actions, AlertDescription::no_application_protocol, "ALPN is required");
+}
+
 TEST_F(ServerProtocolTest, TestClientHelloAlpnMismatch) {
   setUpExpectingClientHello();
   auto chlo = TestMessages::clientHello();
@@ -3027,6 +3042,24 @@ TEST_F(ServerProtocolTest, TestClientHelloAlpnMismatch) {
   expectActions<MutateState, WriteToSocket, SecretAvailable>(actions);
   processStateMutations(actions);
   EXPECT_FALSE(state_.alpn().has_value());
+}
+
+TEST_F(ServerProtocolTest, TestClientHelloRequireAlpnMismatch) {
+  requireAlpn();
+  setUpExpectingClientHello();
+  auto chlo = TestMessages::clientHello();
+  TestMessages::removeExtension(
+      chlo, ExtensionType::application_layer_protocol_negotiation);
+  ProtocolNameList alpn;
+  ProtocolName gopher;
+  gopher.name = folly::IOBuf::copyBuffer("gopher");
+  alpn.protocol_name_list.push_back(std::move(gopher));
+  chlo.extensions.push_back(encodeExtension(std::move(alpn)));
+  auto actions = getActions(detail::processEvent(state_, std::move(chlo)));
+  expectError<FizzException>(
+      actions,
+      AlertDescription::no_application_protocol,
+      "ALPN mismatch when required");
 }
 
 TEST_F(ServerProtocolTest, TestClientHelloServerPref) {

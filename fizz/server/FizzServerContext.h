@@ -311,6 +311,18 @@ class FizzServerContext {
     return *clock_;
   }
 
+  /**
+   * Whether or not require ALPN.
+   * When set to true and ALPN fails, no_application_protocol alert is sent.
+   */
+  void setRequireAlpn(bool enabled) {
+    requireAlpn_ = enabled;
+  }
+
+  bool getRequireAlpn() const {
+    return requireAlpn_;
+  }
+
  private:
   std::shared_ptr<Factory> factory_;
 
@@ -356,6 +368,8 @@ class FizzServerContext {
   bool sendNewSessionTicket_{true};
 
   bool omitEarlyRecordLayer_{false};
+
+  bool requireAlpn_{false};
 };
 } // namespace server
 } // namespace fizz

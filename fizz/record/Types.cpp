@@ -159,6 +159,8 @@ std::string toString(AlertDescription alertDesc) {
       return "unknown_psk_identity";
     case AlertDescription::certificate_required:
       return "certificate_required";
+    case AlertDescription::no_application_protocol:
+      return "no_application_protocol";
   }
   return enumToHex(alertDesc);
 }
