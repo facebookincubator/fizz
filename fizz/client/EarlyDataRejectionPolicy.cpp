@@ -21,7 +21,13 @@ static bool certIdentityMatch(const Cert* a, const Cert* b) {
 
 bool earlyParametersMatch(const State& state) {
   if (*state.version() != state.earlyDataParams()->version) {
-    return false;
+    // Temporarily allow early data retry when transitioning from tls_1_3_26_fb
+    // to the RFC version, to make the transition less disruptful. This is safe
+    // as the versions are identical except for the ProtocolVersion.
+    if (*state.version() != ProtocolVersion::tls_1_3 ||
+        state.earlyDataParams()->version != ProtocolVersion::tls_1_3_26_fb) {
+      return false;
+    }
   }
 
   if (*state.cipher() != state.earlyDataParams()->cipher) {
