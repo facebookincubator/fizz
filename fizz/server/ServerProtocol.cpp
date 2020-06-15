@@ -330,6 +330,20 @@ Actions handleInvalidEvent(const State& state, Event event, Param param) {
   }
 }
 
+template <typename T, typename F>
+folly::Future<
+    typename folly::futures::detail::valueCallableResult<T, F>::value_type>
+runOnCallerIfComplete(
+    folly::Executor* executor,
+    folly::Future<T> future,
+    F&& func) {
+  if (future.isReady()) {
+    return func(std::move(future).get());
+  } else {
+    return future.via(executor).thenValue(std::forward<F>(func));
+  }
+}
+
 } // namespace detail
 } // namespace server
 
@@ -1038,15 +1052,17 @@ EventHandler<ServerTypes, StateEnum::ExpectingClientHello, Event::ClientHello>::
   using FutureResultType = std::tuple<
       folly::Try<std::pair<PskType, Optional<ResumptionState>>>,
       folly::Try<ReplayCacheResult>>;
-  return results.via(state.executor())
-      .thenValue([&state,
-                  chlo = std::move(chlo),
-                  cookieState = std::move(cookieState),
-                  version = *version,
-                  cipher,
-                  pskMode = resStateResult.pskMode,
-                  obfuscatedAge = resStateResult.obfuscatedAge](
-                     FutureResultType result) mutable {
+  return runOnCallerIfComplete(
+      state.executor(),
+      std::move(results),
+      [&state,
+       chlo = std::move(chlo),
+       cookieState = std::move(cookieState),
+       version = *version,
+       cipher,
+       pskMode = resStateResult.pskMode,
+       obfuscatedAge =
+           resStateResult.obfuscatedAge](FutureResultType result) mutable {
         auto& resumption = *std::get<0>(result);
         auto pskType = resumption.first;
         auto resState = std::move(resumption.second);
@@ -1365,44 +1381,42 @@ EventHandler<ServerTypes, StateEnum::ExpectingClientHello, Event::ClientHello>::
           clientCert = std::move(resState->clientCert);
         }
 
-        return signature.via(state.executor())
-            .thenValue([&state,
-                        scheduler = std::move(scheduler),
-                        handshakeContext = std::move(handshakeContext),
-                        cipher,
-                        group,
-                        encodedServerHello = std::move(encodedServerHello),
-                        handshakeWriteRecordLayer =
-                            std::move(handshakeWriteRecordLayer),
-                        handshakeWriteSecret = std::move(handshakeWriteSecret),
-                        handshakeReadRecordLayer =
-                            std::move(handshakeReadRecordLayer),
-                        handshakeReadSecret = std::move(handshakeReadSecret),
-                        earlyReadRecordLayer = std::move(earlyReadRecordLayer),
-                        earlyReadSecretAvailable =
-                            std::move(earlyReadSecretAvailable),
-                        earlyExporterMaster = std::move(earlyExporterMaster),
-                        clientHandshakeSecret =
-                            std::move(clientHandshakeSecret),
-                        encodedEncryptedExt = std::move(encodedEncryptedExt),
-                        encodedCertificate = std::move(encodedCertificate),
-                        encodedCertRequest = std::move(encodedCertRequest),
-                        requestClientAuth,
-                        pskType,
-                        pskMode,
-                        sigScheme,
-                        version,
-                        keyExchangeType,
-                        earlyDataType,
-                        replayCacheResult,
-                        serverCert = std::move(serverCert),
-                        clientCert = std::move(clientCert),
-                        alpn = std::move(alpn),
-                        clockSkew,
-                        appToken = std::move(appToken),
-                        legacySessionId = std::move(legacySessionId),
-                        serverCertCompAlgo = certCompressionAlgo,
-                        handshakeTime](Optional<Buf> sig) mutable {
+        return runOnCallerIfComplete(
+            state.executor(),
+            std::move(signature),
+            [&state,
+             scheduler = std::move(scheduler),
+             handshakeContext = std::move(handshakeContext),
+             cipher,
+             group,
+             encodedServerHello = std::move(encodedServerHello),
+             handshakeWriteRecordLayer = std::move(handshakeWriteRecordLayer),
+             handshakeWriteSecret = std::move(handshakeWriteSecret),
+             handshakeReadRecordLayer = std::move(handshakeReadRecordLayer),
+             handshakeReadSecret = std::move(handshakeReadSecret),
+             earlyReadRecordLayer = std::move(earlyReadRecordLayer),
+             earlyReadSecretAvailable = std::move(earlyReadSecretAvailable),
+             earlyExporterMaster = std::move(earlyExporterMaster),
+             clientHandshakeSecret = std::move(clientHandshakeSecret),
+             encodedEncryptedExt = std::move(encodedEncryptedExt),
+             encodedCertificate = std::move(encodedCertificate),
+             encodedCertRequest = std::move(encodedCertRequest),
+             requestClientAuth,
+             pskType,
+             pskMode,
+             sigScheme,
+             version,
+             keyExchangeType,
+             earlyDataType,
+             replayCacheResult,
+             serverCert = std::move(serverCert),
+             clientCert = std::move(clientCert),
+             alpn = std::move(alpn),
+             clockSkew,
+             appToken = std::move(appToken),
+             legacySessionId = std::move(legacySessionId),
+             serverCertCompAlgo = certCompressionAlgo,
+             handshakeTime](Optional<Buf> sig) mutable {
               Optional<Buf> encodedCertificateVerify;
               if (sig) {
                 encodedCertificateVerify = getCertificateVerify(
@@ -1731,25 +1745,26 @@ static Future<Optional<WriteToSocket>> generateTicket(
   resState.handshakeTime = *state.handshakeTime();
 
   auto ticketFuture = ticketCipher->encrypt(std::move(resState));
-  return ticketFuture.via(state.executor())
-      .thenValue(
-          [&state,
-           ticketAgeAdd = resState.ticketAgeAdd,
-           ticketNonce = std::move(ticketNonce)](
-              Optional<std::pair<Buf, std::chrono::seconds>> ticket) mutable
-          -> Optional<WriteToSocket> {
-            if (!ticket) {
-              return folly::none;
-            }
-            return writeNewSessionTicket(
-                *state.context(),
-                *state.writeRecordLayer(),
-                ticket->second,
-                ticketAgeAdd,
-                std::move(ticketNonce),
-                std::move(ticket->first),
-                *state.version());
-          });
+  return runOnCallerIfComplete(
+      state.executor(),
+      std::move(ticketFuture),
+      [&state,
+       ticketAgeAdd = resState.ticketAgeAdd,
+       ticketNonce = std::move(ticketNonce)](
+          Optional<std::pair<Buf, std::chrono::seconds>> ticket) mutable
+      -> Optional<WriteToSocket> {
+        if (!ticket) {
+          return folly::none;
+        }
+        return writeNewSessionTicket(
+            *state.context(),
+            *state.writeRecordLayer(),
+            ticket->second,
+            ticketAgeAdd,
+            std::move(ticketNonce),
+            std::move(ticket->first),
+            *state.version());
+      });
 }
 
 AsyncActions
@@ -1906,11 +1921,13 @@ EventHandler<ServerTypes, StateEnum::ExpectingFinished, Event::Finished>::
         ReportHandshakeSuccess());
   } else {
     auto ticketFuture = generateTicket(state, resumptionMasterSecret);
-    return ticketFuture.via(state.executor())
-        .thenValue([saveState = std::move(saveState),
-                    appReadTrafficSecretAvailable =
-                        std::move(appReadTrafficSecretAvailable)](
-                       Optional<WriteToSocket> nstWrite) mutable {
+    return runOnCallerIfComplete(
+        state.executor(),
+        std::move(ticketFuture),
+        [saveState = std::move(saveState),
+         appReadTrafficSecretAvailable =
+             std::move(appReadTrafficSecretAvailable)](
+            Optional<WriteToSocket> nstWrite) mutable {
           if (!nstWrite) {
             return actions(
                 std::move(saveState),
@@ -1938,8 +1955,10 @@ AsyncActions EventHandler<
       state,
       state.resumptionMasterSecret(),
       std::move(writeNewSessionTicket.appToken));
-  return ticketFuture.via(state.executor())
-      .thenValue([](Optional<WriteToSocket> nstWrite) {
+  return runOnCallerIfComplete(
+      state.executor(),
+      std::move(ticketFuture),
+      [](Optional<WriteToSocket> nstWrite) {
         if (!nstWrite) {
           return Actions();
         }

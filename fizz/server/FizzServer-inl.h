@@ -70,13 +70,9 @@ void FizzServer<ActionMoveVisitor, SM>::startActions(AsyncActions actions) {
       actions,
       ::fizz::detail::result_type<void>(),
       [this](folly::Future<Actions>& futureActions) {
-        std::move(futureActions)
-            .then(
-                &FizzServer::processActions,
-                static_cast<FizzBase<
-                    FizzServer<ActionMoveVisitor, SM>,
-                    ActionMoveVisitor,
-                    SM>*>(this));
+        std::move(futureActions).thenValueInline([this](Actions a) {
+          this->processActions(std::move(a));
+        });
       },
       [this](Actions& immediateActions) {
         this->processActions(std::move(immediateActions));

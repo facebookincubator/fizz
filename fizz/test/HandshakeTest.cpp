@@ -20,6 +20,16 @@ TEST_F(HandshakeTest, BasicHandshake) {
   sendAppData();
 }
 
+TEST_F(HandshakeTest, BasicHandshakeSynchronous) {
+  evb_.runInLoop([this]() { startHandshake(); });
+
+  // Ensure that the handshake can complete synchronously (in the current loop
+  // iteration).
+  expectSuccess();
+  evb_.loopOnce();
+  verifyParameters();
+}
+
 TEST_F(HandshakeTest, BasicHandshakeTrickle) {
   clientTransport_->setTrickle(true);
   serverTransport_->setTrickle(true);

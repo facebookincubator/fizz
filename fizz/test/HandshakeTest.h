@@ -181,10 +181,14 @@ class HandshakeTest : public Test {
     doServerHandshake();
   }
 
-  void doHandshake() {
+  void startHandshake() {
     client_->connect(
         &clientCallback_, nullptr, folly::none, std::string("Fizz"));
     server_->accept(&serverCallback_);
+  }
+
+  void doHandshake() {
+    startHandshake();
     evb_.loop();
   }
 
