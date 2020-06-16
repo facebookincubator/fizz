@@ -57,6 +57,17 @@ class SelfDelegatedCredentialTest : public Test {
         std::make_unique<SelfCertImpl<KeyType::P256>>(getKey(), getCertVec());
   }
 
+#if FIZZ_OPENSSL_HAS_ED25519
+  folly::ssl::EvpPkeyUniquePtr generateEd25519PrivKey() {
+    EVP_PKEY* pkey = NULL;
+    EVP_PKEY_CTX* pctx = EVP_PKEY_CTX_new_id(EVP_PKEY_ED25519, NULL);
+    EVP_PKEY_keygen_init(pctx);
+    EVP_PKEY_keygen(pctx, &pkey);
+    EVP_PKEY_CTX_free(pctx);
+    return folly::ssl::EvpPkeyUniquePtr(pkey);
+  }
+#endif
+
   folly::ssl::EvpPkeyUniquePtr generateDelegatedPrivkey() {
     folly::ssl::EvpPkeyUniquePtr pk(EVP_PKEY_new());
     folly::ssl::EcGroupUniquePtr grp(
@@ -177,7 +188,7 @@ class SelfDelegatedCredentialTest : public Test {
     auto toSign = DelegatedCredentialUtils::prepareSignatureBuffer(
         cred, folly::ssl::OpenSSLCertUtils::derEncode(*parentCert_->getX509()));
     cred.signature = parentCert_->sign(
-        SignatureScheme::ecdsa_secp256r1_sha256,
+        cred.credential_scheme,
         CertificateVerifyContext::DelegatedCredential,
         toSign->coalesce());
   }
@@ -185,7 +196,9 @@ class SelfDelegatedCredentialTest : public Test {
   DelegatedCredential makeCredential(const folly::ssl::EvpPkeyUniquePtr& pkey) {
     DelegatedCredential cred;
     cred.valid_time = 0x1234; // This isn't checked by the self credential code
-    cred.expected_verify_scheme = SignatureScheme::ecdsa_secp256r1_sha256;
+    const auto keyType = CertUtils::getKeyType(pkey);
+    const auto sigSchemes = CertUtils::getSigSchemes(keyType);
+    cred.expected_verify_scheme = sigSchemes[0];
     if (pkey) {
       cred.public_key = getPubkeyDer(pkey);
     }
@@ -205,6 +218,16 @@ TEST_F(SelfDelegatedCredentialTest, TestConstruction) {
   auto credCert = std::make_unique<SelfDelegatedCredentialImpl<KeyType::P256>>(
       getCertVec(), std::move(dcKey), std::move(credential));
 }
+
+#if FIZZ_OPENSSL_HAS_ED25519
+TEST_F(SelfDelegatedCredentialTest, TestEd25519DCConstruction) {
+  auto dcKey = generateEd25519PrivKey();
+  auto credential = makeCredential(dcKey);
+  auto credCert =
+      std::make_unique<SelfDelegatedCredentialImpl<KeyType::ED25519>>(
+          getCertVec(), std::move(dcKey), std::move(credential));
+}
+#endif
 
 TEST_F(SelfDelegatedCredentialTest, TestConstructionFailureBadSignature) {
   auto dcKey = generateDelegatedPrivkey();
