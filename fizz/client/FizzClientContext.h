@@ -223,6 +223,19 @@ class FizzClientContext {
   }
 
   /**
+   * Whether or not require ALPN.
+   * When set to true and ALPN extension is missing, throws
+   * no_application_protocol alert.
+   */
+  void setRequireAlpn(bool enabled) {
+    requireAlpn_ = enabled;
+  }
+
+  bool getRequireAlpn() const {
+    return requireAlpn_;
+  }
+
+  /**
    * Controls the maximum age of a ticket's original handshake (i.e. the full
    * handshake that originally authenticated the initial connection) before
    * it's invalidated and removed from the cache.
@@ -268,6 +281,8 @@ class FizzClientContext {
   bool compatMode_{false};
 
   bool omitEarlyRecordLayer_{false};
+
+  bool requireAlpn_{false};
 
   std::shared_ptr<PskCache> pskCache_;
   std::shared_ptr<const SelfCert> clientCert_;

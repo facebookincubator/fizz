@@ -2122,6 +2122,18 @@ TEST_F(ClientProtocolTest, TestEncryptedExtensionsNoAlpn) {
   EXPECT_EQ(state_.state(), StateEnum::ExpectingCertificate);
 }
 
+TEST_F(ClientProtocolTest, TestEncryptedExtensionsRequireAlpn) {
+  context_->setSupportedAlpns({"h2"});
+  context_->setRequireAlpn(true);
+  setupExpectingEncryptedExtensions();
+  auto ee = TestMessages::encryptedExt();
+  TestMessages::removeExtension(
+      ee, ExtensionType::application_layer_protocol_negotiation);
+  auto actions = detail::processEvent(state_, std::move(ee));
+  expectError<FizzException>(
+      actions, AlertDescription::no_application_protocol, "alpn is required");
+}
+
 TEST_F(ClientProtocolTest, TestEncryptedExtensionsDisallowedExtension) {
   setupExpectingEncryptedExtensions();
   auto ee = TestMessages::encryptedExt();

@@ -1343,6 +1343,9 @@ Actions EventHandler<
           folly::to<std::string>("alpn mismatch: server choose ", *appProto),
           AlertDescription::illegal_parameter);
     }
+  } else if (state.context()->getRequireAlpn()) {
+    throw FizzException(
+        "alpn is required", AlertDescription::no_application_protocol);
   }
 
   auto serverEarly = getExtension<ServerEarlyData>(ee.extensions);
