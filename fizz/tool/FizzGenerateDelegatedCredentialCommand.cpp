@@ -147,6 +147,10 @@ int fizzGenerateDelegatedCredentialCommand(
         case KeyType::P521:
           credVerifScheme = CertUtils::getSigSchemes<KeyType::P521>().front();
           break;
+        case KeyType::ED25519:
+          credVerifScheme =
+              CertUtils::getSigSchemes<KeyType::ED25519>().front();
+          break;
       }
     }
 

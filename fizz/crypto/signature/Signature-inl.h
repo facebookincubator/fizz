@@ -6,7 +6,6 @@
  *  LICENSE file in the root directory of this source tree.
  */
 
-#include <fizz/crypto/openssl/OpenSSL.h>
 #include <fizz/crypto/openssl/OpenSSLKeyUtils.h>
 #include <folly/io/IOBuf.h>
 #include <folly/lang/Assume.h>
@@ -93,6 +92,25 @@ inline std::unique_ptr<folly::IOBuf> OpenSSLSignature<Type>::sign(
   folly::assume_unreachable();
 }
 
+// Use template specialization for Ed25519 because the algorithm doesn't have a
+// HashNid and therefore its SigAlg struct would be missing a member that is
+// used in the generic template
+#if FIZZ_OPENSSL_HAS_ED25519
+template <>
+template <>
+inline std::unique_ptr<folly::IOBuf>
+OpenSSLSignature<KeyType::ED25519>::sign<SignatureScheme::ed25519>(
+    folly::ByteRange data) const {
+  return detail::edSign(data, pkey_);
+#else
+template <>
+inline std::unique_ptr<folly::IOBuf>
+OpenSSLSignature<KeyType::ED25519>::sign<SignatureScheme::ed25519>(
+    folly::ByteRange) const {
+  throw std::runtime_error("Ed25519 not supported");
+#endif
+}
+
 template <KeyType Type>
 template <SignatureScheme Scheme>
 inline void OpenSSLSignature<Type>::verify(
@@ -108,6 +126,25 @@ inline void OpenSSLSignature<Type>::verify(
           data, signature, pkey_, SigAlg<Scheme>::HashNid);
   }
   folly::assume_unreachable();
+}
+
+// Use template specialization for Ed25519 because the algorithm doesn't have a
+// HashNid and therefore its SigAlg struct would be missing a member that is
+// used in the generic template
+#if FIZZ_OPENSSL_HAS_ED25519
+template <>
+template <>
+inline void
+OpenSSLSignature<KeyType::ED25519>::verify<SignatureScheme::ed25519>(
+    folly::ByteRange data,
+    folly::ByteRange signature) const {
+  return detail::edVerify(data, signature, pkey_);
+#else
+template <>
+inline void OpenSSLSignature<KeyType::ED25519>::verify<
+    SignatureScheme::ed25519>(folly::ByteRange, folly::ByteRange) const {
+  throw std::runtime_error("Ed25519 not supported");
+#endif
 }
 
 template <>
@@ -129,6 +166,19 @@ inline void OpenSSLSignature<KeyType::P521>::setKey(
     folly::ssl::EvpPkeyUniquePtr pkey) {
   detail::validateECKey(pkey, NID_secp521r1);
   pkey_ = std::move(pkey);
+}
+
+#if FIZZ_OPENSSL_HAS_ED25519
+template <>
+inline void OpenSSLSignature<KeyType::ED25519>::setKey(
+    folly::ssl::EvpPkeyUniquePtr pkey) {
+  detail::validateEdKey(pkey, NID_ED25519);
+  pkey_ = std::move(pkey);
+#else
+inline void OpenSSLSignature<KeyType::ED25519>::setKey(
+    folly::ssl::EvpPkeyUniquePtr) {
+  throw std::runtime_error("Ed25519 not supported");
+#endif
 }
 
 template <>

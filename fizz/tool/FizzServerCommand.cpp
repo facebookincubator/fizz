@@ -436,10 +436,11 @@ int fizzServerCommand(const std::vector<std::string>& args) {
   bool http = false;
   uint32_t earlyDataSize = std::numeric_limits<uint32_t>::max();
   std::vector<std::vector<CipherSuite>> ciphers {
-    {CipherSuite::TLS_AES_128_GCM_SHA256,
-     CipherSuite::TLS_AES_256_GCM_SHA384},
+    {CipherSuite::TLS_AES_128_GCM_SHA256, CipherSuite::TLS_AES_256_GCM_SHA384},
 #if FOLLY_OPENSSL_HAS_CHACHA
-    {CipherSuite::TLS_CHACHA20_POLY1305_SHA256}
+    {
+      CipherSuite::TLS_CHACHA20_POLY1305_SHA256
+    }
 #endif
   };
   std::string credPath;
@@ -665,6 +666,15 @@ int fizzServerCommand(const std::vector<std::string>& args) {
                 std::move(credPrivKey),
                 std::move(*cred),
                 compressors);
+            break;
+          case KeyType::ED25519:
+            cert =
+                std::make_unique<fizz::extensions::SelfDelegatedCredentialImpl<
+                    KeyType::ED25519>>(
+                    std::move(certs),
+                    std::move(credPrivKey),
+                    std::move(*cred),
+                    compressors);
             break;
         }
       } catch (const std::exception& e) {

@@ -64,10 +64,59 @@ TEST_P(EdDSATest, TestVerify) {
       std::runtime_error);
 }
 
+TEST_P(Ed25519Test, TestOpenSSLSignature) {
+  auto privateKey = fizz::test::getPrivateKey(GetParam().privateKey);
+  auto message = unhexlify(GetParam().hexMessage);
+  auto signature = unhexlify(GetParam().hexSignature);
+
+  // 1. Test instantiation of OpenSSLSignature for Ed25519
+  OpenSSLSignature<KeyType::ED25519> eddsa;
+
+  // 2. Test setting key
+  eddsa.setKey(std::move(privateKey));
+
+  // 3. Test sign method
+  auto generatedSignature = eddsa.sign<SignatureScheme::ed25519>(
+      IOBuf::copyBuffer(message)->coalesce());
+  EXPECT_EQ(hexlify(generatedSignature->coalesce()), GetParam().hexSignature);
+
+  // 4. Test verify method succeeds when it should
+  eddsa.verify<SignatureScheme::ed25519>(
+      IOBuf::copyBuffer(message)->coalesce(),
+      folly::ByteRange(folly::StringPiece(signature)));
+
+  // 5. Test verify method fails if the message is modified
+  auto modifiedMessage = modifyMessage(message);
+  EXPECT_THROW(
+      eddsa.verify<SignatureScheme::ed25519>(
+          IOBuf::copyBuffer(modifiedMessage)->coalesce(),
+          folly::ByteRange(folly::StringPiece(signature))),
+      std::runtime_error);
+
+  // 6. Test verify method fails if the signature is modified
+  auto modifiedSignature = modifySignature(signature);
+  EXPECT_THROW(
+      eddsa.verify<SignatureScheme::ed25519>(
+          IOBuf::copyBuffer(message)->coalesce(),
+          folly::ByteRange(folly::StringPiece(modifiedSignature))),
+      std::runtime_error);
+}
+
 // Test vectors from RFC8032
 INSTANTIATE_TEST_CASE_P(
     TestVectors,
     EdDSATest,
+    ::testing::Values(
+        ED25519_FIXTURE(1),
+        ED25519_FIXTURE(2),
+        ED25519_FIXTURE(3),
+        ED25519_FIXTURE(4),
+        ED25519_FIXTURE(5)));
+
+// Test vectors from RFC8032
+INSTANTIATE_TEST_CASE_P(
+    TestVectors,
+    Ed25519Test,
     ::testing::Values(
         ED25519_FIXTURE(1),
         ED25519_FIXTURE(2),

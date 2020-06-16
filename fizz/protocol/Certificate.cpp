@@ -112,9 +112,10 @@ std::unique_ptr<PeerCert> CertUtils::makePeerCert(
   if (!pubKey) {
     throw std::runtime_error("couldn't get pubkey from peer cert");
   }
-  if (EVP_PKEY_id(pubKey.get()) == EVP_PKEY_RSA) {
+  const auto pkeyID = EVP_PKEY_id(pubKey.get());
+  if (pkeyID == EVP_PKEY_RSA) {
     return std::make_unique<PeerCertImpl<KeyType::RSA>>(std::move(cert));
-  } else if (EVP_PKEY_id(pubKey.get()) == EVP_PKEY_EC) {
+  } else if (pkeyID == EVP_PKEY_EC) {
     switch (getCurveName(pubKey.get())) {
       case NID_X9_62_prime256v1:
         return std::make_unique<PeerCertImpl<KeyType::P256>>(std::move(cert));
@@ -126,6 +127,11 @@ std::unique_ptr<PeerCert> CertUtils::makePeerCert(
         break;
     }
   }
+#if FIZZ_OPENSSL_HAS_ED25519
+  else if (pkeyID == EVP_PKEY_ED25519) {
+    return std::make_unique<PeerCertImpl<KeyType::ED25519>>(std::move(cert));
+  }
+#endif
   throw std::runtime_error("unknown peer cert type");
 }
 
@@ -192,9 +198,10 @@ std::unique_ptr<SelfCert> CertUtils::makeSelfCert(
 }
 
 KeyType CertUtils::getKeyType(const folly::ssl::EvpPkeyUniquePtr& key) {
-  if (EVP_PKEY_id(key.get()) == EVP_PKEY_RSA) {
+  const auto pkeyID = EVP_PKEY_id(key.get());
+  if (pkeyID == EVP_PKEY_RSA) {
     return KeyType::RSA;
-  } else if (EVP_PKEY_id(key.get()) == EVP_PKEY_EC) {
+  } else if (pkeyID == EVP_PKEY_EC) {
     switch (getCurveName(key.get())) {
       case NID_X9_62_prime256v1:
         return KeyType::P256;
@@ -204,6 +211,11 @@ KeyType CertUtils::getKeyType(const folly::ssl::EvpPkeyUniquePtr& key) {
         return KeyType::P521;
     }
   }
+#if FIZZ_OPENSSL_HAS_ED25519
+  else if (pkeyID == EVP_PKEY_ED25519) {
+    return KeyType::ED25519;
+  }
+#endif
 
   throw std::runtime_error("unknown key type");
 }
@@ -218,6 +230,8 @@ std::vector<SignatureScheme> CertUtils::getSigSchemes(KeyType type) {
       return getSigSchemes<KeyType::P384>();
     case KeyType::P521:
       return getSigSchemes<KeyType::P521>();
+    case KeyType::ED25519:
+      return getSigSchemes<KeyType::ED25519>();
   }
 
   throw std::runtime_error("unknown key type");
@@ -244,6 +258,9 @@ std::unique_ptr<SelfCert> CertUtils::makeSelfCert(
           std::move(key), std::move(certs), compressors);
     case KeyType::P521:
       return std::make_unique<SelfCertImpl<KeyType::P521>>(
+          std::move(key), std::move(certs), compressors);
+    case KeyType::ED25519:
+      return std::make_unique<SelfCertImpl<KeyType::ED25519>>(
           std::move(key), std::move(certs), compressors);
   }
 

@@ -51,6 +51,13 @@ struct RSATest {
   using Invalid = P256Test;
 };
 
+struct Ed25519Test {
+  static constexpr KeyType Type = KeyType::ED25519;
+  static constexpr SignatureScheme Scheme = SignatureScheme::ed25519;
+
+  using Invalid = P256Test;
+};
+
 template <typename T>
 static ssl::X509UniquePtr getCert();
 
@@ -73,6 +80,13 @@ template <>
 ssl::X509UniquePtr getCert<RSATest>() {
   return fizz::test::getCert(kRSACertificate);
 }
+
+#if FIZZ_OPENSSL_HAS_ED25519
+template <>
+ssl::X509UniquePtr getCert<Ed25519Test>() {
+  return fizz::test::getCert(kEd25519Certificate);
+}
+#endif
 
 template <typename T>
 static ssl::EvpPkeyUniquePtr getKey();
@@ -97,6 +111,13 @@ ssl::EvpPkeyUniquePtr getKey<RSATest>() {
   return getPrivateKey(kRSAKey);
 }
 
+#if FIZZ_OPENSSL_HAS_ED25519
+template <>
+ssl::EvpPkeyUniquePtr getKey<Ed25519Test>() {
+  return getPrivateKey(kEd25519Key);
+}
+#endif
+
 template <typename T>
 class CertTestTyped : public Test {
  public:
@@ -105,7 +126,14 @@ class CertTestTyped : public Test {
   }
 };
 
-using KeyTypes = Types<P256Test, P384Test, P521Test, RSATest>;
+using KeyTypes = Types<
+#if FIZZ_OPENSSL_HAS_ED25519
+    Ed25519Test,
+#endif
+    P256Test,
+    P384Test,
+    P521Test,
+    RSATest>;
 TYPED_TEST_CASE(CertTestTyped, KeyTypes);
 
 TEST(CertTest, GetIdentity) {

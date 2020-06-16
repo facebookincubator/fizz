@@ -106,6 +106,9 @@ DelegatedCredential DelegatedCredentialUtils::generateCredential(
     case KeyType::P521:
       credKeySchemes = CertUtils::getSigSchemes<KeyType::P521>();
       break;
+    case KeyType::ED25519:
+      credKeySchemes = CertUtils::getSigSchemes<KeyType::ED25519>();
+      break;
   }
 
   if (std::find(credKeySchemes.begin(), credKeySchemes.end(), verifyScheme) ==

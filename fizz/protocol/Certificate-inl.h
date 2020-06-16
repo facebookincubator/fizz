@@ -33,6 +33,12 @@ inline std::vector<SignatureScheme> CertUtils::getSigSchemes<KeyType::RSA>() {
   return {SignatureScheme::rsa_pss_sha256};
 }
 
+template <>
+inline std::vector<SignatureScheme>
+CertUtils::getSigSchemes<KeyType::ED25519>() {
+  return {SignatureScheme::ed25519};
+}
+
 template <KeyType T>
 SelfCertImpl<T>::SelfCertImpl(std::vector<folly::ssl::X509UniquePtr> certs)
     : certs_(std::move(certs)) {}
@@ -133,6 +139,20 @@ inline Buf SelfCertImpl<KeyType::P521>::sign(
 }
 
 template <>
+inline Buf SelfCertImpl<KeyType::ED25519>::sign(
+    SignatureScheme scheme,
+    CertificateVerifyContext context,
+    folly::ByteRange toBeSigned) const {
+  auto signData = CertUtils::prepareSignData(context, toBeSigned);
+  switch (scheme) {
+    case SignatureScheme::ed25519:
+      return signature_.sign<SignatureScheme::ed25519>(signData->coalesce());
+    default:
+      throw std::runtime_error("Unsupported signature scheme");
+  }
+}
+
+template <>
 inline Buf SelfCertImpl<KeyType::RSA>::sign(
     SignatureScheme scheme,
     CertificateVerifyContext context,
@@ -204,6 +224,22 @@ inline void PeerCertImpl<KeyType::P521>::verify(
   switch (scheme) {
     case SignatureScheme::ecdsa_secp521r1_sha512:
       return signature_.verify<SignatureScheme::ecdsa_secp521r1_sha512>(
+          signData->coalesce(), signature);
+    default:
+      throw std::runtime_error("Unsupported signature scheme");
+  }
+}
+
+template <>
+inline void PeerCertImpl<KeyType::ED25519>::verify(
+    SignatureScheme scheme,
+    CertificateVerifyContext context,
+    folly::ByteRange toBeSigned,
+    folly::ByteRange signature) const {
+  auto signData = CertUtils::prepareSignData(context, toBeSigned);
+  switch (scheme) {
+    case SignatureScheme::ed25519:
+      return signature_.verify<SignatureScheme::ed25519>(
           signData->coalesce(), signature);
     default:
       throw std::runtime_error("Unsupported signature scheme");

@@ -8,13 +8,14 @@
 
 #pragma once
 
+#include <fizz/crypto/openssl/OpenSSL.h>
 #include <fizz/record/Types.h>
 #include <folly/Range.h>
 #include <folly/ssl/OpenSSLPtrTypes.h>
 
 namespace fizz {
 
-enum class KeyType { RSA, P256, P384, P521 };
+enum class KeyType { RSA, P256, P384, P521, ED25519 };
 
 /**
  * Signature implementation using OpenSSL.
@@ -47,6 +48,21 @@ class OpenSSLSignature {
  private:
   folly::ssl::EvpPkeyUniquePtr pkey_;
 };
+
+#if !FIZZ_OPENSSL_HAS_ED25519
+template <>
+class OpenSSLSignature<KeyType::ED25519> {
+ public:
+  [[noreturn]] void setKey(folly::ssl::EvpPkeyUniquePtr);
+
+  template <SignatureScheme Scheme>
+  [[noreturn]] std::unique_ptr<folly::IOBuf> sign(folly::ByteRange) const;
+
+  template <SignatureScheme Scheme>
+  [[noreturn]] void verify(folly::ByteRange, folly::ByteRange) const;
+};
+#endif
+
 } // namespace fizz
 
 #include <fizz/crypto/signature/Signature-inl.h>
