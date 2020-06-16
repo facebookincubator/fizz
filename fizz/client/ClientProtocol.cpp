@@ -1090,6 +1090,7 @@ EventHandler<ClientTypes, StateEnum::ExpectingServerHello, Event::ServerHello>::
             newState.group() = group;
             newState.encodedClientHello() = folly::none;
             newState.keyExchangers() = folly::none;
+            newState.attemptedPsk() = folly::none;
             newState.clientHandshakeSecret() = std::move(clientHandshakeSecret);
             newState.serverHandshakeSecret() = std::move(serverHandshakeSecret);
             newState.keyExchangeType() = keyExchangeType;
@@ -1290,8 +1291,7 @@ static void validateAcceptedEarly(
     const Optional<std::string>& alpn) {
   const auto& params = state.earlyDataParams();
 
-  if (!state.attemptedPsk() || state.pskType() == PskType::Rejected ||
-      !params) {
+  if (state.pskType() == PskType::Rejected || !params) {
     throw FizzException(
         "early accepted without psk", AlertDescription::illegal_parameter);
   }
