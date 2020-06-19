@@ -302,6 +302,10 @@ class State {
     return handshakeTime_;
   }
 
+  const folly::Optional<Random>& clientRandom() const {
+    return clientRandom_;
+  }
+
   /*
    * State setters.
    */
@@ -401,6 +405,9 @@ class State {
   auto& handshakeTime() {
     return handshakeTime_;
   }
+  auto& clientRandom() {
+    return clientRandom_;
+  }
 
  private:
   StateEnum state_{StateEnum::Uninitialized};
@@ -425,6 +432,7 @@ class State {
   folly::Optional<std::vector<std::shared_ptr<const PeerCert>>>
       unverifiedCertChain_;
 
+  folly::Optional<Random> clientRandom_;
   folly::Optional<ProtocolVersion> version_;
   folly::Optional<CipherSuite> cipher_;
   folly::Optional<NamedGroup> group_;

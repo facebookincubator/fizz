@@ -1381,6 +1381,7 @@ EventHandler<ServerTypes, StateEnum::ExpectingClientHello, Event::ClientHello>::
           clientCert = std::move(resState->clientCert);
         }
 
+        auto clientRandom = std::move(chlo.random);
         return runOnCallerIfComplete(
             state.executor(),
             std::move(signature),
@@ -1388,6 +1389,7 @@ EventHandler<ServerTypes, StateEnum::ExpectingClientHello, Event::ClientHello>::
              scheduler = std::move(scheduler),
              handshakeContext = std::move(handshakeContext),
              cipher,
+             clientRandom = std::move(clientRandom),
              group,
              encodedServerHello = std::move(encodedServerHello),
              handshakeWriteRecordLayer = std::move(handshakeWriteRecordLayer),
@@ -1535,6 +1537,7 @@ EventHandler<ServerTypes, StateEnum::ExpectingClientHello, Event::ClientHello>::
                    clockSkew,
                    appToken = std::move(appToken),
                    serverCertCompAlgo,
+                   clientRandom = std::move(clientRandom),
                    handshakeTime =
                        std::move(handshakeTime)](State& newState) mutable {
                     newState.writeRecordLayer() =
@@ -1560,6 +1563,7 @@ EventHandler<ServerTypes, StateEnum::ExpectingClientHello, Event::ClientHello>::
                     newState.appToken() = std::move(appToken);
                     newState.serverCertCompAlgo() = serverCertCompAlgo;
                     newState.handshakeTime() = std::move(handshakeTime);
+                    newState.clientRandom() = std::move(clientRandom);
                   });
 
               if (earlyDataType == EarlyDataType::Accepted) {

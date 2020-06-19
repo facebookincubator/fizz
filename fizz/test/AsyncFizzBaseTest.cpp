@@ -83,6 +83,8 @@ class AsyncFizzBaseTest : public testing::Test, public AsyncFizzBase {
   MOCK_METHOD1(transportError, void(const folly::AsyncSocketException&));
   MOCK_METHOD0(transportDataAvailable, void());
 
+  MOCK_CONST_METHOD0(getClientRandom, folly::Optional<Random>());
+
  protected:
   void expectReadBufRequest(size_t sizeToGive) {
     readBuf_.resize(sizeToGive);

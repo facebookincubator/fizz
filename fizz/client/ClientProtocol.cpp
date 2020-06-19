@@ -1192,7 +1192,7 @@ Actions EventHandler<
 
   auto chlo = getClientHello(
       *state.context()->getFactory(),
-      state.clientRandom(),
+      *state.clientRandom(),
       state.context()->getSupportedCiphers(),
       state.context()->getSupportedVersions(),
       state.context()->getSupportedGroups(),

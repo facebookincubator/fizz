@@ -304,6 +304,7 @@ class MockAsyncFizzBase : public AsyncFizzBase {
   MOCK_CONST_METHOD0(getCipher, folly::Optional<CipherSuite>());
   MOCK_CONST_METHOD0(getSupportedSigSchemes, std::vector<SignatureScheme>());
   MOCK_CONST_METHOD3(getEkm, Buf(folly::StringPiece, const Buf&, uint16_t));
+  MOCK_CONST_METHOD0(getClientRandom, folly::Optional<Random>());
 
   MOCK_METHOD3(
       writeAppDataInternal,

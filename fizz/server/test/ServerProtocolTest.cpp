@@ -750,6 +750,10 @@ TEST_F(ServerProtocolTest, TestClientHelloFullHandshakeFlow) {
   EXPECT_TRUE(IOBufEqualTo()(
       *state_.exporterMasterSecret(), IOBuf::copyBuffer("expm")));
   EXPECT_FALSE(state_.earlyExporterMasterSecret().has_value());
+  ASSERT_TRUE(state_.clientRandom().hasValue());
+  auto cr = state_.clientRandom().value();
+  EXPECT_TRUE(
+      std::all_of(begin(cr), end(cr), [](auto c) { return c == 0x44; }));
 }
 
 TEST_F(ServerProtocolTest, TestClientHelloCompressedCertFlow) {
@@ -1773,6 +1777,7 @@ TEST_F(ServerProtocolTest, TestClientHelloHelloRetryRequestFlow) {
   EXPECT_EQ(state_.earlyDataType(), EarlyDataType::NotAttempted);
   EXPECT_EQ(state_.replayCacheResult(), ReplayCacheResult::NotChecked);
   EXPECT_FALSE(state_.earlyExporterMasterSecret().has_value());
+  EXPECT_FALSE(state_.clientRandom().hasValue());
 }
 
 TEST_F(ServerProtocolTest, TestRetryClientHelloFullHandshakeFlow) {
@@ -1998,6 +2003,10 @@ TEST_F(ServerProtocolTest, TestRetryClientHelloFullHandshakeFlow) {
   EXPECT_TRUE(IOBufEqualTo()(
       *state_.exporterMasterSecret(), IOBuf::copyBuffer("expm")));
   EXPECT_FALSE(state_.earlyExporterMasterSecret().has_value());
+  ASSERT_TRUE(state_.clientRandom().hasValue());
+  auto cr = state_.clientRandom().value();
+  EXPECT_TRUE(
+      std::all_of(begin(cr), end(cr), [](auto c) { return c == 0x44; }));
 }
 
 TEST_F(ServerProtocolTest, TestRetryClientHelloPskDheFlow) {

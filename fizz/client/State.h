@@ -199,8 +199,8 @@ class State {
   /**
    * Random sent by the client.
    */
-  const Random& clientRandom() const {
-    return *clientRandom_;
+  const folly::Optional<Random>& clientRandom() const {
+    return clientRandom_;
   }
 
   /**

@@ -8,7 +8,6 @@
 
 #pragma once
 
-#include <folly/io/SocketOptionMap.h>
 #include <fizz/client/ClientExtensions.h>
 #include <fizz/client/ClientProtocol.h>
 #include <fizz/client/EarlyDataRejectionPolicy.h>
@@ -16,6 +15,7 @@
 #include <fizz/client/FizzClientContext.h>
 #include <fizz/protocol/AsyncFizzBase.h>
 #include <fizz/protocol/Exporter.h>
+#include <folly/io/SocketOptionMap.h>
 
 namespace fizz {
 namespace client {
@@ -78,8 +78,7 @@ class AsyncFizzClientT : public AsyncFizzBase,
       folly::Optional<std::string> pskIdentity,
       std::chrono::milliseconds totalTimeout = std::chrono::milliseconds(0),
       std::chrono::milliseconds socketTimeout = std::chrono::milliseconds(0),
-      const folly::SocketOptionMap& options =
-          folly::emptySocketOptionMap,
+      const folly::SocketOptionMap& options = folly::emptySocketOptionMap,
       const folly::SocketAddress& bindAddr = folly::AsyncSocket::anyAddress());
 
   /**
@@ -137,6 +136,8 @@ class AsyncFizzClientT : public AsyncFizzBase,
       const;
 
   bool pskResumed() const;
+
+  folly::Optional<Random> getClientRandom() const override;
 
  protected:
   ~AsyncFizzClientT() override = default;

@@ -90,6 +90,8 @@ class AsyncFizzServerT : public AsyncFizzBase {
   const Cert* getPeerCertificate() const override;
   const Cert* getSelfCertificate() const override;
 
+  folly::Optional<Random> getClientRandom() const override;
+
  protected:
   ~AsyncFizzServerT() override = default;
   void writeAppData(

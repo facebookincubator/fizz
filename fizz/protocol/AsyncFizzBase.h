@@ -200,6 +200,12 @@ class AsyncFizzBase : public folly::WriteChainAsyncTransportWrapper<
     return closeTransportOnCloseNotify_;
   }
 
+  /*
+   * Gets the client random associated with this connection. The CR can be
+   * used as a transport agnostic identifier (for instance, for NSS keylogging)
+   */
+  virtual folly::Optional<Random> getClientRandom() const = 0;
+
  protected:
   /**
    * Start reading raw data from the transport.

@@ -282,7 +282,8 @@ class Connection : public AsyncSocket::ConnectCallback,
                       ? toString(*state.serverCertCompAlgo())
                       : "(none)");
     LOG(INFO) << "  ALPN: " << state.alpn().value_or("(none)");
-    LOG(INFO) << "  Client Random: " << folly::hexlify(state.clientRandom());
+    LOG(INFO) << "  Client Random: "
+              << folly::hexlify(*transport_->getClientRandom());
     LOG(INFO) << "  Secrets:";
     LOG(INFO) << "    External PSK Binder: " << secretStr(externalPskBinder_);
     LOG(INFO) << "    Resumption PSK Binder: "

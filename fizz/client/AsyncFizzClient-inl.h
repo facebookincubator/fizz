@@ -616,5 +616,10 @@ template <typename SM>
 bool AsyncFizzClientT<SM>::pskResumed() const {
   return getState().pskMode().has_value();
 }
+
+template <typename SM>
+folly::Optional<Random> AsyncFizzClientT<SM>::getClientRandom() const {
+  return getState().clientRandom();
+}
 } // namespace client
 } // namespace fizz

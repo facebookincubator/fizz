@@ -219,6 +219,11 @@ void AsyncFizzServerT<SM>::deliverHandshakeError(folly::exception_wrapper ex) {
 }
 
 template <typename SM>
+folly::Optional<Random> AsyncFizzServerT<SM>::getClientRandom() const {
+  return getState().clientRandom();
+}
+
+template <typename SM>
 void AsyncFizzServerT<SM>::ActionMoveVisitor::operator()(DeliverAppData& data) {
   server_.deliverAppData(std::move(data.data));
 }
