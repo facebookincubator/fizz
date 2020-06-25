@@ -23,6 +23,7 @@
 #include <fizz/server/SlidingBloomReplayCache.h>
 #include <fizz/server/TicketTypes.h>
 #include <fizz/tool/FizzCommandCommon.h>
+#include <fizz/util/KeyLogWriter.h>
 #include <fizz/util/Parse.h>
 
 #include <folly/Format.h>
@@ -55,6 +56,7 @@ void printUsage() {
     << " -requirecert             (require a client certificate from clients. Default: false)\n"
     << " -capaths d1:...          (colon-separated paths to directories of CA certs used for verification)\n"
     << " -cafile file             (path to bundle of CA certs used for verification)\n"
+    << " -keylog file             (dump TLS secrets to a NSS key log file; for debugging purpose only)\n"
     << " -early                   (enables sending early data during resumption. Default: false)\n"
     << " -early_max maxBytes      (sets the maximum amount allowed in early data. Default: UINT32_MAX)\n"
     << " -alpn alpn1:...          (comma-separated list of ALPNs to support. Default: none)\n"
@@ -86,6 +88,17 @@ class FizzServerAcceptor : AsyncServerSocket::AcceptCallback {
   void setHttpEnabled(bool enabled) {
     http_ = enabled;
   }
+  void setKeyLogWriter(std::unique_ptr<KeyLogWriter> keyLogWriter) {
+    keyLogger_ = std::move(keyLogWriter);
+  }
+  void writeKeyLog(
+      const fizz::Random& clientRandom,
+      KeyLogWriter::Label label,
+      const folly::ByteRange& secret) {
+    if (keyLogger_) {
+      keyLogger_->write(clientRandom, label, secret);
+    }
+  }
 
  private:
   bool loop_{false};
@@ -96,6 +109,7 @@ class FizzServerAcceptor : AsyncServerSocket::AcceptCallback {
   std::unique_ptr<AsyncFizzServer::HandshakeCallback> cb_;
   std::unique_ptr<TerminalInputHandler> inputHandler_;
   bool http_{false};
+  std::unique_ptr<KeyLogWriter> keyLogger_;
 };
 
 class FizzExampleServer : public AsyncFizzServer::HandshakeCallback,
@@ -198,6 +212,44 @@ class FizzExampleServer : public AsyncFizzServer::HandshakeCallback,
     auto& state = transport_->getState();
     auto serverCert = state.serverCert();
     auto clientCert = state.clientCert();
+
+    if (clientEarlyTrafficSecret_) {
+      acceptor_->writeKeyLog(
+          *state.clientRandom(),
+          KeyLogWriter::Label::CLIENT_EARLY_TRAFFIC_SECRET,
+          folly::range(*clientEarlyTrafficSecret_));
+    }
+    if (clientHandshakeTrafficSecret_) {
+      acceptor_->writeKeyLog(
+          *state.clientRandom(),
+          KeyLogWriter::Label::CLIENT_HANDSHAKE_TRAFFIC_SECRET,
+          folly::range(*clientHandshakeTrafficSecret_));
+    }
+    if (serverHandshakeTrafficSecret_) {
+      acceptor_->writeKeyLog(
+          *state.clientRandom(),
+          KeyLogWriter::Label::SERVER_HANDSHAKE_TRAFFIC_SECRET,
+          folly::range(*serverHandshakeTrafficSecret_));
+    }
+    if (exporterMasterSecret_) {
+      acceptor_->writeKeyLog(
+          *state.clientRandom(),
+          KeyLogWriter::Label::EXPORTER_SECRET,
+          folly::range(*exporterMasterSecret_));
+    }
+    if (clientAppTrafficSecret_) {
+      acceptor_->writeKeyLog(
+          *state.clientRandom(),
+          KeyLogWriter::Label::CLIENT_TRAFFIC_SECRET_0,
+          folly::range(*clientAppTrafficSecret_));
+    }
+    if (serverAppTrafficSecret_) {
+      acceptor_->writeKeyLog(
+          *state.clientRandom(),
+          KeyLogWriter::Label::SERVER_TRAFFIC_SECRET_0,
+          folly::range(*serverAppTrafficSecret_));
+    }
+
     return {
         folly::to<std::string>("  TLS Version: ", toString(*state.version())),
         folly::to<std::string>("  Cipher Suite:  ", toString(*state.cipher())),
@@ -225,6 +277,8 @@ class FizzExampleServer : public AsyncFizzServer::HandshakeCallback,
             (state.serverCertCompAlgo() ? toString(*state.serverCertCompAlgo())
                                         : "(none)")),
         folly::to<std::string>("  ALPN: ", state.alpn().value_or("(none)")),
+        folly::to<std::string>(
+            "  Client Random: ", folly::hexlify(*state.clientRandom())),
         folly::to<std::string>("  Secrets:"),
         folly::to<std::string>(
             "    External PSK Binder: ", secretStr(externalPskBinder_)),
@@ -428,6 +482,7 @@ int fizzServerCommand(const std::vector<std::string>& args) {
   ClientAuthMode clientAuthMode = ClientAuthMode::None;
   std::string caPaths;
   std::string caFile;
+  std::string keyLogFile;
   bool early = false;
   std::vector<std::string> alpns;
   folly::Optional<std::vector<CertificateCompressionAlgorithm>> compAlgos;
@@ -475,6 +530,9 @@ int fizzServerCommand(const std::vector<std::string>& args) {
     }}},
     {"-capaths", {true, [&caPaths](const std::string& arg) { caPaths = arg; }}},
     {"-cafile", {true, [&caFile](const std::string& arg) { caFile = arg; }}},
+    {"-keylog", {true,[&keyLogFile](const std::string& arg) {
+      keyLogFile = arg;
+    }}},
     {"-early", {false, [&early](const std::string&) { early = true; }}},
     {"-alpn", {true, [&alpns](const std::string& arg) {
         alpns.clear();
@@ -720,6 +778,9 @@ int fizzServerCommand(const std::vector<std::string>& args) {
   serverContext->setSupportedVersions(
       {ProtocolVersion::tls_1_3, ProtocolVersion::tls_1_3_28});
   FizzServerAcceptor acceptor(port, serverContext, loop, &evb, sslContext);
+  if (!keyLogFile.empty()) {
+    acceptor.setKeyLogWriter(std::make_unique<KeyLogWriter>(keyLogFile));
+  }
   acceptor.setHttpEnabled(http);
   evb.loop();
   return 0;

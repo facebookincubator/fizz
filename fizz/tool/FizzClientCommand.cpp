@@ -18,6 +18,7 @@
 #endif
 #include <fizz/client/PskSerializationUtils.h>
 #include <fizz/tool/FizzCommandCommon.h>
+#include <fizz/util/KeyLogWriter.h>
 #include <fizz/util/Parse.h>
 #include <folly/FileUtil.h>
 #include <folly/Format.h>
@@ -52,6 +53,7 @@ void printUsage() {
     << " -reconnect               (after connecting, open another connection using a psk. Default: false)\n"
     << " -psk_save file           (after connecting, save the psk to file )\n"
     << " -psk_load file           (given file that contains a serialized psk, deserialize psk and open a connection with it)\n"
+    << " -keylog file             (dump TLS secrets to a NSS key log file; for debugging purpose only)\n"
     << " -servername name         (server name to send in SNI. Default: same as host)\n"
     << " -alpn alpn1:...          (colon-separated list of ALPNs to send. Default: none)\n"
     << " -ciphers c1:...          (colon-separated list of ciphers in preference order. Default:\n"
@@ -230,6 +232,10 @@ class Connection : public AsyncSocket::ConnectCallback,
     }
   }
 
+  void setKeyLogWriter(std::unique_ptr<KeyLogWriter> keyLogWriter) {
+    keyLogger_ = std::move(keyLogWriter);
+  }
+
  private:
   void printHandshakeSuccess() {
     auto& state = transport_->getState();
@@ -300,6 +306,45 @@ class Connection : public AsyncSocket::ConnectCallback,
               << secretStr(resumptionMasterSecret_);
     LOG(INFO) << "    Client Traffic: " << secretStr(clientAppTrafficSecret_);
     LOG(INFO) << "    Server Traffic: " << secretStr(serverAppTrafficSecret_);
+
+    if (keyLogger_) {
+      if (clientEarlyTrafficSecret_) {
+        keyLogger_->write(
+            *transport_->getClientRandom(),
+            KeyLogWriter::Label::CLIENT_EARLY_TRAFFIC_SECRET,
+            folly::range(*clientEarlyTrafficSecret_));
+      }
+      if (clientHandshakeTrafficSecret_) {
+        keyLogger_->write(
+            *transport_->getClientRandom(),
+            KeyLogWriter::Label::CLIENT_HANDSHAKE_TRAFFIC_SECRET,
+            folly::range(*clientHandshakeTrafficSecret_));
+      }
+      if (serverHandshakeTrafficSecret_) {
+        keyLogger_->write(
+            *transport_->getClientRandom(),
+            KeyLogWriter::Label::SERVER_HANDSHAKE_TRAFFIC_SECRET,
+            folly::range(*serverHandshakeTrafficSecret_));
+      }
+      if (exporterMasterSecret_) {
+        keyLogger_->write(
+            *transport_->getClientRandom(),
+            KeyLogWriter::Label::EXPORTER_SECRET,
+            folly::range(*exporterMasterSecret_));
+      }
+      if (clientAppTrafficSecret_) {
+        keyLogger_->write(
+            *transport_->getClientRandom(),
+            KeyLogWriter::Label::CLIENT_TRAFFIC_SECRET_0,
+            folly::range(*clientAppTrafficSecret_));
+      }
+      if (serverAppTrafficSecret_) {
+        keyLogger_->write(
+            *transport_->getClientRandom(),
+            KeyLogWriter::Label::SERVER_TRAFFIC_SECRET_0,
+            folly::range(*serverAppTrafficSecret_));
+      }
+    }
   }
 
   EventBase* evb_;
@@ -313,6 +358,7 @@ class Connection : public AsyncSocket::ConnectCallback,
   std::string proxyTarget_;
   std::unique_ptr<IOBuf> proxyResponseBuffer_;
   std::shared_ptr<ClientExtensions> extensions_;
+  std::unique_ptr<KeyLogWriter> keyLogger_;
 };
 
 class ResumptionPskCache : public BasicPskCache {
@@ -382,6 +428,7 @@ int fizzClientCommand(const std::vector<std::string>& args) {
   std::string caFile;
   std::string pskSaveFile;
   std::string pskLoadFile;
+  std::string keyLogFile;
   bool reconnect = false;
   std::string customSNI;
   std::vector<std::string> alpns;
@@ -417,6 +464,9 @@ int fizzClientCommand(const std::vector<std::string>& args) {
     }}},
     {"-psk_load", {true,[&pskLoadFile](const std::string& arg) {
       pskLoadFile = arg;
+    }}},
+    {"-keylog", {true,[&keyLogFile](const std::string& arg) {
+      keyLogFile = arg;
     }}},
     {"-reconnect", {false, [&reconnect](const std::string&) {
         reconnect = true;
@@ -587,6 +637,9 @@ int fizzClientCommand(const std::vector<std::string>& args) {
       auto pskCache =
           std::make_shared<BasicPersistentPskCache>(pskSaveFile, pskLoadFile);
       clientContext->setPskCache(pskCache);
+    }
+    if (!keyLogFile.empty()) {
+      conn.setKeyLogWriter(std::make_unique<KeyLogWriter>(keyLogFile));
     }
     TerminalInputHandler input(&evb, inputTarget);
     conn.connect(addr);
