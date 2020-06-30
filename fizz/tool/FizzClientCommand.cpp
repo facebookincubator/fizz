@@ -43,13 +43,16 @@ void printUsage() {
     << "Supported arguments:\n"
     << " -host host               (use connect instead)\n"
     << " -port port               (use connect instead)\n"
-    << " -connect host:port       (set the address to connect to. Default: localhost:4433)\n"
+    << " -connect host:port       (set the address to connect to. Default: localhost:8443)\n"
     << " -verify                  (enable server cert verification. Default: false)\n"
     << " -cert cert               (PEM format client certificate to send if requested. Default: none)\n"
     << " -key key                 (PEM format private key for client certificate. Default: none)\n"
     << " -pass password           (private key password. Default: none)\n"
-    << " -capaths d1:...          (colon-separated paths to directories of CA certs used for verification)\n"
-    << " -cafile file             (path to bundle of CA certs used for verification)\n"
+    << " -capath directory        (path to a directory of hashed formed CA certs used for verification.\n"
+    << "                           The directory should contain one certificate or CRL per file in PEM format,\n"
+    << "                           with a file name of the form hash.N for a certificate, or hash.rN for a CRL.\n"
+    << "                           Refer to https://www.openssl.org/docs/man1.1.1/man1/rehash.html for how to generate such files.)\n"
+    << " -cafile file             (path to a bundle file of CA certs used for verification; can be used with or without -capath.)\n"
     << " -reconnect               (after connecting, open another connection using a psk. Default: false)\n"
     << " -psk_save file           (after connecting, save the psk to file )\n"
     << " -psk_load file           (given file that contains a serialized psk, deserialize psk and open a connection with it)\n"
@@ -419,7 +422,7 @@ class BasicPersistentPskCache : public BasicPskCache {
 
 int fizzClientCommand(const std::vector<std::string>& args) {
   std::string host = "localhost";
-  uint16_t port = 4433;
+  uint16_t port = 8443;
   bool verify = false;
   std::string certPath;
   std::string keyPath;

@@ -54,8 +54,11 @@ void printUsage() {
     << " -pass password           (private key password. Default: none)\n"
     << " -requestcert             (request an optional client certificate from clients. Default: false)\n"
     << " -requirecert             (require a client certificate from clients. Default: false)\n"
-    << " -capaths d1:...          (colon-separated paths to directories of CA certs used for verification)\n"
-    << " -cafile file             (path to bundle of CA certs used for verification)\n"
+    << " -capath directory        (path to a directory of hashed formed CA certs used for verification.\n"
+    << "                           The directory should contain one certificate or CRL per file in PEM format,\n"
+    << "                           with a file name of the form hash.N for a certificate, or hash.rN for a CRL.\n"
+    << "                           Refer to https://www.openssl.org/docs/man1.1.1/man1/rehash.html for how to generate such files.)\n"
+    << " -cafile file             (path to a bundle file of CA certs used for verification; can be used with or without -capath.)\n"
     << " -keylog file             (dump TLS secrets to a NSS key log file; for debugging purpose only)\n"
     << " -early                   (enables sending early data during resumption. Default: false)\n"
     << " -early_max maxBytes      (sets the maximum amount allowed in early data. Default: UINT32_MAX)\n"
@@ -480,7 +483,7 @@ int fizzServerCommand(const std::vector<std::string>& args) {
   std::string keyPath;
   std::string keyPass;
   ClientAuthMode clientAuthMode = ClientAuthMode::None;
-  std::string caPaths;
+  std::string caPath;
   std::string caFile;
   std::string keyLogFile;
   bool early = false;
@@ -528,7 +531,7 @@ int fizzServerCommand(const std::vector<std::string>& args) {
     {"-requirecert", {false, [&clientAuthMode](const std::string&) {
       clientAuthMode = ClientAuthMode::Required;
     }}},
-    {"-capaths", {true, [&caPaths](const std::string& arg) { caPaths = arg; }}},
+    {"-capath", {true, [&caPath](const std::string& arg) { caPath = arg; }}},
     {"-cafile", {true, [&caFile](const std::string& arg) { caFile = arg; }}},
     {"-keylog", {true,[&keyLogFile](const std::string& arg) {
       keyLogFile = arg;
@@ -591,10 +594,10 @@ int fizzServerCommand(const std::vector<std::string>& args) {
   if (clientAuthMode != ClientAuthMode::None) {
     // Initialize CA store first, if given.
     folly::ssl::X509StoreUniquePtr storePtr;
-    if (!caPaths.empty() || !caFile.empty()) {
+    if (!caPath.empty() || !caFile.empty()) {
       storePtr.reset(X509_STORE_new());
       auto caFilePtr = caFile.empty() ? nullptr : caFile.c_str();
-      auto caPathPtr = caPaths.empty() ? nullptr : caPaths.c_str();
+      auto caPathPtr = caPath.empty() ? nullptr : caPath.c_str();
 
       if (X509_STORE_load_locations(storePtr.get(), caFilePtr, caPathPtr) ==
           0) {
