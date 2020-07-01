@@ -11,6 +11,12 @@
 #include <openssl/err.h>
 
 namespace fizz {
+
+/*static*/ folly::ssl::EvpPkeyUniquePtr OpenSSLKeyUtils::generateECKeyPair(
+    int curveNid) {
+  return detail::generateECKeyPair(curveNid);
+}
+
 namespace detail {
 
 void validateECKey(const folly::ssl::EvpPkeyUniquePtr& key, int curveNid) {

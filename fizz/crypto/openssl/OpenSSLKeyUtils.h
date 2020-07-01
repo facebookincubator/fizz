@@ -14,6 +14,18 @@
 #include <folly/ssl/OpenSSLPtrTypes.h>
 
 namespace fizz {
+
+class OpenSSLKeyUtils {
+ public:
+  /**
+   * Generates an new EVP_PKEY on the curve.
+   * Throws an exception on error.
+   *
+   * This is a public interface to the namespaced private method below.
+   */
+  static folly::ssl::EvpPkeyUniquePtr generateECKeyPair(int curveNid);
+};
+
 namespace detail {
 
 /**
