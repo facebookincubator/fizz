@@ -36,7 +36,7 @@ struct KeyParams {
 template <class T>
 class Key : public ::testing::Test {
  public:
-  using KeyExch = detail::OpenSSLECKeyExchange<T>;
+  using KeyExch = OpenSSLECKeyExchange<T>;
   using KeyEncoder = detail::OpenSSLECKeyEncoder;
   using KeyDecoder = detail::OpenSSLECKeyDecoder<T>;
 
@@ -114,7 +114,7 @@ TYPED_TEST(Key, GenerateKey) {
 TYPED_TEST(Key, SharedSecret) {
   typename TestFixture::KeyExch kex;
   kex.generateKeyPair();
-  auto shared = kex.generateSharedSecret(kex.getKey());
+  auto shared = kex.generateSharedSecret(kex.getPrivateKey());
   EXPECT_TRUE(shared);
 }
 
@@ -126,7 +126,7 @@ TYPED_TEST(Key, ReadFromKey) {
   auto pkey2 = getPrivateKey(this->getKeyParams().privateKey);
   typename TestFixture::KeyExch kex2;
   kex2.setPrivateKey(std::move(pkey2));
-  auto shared = kex.generateSharedSecret(kex2.getKey());
+  auto shared = kex.generateSharedSecret(kex2.getPrivateKey());
   EXPECT_TRUE(shared);
 }
 
@@ -265,6 +265,7 @@ TEST_P(ECDHTest, TestKeyAgreement) {
  * https://github.com/pyca/cryptography/blob/1a6628e55126ec1c98c98a46c04f777f77eff934/vectors/cryptography_vectors/asymmetric/ECDH/KASValidityTest_ECCStaticUnified_NOKC_ZZOnly_init.fax
  * These are NIST test vectors.
  */
+// clang-format off
 INSTANTIATE_TEST_CASE_P(
     TestVectors,
     ECDHTest,
@@ -426,5 +427,6 @@ INSTANTIATE_TEST_CASE_P(
                 "01186d749c6b2a215c59df35ef6f2f6ed1745a9b2e15fca225e79faa7c5b9af44821d50765b45c3c66e210ec78d4bccb7f8c44c19cf80f5357938df48e320fa1ed88",
                 true,
                 KeyType::P521}));
+// clang-format on
 } // namespace test
 } // namespace fizz

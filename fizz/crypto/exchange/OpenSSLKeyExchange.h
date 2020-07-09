@@ -9,9 +9,7 @@
 #pragma once
 
 #include <fizz/crypto/exchange/KeyExchange.h>
-#include <fizz/crypto/openssl/OpenSSLKeyUtils.h>
 #include <folly/ssl/OpenSSLPtrTypes.h>
-#include <fizz/crypto/exchange/OpenSSLKeyExchange-inl.h>
 
 namespace fizz {
 
@@ -22,34 +20,27 @@ namespace fizz {
  *   - curveNid: OpenSSL NID for the named curve
  */
 template <class T>
-class OpenSSLKeyExchange : public KeyExchange {
+class OpenSSLECKeyExchange : public KeyExchange {
  public:
-  ~OpenSSLKeyExchange() override = default;
+  ~OpenSSLECKeyExchange() override = default;
 
-  void generateKeyPair() override {
-    keyExchange_.generateKeyPair();
-  }
+  void generateKeyPair() override;
 
-  std::unique_ptr<folly::IOBuf> getKeyShare() const override {
-    const auto& key = keyExchange_.getKey();
-    if (!key) {
-      throw std::runtime_error("Key not initialized");
-    }
-    return detail::OpenSSLECKeyEncoder::encode(key);
-  }
+  std::unique_ptr<folly::IOBuf> getKeyShare() const override;
 
   std::unique_ptr<folly::IOBuf> generateSharedSecret(
-      folly::ByteRange keyShare) const override {
-    auto key = detail::OpenSSLECKeyDecoder<T>::decode(keyShare);
-    return generateSharedSecret(key);
-  }
+      folly::ByteRange keyShare) const override;
 
   std::unique_ptr<folly::IOBuf> generateSharedSecret(
-      const folly::ssl::EvpPkeyUniquePtr& peerKey) const {
-    return keyExchange_.generateSharedSecret(peerKey);
-  }
+      const folly::ssl::EvpPkeyUniquePtr& peerKey) const;
+
+  void setPrivateKey(folly::ssl::EvpPkeyUniquePtr privateKey);
+
+  const folly::ssl::EvpPkeyUniquePtr& getPrivateKey() const;
 
  private:
-  detail::OpenSSLECKeyExchange<T> keyExchange_;
+  folly::ssl::EvpPkeyUniquePtr key_;
 };
 } // namespace fizz
+
+#include <fizz/crypto/exchange/OpenSSLKeyExchange-inl.h>

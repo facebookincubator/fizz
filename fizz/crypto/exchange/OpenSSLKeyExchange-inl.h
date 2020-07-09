@@ -6,36 +6,10 @@
  *  LICENSE file in the root directory of this source tree.
  */
 
+#include <fizz/crypto/openssl/OpenSSLKeyUtils.h>
+
 namespace fizz {
 namespace detail {
-
-template <class T>
-class OpenSSLECKeyExchange {
- public:
-  void generateKeyPair() {
-    key_ = generateECKeyPair(T::curveNid);
-  }
-
-  void setPrivateKey(folly::ssl::EvpPkeyUniquePtr privateKey) {
-    validateECKey(privateKey, T::curveNid);
-    key_ = std::move(privateKey);
-  }
-
-  const folly::ssl::EvpPkeyUniquePtr& getKey() const {
-    return key_;
-  }
-
-  std::unique_ptr<folly::IOBuf> generateSharedSecret(
-      const folly::ssl::EvpPkeyUniquePtr& peerKey) const {
-    if (!key_) {
-      throw std::runtime_error("Key not generated");
-    }
-    return generateEvpSharedSecret(key_, peerKey);
-  }
-
- private:
-  folly::ssl::EvpPkeyUniquePtr key_;
-};
 
 template <class T>
 class OpenSSLECKeyDecoder {
@@ -53,4 +27,47 @@ class OpenSSLECKeyEncoder {
   }
 };
 } // namespace detail
+
+template <class T>
+void OpenSSLECKeyExchange<T>::generateKeyPair() {
+  key_ = detail::generateECKeyPair(T::curveNid);
+}
+
+template <class T>
+std::unique_ptr<folly::IOBuf> OpenSSLECKeyExchange<T>::getKeyShare() const {
+  if (!key_) {
+    throw std::runtime_error("Key not initialized");
+  }
+  return detail::OpenSSLECKeyEncoder::encode(key_);
+}
+
+template <class T>
+std::unique_ptr<folly::IOBuf> OpenSSLECKeyExchange<T>::generateSharedSecret(
+    folly::ByteRange keyShare) const {
+  auto peerKey = detail::OpenSSLECKeyDecoder<T>::decode(keyShare);
+  return generateSharedSecret(peerKey);
+}
+
+template <class T>
+std::unique_ptr<folly::IOBuf> OpenSSLECKeyExchange<T>::generateSharedSecret(
+    const folly::ssl::EvpPkeyUniquePtr& peerKey) const {
+  if (!key_) {
+    throw std::runtime_error("Key not generated");
+  }
+  return detail::generateEvpSharedSecret(key_, peerKey);
+}
+
+template <class T>
+void OpenSSLECKeyExchange<T>::setPrivateKey(
+    folly::ssl::EvpPkeyUniquePtr privateKey) {
+  detail::validateECKey(privateKey, T::curveNid);
+  key_ = std::move(privateKey);
+}
+
+template <class T>
+const folly::ssl::EvpPkeyUniquePtr& OpenSSLECKeyExchange<T>::getPrivateKey()
+    const {
+  return key_;
+}
+
 } // namespace fizz
