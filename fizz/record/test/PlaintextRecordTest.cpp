@@ -15,7 +15,6 @@
 
 using namespace folly;
 
-
 namespace fizz {
 namespace test {
 

@@ -11,7 +11,6 @@
 #include <fizz/protocol/DefaultCertificateVerifier.h>
 #include <fizz/protocol/test/Utilities.h>
 
-
 namespace fizz {
 namespace test {
 

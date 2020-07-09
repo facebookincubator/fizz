@@ -55,8 +55,7 @@ CertManager::CertMatch CertManager::getCert(
     auto dot = key.find_first_of('.');
     if (dot != std::string::npos) {
       std::string wildcardKey(key, dot);
-      ret = findCert(
-          wildcardKey, supportedSigSchemes, peerSigSchemes);
+      ret = findCert(wildcardKey, supportedSigSchemes, peerSigSchemes);
       if (ret) {
         VLOG(8) << "Found wildcard SNI match for: " << key;
         return ret;
@@ -66,8 +65,7 @@ CertManager::CertMatch CertManager::getCert(
     VLOG(8) << "Did not find match for SNI: " << key;
   }
 
-  auto ret =
-      findCert(default_, supportedSigSchemes, peerSigSchemes);
+  auto ret = findCert(default_, supportedSigSchemes, peerSigSchemes);
   if (ret) {
     ret->type = MatchType::Default;
     return ret;

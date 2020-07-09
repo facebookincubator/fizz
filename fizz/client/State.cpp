@@ -8,7 +8,6 @@
 
 #include <fizz/client/State.h>
 
-
 namespace fizz {
 namespace client {
 

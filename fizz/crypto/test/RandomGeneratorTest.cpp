@@ -12,7 +12,6 @@
 
 #include <fizz/crypto/test/TestUtil.h>
 
-
 namespace fizz {
 namespace test {
 

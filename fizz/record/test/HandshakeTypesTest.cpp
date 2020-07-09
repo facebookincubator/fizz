@@ -14,7 +14,6 @@
 
 using namespace folly;
 
-
 // Real client hello captured from
 // firefox nightly
 static const std::string chlo =
@@ -78,7 +77,8 @@ static const std::string encodedKeyUpdate = "00";
 
 static const std::string encodedCertRequest = "00000a000d0006000406030807";
 
-static const std::string encodedCompressedCertificate = "000100face000009666f6f62617262617a";
+static const std::string encodedCompressedCertificate =
+    "000100face000009666f6f62617262617a";
 
 namespace fizz {
 namespace test {

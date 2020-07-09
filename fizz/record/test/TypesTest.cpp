@@ -17,7 +17,6 @@
 using namespace folly;
 using namespace folly::io;
 
-
 namespace fizz {
 namespace test {
 

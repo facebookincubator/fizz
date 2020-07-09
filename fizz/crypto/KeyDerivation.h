@@ -124,7 +124,7 @@ class KeyDerivationImpl : public KeyDerivation {
  private:
   using HashFunc = void (*)(const folly::IOBuf&, folly::MutableByteRange);
   using HmacFunc =
-          void (*)(folly::ByteRange, const folly::IOBuf&, folly::MutableByteRange);
+      void (*)(folly::ByteRange, const folly::IOBuf&, folly::MutableByteRange);
 
   KeyDerivationImpl(
       const std::string& labelPrefix,
