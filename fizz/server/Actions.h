@@ -8,6 +8,8 @@
 
 #pragma once
 
+#include <boost/variant.hpp>
+
 #include <fizz/protocol/Actions.h>
 #include <fizz/util/Variant.h>
 #include <folly/futures/Future.h>
