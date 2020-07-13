@@ -117,6 +117,8 @@ class KeyLogWriter {
       default:
         break;
     }
+
+    return "";
   }
 
  private:
