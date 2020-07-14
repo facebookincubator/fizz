@@ -13,7 +13,6 @@
 #include <folly/Optional.h>
 #include <folly/Range.h>
 #include <folly/io/IOBuf.h>
-#include <sodium.h>
 
 namespace fizz {
 
@@ -29,8 +28,10 @@ class X25519KeyExchange : public KeyExchange {
       folly::ByteRange keyShare) const override;
 
  private:
-  using PrivKey = std::array<uint8_t, crypto_scalarmult_SCALARBYTES>;
-  using PubKey = std::array<uint8_t, crypto_scalarmult_BYTES>;
+  constexpr static size_t kCurve25519PubBytes = 32;
+  constexpr static size_t kCurve25519PrivBytes = 32;
+  using PrivKey = std::array<uint8_t, kCurve25519PubBytes>;
+  using PubKey = std::array<uint8_t, kCurve25519PrivBytes>;
 
   folly::Optional<PrivKey> privKey_;
   folly::Optional<PubKey> pubKey_;

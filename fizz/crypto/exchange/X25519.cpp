@@ -20,6 +20,9 @@ namespace fizz {
 void X25519KeyExchange::generateKeyPair() {
   auto privKey = PrivKey();
   auto pubKey = PubKey();
+  static_assert(
+      X25519KeyExchange::PrivKey().size() == crypto_scalarmult_SCALARBYTES);
+  static_assert(X25519KeyExchange::PubKey().size() == crypto_scalarmult_BYTES);
   auto err = crypto_box_curve25519xsalsa20poly1305_keypair(
       pubKey.data(), privKey.data());
   if (err != 0) {
