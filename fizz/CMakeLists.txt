@@ -439,8 +439,10 @@ if(BUILD_EXAMPLES)
   add_executable(FizzTool
       tool/Main.cpp
       tool/FizzClientCommand.cpp
+      tool/FizzClientLoadGenCommand.cpp
       tool/FizzCommandCommon.cpp
       tool/FizzGenerateDelegatedCredentialCommand.cpp
+      tool/FizzServerBenchmarkCommand.cpp
       tool/FizzServerCommand.cpp)
   target_link_libraries(FizzTool fizz sodium)
   set_target_properties(FizzTool PROPERTIES OUTPUT_NAME fizz)
