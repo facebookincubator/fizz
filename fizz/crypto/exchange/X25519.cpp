@@ -21,8 +21,11 @@ void X25519KeyExchange::generateKeyPair() {
   auto privKey = PrivKey();
   auto pubKey = PubKey();
   static_assert(
-      X25519KeyExchange::PrivKey().size() == crypto_scalarmult_SCALARBYTES);
-  static_assert(X25519KeyExchange::PubKey().size() == crypto_scalarmult_BYTES);
+      X25519KeyExchange::PrivKey().size() == crypto_scalarmult_SCALARBYTES,
+      "Incorrect size of the private key");
+  static_assert(
+      X25519KeyExchange::PubKey().size() == crypto_scalarmult_BYTES,
+      "Incorrect size of the public key");
   auto err = crypto_box_curve25519xsalsa20poly1305_keypair(
       pubKey.data(), privKey.data());
   if (err != 0) {
