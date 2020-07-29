@@ -15,9 +15,7 @@
 #include <fizz/protocol/test/Mocks.h>
 
 using namespace fizz::test;
-using namespace fizz::server;
 using namespace folly;
-using namespace testing;
 
 namespace fizz {
 namespace extensions {

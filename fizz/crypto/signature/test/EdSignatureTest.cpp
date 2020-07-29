@@ -20,7 +20,6 @@
   }
 
 using namespace folly;
-using namespace folly::ssl;
 
 namespace fizz {
 namespace testing {

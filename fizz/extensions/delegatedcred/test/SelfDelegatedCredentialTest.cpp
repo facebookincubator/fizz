@@ -18,7 +18,6 @@
 using namespace folly;
 
 using namespace testing;
-using namespace fizz::test;
 
 namespace fizz {
 namespace extensions {
