@@ -6,13 +6,11 @@
  *  LICENSE file in the root directory of this source tree.
  */
 
-#include <folly/portability/GMock.h>
-#include <folly/portability/GTest.h>
-
 #include <fizz/record/RecordLayer.h>
 #include <fizz/record/test/Mocks.h>
-
 #include <folly/String.h>
+#include <folly/portability/GMock.h>
+#include <folly/portability/GTest.h>
 
 using namespace folly;
 
@@ -212,5 +210,18 @@ TEST_F(RecordTest, TestWriteHandshake) {
   }));
   write_.writeHandshake(IOBuf::copyBuffer("msg1"), IOBuf::copyBuffer("msg2"));
 }
+
+TEST(BatchSignatureSchemeTest, GetBatchSchemeInfo) {
+  auto info = getBatchSchemeInfo(SignatureScheme::ecdsa_secp256r1_sha256);
+  EXPECT_FALSE(info.hasValue());
+  info = getBatchSchemeInfo(SignatureScheme::ecdsa_secp256r1_sha256_batch);
+  EXPECT_TRUE(info.hasValue());
+  EXPECT_EQ(info.value().baseScheme, SignatureScheme::ecdsa_secp256r1_sha256);
+  info = getBatchSchemeInfo(
+      SignatureScheme::ecdsa_secp256r1_sha256_batch,
+      {SignatureScheme::ecdsa_secp384r1_sha384});
+  EXPECT_FALSE(info.hasValue());
+}
+
 } // namespace test
 } // namespace fizz
