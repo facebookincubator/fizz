@@ -154,13 +154,7 @@ void writeVector(const std::vector<T>& data, folly::io::Appender& out) {
   return WriterVector<N, T>().writeVector(data, out);
 }
 
-template <class N>
-void writeBuf(const Buf& buf, folly::io::Appender& out) {
-  if (!buf) {
-    out.writeBE<N>(folly::to<N>(0));
-    return;
-  }
-  out.writeBE<N>(folly::to<N>(buf->computeChainDataLength()));
+inline void writeBufWithoutLength(const Buf& buf, folly::io::Appender& out) {
   auto current = buf.get();
   size_t chainElements = buf->countChainElements();
   for (size_t i = 0; i < chainElements; ++i) {
@@ -169,6 +163,16 @@ void writeBuf(const Buf& buf, folly::io::Appender& out) {
     out.push(current->data(), current->length());
     current = current->next();
   }
+}
+
+template <class N>
+void writeBuf(const Buf& buf, folly::io::Appender& out) {
+  if (!buf) {
+    out.writeBE<N>(folly::to<N>(0));
+    return;
+  }
+  out.writeBE<N>(folly::to<N>(buf->computeChainDataLength()));
+  writeBufWithoutLength(buf, out);
 }
 
 template <>
@@ -186,12 +190,7 @@ inline void writeBuf<bits24>(const Buf& buf, folly::io::Appender& out) {
     return;
   }
   writeBits24(buf->computeChainDataLength(), out);
-  auto current = buf.get();
-  size_t chainElements = buf->countChainElements();
-  for (size_t i = 0; i < chainElements; ++i) {
-    out.push(current->data(), current->length());
-    current = current->next();
-  }
+  writeBufWithoutLength(buf, out);
 }
 
 template <>

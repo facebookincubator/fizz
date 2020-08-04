@@ -12,9 +12,6 @@
 #include <fizz/crypto/Sha256.h>
 #include <fizz/record/Types.h>
 #include <folly/container/F14Map.h>
-#include <folly/io/IOBuf.h>
-#include <array>
-#include <tuple>
 
 namespace fizz {
 
@@ -26,7 +23,7 @@ struct MerkleTreePath {
   // The offset of a message's hash in the Merkle tree.
   uint32_t index;
   // A collection of sibling nodes for root calculation.
-  std::vector<Buf> path;
+  Buf path;
 };
 
 /**
@@ -143,7 +140,9 @@ class MerkleTree {
     getRootValue();
     struct MerkleTreePath result;
     result.index = index;
-    result.path.reserve(rootHeight_ - 1);
+    size_t pathSize = rootHeight_ * Hash::HashLen;
+    result.path = folly::IOBuf::create(pathSize);
+    result.path->append(pathSize);
     int offset = index;
     for (uint8_t height = 0; height < rootHeight_; height++) {
       if (offset % 2 == 0) {
@@ -155,8 +154,10 @@ class MerkleTree {
       if (it == tree_.end()) {
         throw std::runtime_error("Merkle Tree is not balanced");
       }
-      result.path.emplace_back(
-          folly::IOBuf::copyBuffer(it->second.data(), it->second.size()));
+      std::memcpy(
+          result.path->writableData() + height * Hash::HashLen,
+          it->second.data(),
+          it->second.size());
       offset /= 2;
     }
     return result;
@@ -165,25 +166,35 @@ class MerkleTree {
   /**
    * Generate the root value from a Merkle Tree path.
    */
-  static Buf computeRootFromPath(
-      const folly::ByteRange& msg,
-      struct MerkleTreePath&& path) {
+  static Buf computeRootFromPath(folly::ByteRange msg, size_t index, Buf path) {
     // start with hashing the message
     auto result = Derived::constructLeafNode(msg);
 
     // iterate the path to recover the root value
-    size_t curIndex = path.index;
-    for (size_t i = 0; i < path.path.size(); i++) {
+    auto pathRange = path->coalesce();
+    if (pathRange.size() % Hash::HashLen != 0) {
+      throw std::runtime_error(
+          "Merkle Tree path has a bad format: path length must be a multiple of HashLen");
+    }
+    size_t curIndex = index;
+    for (size_t i = 0; i < pathRange.size() / Hash::HashLen; i++) {
       if (curIndex % 2 == 0) {
         result = Derived::constructInternalNode(
-            folly::range(result), path.path[i]->coalesce());
+            folly::range(result),
+            pathRange.subpiece(i * Hash::HashLen, Hash::HashLen));
       } else {
-        result =
-            Derived::constructInternalNode(path.path[i]->coalesce(), result);
+        result = Derived::constructInternalNode(
+            pathRange.subpiece(i * Hash::HashLen, Hash::HashLen),
+            folly::range(result));
       }
       curIndex /= 2;
     }
     return folly::IOBuf::copyBuffer(result.data(), result.size());
+  }
+  static Buf computeRootFromPath(
+      folly::ByteRange msg,
+      struct MerkleTreePath&& path) {
+    return computeRootFromPath(msg, path.index, std::move(path.path));
   }
 
   /**

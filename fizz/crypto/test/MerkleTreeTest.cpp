@@ -14,7 +14,7 @@
 namespace fizz {
 namespace test {
 
-TEST(MerkleTreeTest, Tree1) {
+TEST(MerkleTreeTest, TestTree1) {
   /**
    *   Layer 1:       H(0)
    *   Layer 0:  H(0)     H(1)
@@ -48,7 +48,7 @@ TEST(MerkleTreeTest, Tree1) {
       "db1a452baff0ad476a358efeadb6f70f2c0701e4bc285a198074333b00e765fb");
 }
 
-TEST(MerkleTreeTest, Tree2) {
+TEST(MerkleTreeTest, TestTree2) {
   /**
    *   Layer 0:  H(0)
    * Messages: Message1
@@ -65,7 +65,7 @@ TEST(MerkleTreeTest, Tree2) {
       "785bc5e5d7da71a3734ea21f64dd2752c82fbd323748292a8b1ba50afe99bbc6");
 }
 
-TEST(MerkleTreeTest, Tree3) {
+TEST(MerkleTreeTest, TestTree3) {
   /**
    *   Layer 2:               H(0)*
    *   Layer 1:       H(0)             H(1)*
@@ -105,7 +105,7 @@ TEST(MerkleTreeTest, Tree3) {
       "afb6987ffbd8fce1d5db50c8ea9b598ad82870eb27885b2f47109bb84d86b025");
 }
 
-TEST(MerkleTreeTest, TLSTree) {
+TEST(MerkleTreeTest, TestTLSTree) {
   /**
    *   Layer 2:                  H(0)
    *   Layer 1:        H(0)                 H(1)
@@ -125,30 +125,23 @@ TEST(MerkleTreeTest, TLSTree) {
 
   // generate a path used for reconstruct the root
   auto path = mt.getPath(index2.value());
-  EXPECT_EQ(path.path.size(), 2);
+  EXPECT_EQ(path.path->computeChainDataLength() / Sha256::HashLen, 2);
   auto expectedPathNode1 = mt.getNodeValue(0, 3);
-  EXPECT_EQ(
-      folly::hexlify(
-          std::string((char*)path.path[0]->data(), path.path[0]->length())),
-      folly::hexlify(std::string(
-          (char*)expectedPathNode1.value()->data(),
-          expectedPathNode1.value()->length())));
+  EXPECT_TRUE(std::equal(
+      path.path->data(),
+      path.path->data() + Sha256::HashLen,
+      expectedPathNode1.value()->data()));
   auto expectedPathNode2 = mt.getNodeValue(1, 0);
-  EXPECT_EQ(
-      folly::hexlify(
-          std::string((char*)path.path[1]->data(), path.path[1]->length())),
-      folly::hexlify(std::string(
-          (char*)expectedPathNode2.value()->data(),
-          expectedPathNode2.value()->length())));
-
+  EXPECT_TRUE(std::equal(
+      path.path->data() + Sha256::HashLen,
+      path.path->data() + 2 * Sha256::HashLen,
+      expectedPathNode2.value()->data()));
   // compute the root from message, index, and path
   mt.finalizeAndBuild();
   auto root = mt.getRootValue();
   auto root2 = BatchSignatureMerkleTree<Sha256>::computeRootFromPath(
       folly::range(folly::StringPiece("Message2")), std::move(path));
-  EXPECT_EQ(
-      folly::hexlify(std::string((char*)root->data(), root->length())),
-      folly::hexlify(std::string((char*)root2->data(), root2->length())));
+  EXPECT_TRUE(std::equal(root->data(), root->tail(), root2->data()));
 }
 
 } // namespace test
