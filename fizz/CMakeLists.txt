@@ -139,6 +139,7 @@ set(FIZZ_SOURCES
   crypto/Sha256.cpp
   crypto/Sha384.cpp
   crypto/openssl/OpenSSLKeyUtils.cpp
+  record/BatchSignatureTypes.cpp
   record/Types.cpp
   record/RecordLayer.cpp
   record/EncryptedRecordLayer.cpp
@@ -407,12 +408,14 @@ if(BUILD_TESTS)
   add_gtest(protocol/test/ExporterTest.cpp ExporterTest)
   add_gtest(protocol/test/CertDecompressionManagerTest.cpp CertDecompressionManagerTest)
   add_gtest(protocol/test/ZlibCertificateCompressorTest.cpp ZlibCertificateCompressorTest)
+  add_gtest(record/test/BatchSignatureTypesTest.cpp BatchSignatureTypesTest)
   add_gtest(record/test/ExtensionsTest.cpp ExtensionsTest)
   add_gtest(record/test/EncryptedRecordTest.cpp EncryptedRecordTest)
   add_gtest(record/test/TypesTest.cpp TypesTest)
   add_gtest(record/test/HandshakeTypesTest.cpp HandshakeTypesTest)
   add_gtest(record/test/RecordTest.cpp RecordTest)
   add_gtest(record/test/PlaintextRecordTest.cpp PlaintextRecordTest)
+  add_gtest(server/test/BatchSignatureAsyncSelfCertTest.cpp BatchSignatureAsyncSelfCertTest)
   add_gtest(server/test/CertManagerTest.cpp CertManagerTest)
   add_gtest(server/test/CookieCipherTest.cpp CookieCipherTest)
   add_gtest(server/test/DualTicketCipherTest.cpp DualTicketCipherTest)

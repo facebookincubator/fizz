@@ -212,6 +212,35 @@ class MockAppTokenValidator : public AppTokenValidator {
  public:
   MOCK_CONST_METHOD1(validate, bool(const ResumptionState&));
 };
+
+class MockAsyncSelfCert : public AsyncSelfCert {
+ public:
+  MOCK_CONST_METHOD0(getIdentity, std::string());
+  MOCK_CONST_METHOD0(getAltIdentities, std::vector<std::string>());
+  MOCK_CONST_METHOD0(getSigSchemes, std::vector<SignatureScheme>());
+
+  MOCK_CONST_METHOD1(_getCertMessage, CertificateMsg(Buf&));
+  CertificateMsg getCertMessage(Buf buf) const override {
+    return _getCertMessage(buf);
+  }
+  MOCK_CONST_METHOD1(
+      getCompressedCert,
+      CompressedCertificate(CertificateCompressionAlgorithm));
+
+  MOCK_CONST_METHOD3(
+      sign,
+      Buf(SignatureScheme scheme,
+          CertificateVerifyContext context,
+          folly::ByteRange toBeSigned));
+  MOCK_CONST_METHOD0(getX509, folly::ssl::X509UniquePtr());
+  MOCK_CONST_METHOD4(
+      signFuture,
+      folly::Future<folly::Optional<Buf>>(
+          SignatureScheme scheme,
+          CertificateVerifyContext context,
+          folly::ByteRange toBeSigned,
+          const server::State* state));
+};
 } // namespace test
 } // namespace server
 } // namespace fizz

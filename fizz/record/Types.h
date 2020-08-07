@@ -271,28 +271,6 @@ enum class SignatureScheme : uint16_t {
   rsa_pss_sha256_batch = 0xFE05,
 };
 
-// TODO: Extend the BatchSchemeInfo to be:
-//       struct BatchSchemeInfo {
-//         SignatureScheme baseScheme;
-//         Hasher hasher;
-//       };
-struct BatchSchemeInfo {
-  SignatureScheme baseScheme;
-};
-
-/**
- * Try to get information of a batch signature scheme.
- *
- * If @param supportedBaseSchemes is empty, the applicable base signature scheme
- * will be returned directly.
- *
- * @return folly::none if @param batchScheme is not a batch signature scheme or
- *         the base signature scheme is not in @param supportedBaseSchemes.
- */
-folly::Optional<BatchSchemeInfo> getBatchSchemeInfo(
-    SignatureScheme batchScheme,
-    const std::vector<SignatureScheme>& supportedBaseSchemes = {});
-
 std::string toString(SignatureScheme);
 
 struct CertificateVerify : HandshakeStruct<
