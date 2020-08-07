@@ -83,7 +83,6 @@ else()
 endif()
 
 set(FIZZ_HEADER_DIRS
-  base
   client
   crypto
   crypto/aead
