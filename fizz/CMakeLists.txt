@@ -176,6 +176,7 @@ set(FIZZ_SOURCES
   extensions/tokenbinding/TokenBindingConstructor.cpp
   extensions/tokenbinding/TokenBindingClientExtension.cpp
   extensions/tokenbinding/Validator.cpp
+  client/BatchSignaturePeerCert.cpp
   client/State.cpp
   client/ClientProtocol.cpp
   client/PskSerializationUtils.cpp
@@ -373,6 +374,7 @@ if(BUILD_TESTS)
     add_test(${test_name} bin/${test_name})
   endmacro(add_gtest)
 
+  add_gtest(client/test/BatchSignaturePeerCertTest.cpp BatchSignaturePeerCertTest)
   add_gtest(client/test/SynchronizedLruPskCacheTest.cpp SyncronizedLruPskCacheTest)
   add_gtest(client/test/AsyncFizzClientTest.cpp AsyncFizzClientTest)
   add_gtest(client/test/ClientProtocolTest.cpp ClientProtocolTest)
