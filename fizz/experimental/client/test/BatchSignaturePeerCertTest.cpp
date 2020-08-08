@@ -6,10 +6,10 @@
  *  LICENSE file in the root directory of this source tree.
  */
 
-#include <fizz/client/BatchSignaturePeerCert.h>
+#include <fizz/experimental/client/BatchSignaturePeerCert.h>
 #include <fizz/crypto/test/TestUtil.h>
 #include <fizz/protocol/test/Mocks.h>
-#include <fizz/server/BatchSignatureAsyncSelfCert.h>
+#include <fizz/experimental/server/BatchSignatureAsyncSelfCert.h>
 #include <folly/portability/GTest.h>
 
 using namespace fizz::test;

@@ -8,8 +8,8 @@
 
 #pragma once
 
-#include <fizz/crypto/BatchSignature.h>
-#include <fizz/record/BatchSignatureTypes.h>
+#include <fizz/experimental/protocol/BatchSignatureTypes.h>
+#include <fizz/experimental/crypto/BatchSignature.h>
 #include <fizz/server/AsyncSelfCert.h>
 
 namespace fizz {

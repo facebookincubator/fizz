@@ -8,7 +8,7 @@
 
 #pragma once
 
-#include <fizz/client/BatchSignaturePeerCert.h>
+#include <fizz/experimental/client/BatchSignaturePeerCert.h>
 #include <fizz/protocol/Factory.h>
 
 namespace fizz {

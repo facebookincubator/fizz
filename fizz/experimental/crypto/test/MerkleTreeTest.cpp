@@ -6,7 +6,7 @@
  *  LICENSE file in the root directory of this source tree.
  */
 
-#include <fizz/crypto/MerkleTree.h>
+#include <fizz/experimental/crypto/MerkleTree.h>
 #include <fizz/crypto/Sha256.h>
 #include <fizz/crypto/test/TestUtil.h>
 #include <folly/portability/GTest.h>

@@ -8,7 +8,7 @@
 
 #include <fizz/client/AsyncFizzClient.h>
 #include <fizz/client/PskSerializationUtils.h>
-#include <fizz/protocol/BatchSignatureFactory.h>
+#include <fizz/experimental/protocol/BatchSignatureFactory.h>
 #include <fizz/tool/FizzCommandCommon.h>
 #include <fizz/util/Parse.h>
 #include <folly/FileUtil.h>
@@ -224,7 +224,8 @@ int fizzClientLoadGenCommand(const std::vector<std::string>& args) {
        SignatureScheme::ecdsa_secp256r1_sha256,
        SignatureScheme::ecdsa_secp384r1_sha384});
   if (enableBatch) {
-    clientContext->setFactory(BatchSignatureFactory::makeBatchSignatureFactory(clientContext->getFactoryPtr()));
+    clientContext->setFactory(BatchSignatureFactory::makeBatchSignatureFactory(
+        clientContext->getFactoryPtr()));
     clientContext->setSupportedSigSchemes(
         {SignatureScheme::ecdsa_secp256r1_sha256_batch});
   }

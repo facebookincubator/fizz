@@ -11,7 +11,7 @@
 #include <fizz/extensions/delegatedcred/DelegatedCredentialCertManager.h>
 #include <fizz/protocol/DefaultCertificateVerifier.h>
 #include <fizz/server/AsyncFizzServer.h>
-#include <fizz/server/BatchSignatureAsyncSelfCert.h>
+#include <fizz/experimental/server/BatchSignatureAsyncSelfCert.h>
 #include <fizz/server/SlidingBloomReplayCache.h>
 #include <fizz/server/TicketTypes.h>
 #include <fizz/tool/FizzCommandCommon.h>

@@ -8,7 +8,7 @@
 
 #pragma once
 
-#include <fizz/crypto/MerkleTree.h>
+#include <fizz/experimental/crypto/MerkleTree.h>
 #include <fizz/record/Types.h>
 
 namespace fizz {

@@ -6,7 +6,7 @@
  *  LICENSE file in the root directory of this source tree.
  */
 
-#include <fizz/crypto/BatchSignature.h>
+#include <fizz/experimental/crypto/BatchSignature.h>
 #include <fizz/crypto/test/TestUtil.h>
 #include <folly/io/Cursor.h>
 #include <folly/portability/GTest.h>

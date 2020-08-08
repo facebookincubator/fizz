@@ -6,7 +6,7 @@
  *  LICENSE file in the root directory of this source tree.
  */
 
-#include <fizz/server/BatchSignatureAsyncSelfCert.h>
+#include <fizz/experimental/server/BatchSignatureAsyncSelfCert.h>
 #include <fizz/crypto/test/TestUtil.h>
 #include <fizz/protocol/test/Mocks.h>
 #include <fizz/server/test/Mocks.h>

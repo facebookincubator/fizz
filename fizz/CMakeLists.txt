@@ -139,7 +139,6 @@ set(FIZZ_SOURCES
   crypto/Sha256.cpp
   crypto/Sha384.cpp
   crypto/openssl/OpenSSLKeyUtils.cpp
-  record/BatchSignatureTypes.cpp
   record/Types.cpp
   record/RecordLayer.cpp
   record/EncryptedRecordLayer.cpp
@@ -176,7 +175,8 @@ set(FIZZ_SOURCES
   extensions/tokenbinding/TokenBindingConstructor.cpp
   extensions/tokenbinding/TokenBindingClientExtension.cpp
   extensions/tokenbinding/Validator.cpp
-  client/BatchSignaturePeerCert.cpp
+  experimental/client/BatchSignaturePeerCert.cpp
+  experimental/protocol/BatchSignatureTypes.cpp
   client/State.cpp
   client/ClientProtocol.cpp
   client/PskSerializationUtils.cpp
@@ -374,7 +374,6 @@ if(BUILD_TESTS)
     add_test(${test_name} bin/${test_name})
   endmacro(add_gtest)
 
-  add_gtest(client/test/BatchSignaturePeerCertTest.cpp BatchSignaturePeerCertTest)
   add_gtest(client/test/SynchronizedLruPskCacheTest.cpp SyncronizedLruPskCacheTest)
   add_gtest(client/test/AsyncFizzClientTest.cpp AsyncFizzClientTest)
   add_gtest(client/test/ClientProtocolTest.cpp ClientProtocolTest)
@@ -386,10 +385,8 @@ if(BUILD_TESTS)
   add_gtest(crypto/openssl/test/OpenSSLKeyUtilsTest.cpp OpenSSLKeyUtilsTest)
   add_gtest(crypto/signature/test/RSAPSSSignatureTest.cpp RSAPSSSignatureTest)
   add_gtest(crypto/signature/test/ECSignatureTest.cpp ECSignatureTest)
-  add_gtest(crypto/test/BatchSignatureTest.cpp BatchSignatureTest)
   add_gtest(crypto/test/HkdfTest.cpp HkdfTest)
   add_gtest(crypto/test/KeyDerivationTest.cpp KeyDerivationTest)
-  add_gtest(crypto/test/MerkleTreeTest.cpp MerkleTreeTest)
   add_gtest(crypto/test/RandomGeneratorTest.cpp RandomGeneratorTest)
   add_gtest(crypto/test/UtilsTest.cpp UtilsTest)
   add_gtest(extensions/delegatedcred/test/DelegatedCredTypesTest.cpp DelegatedCredTypesTest)
@@ -402,6 +399,11 @@ if(BUILD_TESTS)
   add_gtest(extensions/tokenbinding/test/TokenBindingServerExtensionTest.cpp TokenBindingServerExtensionTest)
   add_gtest(extensions/tokenbinding/test/TokenBindingTest.cpp TokenBindingTest)
   add_gtest(extensions/tokenbinding/test/TokenBindingClientExtensionTest.cpp TokenBindingClientExtensionTest)
+  add_gtest(experimental/client/test/BatchSignaturePeerCertTest.cpp BatchSignaturePeerCertTest)
+  add_gtest(experimental/crypto/test/BatchSignatureTest.cpp BatchSignatureTest)
+  add_gtest(experimental/crypto/test/MerkleTreeTest.cpp MerkleTreeTest)
+  add_gtest(experimental/protocol/test/BatchSignatureTypesTest.cpp BatchSignatureTypesTest)
+  add_gtest(experimental/server/test/BatchSignatureAsyncSelfCertTest.cpp BatchSignatureAsyncSelfCertTest)
   add_gtest(protocol/test/CertTest.cpp CertTest)
   add_gtest(protocol/test/FizzBaseTest.cpp FizzBaseTest)
   add_gtest(protocol/test/KeySchedulerTest.cpp KeySchedulerTest)
@@ -410,14 +412,12 @@ if(BUILD_TESTS)
   add_gtest(protocol/test/ExporterTest.cpp ExporterTest)
   add_gtest(protocol/test/CertDecompressionManagerTest.cpp CertDecompressionManagerTest)
   add_gtest(protocol/test/ZlibCertificateCompressorTest.cpp ZlibCertificateCompressorTest)
-  add_gtest(record/test/BatchSignatureTypesTest.cpp BatchSignatureTypesTest)
   add_gtest(record/test/ExtensionsTest.cpp ExtensionsTest)
   add_gtest(record/test/EncryptedRecordTest.cpp EncryptedRecordTest)
   add_gtest(record/test/TypesTest.cpp TypesTest)
   add_gtest(record/test/HandshakeTypesTest.cpp HandshakeTypesTest)
   add_gtest(record/test/RecordTest.cpp RecordTest)
   add_gtest(record/test/PlaintextRecordTest.cpp PlaintextRecordTest)
-  add_gtest(server/test/BatchSignatureAsyncSelfCertTest.cpp BatchSignatureAsyncSelfCertTest)
   add_gtest(server/test/CertManagerTest.cpp CertManagerTest)
   add_gtest(server/test/CookieCipherTest.cpp CookieCipherTest)
   add_gtest(server/test/DualTicketCipherTest.cpp DualTicketCipherTest)

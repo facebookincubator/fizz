@@ -6,7 +6,7 @@
  *  LICENSE file in the root directory of this source tree.
  */
 
-#include <fizz/record/BatchSignatureTypes.h>
+#include <fizz/experimental/protocol/BatchSignatureTypes.h>
 
 namespace fizz {
 
