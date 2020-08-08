@@ -11,6 +11,7 @@
 #include <fizz/extensions/delegatedcred/DelegatedCredentialCertManager.h>
 #include <fizz/protocol/DefaultCertificateVerifier.h>
 #include <fizz/server/AsyncFizzServer.h>
+#include <fizz/server/BatchSignatureAsyncSelfCert.h>
 #include <fizz/server/SlidingBloomReplayCache.h>
 #include <fizz/server/TicketTypes.h>
 #include <fizz/tool/FizzCommandCommon.h>
@@ -59,7 +60,8 @@ void printUsage() {
     << " -key key                 (PEM format private key for server certificate. Default: none)\n"
     << " -pass password           (private key password. Default: none)\n"
     << " -backlog num             (maximum number of queued connections; a small backlog can lead to potential\n"
-    << "                           connection drop or long latency. Default: 100)\n";
+    << "                           connection drop or long latency. Default: 100)\n"
+    << " -batch                   (use the batch signature scheme ecdsa_secp256r1_sha256_batch)\n";
   // clang-format on
 }
 
@@ -158,6 +160,7 @@ int fizzServerBenchmarkCommand(const std::vector<std::string>& args) {
       {CipherSuite::TLS_AES_128_GCM_SHA256}};
   std::vector<ProtocolVersion> versions{ProtocolVersion::tls_1_3,
                                         ProtocolVersion::tls_1_3_28};
+  bool enableBatch = false;
 
   // Argument Handler Map
   // clang-format off
@@ -179,6 +182,9 @@ int fizzServerBenchmarkCommand(const std::vector<std::string>& args) {
     }}},
     {"-backlog", {true, [&backlog](const std::string& arg) {
       backlog = std::stoi(arg);
+    }}},
+    {"-batch", {false, [&enableBatch](const std::string&) {
+      enableBatch = true;
     }}}
   };
   // clang-format on
@@ -220,6 +226,10 @@ int fizzServerBenchmarkCommand(const std::vector<std::string>& args) {
       {SignatureScheme::rsa_pss_sha256,
        SignatureScheme::ecdsa_secp256r1_sha256,
        SignatureScheme::ecdsa_secp384r1_sha384});
+  if (enableBatch) {
+    serverContext->setSupportedSigSchemes(
+        {SignatureScheme::ecdsa_secp256r1_sha256_batch});
+  }
 
   // load Server's certificate and private key
   std::unique_ptr<CertManager> certManager =
@@ -241,7 +251,10 @@ int fizzServerBenchmarkCommand(const std::vector<std::string>& args) {
     } else {
       cert = CertUtils::makeSelfCert(certData, keyData, compressors);
     }
-    certManager->addCert(std::move(cert), true);
+    std::shared_ptr<SelfCert> sharedCert = std::move(cert);
+    auto batchCert =
+        std::make_shared<BatchSignatureAsyncSelfCert<Sha256>>(sharedCert);
+    certManager->addCert(batchCert, true);
   }
   serverContext->setCertManager(std::move(certManager));
 

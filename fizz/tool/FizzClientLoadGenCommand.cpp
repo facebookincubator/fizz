@@ -8,6 +8,7 @@
 
 #include <fizz/client/AsyncFizzClient.h>
 #include <fizz/client/PskSerializationUtils.h>
+#include <fizz/protocol/BatchSignatureFactory.h>
 #include <fizz/tool/FizzCommandCommon.h>
 #include <fizz/util/Parse.h>
 #include <folly/FileUtil.h>
@@ -17,10 +18,7 @@
 #include <folly/io/async/SSLContext.h>
 #include <folly/json.h>
 #include <folly/stats/Histogram.h>
-
 #include <iostream>
-#include <string>
-#include <vector>
 
 using namespace fizz::client;
 using namespace folly;
@@ -56,7 +54,8 @@ void printUsage() {
     << " -p num                   (print an additional num% percentile of TLS handshake latency when -json is used.\n"
     << "                           0 < num < 100. Default percentiles: 25%, 50%, 75%, 90%)\n"
     << " -min num                 (the minimum time elapse (in microsecond) allowed for statistics when -json is used. Default: 1000\n"
-    << " -max num                 (the maximum time elapse (in microsecond) allowed for statistics when -json is used. Default: 1000000)\n";
+    << " -max num                 (the maximum time elapse (in microsecond) allowed for statistics when -json is used. Default: 1000000)\n"
+    << " -batch                   (use the batch signature scheme ecdsa_secp256r1_sha256_batch)\n";
   // clang-format on
 }
 
@@ -157,6 +156,7 @@ std::string getJsonStr(
 int fizzClientLoadGenCommand(const std::vector<std::string>& args) {
   // configurable parameters
   struct ClientLoadgenConfig config;
+  bool enableBatch = false;
 
   // Argument Handler Map
   // clang-format off
@@ -187,6 +187,9 @@ int fizzClientLoadGenCommand(const std::vector<std::string>& args) {
     }}},
     {"-max", {true, [&config](const std::string& arg) {
       config.maxLatency = std::stoi(arg);
+    }}},
+    {"-batch", {false, [&enableBatch](const std::string&) {
+      enableBatch = true;
     }}}
   };
   // clang-format on
@@ -220,6 +223,11 @@ int fizzClientLoadGenCommand(const std::vector<std::string>& args) {
       {SignatureScheme::rsa_pss_sha256,
        SignatureScheme::ecdsa_secp256r1_sha256,
        SignatureScheme::ecdsa_secp384r1_sha384});
+  if (enableBatch) {
+    clientContext->setFactory(BatchSignatureFactory::makeBatchSignatureFactory(clientContext->getFactoryPtr()));
+    clientContext->setSupportedSigSchemes(
+        {SignatureScheme::ecdsa_secp256r1_sha256_batch});
+  }
 
   // Initialize CA store and the verifier for server certificate verification
   folly::ssl::X509StoreUniquePtr storePtr;

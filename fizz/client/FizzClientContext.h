@@ -176,6 +176,10 @@ class FizzClientContext {
     return factory_.get();
   }
 
+  std::shared_ptr<Factory> getFactoryPtr() const {
+    return factory_;
+  }
+
   /**
    * Sets the certificate decompression manager for server certs.
    */
