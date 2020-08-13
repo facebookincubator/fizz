@@ -27,8 +27,8 @@ mkdir -p "$FIZZ_BUILD_DIR"
 
 # OpenSSL dirs. If you have OpenSSL installed somewhere
 # else, change these dirs
-OPENSSL_ROOT_DIR=/usr/local/opt/openssl
-OPENSSL_LIB_DIR=/usr/local/opt/openssl/lib/
+OPENSSL_ROOT_DIR=/usr/local/Cellar/openssl@1.1/1.1.1
+OPENSSL_LIB_DIR=/usr/local/Cellar/openssl@1.1/1.1.1/lib/
 
 
 if [ -z "$INSTALL_PREFIX" ]; then
