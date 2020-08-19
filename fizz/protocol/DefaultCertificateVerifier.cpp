@@ -82,7 +82,15 @@ void DefaultCertificateVerifier::verify(
     throw std::runtime_error("failed to apply verification parameters");
   }
 
-  if (X509_verify_cert(ctx.get()) != 1) {
+  int ret = 0;
+  // if openssl is not built with TSAN then we can get a TSAN false positive
+  // when calling X509_verify_cert from multiple threads
+  {
+    folly::annotate_ignore_thread_sanitizer_guard g(__FILE__, __LINE__);
+    ret = X509_verify_cert(ctx.get());
+  }
+
+  if (ret != 1) {
     const auto errorInt = X509_STORE_CTX_get_error(ctx.get());
     std::string errorText =
         std::string(X509_verify_cert_error_string(errorInt));
