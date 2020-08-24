@@ -5,6 +5,11 @@ cmake_minimum_required(VERSION 3.1)
 
 project("fizz" VERSION 1.0.0 LANGUAGES CXX C)
 
+if (NOT DEFINED CPACK_GENERATOR)
+  set(CPACK_GENERATOR "RPM")
+endif()
+include(CPack)
+
 add_compile_options(-std=c++14)
 
 set(CMAKE_POSITION_INDEPENDENT_CODE ON)
