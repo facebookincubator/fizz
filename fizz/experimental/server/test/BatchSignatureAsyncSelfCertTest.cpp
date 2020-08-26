@@ -12,7 +12,6 @@
 #include <fizz/server/test/Mocks.h>
 #include <folly/portability/GTest.h>
 
-using namespace fizz::test;
 using namespace folly;
 
 namespace fizz {

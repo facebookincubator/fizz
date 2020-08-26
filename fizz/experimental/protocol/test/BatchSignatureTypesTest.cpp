@@ -10,7 +10,6 @@
 #include <folly/portability/GMock.h>
 #include <folly/portability/GTest.h>
 
-using namespace folly;
 
 namespace fizz {
 namespace test {
