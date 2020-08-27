@@ -216,6 +216,15 @@ class MerkleTree {
     return nextRightmostLeaf_;
   }
 
+  /**
+   * Clear the underlying Merkle Tree data structure.
+   */
+  void clear() {
+    nextRightmostLeaf_ = 0;
+    rootHeight_ = 0;
+    tree_.clear();
+  }
+
  protected:
   /**
    * Add a new value into the tree.
@@ -265,8 +274,15 @@ template <class Hash = Sha256>
 class BatchSignatureMerkleTree
     : public MerkleTree<BatchSignatureMerkleTree<Hash>, Hash> {
  public:
-  BatchSignatureMerkleTree(size_t maxLeavesSize)
-      : MerkleTree<BatchSignatureMerkleTree<Hash>, Hash>(maxLeavesSize) {}
+  /**
+   * Constructor of the Merkle Tree.
+   *
+   * @param maxMsgSize  maximum number of messages allowed by the tree. The
+   *                    underlying Merkle Tree can at most have 2 * maxMsgSize
+   *                    leaves.
+   */
+  BatchSignatureMerkleTree(size_t maxMsgSize)
+      : MerkleTree<BatchSignatureMerkleTree<Hash>, Hash>(2 * maxMsgSize) {}
 
   /**
    * Append a new TLS handshake transcript into the Merkle Tree for TLS Batch

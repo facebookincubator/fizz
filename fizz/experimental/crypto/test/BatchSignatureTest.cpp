@@ -11,7 +11,6 @@
 #include <folly/io/Cursor.h>
 #include <folly/portability/GTest.h>
 
-
 namespace fizz {
 namespace test {
 

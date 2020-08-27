@@ -8,10 +8,10 @@
 
 #include <fizz/crypto/aead/AESGCM128.h>
 #include <fizz/crypto/aead/OpenSSLEVPCipher.h>
+#include <fizz/experimental/server/BatchSignatureAsyncSelfCert.h>
 #include <fizz/extensions/delegatedcred/DelegatedCredentialCertManager.h>
 #include <fizz/protocol/DefaultCertificateVerifier.h>
 #include <fizz/server/AsyncFizzServer.h>
-#include <fizz/experimental/server/BatchSignatureAsyncSelfCert.h>
 #include <fizz/server/SlidingBloomReplayCache.h>
 #include <fizz/server/TicketTypes.h>
 #include <fizz/tool/FizzCommandCommon.h>
@@ -252,8 +252,10 @@ int fizzServerBenchmarkCommand(const std::vector<std::string>& args) {
       cert = CertUtils::makeSelfCert(certData, keyData, compressors);
     }
     std::shared_ptr<SelfCert> sharedCert = std::move(cert);
+    auto batcher = std::make_shared<SynchronizedBatcher<Sha256>>(
+        1, sharedCert, CertificateVerifyContext::Server);
     auto batchCert =
-        std::make_shared<BatchSignatureAsyncSelfCert<Sha256>>(sharedCert);
+        std::make_shared<BatchSignatureAsyncSelfCert<Sha256>>(batcher);
     certManager->addCert(batchCert, true);
   }
   serverContext->setCertManager(std::move(certManager));

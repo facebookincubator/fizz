@@ -20,7 +20,7 @@ TEST(MerkleTreeTest, TestTree1) {
    *   Layer 0:  H(0)     H(1)
    * Messages: Message1 Message2
    */
-  BatchSignatureMerkleTree<Sha256> mt(4);
+  BatchSignatureMerkleTree<Sha256> mt(2);
   auto index1 = mt.append(folly::range(folly::StringPiece("Message1")));
   auto index2 = mt.append(folly::range(folly::StringPiece("Message2")));
   auto node1 = mt.getNodeValue(0, 0);
@@ -53,7 +53,7 @@ TEST(MerkleTreeTest, TestTree2) {
    *   Layer 0:  H(0)
    * Messages: Message1
    */
-  BatchSignatureMerkleTree<Sha256> mt(4);
+  BatchSignatureMerkleTree<Sha256> mt(2);
   auto index1 = mt.append(folly::range(folly::StringPiece("Message1")));
   EXPECT_EQ(mt.countHeight(), 1);
   EXPECT_EQ(mt.countLeaves(), 1);
@@ -72,7 +72,7 @@ TEST(MerkleTreeTest, TestTree3) {
    *   Layer 0:  H(0)     H(1)     H(2)     H(3)*=H(0)
    * Messages: Message1 Message1 Message1
    */
-  BatchSignatureMerkleTree<Sha256> mt(4);
+  BatchSignatureMerkleTree<Sha256> mt(2);
   mt.append(folly::range(folly::StringPiece("Message1")));
   mt.append(folly::range(folly::StringPiece("Message1")));
   mt.append(folly::range(folly::StringPiece("Message1")));
@@ -112,7 +112,7 @@ TEST(MerkleTreeTest, TestTLSTree) {
    *   Layer 0:  H(0)       H(1)       H(2)      H(3)
    * Messages: Message1 Randomness1 Message2 Randomness2
    */
-  BatchSignatureMerkleTree<Sha256> mt(4);
+  BatchSignatureMerkleTree<Sha256> mt(2);
   auto index1 =
       mt.appendTranscript(folly::range(folly::StringPiece("Message1")));
   auto index2 =

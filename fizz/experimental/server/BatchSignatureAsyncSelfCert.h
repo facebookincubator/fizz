@@ -8,9 +8,11 @@
 
 #pragma once
 
-#include <fizz/experimental/protocol/BatchSignatureTypes.h>
+#include <fizz/experimental/batcher/Batcher.h>
 #include <fizz/experimental/crypto/BatchSignature.h>
+#include <fizz/experimental/protocol/BatchSignatureTypes.h>
 #include <fizz/server/AsyncSelfCert.h>
+#include <fizz/server/State.h>
 
 namespace fizz {
 
@@ -24,14 +26,12 @@ class BatchSignatureAsyncSelfCert : public AsyncSelfCert {
   /**
    * Construct a batch BatchSignatureAsyncSelfCert instance.
    *
-   * @param signer        the existing SelfCert/AsyncSelfCert.
-   * @param maxLeavesSize the maximum leaves allowed by the underlying Merkle
-   *                      Tree.
+   * @param signer  the existing SelfCert/AsyncSelfCert.
+   * @param batcher the pointer to the manager of the underlying Merkle
+   *                tree.
    */
-  BatchSignatureAsyncSelfCert(
-      std::shared_ptr<const SelfCert> signer,
-      size_t maxLeavesSize = std::numeric_limits<uint32_t>::max())
-      : signer_(signer), maxLeavesSize_(maxLeavesSize) {}
+  BatchSignatureAsyncSelfCert(std::shared_ptr<Batcher<Hash>> batcher)
+      : signer_(batcher->getSigner()), batcher_(batcher) {}
 
   std::string getIdentity() const override {
     return signer_->getIdentity();
@@ -48,14 +48,7 @@ class BatchSignatureAsyncSelfCert : public AsyncSelfCert {
 
   std::vector<SignatureScheme> getSigSchemes() const override {
     auto result = signer_->getSigSchemes();
-    auto baseSchemeSize = result.size();
-    for (size_t i = 0; i < baseSchemeSize; i++) {
-      auto batchScheme =
-          BatchSignatureSchemes<Hash>::getFromBaseScheme(result[i]);
-      if (batchScheme) {
-        result.push_back(*batchScheme);
-      }
-    }
+    result.push_back(batcher_->getBatchScheme());
     return result;
   }
 
@@ -72,7 +65,9 @@ class BatchSignatureAsyncSelfCert : public AsyncSelfCert {
       fizz::SignatureScheme scheme,
       fizz::CertificateVerifyContext context,
       folly::ByteRange toBeSigned) const override {
-    return *signFuture(scheme, context, toBeSigned, nullptr).get();
+    // delegate all sign() to signer_ because
+    // batch scheme is only supported with signFuture()
+    return signer_->sign(scheme, context, toBeSigned);
   }
 
   folly::Future<folly::Optional<Buf>> signFuture(
@@ -80,24 +75,18 @@ class BatchSignatureAsyncSelfCert : public AsyncSelfCert {
       CertificateVerifyContext context,
       folly::ByteRange message,
       const server::State* state) const override {
-    // if is not a batch scheme, use the signer to sign it directly
-    auto asyncSigner = dynamic_cast<const AsyncSelfCert*>(signer_.get());
-    auto batchSchemeInfo = getBatchSchemeInfo(scheme);
-    if (!batchSchemeInfo) {
+    // if the scheme is the supported batch scheme, use the signer to sign it
+    // directly
+    if (scheme != batcher_->getBatchScheme()) {
+      auto asyncSigner = dynamic_cast<const AsyncSelfCert*>(signer_.get());
       if (asyncSigner) {
         return asyncSigner->signFuture(scheme, context, message, state);
       } else {
         return signer_->sign(scheme, context, message);
       }
     }
-    // if it is a batch scheme, the scheme must be based on Hash
-    const auto& schemes = BatchSignatureSchemes<Hash>::schemes;
-    if (std::find(schemes.begin(), schemes.end(), scheme) == schemes.end()) {
-      throw std::runtime_error(
-          "The specified batch signature's Hash scheme does not match BatchSignatureAsyncSelfCert's Hash scheme.");
-    }
-    return batchSigSign(
-        scheme, batchSchemeInfo.value(), context, message, state);
+    // otherwise, generate batch signature with batcher
+    return batchSigSign(message);
   }
 
   /**
@@ -108,48 +97,24 @@ class BatchSignatureAsyncSelfCert : public AsyncSelfCert {
   }
 
  private:
-  // TODO: the current implementation uses a batch size of 1 just to test the
-  // decorator logic.
-  // TODO: the current implementation creates a new Merkle Tree on each
-  // batchSigSign function call. In later commits, the Merkle Tree will be
-  // managed and assigned separately.
   folly::Future<folly::Optional<Buf>> batchSigSign(
-      SignatureScheme scheme,
-      BatchSchemeInfo batchInfo,
-      CertificateVerifyContext context,
-      folly::ByteRange message,
-      const server::State* state) const {
-    auto tree_ =
-        std::make_shared<BatchSignatureMerkleTree<Hash>>(maxLeavesSize_);
+      folly::ByteRange message) const {
     // Add message into the merkle tree and get the root value and path
-    auto index = tree_->appendTranscript(message);
-    tree_->finalizeAndBuild();
-    auto rootValue = tree_->getRootValue();
-    auto toBeSigned =
-        BatchSignature::encodeToBeSigned(std::move(rootValue), scheme);
-    // sign the root value and path with the signer
-    auto asyncSigner = dynamic_cast<const AsyncSelfCert*>(signer_.get());
-    folly::Future<folly::Optional<Buf>> signature = folly::none;
-    if (asyncSigner) {
-      signature = asyncSigner->signFuture(
-          batchInfo.baseScheme,
-          context,
-          folly::ByteRange(toBeSigned->data(), toBeSigned->length()),
-          state);
-    } else {
-      signature = signer_->sign(
-          batchInfo.baseScheme,
-          context,
-          folly::ByteRange(toBeSigned->data(), toBeSigned->length()));
-    }
-    BatchSignature sig(
-        tree_->getPath(index.value()), std::move(*signature.value()));
-    // encode into the batch signature
-    return folly::makeFuture(sig.encode());
+    auto batchResult = batcher_->addMessageAndSign(message);
+    auto index = batchResult.index_;
+    return std::move(batchResult.future_)
+        .toUnsafeFuture()
+        .thenValue([=](auto&& signedTree) {
+          BatchSignature sig(
+              signedTree.tree_->getPath(index),
+              folly::IOBuf::wrapBuffer(
+                  signedTree.signature_->data(), signedTree.signature_->size()));
+          return sig.encode();
+        });
   }
 
   std::shared_ptr<const SelfCert> signer_;
-  size_t maxLeavesSize_;
+  std::shared_ptr<Batcher<Hash>> batcher_;
 };
 
 } // namespace fizz
