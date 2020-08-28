@@ -191,4 +191,56 @@ class SynchronizedBatcher : public Batcher<Hash> {
   folly::Synchronized<typename Batcher<Hash>::EpochData> epoch_;
 };
 
+/**
+ * A batcher to store and manage the Merkle Tree for each thread.
+ * Each thread will have a Merkle Tree.
+ */
+template <typename Hash = Sha256>
+class ThreadLocalBatcher : public Batcher<Hash> {
+ public:
+  ThreadLocalBatcher(
+      size_t numMsgThreshold,
+      std::shared_ptr<SelfCert> signer,
+      CertificateVerifyContext context)
+      : Batcher<Hash>(numMsgThreshold, signer, context), epoch_([=]() {
+          return new typename Batcher<Hash>::EpochData(numMsgThreshold);
+        }) {}
+
+  typename Batcher<Hash>::BatchResult addMessageAndSign(
+      folly::ByteRange msg) override {
+    auto index = epoch_->tree_->appendTranscript(msg);
+    if (!index.hasValue()) {
+      throw std::runtime_error(
+          "Cannot append more TLS transcripts into the Merkle Tree");
+    };
+    VLOG(5) << "Adding message to batch. batcher=" << this
+            << ", added_message_index= " << index.value()
+            << ", threshold=" << this->numMsgThreshold_;
+    typename Batcher<Hash>::BatchResult result(
+        index.value(), epoch_->promise_.getSemiFuture());
+    if (epoch_->tree_->countMessages() >= this->numMsgThreshold_) {
+      // We have reached the threshold, and will complete this epoch.
+      auto oldTree = std::move(epoch_->tree_);
+      auto oldPromise = std::move(epoch_->promise_);
+      epoch_.reset();
+      VLOG(5) << "Batcher reached message threshold. batcher=" << this
+              << ", threshold=" << this->numMsgThreshold_;
+      this->signMerkleTree(std::move(oldTree))
+          .thenTry([promiseCapture = std::move(oldPromise)](
+                       folly::Try<typename Batcher<Hash>::SignedTree>&&
+                           signedTree) mutable {
+            if (signedTree.hasValue()) {
+              promiseCapture.setValue(std::move(signedTree).value());
+            } else {
+              promiseCapture.setException(std::move(signedTree).exception());
+            }
+          });
+    }
+    return result;
+  }
+
+ private:
+  folly::ThreadLocal<typename Batcher<Hash>::EpochData> epoch_;
+};
+
 } // namespace fizz
