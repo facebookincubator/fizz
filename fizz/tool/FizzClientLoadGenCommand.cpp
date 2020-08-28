@@ -18,7 +18,9 @@
 #include <folly/io/async/SSLContext.h>
 #include <folly/json.h>
 #include <folly/stats/Histogram.h>
+#include <chrono>
 #include <iostream>
+#include <thread>
 
 using namespace fizz::client;
 using namespace folly;
@@ -47,7 +49,8 @@ void printUsage() {
     << "Supported arguments:\n"
     << " -connect host:port       (set the address to connect to. Default: localhost:8433)\n"
     << " -threads num             (set the # of threads for clients; a client will be created for each thread; Default 1)\n"
-    << " -tasks num               (set the total # of TLS handshake tasks to perform; Default to be same as # of threads)\n"
+    << " -tasks num               (set the total # of TLS handshake tasks to perform per second; Default to be same as # of threads)\n"
+    << " -time seconds            (set the total time in seconds of load generation; Default 10)\n"
     << " -cafile file             (path to bundle of CA certs used for verification)\n"
     << " -0rtt file               (given file that contains a serialized psk, deserialize psk and open a connection with it)\n"
     << " -json                    (print the benchmark statistics to the standard output)\n"
@@ -122,7 +125,8 @@ struct ClientLoadgenConfig {
   std::string host = "localhost";
   uint16_t port = 8443;
   int threadNum = 1;
-  int totalTasks = 0;
+  int numTaskPerSecond = 0;
+  int totalTime = 10;
   std::string caFile;
   std::string pskLoadFile;
   bool jsonOutput = false;
@@ -134,18 +138,25 @@ struct ClientLoadgenConfig {
 std::string getJsonStr(
     uint32_t totalLatency,
     const Histogram<uint32_t>& histo,
+    size_t numSuccess,
     const ClientLoadgenConfig& config) {
   dynamic percentile = dynamic::object;
   for (const auto& percent : config.percentiles) {
     percentile[folly::sformat("{0:3.1f}%", percent * 100)] =
         histo.getPercentileEstimate(percent);
   }
+  size_t avg_latency = 0;
+  if (numSuccess > 0) {
+    avg_latency = totalLatency / numSuccess;
+  }
   // clang-format off
   dynamic forJson = dynamic::object
-    ("total_tasks", config.totalTasks)
-    ("total_threads", config.threadNum)
+    ("total_tasks", config.numTaskPerSecond * config.totalTime)
+    ("tasks_per_second", config.numTaskPerSecond)
+    ("threads", config.threadNum)
+    ("success_tasks", numSuccess)
     ("unit", "microseconds")
-    ("average_latency", totalLatency / config.totalTasks)
+    ("average_latency", avg_latency)
     ("precentile", percentile);
   // clang-format on
   return toPrettyJson(forJson);
@@ -168,7 +179,10 @@ int fizzClientLoadGenCommand(const std::vector<std::string>& args) {
       config.threadNum = std::stoi(arg);
     }}},
     {"-tasks", {true, [&config](const std::string& arg) {
-      config.totalTasks = std::stoi(arg);
+      config.numTaskPerSecond = std::stoi(arg);
+    }}},
+    {"-time", {true, [&config](const std::string& arg) {
+      config.totalTime = std::stoi(arg);
     }}},
     {"-cafile", {true, [&config](const std::string& arg) {
       config.caFile = arg;
@@ -203,8 +217,8 @@ int fizzClientLoadGenCommand(const std::vector<std::string>& args) {
     LOG(ERROR) << "Error: " << e.what();
     return 1;
   }
-  if (config.totalTasks <= 0) {
-    config.totalTasks = config.threadNum;
+  if (config.numTaskPerSecond <= 0) {
+    config.numTaskPerSecond = config.threadNum;
   }
 
   // set up the IO Thread Pool and get the EventBase
@@ -227,7 +241,8 @@ int fizzClientLoadGenCommand(const std::vector<std::string>& args) {
     clientContext->setFactory(BatchSignatureFactory::makeBatchSignatureFactory(
         clientContext->getFactoryPtr()));
     clientContext->setSupportedSigSchemes(
-        {SignatureScheme::ecdsa_secp256r1_sha256_batch});
+        {SignatureScheme::rsa_pss_sha256_batch,
+         SignatureScheme::ecdsa_secp256r1_sha256_batch});
   }
 
   // Initialize CA store and the verifier for server certificate verification
@@ -243,16 +258,20 @@ int fizzClientLoadGenCommand(const std::vector<std::string>& args) {
 
   // Start creating clients and connecting
   std::vector<std::chrono::microseconds> stats;
-  stats.resize(config.totalTasks, std::chrono::microseconds::zero());
+  stats.resize(
+      config.numTaskPerSecond * config.totalTime,
+      std::chrono::microseconds::zero());
   auto it = stats.begin();
+  auto periodMS = 1000 / config.numTaskPerSecond;
   SocketAddress addr(config.host, config.port, true);
-  for (int i = 0; i < config.totalTasks; i++) {
+  for (size_t i = 0; i < stats.size(); i++) {
     via(threadExe->weakRef()).thenValue([=](auto&&) {
       auto evb = folly::EventBaseManager::get()->getEventBase();
       auto task = new ClientTask(evb, clientContext, verifier, &(*it));
       task->start(addr);
     });
     it++;
+    std::this_thread::sleep_for(std::chrono::milliseconds(periodMS));
   }
 
   // Wait for assignments finished
@@ -263,11 +282,16 @@ int fizzClientLoadGenCommand(const std::vector<std::string>& args) {
     const int buckWidth = 1000; // 1ms as the bucket width
     Histogram<uint32_t> histo(buckWidth, config.minLatency, config.maxLatency);
     uint32_t totalLatency = 0;
+    size_t numSuccess = 0;
     for (const auto& val : stats) {
-      histo.addValue(val.count());
-      totalLatency += val.count();
+      if (val != std::chrono::microseconds::zero()) {
+        numSuccess++;
+        histo.addValue(val.count());
+        totalLatency += val.count();
+      }
     }
-    std::cout << getJsonStr(totalLatency, histo, config) << std::endl;
+    std::cout << getJsonStr(totalLatency, histo, numSuccess, config)
+              << std::endl;
   }
   return 0;
 }

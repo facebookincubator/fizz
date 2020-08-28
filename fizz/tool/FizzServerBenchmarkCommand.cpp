@@ -8,6 +8,7 @@
 
 #include <fizz/crypto/aead/AESGCM128.h>
 #include <fizz/crypto/aead/OpenSSLEVPCipher.h>
+#include <fizz/experimental/batcher/Batcher.h>
 #include <fizz/experimental/server/BatchSignatureAsyncSelfCert.h>
 #include <fizz/extensions/delegatedcred/DelegatedCredentialCertManager.h>
 #include <fizz/protocol/DefaultCertificateVerifier.h>
@@ -161,6 +162,8 @@ int fizzServerBenchmarkCommand(const std::vector<std::string>& args) {
   std::vector<ProtocolVersion> versions{ProtocolVersion::tls_1_3,
                                         ProtocolVersion::tls_1_3_28};
   bool enableBatch = false;
+  size_t batchNumMsgThreshold = 0;
+  std::shared_ptr<SynchronizedBatcher<Sha256>> batcher;
 
   // Argument Handler Map
   // clang-format off
@@ -183,8 +186,9 @@ int fizzServerBenchmarkCommand(const std::vector<std::string>& args) {
     {"-backlog", {true, [&backlog](const std::string& arg) {
       backlog = std::stoi(arg);
     }}},
-    {"-batch", {false, [&enableBatch](const std::string&) {
+    {"-batch", {true, [&enableBatch, &batchNumMsgThreshold](const std::string& arg) {
       enableBatch = true;
+      batchNumMsgThreshold = std::stoi(arg);
     }}}
   };
   // clang-format on
@@ -222,14 +226,6 @@ int fizzServerBenchmarkCommand(const std::vector<std::string>& args) {
   ticketCipher->setTicketSecrets({{range(ticketSeed)}});
   serverContext->setTicketCipher(ticketCipher);
   serverContext->setSupportedVersions(std::move(versions));
-  serverContext->setSupportedSigSchemes(
-      {SignatureScheme::rsa_pss_sha256,
-       SignatureScheme::ecdsa_secp256r1_sha256,
-       SignatureScheme::ecdsa_secp384r1_sha384});
-  if (enableBatch) {
-    serverContext->setSupportedSigSchemes(
-        {SignatureScheme::ecdsa_secp256r1_sha256_batch});
-  }
 
   // load Server's certificate and private key
   std::unique_ptr<CertManager> certManager =
@@ -252,11 +248,17 @@ int fizzServerBenchmarkCommand(const std::vector<std::string>& args) {
       cert = CertUtils::makeSelfCert(certData, keyData, compressors);
     }
     std::shared_ptr<SelfCert> sharedCert = std::move(cert);
-    auto batcher = std::make_shared<SynchronizedBatcher<Sha256>>(
-        1, sharedCert, CertificateVerifyContext::Server);
-    auto batchCert =
-        std::make_shared<BatchSignatureAsyncSelfCert<Sha256>>(batcher);
-    certManager->addCert(batchCert, true);
+    if (enableBatch) {
+      batcher = std::make_shared<SynchronizedBatcher<Sha256>>(
+          batchNumMsgThreshold, sharedCert, CertificateVerifyContext::Server);
+      auto batchCert =
+          std::make_shared<BatchSignatureAsyncSelfCert<Sha256>>(batcher);
+      serverContext->setSupportedSigSchemes(batchCert->getSigSchemes());
+      certManager->addCert(batchCert, true);
+    } else {
+      serverContext->setSupportedSigSchemes(sharedCert->getSigSchemes());
+      certManager->addCert(sharedCert, true);
+    }
   }
   serverContext->setCertManager(std::move(certManager));
 
