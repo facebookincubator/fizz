@@ -288,8 +288,10 @@ ENDIF(CMAKE_CROSSCOMPILING)
 
 SET(FIZZ_TEST_INSTALL_PREFIX ${CMAKE_INSTALL_PREFIX})
 
-find_package(GMock 1.8.0 MODULE REQUIRED)
-find_package(GTest 1.8.0 MODULE REQUIRED)
+if(BUILD_TESTS)
+  find_package(GMock 1.8.0 MODULE REQUIRED)
+  find_package(GTest 1.8.0 MODULE REQUIRED)
+endif()
 
 add_library(fizz_test_support
   crypto/aead/test/TestUtil.cpp
