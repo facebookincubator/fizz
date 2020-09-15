@@ -287,100 +287,79 @@ ELSE(CMAKE_CROSSCOMPILING)
 ENDIF(CMAKE_CROSSCOMPILING)
 
 SET(FIZZ_TEST_INSTALL_PREFIX ${CMAKE_INSTALL_PREFIX})
+
 if(BUILD_TESTS)
-  enable_testing()
+  find_package(GMock 1.8.1 MODULE REQUIRED)
+  find_package(GTest 1.8.1 MODULE REQUIRED)
+endif()
 
-  find_package(GMock REQUIRED)
-  if(NOT LIBGMOCK_FOUND)
-    include(ExternalProject)
+add_library(fizz_test_support
+  crypto/aead/test/TestUtil.cpp
+  crypto/test/TestUtil.cpp
+  ${FIZZ_TEST_HEADERS}
+)
 
-    # Download and install GoogleMock
-    ExternalProject_Add(
-        gtest
-        GIT_REPOSITORY https://github.com/google/googletest.git
-        GIT_TAG release-1.8.0
-        PREFIX gtest
-        # Disable install step
-        INSTALL_COMMAND ""
-        LOG_DOWNLOAD ON
-        LOG_UPDATE 1
-        LOG_CONFIGURE ON
-        LOG_BUILD ON
-        LOG_TEST 1
-        LOG_INSTALL 1
-    )
+target_link_libraries(fizz_test_support
+  PUBLIC
+    fizz
+    ${LIBGMOCK_LIBRARIES}
+    ${GLOG_LIBRARY}
+)
 
-    # Create a libgmock target to be used as a dependency by test programs
-    add_library(libgmock IMPORTED STATIC GLOBAL)
-    add_dependencies(libgmock gtest)
-    add_library(libgmock_main IMPORTED STATIC GLOBAL)
-    add_dependencies(libgmock_main gtest)
+target_compile_definitions(fizz_test_support
+  PUBLIC
+    ${LIBGMOCK_DEFINES}
+)
 
-    # Set gmock properties
-    ExternalProject_Get_Property(gtest source_dir binary_dir)
-    set_target_properties(libgmock PROPERTIES
-        "IMPORTED_LOCATION" "${binary_dir}/googlemock/libgmock.a"
-        "IMPORTED_LINK_INTERFACE_LIBRARIES" "${CMAKE_THREAD_LIBS_INIT}"
-    )
-    set_target_properties(libgmock_main PROPERTIES
-        "IMPORTED_LOCATION" "${binary_dir}/googlemock/libgmock_main.a"
-        "IMPORTED_LINK_INTERFACE_LIBRARIES" "${CMAKE_THREAD_LIBS_INIT}"
-    )
-    set(LIBGMOCK_LIBRARIES libgmock libgmock_main)
-    set(LIBGMOCK_INCLUDE_DIR "${source_dir}/googlemock/include")
-    set(LIBGTEST_INCLUDE_DIR "${source_dir}/googletest/include")
+target_include_directories(fizz_test_support
+  SYSTEM
+  PUBLIC
+    ${LIBGMOCK_INCLUDE_DIR}
+    ${LIBGTEST_INCLUDE_DIRS}
+)
+
+# export fizz headers and targets for unit tests utils
+# since other projects such as mvfst and proxygen use them
+install(
+  TARGETS fizz_test_support
+  EXPORT fizz-exports
+  ARCHIVE DESTINATION ${FIZZ_TEST_INSTALL_PREFIX}/lib
+  LIBRARY DESTINATION ${FIZZ_TEST_INSTALL_PREFIX}/lib
+)
+
+foreach(dir ${FIZZ_TEST_HEADER_DIRS})
+  get_filename_component(PARENT_DIR "/${dir}" DIRECTORY)
+  install(
+    DIRECTORY ${dir}
+    DESTINATION "${FIZZ_TEST_INSTALL_PREFIX}/include/fizz${PARENT_DIR}"
+    FILES_MATCHING PATTERN "*.h"
+  )
+endforeach()
+
+macro(add_gtest test_source test_name)
+  add_executable(${test_name} ${test_source} test/CMakeTestMain.cpp)
+
+  set_property(TARGET ${test_name} PROPERTY ENABLE_EXPORTS true)
+  target_include_directories(
+    ${test_name} PUBLIC ${LIBGMOCK_INCLUDE_DIR} ${LIBGTEST_INCLUDE_DIR})
+  target_compile_definitions(${test_name} PUBLIC ${LIBGMOCK_DEFINES})
+  target_link_libraries(
+    ${test_name}
+    fizz
+    fizz_test_support
+    ${LIBGMOCK_LIBRARIES})
+
+  if(NOT ${CMAKE_CXX_COMPILER_ID} STREQUAL MSVC)
+    # GMOCK_MOCK_METHOD() will complain otherwise
+    target_compile_options(${test_name}
+      PRIVATE "-Wno-inconsistent-missing-override")
   endif()
 
-  add_library(fizz_test_support
-    crypto/aead/test/TestUtil.cpp
-    crypto/test/TestUtil.cpp
-    ${FIZZ_TEST_HEADERS})
+  add_test(${test_name} bin/${test_name})
+endmacro(add_gtest)
 
-  target_link_libraries(fizz_test_support
-    PUBLIC
-      fizz
-  )
-
-  # export fizz headers and targets for unit tests utils
-  # since other projects such as mvfst and proxygen use them
-  install(
-    TARGETS fizz_test_support
-    EXPORT fizz-exports
-    ARCHIVE DESTINATION ${FIZZ_TEST_INSTALL_PREFIX}/lib
-    LIBRARY DESTINATION ${FIZZ_TEST_INSTALL_PREFIX}/lib
-  )
-
-  foreach(dir ${FIZZ_TEST_HEADER_DIRS})
-    get_filename_component(PARENT_DIR "/${dir}" DIRECTORY)
-    install(
-      DIRECTORY ${dir}
-      DESTINATION "${FIZZ_TEST_INSTALL_PREFIX}/include/fizz${PARENT_DIR}"
-      FILES_MATCHING PATTERN "*.h"
-    )
-  endforeach()
-
-  macro(add_gtest test_source test_name)
-    add_executable(${test_name} ${test_source} test/CMakeTestMain.cpp)
-
-    set_property(TARGET ${test_name} PROPERTY ENABLE_EXPORTS true)
-    target_include_directories(
-      ${test_name} PUBLIC ${LIBGMOCK_INCLUDE_DIR} ${LIBGTEST_INCLUDE_DIR})
-    target_compile_definitions(${test_name} PUBLIC ${LIBGMOCK_DEFINES})
-    target_link_libraries(
-      ${test_name}
-      fizz
-      fizz_test_support
-      ${LIBGMOCK_LIBRARIES})
-
-    if(NOT ${CMAKE_CXX_COMPILER_ID} STREQUAL MSVC)
-      # GMOCK_MOCK_METHOD() will complain otherwise
-      target_compile_options(${test_name}
-        PRIVATE "-Wno-inconsistent-missing-override")
-    endif()
-
-    add_test(${test_name} bin/${test_name})
-  endmacro(add_gtest)
-
+if(BUILD_TESTS)
+  enable_testing()
   add_gtest(client/test/SynchronizedLruPskCacheTest.cpp SyncronizedLruPskCacheTest)
   add_gtest(client/test/AsyncFizzClientTest.cpp AsyncFizzClientTest)
   add_gtest(client/test/ClientProtocolTest.cpp ClientProtocolTest)
