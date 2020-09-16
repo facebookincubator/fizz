@@ -3,7 +3,9 @@
 </p>
 
 [![Travis Build Status](https://api.travis-ci.org/facebookincubator/fizz.svg?branch=master)](https://travis-ci.org/facebookincubator/fizz)
-[![CI Status](https://github.com/facebookincubator/fizz/workflows/CI/badge.svg?branch=master)](https://github.com/facebookincubator/fizz/actions?workflow=CI)
+[![Linux Build Status](https://github.com/facebookincubator/fizz/workflows/linux/badge.svg?branch=master)](https://github.com/facebookincubator/fizz/actions?workflow=linux)
+[![macOS Build Status](https://github.com/facebookincubator/fizz/workflows/mac/badge.svg?branch=master)](https://github.com/facebookincubator/fizz/actions?workflow=mac)
+[![Windows Build Status](https://github.com/facebookincubator/fizz/workflows/windows/badge.svg?branch=master)](https://github.com/facebookincubator/fizz/actions?workflow=windows)
 
 Fizz is a TLS 1.3 implementation.
 
