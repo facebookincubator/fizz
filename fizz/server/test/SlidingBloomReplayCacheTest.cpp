@@ -11,6 +11,7 @@
 
 #include <fizz/server/SlidingBloomReplayCache.h>
 
+#include <folly/io/async/ScopedEventBaseThread.h>
 #include <folly/Random.h>
 
 #include <unordered_set>
@@ -102,9 +103,8 @@ TEST(SlidingBloomReplayCacheTest, TestCacheErrorRate) {
 
 TEST(SlidingBloomReplayCacheTest, TestTimeBucketing) {
   const int numTries = 1 << 14;
-
-  folly::EventBase evb;
-  SlidingBloomReplayCache cache(12, numTries, 0.0005, &evb);
+  folly::ScopedEventBaseThread evbThread_;
+  SlidingBloomReplayCache cache(12, numTries, 0.0005, evbThread_.getEventBase());
 
   std::vector<std::string> history(numTries);
   for (size_t i = 0; i < numTries; i++) {
@@ -112,24 +112,25 @@ TEST(SlidingBloomReplayCacheTest, TestTimeBucketing) {
     cache.set(toRange(history[i]));
   }
 
+  folly::EventBase evb;
   // 6 seconds in, all values should still be set
   evb.scheduleAt(
-      [&] {
-        for (int i = 0; i < numTries; ++i) {
-          EXPECT_TRUE(cache.test(toRange(history[i])));
-        }
-      },
-      evb.now() + std::chrono::seconds(6));
+    [&] {
+      for (int i = 0; i < numTries; ++i) {
+        EXPECT_TRUE(cache.test(toRange(history[i])));
+      }
+    },
+    evb.now() + std::chrono::seconds(6));
 
   // 13 seconds in, all should be gone.
   evb.scheduleAt(
-      [&] {
-        for (int i = 0; i < numTries; ++i) {
-          EXPECT_FALSE(cache.test(toRange(history[i])));
-        }
-        evb.terminateLoopSoon();
-      },
-      evb.now() + std::chrono::seconds(13));
+    [&] {
+      for (int i = 0; i < numTries; ++i) {
+        EXPECT_FALSE(cache.test(toRange(history[i])));
+      }
+      evb.terminateLoopSoon();
+    },
+    evb.now() + std::chrono::seconds(13));
   evb.loop();
 }
 } // namespace test

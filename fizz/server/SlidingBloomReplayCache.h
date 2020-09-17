@@ -16,6 +16,7 @@
 
 #include <folly/io/async/AsyncTimeout.h>
 #include <folly/io/async/EventBase.h>
+#include <folly/io/async/ScopedEventBaseThread.h>
 
 namespace fizz {
 namespace server {
@@ -41,12 +42,12 @@ class SlidingBloomReplayCache : public ReplayCache,
       size_t requestsPerSecond,
       double acceptableFPR,
       folly::EventBase* evb);
-  ~SlidingBloomReplayCache() override = default;
+  ~SlidingBloomReplayCache() override;
 
+
+  // Note: Do not use outside of a test environmemt.
   void set(folly::ByteRange query);
-
   bool test(folly::ByteRange query) const;
-
   bool testAndSet(folly::ByteRange query);
 
   folly::Future<ReplayCacheResult> check(folly::ByteRange) override;
@@ -65,7 +66,9 @@ class SlidingBloomReplayCache : public ReplayCache,
   std::unique_ptr<CellType[]> bitBuf_;
 
   std::vector<HashFunction> hashers_;
-};
 
+  // Used for clearing and checking the cache.
+  folly::Executor::KeepAlive<folly::EventBase> executor_;
+};
 } // namespace server
 } // namespace fizz

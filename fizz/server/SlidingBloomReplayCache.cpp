@@ -14,6 +14,7 @@
 
 #include <folly/Conv.h>
 #include <folly/hash/Hash.h>
+#include <folly/io/async/ScopedEventBaseThread.h>
 #include <folly/portability/Unistd.h>
 
 #include <fizz/crypto/RandomGenerator.h>
@@ -56,7 +57,7 @@ SlidingBloomReplayCache::SlidingBloomReplayCache(
     size_t requestsPerSecond,
     double acceptableFPR,
     folly::EventBase* evb)
-    : folly::AsyncTimeout(evb) {
+    : folly::AsyncTimeout(evb), executor_{folly::Executor::getKeepAliveToken(evb)} {
   if (acceptableFPR <= 0.0 || acceptableFPR >= 1.0) {
     throw std::runtime_error("false positive rate must lie between 0 and 1");
   }
@@ -83,7 +84,7 @@ SlidingBloomReplayCache::SlidingBloomReplayCache(
 
   // Set up hashers
   for (unsigned int i = 0; i < kHashCount; i++) {
-    hashers_.push_back(
+    hashers_.emplace_back(
         [seed = RandomNumGenerator<uint64_t>().generateRandom()](
             const unsigned char* buf, size_t len) -> uint64_t {
           return SpookyHashV2::Hash64((const void*)buf, len, seed);
@@ -91,10 +92,25 @@ SlidingBloomReplayCache::SlidingBloomReplayCache(
   }
 
   // Schedule reaping function (if evb given)
-  if (evb) {
-    scheduleTimeout(bucketWidthInMs_.count());
+  if (executor_) {
+    folly::via(
+      executor_,
+      [this]() {
+        scheduleTimeout(bucketWidthInMs_.count());
+    });
   } else {
     VLOG(8) << "Started replay cache without reaping";
+  }
+}
+
+SlidingBloomReplayCache::~SlidingBloomReplayCache() {
+  if (executor_) {
+    folly::via(
+      executor_,
+      [this]() {
+        cancelTimeout();
+      }
+    ).get();
   }
 }
 
@@ -136,8 +152,13 @@ bool SlidingBloomReplayCache::testAndSet(folly::ByteRange query) {
 
 folly::Future<ReplayCacheResult> SlidingBloomReplayCache::check(
     folly::ByteRange query) {
-  return testAndSet(std::move(query)) ? ReplayCacheResult::MaybeReplay
+  return folly::via(
+    executor_,
+    [this, query]() {
+      const auto result = testAndSet(query) ? ReplayCacheResult::MaybeReplay
                                       : ReplayCacheResult::NotReplay;
+      return result;
+    });
 }
 
 void SlidingBloomReplayCache::clearBucket(size_t bucket) {
