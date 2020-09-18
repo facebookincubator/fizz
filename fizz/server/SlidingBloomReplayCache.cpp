@@ -115,6 +115,10 @@ SlidingBloomReplayCache::~SlidingBloomReplayCache() {
 }
 
 void SlidingBloomReplayCache::set(folly::ByteRange query) {
+  if (executor_) {
+    executor_->dcheckIsInEventBaseThread();
+  }
+
   CellType mask = (static_cast<CellType>(1)) << currentBucket_;
 
   for (auto& hasher : hashers_) {
@@ -125,6 +129,10 @@ void SlidingBloomReplayCache::set(folly::ByteRange query) {
 }
 
 bool SlidingBloomReplayCache::test(folly::ByteRange query) const {
+  if (executor_) {
+    executor_->dcheckIsInEventBaseThread();
+  }
+
   CellType ret(std::numeric_limits<CellType>::max());
 
   for (auto& hasher : hashers_) {
@@ -137,6 +145,10 @@ bool SlidingBloomReplayCache::test(folly::ByteRange query) const {
 }
 
 bool SlidingBloomReplayCache::testAndSet(folly::ByteRange query) {
+  if (executor_) {
+    executor_->dcheckIsInEventBaseThread();
+  }
+
   CellType ret(std::numeric_limits<CellType>::max());
   CellType mask = (static_cast<CellType>(1)) << currentBucket_;
 

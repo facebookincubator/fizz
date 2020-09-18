@@ -46,6 +46,8 @@ class SlidingBloomReplayCache : public ReplayCache,
 
 
   // Note: Do not use outside of a test environmemt.
+  // When using, these functions must be called from the
+  // event base thread (if it's not null).
   void set(folly::ByteRange query);
   bool test(folly::ByteRange query) const;
   bool testAndSet(folly::ByteRange query);
