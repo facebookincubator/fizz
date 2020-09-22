@@ -95,6 +95,10 @@ std::string toString(ExtensionType extType) {
       return "test_extension";
     case ExtensionType::delegated_credential:
       return "delegated_credential";
+    case ExtensionType::encrypted_client_hello:
+      return "encrypted_client_hello";
+    case ExtensionType::ech_nonce:
+      return "ech_nonce";
   }
   return enumToHex(extType);
 }
