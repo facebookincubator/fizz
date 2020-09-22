@@ -11,7 +11,6 @@
 #include <fizz/experimental/batcher/Batcher.h>
 #include <fizz/protocol/test/Mocks.h>
 #include <fizz/server/test/Mocks.h>
-#include <folly/executors/ManualExecutor.h>
 #include <folly/portability/GTest.h>
 
 namespace fizz {
@@ -76,8 +75,7 @@ TEST(BatchSignatureAsyncSelfCertTest, TestDecoratorLogicWithMockCert) {
   auto sig2 = batchCert.signFuture(
       SignatureScheme::ecdsa_secp256r1_sha256,
       CertificateVerifyContext::Server,
-      folly::range(folly::StringPiece("hello")),
-      nullptr);
+      folly::range(folly::StringPiece("hello")));
   EXPECT_EQ(sig2.value().value()->moveToFbString(), folly::fbstring("mockSignature"));
   // sign with batch scheme
   // expect call of base certificate's sign but with batch scheme
@@ -95,18 +93,12 @@ TEST(BatchSignatureAsyncSelfCertTest, TestDecoratorLogicWithMockAsyncCert) {
   EXPECT_EQ(batchCert.getSigner(), mockBaseCert);
   // sign
   EXPECT_CALL(
-      *mockBaseCert,
-      signFuture(SignatureScheme::ecdsa_secp256r1_sha256, _, _, _))
+      *mockBaseCert, signFuture(SignatureScheme::ecdsa_secp256r1_sha256, _, _))
       .Times(1)
-      .WillRepeatedly(Invoke([](SignatureScheme,
-                                CertificateVerifyContext,
-                                folly::ByteRange,
-                                const server::State*) {
-        return folly::IOBuf::copyBuffer("mockSignature");
-      }));
-  folly::ManualExecutor executor;
-  server::State state;
-  state.executor() = &executor;
+      .WillRepeatedly(Invoke(
+          [](SignatureScheme, CertificateVerifyContext, folly::ByteRange) {
+            return folly::IOBuf::copyBuffer("mockSignature");
+          }));
   // sign will not invoke signer's signFuture
   auto sig1 = batchCert.sign(
       SignatureScheme::ecdsa_secp256r1_sha256,
@@ -116,8 +108,7 @@ TEST(BatchSignatureAsyncSelfCertTest, TestDecoratorLogicWithMockAsyncCert) {
   auto sig2 = batchCert.signFuture(
       SignatureScheme::ecdsa_secp256r1_sha256,
       CertificateVerifyContext::Server,
-      folly::range(folly::StringPiece("hello")),
-      &state);
+      folly::range(folly::StringPiece("hello")));
 }
 
 TEST(BatchSignatureAsyncSelfCertTest, TestSignAndVerifyP256) {
@@ -134,8 +125,7 @@ TEST(BatchSignatureAsyncSelfCertTest, TestSignAndVerifyP256) {
   auto signature = batchCert.signFuture(
       SignatureScheme::ecdsa_secp256r1_sha256,
       CertificateVerifyContext::Server,
-      folly::range(folly::StringPiece("Message1")),
-      nullptr);
+      folly::range(folly::StringPiece("Message1")));
   PeerCertImpl<KeyType::P256> peerCert(getCert(kP256Certificate));
   peerCert.verify(
       SignatureScheme::ecdsa_secp256r1_sha256,
@@ -148,15 +138,13 @@ TEST(BatchSignatureAsyncSelfCertTest, TestSignAndVerifyP256) {
       batchCert.signFuture(
           SignatureScheme::rsa_pss_sha256,
           CertificateVerifyContext::Server,
-          folly::range(folly::StringPiece("Message1")),
-          nullptr),
+          folly::range(folly::StringPiece("Message1"))),
       std::runtime_error);
   EXPECT_THROW(
       batchCert.signFuture(
           SignatureScheme::rsa_pss_sha256_batch,
           CertificateVerifyContext::Server,
-          folly::range(folly::StringPiece("Message1")),
-          nullptr),
+          folly::range(folly::StringPiece("Message1"))),
       std::runtime_error);
 }
 
@@ -174,8 +162,7 @@ TEST(BatchSignatureAsyncSelfCertTest, TestSignAndVerifyRSA) {
   auto signature = batchCert.signFuture(
       SignatureScheme::rsa_pss_sha256,
       CertificateVerifyContext::Server,
-      folly::range(folly::StringPiece("Message1")),
-      nullptr);
+      folly::range(folly::StringPiece("Message1")));
   PeerCertImpl<KeyType::RSA> peerCert(getCert(kRSACertificate));
   peerCert.verify(
       SignatureScheme::rsa_pss_sha256,
@@ -188,15 +175,13 @@ TEST(BatchSignatureAsyncSelfCertTest, TestSignAndVerifyRSA) {
       batchCert.signFuture(
           SignatureScheme::ecdsa_secp256r1_sha256,
           CertificateVerifyContext::Server,
-          folly::range(folly::StringPiece("Message1")),
-          nullptr),
+          folly::range(folly::StringPiece("Message1"))),
       std::runtime_error);
   EXPECT_THROW(
       batchCert.signFuture(
           SignatureScheme::ecdsa_secp256r1_sha256_batch,
           CertificateVerifyContext::Server,
-          folly::range(folly::StringPiece("Message1")),
-          nullptr),
+          folly::range(folly::StringPiece("Message1"))),
       std::runtime_error);
 }
 
@@ -211,15 +196,11 @@ TEST(BatchSignatureAsyncSelfCertTest, TestUnsuportedHash) {
   BatchSignatureAsyncSelfCert<Sha256> batchCert(batcher);
 
   // thow when signing a batch scheme whose Hash doesn't match
-  folly::ManualExecutor executor;
-  server::State state;
-  state.executor() = &executor;
   EXPECT_THROW(
       batchCert.signFuture(
           SignatureScheme::ecdsa_secp384r1_sha384_batch,
           CertificateVerifyContext::Server,
-          folly::range(folly::StringPiece("Message1")),
-          &state),
+          folly::range(folly::StringPiece("Message1"))),
       std::runtime_error);
 }
 

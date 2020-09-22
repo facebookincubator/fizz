@@ -1367,8 +1367,7 @@ EventHandler<ServerTypes, StateEnum::ExpectingClientHello, Event::ClientHello>::
             signature = asyncSelfCert->signFuture(
                 *sigScheme,
                 CertificateVerifyContext::Server,
-                toBeSigned->coalesce(),
-                &state);
+                toBeSigned->coalesce());
           } else {
             signature = originalSelfCert->sign(
                 *sigScheme,

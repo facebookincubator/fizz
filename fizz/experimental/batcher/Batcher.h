@@ -107,7 +107,7 @@ class Batcher {
     folly::Future<folly::Optional<Buf>> signatureFut = folly::none;
     if (asyncSigner) {
       signatureFut = asyncSigner->signFuture(
-          baseScheme_, context_, toBeSigned->coalesce(), nullptr);
+          baseScheme_, context_, toBeSigned->coalesce());
     } else {
       signatureFut = folly::makeFuture(
           signer_->sign(baseScheme_, context_, toBeSigned->coalesce()));

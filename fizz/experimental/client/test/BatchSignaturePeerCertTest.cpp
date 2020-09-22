@@ -64,13 +64,10 @@ TEST(BatchSignaturePeerCertTest, TestSignVerifyP256) {
       1, certificate, CertificateVerifyContext::Server);
   BatchSignatureAsyncSelfCert<Sha256> batchSelfCert(batcher);
   folly::ManualExecutor executor;
-  server::State state;
-  state.executor() = &executor;
   auto signature1 = batchSelfCert.signFuture(
       SignatureScheme::ecdsa_secp256r1_sha256_batch,
       CertificateVerifyContext::Server,
-      folly::range(folly::StringPiece("Message1")),
-      &state);
+      folly::range(folly::StringPiece("Message1")));
   executor.drain();
 
   // verify
@@ -87,8 +84,7 @@ TEST(BatchSignaturePeerCertTest, TestSignVerifyP256) {
   auto signature2 = batchSelfCert.signFuture(
       SignatureScheme::ecdsa_secp256r1_sha256,
       CertificateVerifyContext::Server,
-      folly::range(folly::StringPiece("Message1")),
-      &state);
+      folly::range(folly::StringPiece("Message1")));
   batchPeerCert.verify(
       SignatureScheme::ecdsa_secp256r1_sha256,
       CertificateVerifyContext::Server,
@@ -106,13 +102,10 @@ TEST(BatchSignaturePeerCertTest, TestSignVerifyRSA) {
       1, certificate, CertificateVerifyContext::Server);
   BatchSignatureAsyncSelfCert<Sha256> batchSelfCert(batcher);
   folly::ManualExecutor executor;
-  server::State state;
-  state.executor() = &executor;
   auto signature1 = batchSelfCert.signFuture(
       SignatureScheme::rsa_pss_sha256_batch,
       CertificateVerifyContext::Server,
-      folly::range(folly::StringPiece("Message1")),
-      &state);
+      folly::range(folly::StringPiece("Message1")));
   executor.drain();
 
   // verify
@@ -129,8 +122,7 @@ TEST(BatchSignaturePeerCertTest, TestSignVerifyRSA) {
   auto signature2 = batchSelfCert.signFuture(
       SignatureScheme::rsa_pss_sha256,
       CertificateVerifyContext::Server,
-      folly::range(folly::StringPiece("Message1")),
-      &state);
+      folly::range(folly::StringPiece("Message1")));
   batchPeerCert.verify(
       SignatureScheme::rsa_pss_sha256,
       CertificateVerifyContext::Server,
@@ -148,13 +140,10 @@ TEST(BatchSignaturePeerCertTest, TestWrongBatchSignature) {
       1, certificate, CertificateVerifyContext::Server);
   BatchSignatureAsyncSelfCert<Sha256> batchSelfCert(batcher);
   folly::ManualExecutor executor;
-  server::State state;
-  state.executor() = &executor;
   auto signature = batchSelfCert.signFuture(
       SignatureScheme::ecdsa_secp256r1_sha256_batch,
       CertificateVerifyContext::Server,
-      folly::range(folly::StringPiece("Message1")),
-      &state);
+      folly::range(folly::StringPiece("Message1")));
   executor.drain();
   auto signatureBuf = *std::move(signature).get();
 

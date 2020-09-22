@@ -25,7 +25,7 @@ TEST(BatchSignatureTest, TestWhenSignerIsAsync) {
       1, mockBaseCert, CertificateVerifyContext::Server);
   auto [promise, semiFuture] = folly::makePromiseContract<folly::Optional<Buf>>();
   auto future = std::move(semiFuture).toUnsafeFuture();
-  EXPECT_CALL(*mockBaseCert, signFuture(_, _, _, _))
+  EXPECT_CALL(*mockBaseCert, signFuture(_, _, _))
       .Times(1)
       .WillOnce(InvokeWithoutArgs([&]() { return std::move(future); }));
   auto futureTree =
@@ -41,7 +41,7 @@ TEST(BatchSignatureTest, TestWhenSignerFails) {
   auto mockBaseCert = std::make_shared<server::test::MockAsyncSelfCert>();
   auto batcher = std::make_shared<SynchronizedBatcher<Sha256>>(
       1, mockBaseCert, CertificateVerifyContext::Server);
-  EXPECT_CALL(*mockBaseCert, signFuture(_, _, _, _))
+  EXPECT_CALL(*mockBaseCert, signFuture(_, _, _))
       .Times(1)
       .WillOnce(InvokeWithoutArgs([]() { return folly::none; }));
   auto futureTree =
@@ -138,8 +138,7 @@ TEST(BatchSignatureTest, TestSynchronizedBatcherWithSelfCertP256) {
           std::dynamic_pointer_cast<AsyncSelfCert>(batchCert)->signFuture(
               SignatureScheme::ecdsa_secp256r1_sha256_batch,
               CertificateVerifyContext::Server,
-              folly::range(folly::StringPiece("Message" + std::to_string(i))),
-              nullptr);
+              folly::range(folly::StringPiece("Message" + std::to_string(i))));
       result = (*std::move(signature).get())->moveToFbString();
     }));
   }
@@ -224,22 +223,19 @@ TEST(BatchSignatureTest, TestThreadLocalBatcherWithSelfCertP256) {
                                 SignatureScheme::ecdsa_secp256r1_sha256_batch,
                                 CertificateVerifyContext::Server,
                                 folly::range(folly::StringPiece(
-                                    "Message" + std::to_string(3 * i + 0))),
-                                nullptr);
+                                    "Message" + std::to_string(3 * i + 0))));
       auto signature2 = std::dynamic_pointer_cast<AsyncSelfCert>(batchCert2)
                             ->signFuture(
                                 SignatureScheme::ecdsa_secp256r1_sha256_batch,
                                 CertificateVerifyContext::Server,
                                 folly::range(folly::StringPiece(
-                                    "Message" + std::to_string(3 * i + 1))),
-                                nullptr);
+                                    "Message" + std::to_string(3 * i + 1))));
       auto signature3 = std::dynamic_pointer_cast<AsyncSelfCert>(batchCert3)
                             ->signFuture(
                                 SignatureScheme::ecdsa_secp256r1_sha256_batch,
                                 CertificateVerifyContext::Server,
                                 folly::range(folly::StringPiece(
-                                    "Message" + std::to_string(3 * i + 2))),
-                                nullptr);
+                                    "Message" + std::to_string(3 * i + 2))));
       result1 = (*std::move(signature1).get())->moveToFbString();
       result2 = (*std::move(signature2).get())->moveToFbString();
       result3 = (*std::move(signature3).get())->moveToFbString();

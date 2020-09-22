@@ -233,13 +233,12 @@ class MockAsyncSelfCert : public AsyncSelfCert {
           CertificateVerifyContext context,
           folly::ByteRange toBeSigned));
   MOCK_CONST_METHOD0(getX509, folly::ssl::X509UniquePtr());
-  MOCK_CONST_METHOD4(
+  MOCK_CONST_METHOD3(
       signFuture,
       folly::Future<folly::Optional<Buf>>(
           SignatureScheme scheme,
           CertificateVerifyContext context,
-          folly::ByteRange toBeSigned,
-          const server::State* state));
+          folly::ByteRange toBeSigned));
 };
 } // namespace test
 } // namespace server
