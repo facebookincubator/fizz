@@ -14,7 +14,7 @@
 
 using namespace fizz;
 
-std::unique_ptr<folly::IOBuf> makeRandom(size_t n) {
+std::unique_ptr<folly::IOBuf> makeRandomOne(size_t n) {
   static const char alphanum[] =
       "0123456789"
       "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
@@ -26,6 +26,27 @@ std::unique_ptr<folly::IOBuf> makeRandom(size_t n) {
     rv.push_back(alphanum[folly::Random::rand32() % (sizeof(alphanum) - 1)]);
   }
   return folly::IOBuf::copyBuffer(rv, 5, 17);
+}
+
+std::unique_ptr<folly::IOBuf> makeRandom(size_t n, size_t num = 1) {
+  std::unique_ptr<folly::IOBuf> ret;
+  size_t one = n/num;
+  if (!one) {
+    one = 1;
+  }
+
+  while (n) {
+    size_t curr = (n > one)?one:n;
+    auto buf = makeRandomOne(curr);
+    if (!ret) {
+      ret = std::move(buf);
+    }else {
+      ret->prependChain(std::move(buf));
+    }
+
+    n -= curr;
+  }
+  return ret;
 }
 
 std::unique_ptr<folly::IOBuf> toIOBuf(std::string hexData) {
@@ -41,7 +62,7 @@ TrafficKey getKey() {
   return trafficKey;
 }
 
-void encryptGCM(uint32_t n, size_t size) {
+void encryptGCM(uint32_t n, size_t size, size_t num) {
   std::unique_ptr<Aead> aead;
   std::vector<fizz::TLSMessage> msgs;
   EncryptedWriteRecordLayer write{EncryptionLevel::AppTraffic};
@@ -50,7 +71,7 @@ void encryptGCM(uint32_t n, size_t size) {
     aead->setKey(getKey());
     write.setAead(folly::ByteRange(), std::move(aead));
     for (size_t i = 0; i < n; ++i) {
-      TLSMessage msg{ContentType::application_data, makeRandom(size)};
+      TLSMessage msg{ContentType::application_data, makeRandom(size, num)};
       msgs.push_back(std::move(msg));
     }
   }
@@ -130,11 +151,23 @@ void touchEveryByte(uint32_t n, size_t size) {
   folly::doNotOptimizeAway(isTrue);
 }
 
-BENCHMARK_PARAM(encryptGCM, 10);
-BENCHMARK_PARAM(encryptGCM, 100);
-BENCHMARK_PARAM(encryptGCM, 1000);
-BENCHMARK_PARAM(encryptGCM, 4000);
-BENCHMARK_PARAM(encryptGCM, 8000);
+BENCHMARK_NAMED_PARAM(encryptGCM, 10_1, 10, 1);
+BENCHMARK_NAMED_PARAM(encryptGCM, 100_1, 100, 1);
+BENCHMARK_NAMED_PARAM(encryptGCM, 1000_1, 1000, 1);
+BENCHMARK_NAMED_PARAM(encryptGCM, 4000_1, 4000, 1);
+BENCHMARK_NAMED_PARAM(encryptGCM, 8000_1, 8000, 1);
+
+BENCHMARK_NAMED_PARAM(encryptGCM, 10_2, 10, 2);
+BENCHMARK_NAMED_PARAM(encryptGCM, 100_2, 100, 2);
+BENCHMARK_NAMED_PARAM(encryptGCM, 1000_2, 1000, 2);
+BENCHMARK_NAMED_PARAM(encryptGCM, 4000_2, 4000, 2);
+BENCHMARK_NAMED_PARAM(encryptGCM, 8000_2, 8000, 2);
+
+BENCHMARK_NAMED_PARAM(encryptGCM, 10_4, 10, 4);
+BENCHMARK_NAMED_PARAM(encryptGCM, 100_4, 100, 4);
+BENCHMARK_NAMED_PARAM(encryptGCM, 1000_4, 1000, 4);
+BENCHMARK_NAMED_PARAM(encryptGCM, 4000_4, 4000, 4);
+BENCHMARK_NAMED_PARAM(encryptGCM, 8000_4, 8000, 4);
 
 BENCHMARK_PARAM(decryptGCM, 10);
 BENCHMARK_PARAM(decryptGCM, 1000);
