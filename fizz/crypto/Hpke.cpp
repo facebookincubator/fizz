@@ -15,16 +15,15 @@ using namespace fizz::detail;
 namespace fizz {
 namespace hpke {
 
-Hkdf::Hkdf(folly::ByteRange prefix, std::unique_ptr<fizz::Hkdf> hkdf): prefix_(prefix), hkdf_(std::move(hkdf)) {}
+Hkdf::Hkdf(std::unique_ptr<folly::IOBuf> prefix, std::unique_ptr<fizz::Hkdf> hkdf): prefix_(std::move(prefix)), hkdf_(std::move(hkdf)) {}
 
 std::vector<uint8_t>  Hkdf::labeledExtract(Buf salt, folly::ByteRange label, Buf ikm,
     std::unique_ptr<folly::IOBuf> suiteId) {
-  Buf labeledIkm = folly::IOBuf::create(prefix_.size() + suiteId->computeChainDataLength()
+  Buf labeledIkm = folly::IOBuf::create(prefix_->computeChainDataLength() + suiteId->computeChainDataLength()
     + label.size() + ikm->computeChainDataLength());
   folly::io::Appender appender(labeledIkm.get(), 0);
 
-  writeBufWithoutLength(
-    folly::IOBuf::wrapBuffer(prefix_), appender);
+  writeBufWithoutLength(prefix_, appender);
   writeBufWithoutLength(suiteId, appender);
   writeBufWithoutLength(
     folly::IOBuf::wrapBuffer(label), appender);
@@ -35,7 +34,7 @@ std::vector<uint8_t>  Hkdf::labeledExtract(Buf salt, folly::ByteRange label, Buf
 
 std::unique_ptr<folly::IOBuf> Hkdf::labeledExpand(folly::ByteRange prk, folly::ByteRange label,
   Buf info, size_t L, std::unique_ptr<folly::IOBuf> suiteId) {
-  Buf labeledInfo = folly::IOBuf::create(2 + prefix_.size() + suiteId->computeChainDataLength()
+  Buf labeledInfo = folly::IOBuf::create(2 + prefix_->computeChainDataLength() + suiteId->computeChainDataLength()
     + label.size() + info->computeChainDataLength());
   folly::io::Appender appender(labeledInfo.get(), 0);
 
@@ -43,14 +42,17 @@ std::unique_ptr<folly::IOBuf> Hkdf::labeledExpand(folly::ByteRange prk, folly::B
     throw std::runtime_error("This is greater than the maximum length allowed");
   }
   appender.writeBE<uint16_t>(L);
-  writeBufWithoutLength(
-    folly::IOBuf::wrapBuffer(prefix_), appender);
+  writeBufWithoutLength(prefix_, appender);
   writeBufWithoutLength(suiteId, appender);
   writeBufWithoutLength(
     folly::IOBuf::wrapBuffer(label), appender);
   writeBufWithoutLength(info, appender);
 
   return hkdf_->expand(prk, *labeledInfo, L);
+}
+
+size_t Hkdf::hashLength() {
+  return hkdf_->hashLength();
 }
 
 } // namespace hpke

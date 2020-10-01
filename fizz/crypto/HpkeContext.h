@@ -10,22 +10,27 @@
 
 #include <fizz/crypto/aead/OpenSSLEVPCipher.h>
 #include <fizz/crypto/Hpke.h>
+#include <fizz/crypto/HpkeTypes.h>
+#include <fizz/protocol/Types.h>
 
 namespace fizz {
 namespace hpke {
 
 class HpkeContext {
  public:
-  HpkeContext(std::unique_ptr<Aead> cipher, folly::ByteRange exporterSecret, std::unique_ptr<fizz::hpke::Hkdf> hkdf);
+  HpkeContext(std::unique_ptr<Aead> cipher, std::unique_ptr<folly::IOBuf> exporterSecret, std::unique_ptr<fizz::hpke::Hkdf> hkdf,
+    HpkeSuiteId suiteId);
   std::unique_ptr<folly::IOBuf> seal(const folly::IOBuf* aad, std::unique_ptr<folly::IOBuf> pt);
   std::unique_ptr<folly::IOBuf> open(const folly::IOBuf *aad, std::unique_ptr<folly::IOBuf> ct);
+  std::unique_ptr<folly::IOBuf> exportSecret(std::unique_ptr<folly::IOBuf> exporterContext, size_t desiredLength);
 
  private:
   void incrementSeq();
   uint64_t seqNum_{0};
   std::unique_ptr<Aead> cipher_;
-  folly::ByteRange exporterSecret_;
+  std::unique_ptr<folly::IOBuf> exporterSecret_;
   std::unique_ptr<fizz::hpke::Hkdf> hkdf_;
+  HpkeSuiteId suiteId_;
 };
 
 } // namespace hpke
