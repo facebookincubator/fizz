@@ -45,6 +45,7 @@ ECHConfigContentDraft7 getECHConfigContent() {
   ECHConfigContentDraft7 echConfigContent;
   echConfigContent.public_name = getBuf("7075626c69636e616d65");
   echConfigContent.public_key = getBuf("7075626c69635f6b6579");
+  echConfigContent.kem_id = 32;
   echConfigContent.cipher_suites = {suite};
   echConfigContent.maximum_name_length = 1000;
   folly::StringPiece cookie{"002c00080006636f6f6b6965"};
@@ -64,6 +65,7 @@ TEST(ECHTest, TestConfigContentEncodeDecode) {
   auto expectedEchConfigContent = getECHConfigContent();
   EXPECT_TRUE(folly::IOBufEqualTo()(gotEchConfigContent.public_name, expectedEchConfigContent.public_name));
   EXPECT_TRUE(folly::IOBufEqualTo()(gotEchConfigContent.public_key, expectedEchConfigContent.public_key));
+  EXPECT_EQ(gotEchConfigContent.kem_id, expectedEchConfigContent.kem_id);
   EXPECT_EQ(gotEchConfigContent.cipher_suites.size(), expectedEchConfigContent.cipher_suites.size());
   EXPECT_EQ(gotEchConfigContent.maximum_name_length, expectedEchConfigContent.maximum_name_length);
   EXPECT_EQ(gotEchConfigContent.extensions.size(), 1);
