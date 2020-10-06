@@ -43,5 +43,9 @@ namespace hpke {
     return hkdf_->labeledExpand(exporterSecret_->coalesce(), folly::Range("sec"), std::move(exporterContext), desiredLength, suiteId_->clone());
   }
 
+  std::unique_ptr<folly::IOBuf> HpkeContext::getExporterSecret() {
+    return exporterSecret_->clone();
+  }
+
 } // namespace hpke
 } // namespace fizz

@@ -7,14 +7,13 @@
  */
 
 #include <gtest/gtest.h>
+
 #include <fizz/crypto/HpkeContext.h>
-#include <fizz/crypto/aead/AESGCM128.h>
-#include <fizz/crypto/aead/AESGCM256.h>
-#include <fizz/crypto/aead/AESOCB128.h>
-#include <fizz/crypto/aead/ChaCha20Poly1305.h>
-#include <fizz/crypto/aead/test/TestUtil.h>
-#include <fizz/crypto/Sha256.h>
 #include <fizz/crypto/HpkeUtils.h>
+#include <fizz/crypto/Sha256.h>
+#include <fizz/crypto/aead/test/TestUtil.h>
+#include <fizz/crypto/test/HpkeMocks.h>
+#include <fizz/crypto/test/TestUtil.h>
 #include <fizz/protocol/Types.h>
 #include <fizz/record/Types.h>
 
@@ -25,7 +24,6 @@ namespace hpke {
 namespace test {
 
 const std::string kExportSecret = "60f5fe76e2699f98c19eab82fecf330b990ac32694a8e40e598e2326d0e29150";
-constexpr size_t kHeadroom = 10;
 const std::string kPrefix = "HPKE-05 ";
 
 struct Params {
@@ -42,43 +40,21 @@ struct Params {
 
 class HpkeContextTest : public ::testing::TestWithParam<Params> {};
 
-std::unique_ptr<Aead> getCipher(const Params& params) {
-  std::unique_ptr<Aead> cipher;
-  switch (params.cipher) {
-    case CipherSuite::TLS_AES_128_GCM_SHA256:
-      cipher = OpenSSLEVPCipher::makeCipher<AESGCM128>();
-      break;
-    case CipherSuite::TLS_AES_256_GCM_SHA384:
-      cipher = OpenSSLEVPCipher::makeCipher<AESGCM256>();
-      break;
-    case CipherSuite::TLS_CHACHA20_POLY1305_SHA256:
-      cipher = OpenSSLEVPCipher::makeCipher<ChaCha20Poly1305>();
-      break;
-    case CipherSuite::TLS_AES_128_OCB_SHA256_EXPERIMENTAL:
-      cipher = OpenSSLEVPCipher::makeCipher<AESOCB128>();
-      break;
-    default:
-      throw std::runtime_error("Invalid cipher");
-  }
-
-  TrafficKey trafficKey;
-  trafficKey.key = toIOBuf(params.key);
-  trafficKey.iv = toIOBuf(params.iv);
-  cipher->setKey(std::move(trafficKey));
-  cipher->setEncryptedBufferHeadroom(kHeadroom);
-  return cipher;
-}
-
 TEST_P(HpkeContextTest, TestContext) {
   auto testParam = GetParam();
   auto suiteId = generateHpkeSuiteId(NamedGroup::secp256r1, HashFunction::Sha256, testParam.cipher);
-  HpkeContext encryptContext(getCipher(testParam), toIOBuf(kExportSecret),
+  auto encryptCipher = getCipher(testParam.cipher);
+  encryptCipher->setKey(TrafficKey{toIOBuf(testParam.key), toIOBuf(testParam.iv)});
+
+  HpkeContext encryptContext(std::move(encryptCipher), toIOBuf(kExportSecret),
     std::make_unique<fizz::hpke::Hkdf>(folly::IOBuf::copyBuffer(kPrefix), std::make_unique<HkdfImpl>(HkdfImpl::create<Sha256>())),
     suiteId->clone());
   auto gotCiphertext = encryptContext.seal(toIOBuf(testParam.aad).get(), toIOBuf(testParam.plaintext));
   EXPECT_TRUE(folly::IOBufEqualTo()(gotCiphertext, toIOBuf(testParam.ciphertext)));
 
-  HpkeContext decryptContext(getCipher(testParam), toIOBuf(kExportSecret),
+  auto decryptCipher = getCipher(testParam.cipher);
+  decryptCipher->setKey(TrafficKey{toIOBuf(testParam.key), toIOBuf(testParam.iv)});
+  HpkeContext decryptContext(std::move(decryptCipher), toIOBuf(kExportSecret),
     std::make_unique<fizz::hpke::Hkdf>(folly::IOBuf::copyBuffer(kPrefix), std::make_unique<HkdfImpl>(HkdfImpl::create<Sha256>())),
     std::move(suiteId));
   auto gotPlaintext = decryptContext.open(toIOBuf(testParam.aad).get(), std::move(gotCiphertext));

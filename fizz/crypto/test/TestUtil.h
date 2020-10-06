@@ -8,6 +8,8 @@
 
 #pragma once
 
+#include <fizz/crypto/aead/Aead.h>
+#include <fizz/protocol/Types.h>
 #include <folly/String.h>
 #include <folly/io/IOBuf.h>
 #include <folly/ssl/OpenSSLPtrTypes.h>
@@ -326,5 +328,8 @@ folly::ssl::X509UniquePtr getCert(folly::StringPiece cert);
 std::unique_ptr<folly::IOBuf> getCertData(folly::StringPiece cert);
 
 void useMockRandom();
+
+std::unique_ptr<Aead> getCipher(CipherSuite cipher);
+
 } // namespace test
 } // namespace fizz

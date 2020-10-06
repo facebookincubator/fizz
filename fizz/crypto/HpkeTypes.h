@@ -35,5 +35,12 @@ enum class AeadId : uint16_t {
     TLS_CHACHA20_POLY1305_SHA256 = 0x0003,
 };
 
+enum class Mode : uint8_t {
+    Base = 0x00,
+    Psk = 0x01,
+    Auth = 0x02,
+    AuthPsk = 0x03,
+};
+
 } // namespace hpke
 } // namespace fizz

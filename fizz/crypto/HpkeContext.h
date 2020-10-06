@@ -23,6 +23,8 @@ class HpkeContext {
   std::unique_ptr<folly::IOBuf> seal(const folly::IOBuf* aad, std::unique_ptr<folly::IOBuf> pt);
   std::unique_ptr<folly::IOBuf> open(const folly::IOBuf *aad, std::unique_ptr<folly::IOBuf> ct);
   std::unique_ptr<folly::IOBuf> exportSecret(std::unique_ptr<folly::IOBuf> exporterContext, size_t desiredLength);
+  // NOTE: This should only be used for testing.
+  std::unique_ptr<folly::IOBuf> getExporterSecret();
 
  private:
   void incrementSeq();

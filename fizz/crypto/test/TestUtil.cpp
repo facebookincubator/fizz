@@ -8,6 +8,11 @@
 
 #include <fizz/crypto/test/TestUtil.h>
 
+#include <fizz/crypto/aead/AESGCM128.h>
+#include <fizz/crypto/aead/AESGCM256.h>
+#include <fizz/crypto/aead/AESOCB128.h>
+#include <fizz/crypto/aead/ChaCha20Poly1305.h>
+#include <fizz/crypto/aead/OpenSSLEVPCipher.h>
 #include <folly/String.h>
 #include <folly/ssl/OpenSSLCertUtils.h>
 #include <sodium/randombytes.h>
@@ -69,5 +74,29 @@ static struct randombytes_implementation mockRandom = {
 void useMockRandom() {
   randombytes_set_implementation(&mockRandom);
 }
+
+std::unique_ptr<Aead> getCipher(CipherSuite suite) {
+  std::unique_ptr<Aead> cipher;
+  switch (suite) {
+    case CipherSuite::TLS_AES_128_GCM_SHA256:
+      cipher = OpenSSLEVPCipher::makeCipher<AESGCM128>();
+      break;
+    case CipherSuite::TLS_AES_256_GCM_SHA384:
+      cipher = OpenSSLEVPCipher::makeCipher<AESGCM256>();
+      break;
+    case CipherSuite::TLS_CHACHA20_POLY1305_SHA256:
+      cipher = OpenSSLEVPCipher::makeCipher<ChaCha20Poly1305>();
+      break;
+    case CipherSuite::TLS_AES_128_OCB_SHA256_EXPERIMENTAL:
+      cipher = OpenSSLEVPCipher::makeCipher<AESOCB128>();
+      break;
+    default:
+      throw std::runtime_error("Invalid cipher");
+  }
+  constexpr size_t kHeadroom = 10;
+  cipher->setEncryptedBufferHeadroom(kHeadroom);
+  return cipher;
+}
+
 } // namespace test
 } // namespace fizz

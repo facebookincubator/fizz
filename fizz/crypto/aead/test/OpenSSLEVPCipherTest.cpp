@@ -15,6 +15,7 @@
 #include <fizz/crypto/aead/IOBufUtil.h>
 #include <fizz/crypto/aead/OpenSSLEVPCipher.h>
 #include <fizz/crypto/aead/test/TestUtil.h>
+#include <fizz/crypto/test/TestUtil.h>
 #include <fizz/record/Types.h>
 #include <folly/ExceptionWrapper.h>
 #include <folly/String.h>
@@ -39,30 +40,13 @@ constexpr size_t kHeadroom = 10;
 
 class OpenSSLEVPCipherTest : public ::testing::TestWithParam<CipherParams> {};
 
-std::unique_ptr<Aead> getCipher(const CipherParams& params) {
-  std::unique_ptr<Aead> cipher;
-  switch (params.cipher) {
-    case CipherSuite::TLS_AES_128_GCM_SHA256:
-      cipher = OpenSSLEVPCipher::makeCipher<AESGCM128>();
-      break;
-    case CipherSuite::TLS_AES_256_GCM_SHA384:
-      cipher = OpenSSLEVPCipher::makeCipher<AESGCM256>();
-      break;
-    case CipherSuite::TLS_CHACHA20_POLY1305_SHA256:
-      cipher = OpenSSLEVPCipher::makeCipher<ChaCha20Poly1305>();
-      break;
-    case CipherSuite::TLS_AES_128_OCB_SHA256_EXPERIMENTAL:
-      cipher = OpenSSLEVPCipher::makeCipher<AESOCB128>();
-      break;
-    default:
-      throw std::runtime_error("Invalid cipher");
-  }
+std::unique_ptr<Aead> getTestCipher(const CipherParams& params) {
+  std::unique_ptr<Aead> cipher = getCipher(params.cipher);
 
   TrafficKey trafficKey;
   trafficKey.key = toIOBuf(params.key);
   trafficKey.iv = toIOBuf(params.iv);
   cipher->setKey(std::move(trafficKey));
-  cipher->setEncryptedBufferHeadroom(kHeadroom);
   return cipher;
 }
 
@@ -137,34 +121,34 @@ void callDecrypt(
 }
 
 TEST_P(OpenSSLEVPCipherTest, TestEncrypt) {
-  auto cipher = getCipher(GetParam());
+  auto cipher = getTestCipher(GetParam());
   auto out = callEncrypt(cipher, GetParam());
   EXPECT_EQ(out->headroom(), 0);
 }
 
 TEST_P(OpenSSLEVPCipherTest, TestEncryptWithTagRoom) {
-  auto cipher = getCipher(GetParam());
+  auto cipher = getTestCipher(GetParam());
   auto input = toIOBuf(GetParam().plaintext, 0, cipher->getCipherOverhead());
   auto out = callEncrypt(cipher, GetParam(), std::move(input));
   EXPECT_FALSE(out->isChained());
 }
 
 TEST_P(OpenSSLEVPCipherTest, TestEncryptReusedCipher) {
-  auto cipher = getCipher(GetParam());
+  auto cipher = getTestCipher(GetParam());
   auto params = GetParam();
   callEncrypt(cipher, params);
   callEncrypt(cipher, GetParam());
 }
 
 TEST_P(OpenSSLEVPCipherTest, TestEncryptChunkedInput) {
-  auto cipher = getCipher(GetParam());
+  auto cipher = getTestCipher(GetParam());
   auto input = toIOBuf(GetParam().plaintext);
   auto chunkedInput = chunkIOBuf(std::move(input), 3);
   callEncrypt(cipher, GetParam(), std::move(chunkedInput));
 }
 
 TEST_P(OpenSSLEVPCipherTest, TestEncryptChunkedInputWithEmpty) {
-  auto cipher = getCipher(GetParam());
+  auto cipher = getTestCipher(GetParam());
   auto input = toIOBuf(GetParam().plaintext);
   auto chunkedInput = chunkIOBuf(std::move(input), 3);
   // add a zero length for the second node
@@ -174,7 +158,7 @@ TEST_P(OpenSSLEVPCipherTest, TestEncryptChunkedInputWithEmpty) {
 }
 
 TEST_P(OpenSSLEVPCipherTest, TestEncryptChunkedInputWithTagRoomHead) {
-  auto cipher = getCipher(GetParam());
+  auto cipher = getTestCipher(GetParam());
   auto input = toIOBuf(GetParam().plaintext);
   auto overhead = cipher->getCipherOverhead();
   auto creator = [overhead](size_t len, size_t num) {
@@ -194,7 +178,7 @@ TEST_P(OpenSSLEVPCipherTest, TestEncryptChunkedInputWithTagRoomHead) {
 }
 
 TEST_P(OpenSSLEVPCipherTest, TestEncryptChunkedInputWithTagRoomLast) {
-  auto cipher = getCipher(GetParam());
+  auto cipher = getTestCipher(GetParam());
   auto input = toIOBuf(GetParam().plaintext);
   auto overhead = cipher->getCipherOverhead();
   size_t chunks = 3;
@@ -218,7 +202,7 @@ TEST_P(OpenSSLEVPCipherTest, TestEncryptChunkedInputWithTagRoomLast) {
 }
 
 TEST_P(OpenSSLEVPCipherTest, TestEncryptChunkedSharedInput) {
-  auto cipher = getCipher(GetParam());
+  auto cipher = getTestCipher(GetParam());
   auto input = toIOBuf(GetParam().plaintext);
   auto chunkedInput = chunkIOBuf(std::move(input), 3);
   auto out = callEncrypt(cipher, GetParam(), chunkedInput->clone());
@@ -229,26 +213,26 @@ TEST_P(OpenSSLEVPCipherTest, TestEncryptChunkedSharedInput) {
 }
 
 TEST_P(OpenSSLEVPCipherTest, TestEncryptChunkedAad) {
-  auto cipher = getCipher(GetParam());
+  auto cipher = getTestCipher(GetParam());
   auto aad = toIOBuf(GetParam().aad);
   auto chunkedAad = chunkIOBuf(std::move(aad), 3);
   callEncrypt(cipher, GetParam(), nullptr, std::move(chunkedAad));
 }
 
 TEST_P(OpenSSLEVPCipherTest, TestDecrypt) {
-  auto cipher = getCipher(GetParam());
+  auto cipher = getTestCipher(GetParam());
   callDecrypt(cipher, GetParam());
 }
 
 TEST_P(OpenSSLEVPCipherTest, TestDecryptReusedCipher) {
-  auto cipher = getCipher(GetParam());
+  auto cipher = getTestCipher(GetParam());
   auto params = GetParam();
   callDecrypt(cipher, params);
   callDecrypt(cipher, GetParam());
 }
 
 TEST_P(OpenSSLEVPCipherTest, TestDecryptInputTooSmall) {
-  auto cipher = getCipher(GetParam());
+  auto cipher = getTestCipher(GetParam());
   auto in = IOBuf::copyBuffer("in");
   auto paramsCopy = GetParam();
   paramsCopy.valid = false;
@@ -256,35 +240,35 @@ TEST_P(OpenSSLEVPCipherTest, TestDecryptInputTooSmall) {
 }
 
 TEST_P(OpenSSLEVPCipherTest, TestDecryptWithChunkedInput) {
-  auto cipher = getCipher(GetParam());
+  auto cipher = getTestCipher(GetParam());
   auto output = toIOBuf(GetParam().ciphertext);
   auto chunkedOutput = chunkIOBuf(std::move(output), 3);
   callDecrypt(cipher, GetParam(), std::move(chunkedOutput));
 }
 
 TEST_P(OpenSSLEVPCipherTest, TestDecryptWithChunkedSharedInput) {
-  auto cipher = getCipher(GetParam());
+  auto cipher = getTestCipher(GetParam());
   auto output = toIOBuf(GetParam().ciphertext);
   auto chunkedOutput = chunkIOBuf(std::move(output), 3);
   callDecrypt(cipher, GetParam(), chunkedOutput->clone());
 }
 
 TEST_P(OpenSSLEVPCipherTest, TestDecryptWithVeryChunkedInput) {
-  auto cipher = getCipher(GetParam());
+  auto cipher = getTestCipher(GetParam());
   auto output = toIOBuf(GetParam().ciphertext);
   auto chunkedOutput = chunkIOBuf(std::move(output), 30);
   callDecrypt(cipher, GetParam(), std::move(chunkedOutput));
 }
 
 TEST_P(OpenSSLEVPCipherTest, TestDecryptWithChunkedAad) {
-  auto cipher = getCipher(GetParam());
+  auto cipher = getTestCipher(GetParam());
   auto aad = toIOBuf(GetParam().aad);
   auto chunkedAad = chunkIOBuf(std::move(aad), 3);
   callDecrypt(cipher, GetParam(), nullptr, std::move(chunkedAad));
 }
 
 TEST_P(OpenSSLEVPCipherTest, TestTryDecrypt) {
-  auto cipher = getCipher(GetParam());
+  auto cipher = getTestCipher(GetParam());
   auto out = cipher->tryDecrypt(
       toIOBuf(GetParam().ciphertext),
       toIOBuf(GetParam().aad).get(),
