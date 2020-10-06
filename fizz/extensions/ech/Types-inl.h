@@ -122,7 +122,7 @@ inline extensions::ECHConfigContentDraft7 decode(folly::io::Cursor& cursor) {
   extensions::ECHConfigContentDraft7 echConfigContent;
   detail::readBuf<uint16_t>(echConfigContent.public_name, cursor);
   detail::readBuf<uint16_t>(echConfigContent.public_key, cursor);
-  detail::read<uint16_t>(echConfigContent.kem_id, cursor);
+  detail::read(echConfigContent.kem_id, cursor);
   detail::readVector<uint16_t>(echConfigContent.cipher_suites, cursor);
   detail::read<uint16_t>(echConfigContent.maximum_name_length, cursor);
   detail::readVector<uint16_t>(echConfigContent.extensions, cursor);

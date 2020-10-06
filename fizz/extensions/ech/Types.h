@@ -11,26 +11,24 @@
 #include <vector>
 #include <cstdint>
 #include <fizz/record/Extensions.h>
+#include <fizz/crypto/HpkeTypes.h>
 
 namespace fizz {
 namespace extensions {
 
 using Buf = std::unique_ptr<folly::IOBuf>;
 using HpkePublicKey = Buf;
-using HkpeKemId = uint16_t;
-using HkpeAeadId = uint16_t;
-using HkpeKdfId = uint16_t;
 using HpkeNonce = std::array<uint8_t, 16>;
 
 struct HpkeCipherSuite {
-    HkpeKdfId kdfId;
-    HkpeAeadId aeadId;
+    hpke::KDFId kdfId;
+    hpke::AeadId aeadId;
 };
 
 struct ECHConfigContentDraft7 {
     Buf public_name;
     HpkePublicKey public_key;
-    HkpeKemId kem_id;
+    hpke::KEMId kem_id;
     std::vector<HpkeCipherSuite> cipher_suites;
     uint16_t maximum_name_length;
     std::vector<Extension> extensions;

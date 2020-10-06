@@ -18,7 +18,7 @@ namespace test {
 
 const std::array<unsigned char, 16> kTestECHNonce = {0xCF, 0x21, 0xAD, 0x74, 0xE5, 0x9A, 0x61, 0x11, 0xBE, 0x1D, 0x8C,0x02, 0x1E, 0x65, 0xB8, 0x91};
 folly::StringPiece kECHNonceExtensionData{"cf21ad74e59a6111be1d8c021e65b891"};
-folly::StringPiece kExtensionData{"04d211d700146b546573745265636f7264446967657374537472000b6b54657374456e6353747200126563685f636f6e6669675f636f6e74656e74"};
+folly::StringPiece kExtensionData{"0001000100146b546573745265636f7264446967657374537472000b6b54657374456e6353747200126563685f636f6e6669675f636f6e74656e74"};
 folly::StringPiece kTestClientHelloInnerStr{"6563685f636f6e6669675f636f6e74656e74"};
 folly::StringPiece kTestEncStr{"6b54657374456e63537472"};
 folly::StringPiece kTestRecordDigestStr{"6b546573745265636f7264446967657374537472"};
@@ -41,11 +41,11 @@ std::vector<Extension> getExtensions(folly::StringPiece hex) {
 }
 
 ECHConfigContentDraft7 getECHConfigContent() {
-  HpkeCipherSuite suite{1234, 4567};
+  HpkeCipherSuite suite{hpke::KDFId::Sha256, hpke::AeadId::TLS_AES_128_GCM_SHA256};
   ECHConfigContentDraft7 echConfigContent;
   echConfigContent.public_name = getBuf("7075626c69636e616d65");
   echConfigContent.public_key = getBuf("7075626c69635f6b6579");
-  echConfigContent.kem_id = 32;
+  echConfigContent.kem_id = hpke::KEMId::secp256r1;
   echConfigContent.cipher_suites = {suite};
   echConfigContent.maximum_name_length = 1000;
   folly::StringPiece cookie{"002c00080006636f6f6b6965"};
@@ -94,7 +94,7 @@ TEST(ECHTest, TestECHConfigEncodeDecode) {
 
 TEST(ECHTest, TestECHExtensionEncode) {
   EncryptedClientHello ech;
-  ech.suite = HpkeCipherSuite{1234, 4567};
+  ech.suite = HpkeCipherSuite{hpke::KDFId::Sha256, hpke::AeadId::TLS_AES_128_GCM_SHA256};
   ech.record_digest = getBuf(kTestRecordDigestStr);
   ech.enc = getBuf(kTestEncStr);
   ech.encrypted_ch = getBuf(kTestClientHelloInnerStr);
@@ -115,7 +115,7 @@ TEST(ECHTest, TestECHExtensionDecode) {
   vec.push_back(std::move(e));
   auto ech = getExtension<EncryptedClientHello>(vec);
 
-  EXPECT_EQ(ech->suite.kdfId, 1234);
+  EXPECT_EQ(ech->suite.kdfId, hpke::KDFId::Sha256);
   EXPECT_TRUE(folly::IOBufEqualTo()(
     ech->record_digest,
     getBuf(kTestRecordDigestStr)
