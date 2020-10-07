@@ -78,7 +78,7 @@ SetupParam getSetupParam(std::unique_ptr<X25519KeyExchange> kex, CipherSuite sui
   std::unique_ptr<folly::IOBuf> suiteId = generateHpkeSuiteId(group, HashFunction::Sha256, suite);
 
   return SetupParam{
-    std::make_unique<DHKEM>(std::move(kex), 32, group, std::make_unique<fizz::hpke::Hkdf>(folly::IOBuf::copyBuffer("HPKE-05 "),
+    std::make_unique<DHKEM>(std::move(kex), group, std::make_unique<fizz::hpke::Hkdf>(folly::IOBuf::copyBuffer("HPKE-05 "),
       std::make_unique<HkdfImpl>(HkdfImpl::create<Sha256>()))),
     std::move(cipher),
     std::make_unique<fizz::hpke::Hkdf>(folly::IOBuf::copyBuffer("HPKE-05 "), std::make_unique<HkdfImpl>(HkdfImpl::create<Sha256>())),

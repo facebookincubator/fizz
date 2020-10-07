@@ -22,7 +22,7 @@ class DHKEM {
     std::unique_ptr<folly::IOBuf> enc;
   };
 
-  DHKEM(std::unique_ptr<KeyExchange> kex, size_t nSecret, NamedGroup group, std::unique_ptr<fizz::hpke::Hkdf> hkdf);
+  DHKEM(std::unique_ptr<KeyExchange> kex, NamedGroup group, std::unique_ptr<fizz::hpke::Hkdf> hkdf);
 
   /**
   * Generate an ephemeral, fixed-length symmetric key
@@ -41,7 +41,6 @@ class DHKEM {
  private:
   std::unique_ptr<folly::IOBuf> extractAndExpand(std::unique_ptr<folly::IOBuf> dh, std::unique_ptr<folly::IOBuf> kemContext);
   std::unique_ptr<KeyExchange> kex_;
-  size_t nSecret_;
   NamedGroup group_;
   std::unique_ptr<fizz::hpke::Hkdf> hkdf_;
 

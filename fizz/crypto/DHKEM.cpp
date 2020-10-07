@@ -35,11 +35,9 @@ Buf generateSuiteId(NamedGroup group) {
 
 DHKEM::DHKEM(
     std::unique_ptr<KeyExchange> kex,
-    size_t nSecret,
     NamedGroup group,
     std::unique_ptr<fizz::hpke::Hkdf> hkdf)
     : kex_(std::move(kex)),
-      nSecret_(nSecret),
       group_(group),
       hkdf_(std::move(hkdf)) {}
 
@@ -56,7 +54,7 @@ std::unique_ptr<folly::IOBuf> DHKEM::extractAndExpand(
       eaePrk,
       folly::Range("shared_secret"),
       std::move(kemContext),
-      nSecret_,
+      hkdf_->hashLength(),
       generateSuiteId(group_));
   return sharedSecret;
 }

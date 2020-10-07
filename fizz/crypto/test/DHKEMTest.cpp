@@ -54,18 +54,17 @@ testEncapDecap(DHKEM dhkem, std::unique_ptr<folly::IOBuf> publicKey) {
   return std::make_tuple(std::move(encapResult.sharedSecret), std::move(gotSharedKey));
 }
 
-DHKEM getDHKEM(std::unique_ptr<KeyExchange> actualKex, size_t nSecret, NamedGroup group) {
+DHKEM getDHKEM(std::unique_ptr<KeyExchange> actualKex, NamedGroup group) {
   auto prefix = "HPKE-05 ";
   auto hkdf = std::make_unique<fizz::hpke::Hkdf>(folly::IOBuf::copyBuffer(prefix), std::make_unique<HkdfImpl>(HkdfImpl::create<Sha256>()));
-  return DHKEM(std::make_unique<MockKeyExchange>(std::move(actualKex)), nSecret, group, std::move(hkdf));
+  return DHKEM(std::make_unique<MockKeyExchange>(std::move(actualKex)), group, std::move(hkdf));
 }
 
 TEST(DHKEMTest, TestP256EncapDecapEqual) {
   auto actualKex = std::make_unique<OpenSSLECKeyExchange<P256>>();
-  auto nSecret = 32;
   auto privateKey = getPrivateKey(kP256Key);
   actualKex->setPrivateKey(std::move(privateKey));
-  auto dhkem = getDHKEM(std::move(actualKex), nSecret, NamedGroup::secp256r1);
+  auto dhkem = getDHKEM(std::move(actualKex), NamedGroup::secp256r1);
 
   auto publicKey = detail::encodeECPublicKey(getPublicKey(kP256PublicKey));
   std::unique_ptr<folly::IOBuf> sharedKey;
@@ -77,10 +76,9 @@ TEST(DHKEMTest, TestP256EncapDecapEqual) {
 
 TEST(DHKEMTest, TestP256EncapDecapNotEqual) {
   auto actualKex = std::make_unique<OpenSSLECKeyExchange<P256>>();
-  auto nSecret = 32;
   auto privateKey = getPrivateKey(kP256Key);
   actualKex->setPrivateKey(std::move(privateKey));
-  auto dhkem = getDHKEM(std::move(actualKex), nSecret, NamedGroup::secp256r1);
+  auto dhkem = getDHKEM(std::move(actualKex), NamedGroup::secp256r1);
 
   // Set incorrect public key
   std::unique_ptr<folly::IOBuf> enc;
@@ -102,10 +100,9 @@ TEST(DHKEMTest, TestP256EncapDecapNotEqual) {
 
 TEST(DHKEMTest, TestP384EncapDecapEqual) {
   auto actualKex = std::make_unique<OpenSSLECKeyExchange<P384>>();
-  auto nSecret = 48;
   auto privateKey = getPrivateKey(kP384Key);
   actualKex->setPrivateKey(std::move(privateKey));
-  auto dhkem = getDHKEM(std::move(actualKex), nSecret, NamedGroup::secp384r1);
+  auto dhkem = getDHKEM(std::move(actualKex), NamedGroup::secp384r1);
 
 
   auto publicKey = detail::encodeECPublicKey(getPublicKey(kP384PublicKey));
