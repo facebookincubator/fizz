@@ -10,6 +10,7 @@
 
 #include <fizz/crypto/aead/Aead.h>
 #include <fizz/crypto/HpkeContext.h>
+#include <fizz/crypto/DHKEM.h>
 
 namespace fizz {
 namespace hpke {
@@ -54,6 +55,22 @@ struct KeyScheduleParams {
 };
 
 HpkeContext keySchedule(KeyScheduleParams params);
+
+struct SetupResult {
+  std::unique_ptr<folly::IOBuf> enc;
+  HpkeContext context;
+};
+
+struct SetupParam {
+  std::unique_ptr<DHKEM> dhkem;
+  std::unique_ptr<Aead> cipher;
+  std::unique_ptr<fizz::hpke::Hkdf> hkdf;
+  std::unique_ptr<folly::IOBuf> suiteId;
+};
+
+SetupResult setupWithEncap(Mode mode, folly::ByteRange pkR, std::unique_ptr<folly::IOBuf> info, folly::Optional<PskInputs> pskInputs, SetupParam param);
+
+HpkeContext setupWithDecap(Mode mode, folly::ByteRange enc, std::unique_ptr<folly::IOBuf> info, folly::Optional<PskInputs> pskInputs, SetupParam param);
 
 } // namespace hpke
 } // namespace fizz

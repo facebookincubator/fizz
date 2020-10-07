@@ -10,6 +10,7 @@
 
 #include <fizz/crypto/aead/Aead.h>
 #include <folly/portability/GMock.h>
+#include <fizz/crypto/exchange/X25519.h>
 
 namespace fizz {
 namespace hpke {
