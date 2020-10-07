@@ -17,7 +17,6 @@ using namespace testing;
 
 namespace fizz {
 namespace test {
-
 struct RSATest;
 
 struct P256Test {
@@ -210,6 +209,16 @@ TEST(CertTest, PeerCertGetX509) {
   PeerCertImpl<KeyType::P256> peerCert(getCert(kP256Certificate));
   auto x509 = peerCert.getX509();
   EXPECT_NE(x509.get(), nullptr);
+}
+
+TEST(CertTest, GetIdentityLogic) {
+  auto selfCert = CertUtils::makeSelfCert(
+      kCertWithNoCNButWithSANs.str(), kCertWithNoCNButWithSANsKey.str(), "");
+  EXPECT_EQ("O = interop runner", selfCert->getIdentity());
+
+  auto peerCert =
+      CertUtils::makePeerCert(fizz::test::getCert(kCertWithNoCNButWithSANs));
+  EXPECT_EQ("O = interop runner", peerCert->getIdentity());
 }
 
 TYPED_TEST(CertTestTyped, MatchingCert) {

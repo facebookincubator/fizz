@@ -21,6 +21,18 @@ int getCurveName(EVP_PKEY* key) {
 
 namespace fizz {
 
+namespace detail {
+
+folly::Optional<std::string> getIdentityFromX509(X509* x) {
+  auto cn = folly::ssl::OpenSSLCertUtils::getCommonName(*x);
+  if (cn.has_value()) {
+    return std::move(cn).value();
+  }
+
+  return folly::ssl::OpenSSLCertUtils::getSubject(*x);
+}
+} // namespace detail
+
 Buf CertUtils::prepareSignData(
     CertificateVerifyContext context,
     folly::ByteRange toBeSigned) {

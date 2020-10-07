@@ -194,6 +194,15 @@ TEST_F(CertManagerTest, TestGetByIdentity) {
   EXPECT_EQ(manager_.getCert("foo.test.com"), nullptr);
   EXPECT_EQ(manager_.getCert("www.blah.com"), nullptr);
 }
+
+TEST_F(CertManagerTest, TestDN) {
+  // This test is largely the same as TestGetByIdentity, but it is asserting
+  // that we should not be relying on Certificate::getIdentity() to return a
+  // "domain like" string.
+  auto cert = getCert("OU=Test Organization, O=Test", {"*.test.com"}, kRsa);
+  manager_.addCert(cert);
+  EXPECT_EQ(manager_.getCert("OU=Test Organization, O=Test"), cert);
+}
 } // namespace test
 } // namespace server
 } // namespace fizz

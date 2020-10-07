@@ -13,6 +13,10 @@
 
 namespace fizz {
 
+namespace detail {
+folly::Optional<std::string> getIdentityFromX509(X509* x);
+}
+
 template <>
 inline std::vector<SignatureScheme> CertUtils::getSigSchemes<KeyType::P256>() {
   return {SignatureScheme::ecdsa_secp256r1_sha256};
@@ -66,8 +70,7 @@ SelfCertImpl<T>::SelfCertImpl(
 
 template <KeyType T>
 std::string SelfCertImpl<T>::getIdentity() const {
-  return folly::ssl::OpenSSLCertUtils::getCommonName(*certs_.front())
-      .value_or("");
+  return detail::getIdentityFromX509(certs_.front().get()).value_or("");
 }
 
 template <KeyType T>
@@ -179,7 +182,7 @@ PeerCertImpl<T>::PeerCertImpl(folly::ssl::X509UniquePtr cert) {
 
 template <KeyType T>
 std::string PeerCertImpl<T>::getIdentity() const {
-  return folly::ssl::OpenSSLCertUtils::getCommonName(*cert_).value_or("");
+  return detail::getIdentityFromX509(cert_.get()).value_or("");
 }
 
 template <>
