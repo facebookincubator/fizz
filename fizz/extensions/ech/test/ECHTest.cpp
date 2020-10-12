@@ -10,7 +10,7 @@
 #include <folly/portability/GMock.h>
 #include <folly/portability/GTest.h>
 #include <fizz/extensions/ech/ECHExtensions.h>
-#include <fizz/record/test/ExtensionTestsBase.h>
+#include <fizz/extensions/ech/test/TestUtil.h>
 
 namespace fizz {
 namespace extensions {
@@ -27,30 +27,6 @@ folly::StringPiece kTestRecordDigestStr{"6b546573745265636f726444696765737453747
 Buf getBuf(folly::StringPiece hex) {
   auto data = unhexlify(hex);
   return folly::IOBuf::copyBuffer(data.data(), data.size());
-}
-
-std::vector<Extension> getExtensions(folly::StringPiece hex) {
-    auto buf = getBuf(hex);
-    folly::io::Cursor cursor(buf.get());
-    Extension ext;
-    EXPECT_EQ(detail::read(ext, cursor), buf->computeChainDataLength());
-    EXPECT_TRUE(cursor.isAtEnd());
-    std::vector<Extension> exts;
-    exts.push_back(std::move(ext));
-    return exts;
-}
-
-ECHConfigContentDraft7 getECHConfigContent() {
-  HpkeCipherSuite suite{hpke::KDFId::Sha256, hpke::AeadId::TLS_AES_128_GCM_SHA256};
-  ECHConfigContentDraft7 echConfigContent;
-  echConfigContent.public_name = getBuf("7075626c69636e616d65");
-  echConfigContent.public_key = getBuf("7075626c69635f6b6579");
-  echConfigContent.kem_id = hpke::KEMId::secp256r1;
-  echConfigContent.cipher_suites = {suite};
-  echConfigContent.maximum_name_length = 1000;
-  folly::StringPiece cookie{"002c00080006636f6f6b6965"};
-  echConfigContent.extensions = getExtensions(cookie);
-  return echConfigContent;
 }
 
 TEST(ECHTest, TestConfigContentEncodeDecode) {
