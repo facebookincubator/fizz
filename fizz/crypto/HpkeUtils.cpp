@@ -8,6 +8,15 @@
 
 #include <fizz/crypto/HpkeUtils.h>
 
+#include <fizz/crypto/aead/AESGCM128.h>
+#include <fizz/crypto/aead/AESGCM256.h>
+#include <fizz/crypto/aead/ChaCha20Poly1305.h>
+#include <fizz/crypto/aead/OpenSSLEVPCipher.h>
+#include <fizz/crypto/exchange/ECCurveKeyExchange.h>
+#include <fizz/crypto/exchange/X25519.h>
+#include <fizz/crypto/Sha256.h>
+#include <fizz/crypto/Sha384.h>
+
 namespace fizz {
 namespace hpke {
 
@@ -57,6 +66,84 @@ AeadId getAeadId(CipherSuite suite) {
       return AeadId::TLS_CHACHA20_POLY1305_SHA256;
     default:
       throw std::runtime_error("ciphersuite: not implemented");
+  }
+}
+
+NamedGroup getKexGroup(KEMId kemId) {
+  switch (kemId) {
+    case KEMId::secp256r1:
+      return NamedGroup::secp256r1;
+    case KEMId::secp384r1:
+      return NamedGroup::secp384r1;
+    case KEMId::secp521r1:
+      return NamedGroup::secp521r1;
+    case KEMId::x25519:
+      return NamedGroup::x25519;
+    default:
+      throw std::runtime_error("can't make key exchange: not implemented");
+  }
+}
+
+HashFunction getHashFunction(KDFId kdfId) {
+  switch (kdfId) {
+    case KDFId::Sha256:
+      return HashFunction::Sha256;
+    case KDFId::Sha384:
+      return HashFunction::Sha384;
+    default:
+      throw std::runtime_error("kdf: not implemented");
+  }
+}
+
+CipherSuite getCipherSuite(AeadId aeadId) {
+    switch (aeadId) {
+    case AeadId::TLS_AES_128_GCM_SHA256:
+      return CipherSuite::TLS_AES_128_GCM_SHA256;
+    case AeadId::TLS_AES_256_GCM_SHA384:
+      return CipherSuite::TLS_AES_256_GCM_SHA384;
+    case AeadId::TLS_CHACHA20_POLY1305_SHA256:
+      return CipherSuite::TLS_CHACHA20_POLY1305_SHA256;
+    default:
+      throw std::runtime_error("ciphersuite: not implemented");
+  }
+}
+
+std::unique_ptr<Hkdf> makeHpkeHkdf(std::unique_ptr<folly::IOBuf> prefix, KDFId kdfId) {
+  switch (kdfId) {
+    case KDFId::Sha256:
+      return std::make_unique<Hkdf>(std::move(prefix), std::make_unique<HkdfImpl>(HkdfImpl::create<Sha256>()));
+    case KDFId::Sha384:
+      return std::make_unique<Hkdf>(std::move(prefix), std::make_unique<HkdfImpl>(HkdfImpl::create<Sha384>()));
+    default:
+      throw std::runtime_error("hkdf: not implemented");
+  }
+}
+
+std::unique_ptr<KeyExchange> makeKeyExchange(KEMId kemId) {
+  switch (kemId) {
+    case KEMId::secp256r1:
+      return std::make_unique<OpenSSLECKeyExchange<P256>>();
+    case KEMId::secp384r1:
+      return std::make_unique<OpenSSLECKeyExchange<P384>>();
+    case KEMId::secp521r1:
+      return std::make_unique<OpenSSLECKeyExchange<P521>>();
+    case KEMId::x25519:
+      return std::make_unique<X25519KeyExchange>();
+    default:
+      throw std::runtime_error("can't make key exchange: not implemented");
+  }
+}
+
+std::unique_ptr<Aead> makeCipher(AeadId aeadId) {
+  switch (aeadId) {
+    case AeadId::TLS_CHACHA20_POLY1305_SHA256:
+      return OpenSSLEVPCipher::makeCipher<ChaCha20Poly1305>();
+    case AeadId::TLS_AES_128_GCM_SHA256:
+      return OpenSSLEVPCipher::makeCipher<AESGCM128>();
+    case AeadId::TLS_AES_256_GCM_SHA384:
+      return OpenSSLEVPCipher::makeCipher<AESGCM256>();
+    default:
+      throw std::runtime_error("can't make aead: not implemented");
   }
 }
 
