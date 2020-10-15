@@ -232,4 +232,9 @@ Buf KeyScheduler::getResumptionSecret(
       folly::IOBuf::wrapBuffer(ticketNonce),
       deriver_->hashLength());
 }
+
+std::unique_ptr<KeyScheduler> KeyScheduler::clone() const {
+  return std::unique_ptr<KeyScheduler>(
+      new KeyScheduler(secret_, appTrafficSecret_, deriver_->clone()));
+}
 } // namespace fizz

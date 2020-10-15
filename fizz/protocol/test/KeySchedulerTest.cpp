@@ -167,5 +167,37 @@ TEST_F(KeySchedulerTest, TestTrafficKeyWithLabel) {
           }));
   ks_->getTrafficKeyWithLabel(trafficSecret, keyLabel, ivLabel, 10, 10);
 }
+
+TEST_F(KeySchedulerTest, TestClonability) {
+  StringPiece ecdhe{"ecdhe"};
+
+  MockKeyDerivation* newKeyDerivation = nullptr;
+  EXPECT_CALL(*kd_, clone()).WillOnce(InvokeWithoutArgs([&]() {
+    auto kd = std::make_unique<MockKeyDerivation>();
+    newKeyDerivation = kd.get();
+    return kd;
+  }));
+  EXPECT_CALL(*kd_, deriveSecret(_, _, _)).Times(1);
+  ks_->deriveHandshakeSecret(ecdhe);
+
+  auto cloned = ks_->clone();
+  ASSERT_NE(newKeyDerivation, nullptr);
+
+  StringPiece transcript1("transcript1");
+  StringPiece transcript2("transcript1");
+  EXPECT_CALL(
+      *newKeyDerivation, deriveSecret(_, _, Eq(folly::ByteRange(transcript2))))
+      .Times(2);
+  EXPECT_CALL(*kd_, deriveSecret(_, _, Eq(folly::ByteRange(transcript1))))
+      .Times(2);
+
+  auto t1sh = ks_->getSecret(HandshakeSecrets::ServerHandshakeTraffic, transcript1);
+  auto t1ch = ks_->getSecret(HandshakeSecrets::ClientHandshakeTraffic, transcript1);
+  auto t2sh = cloned->getSecret(HandshakeSecrets::ServerHandshakeTraffic, transcript2);
+  auto t2ch = cloned->getSecret(HandshakeSecrets::ClientHandshakeTraffic, transcript2);
+  EXPECT_EQ(t1sh, t2sh);
+  EXPECT_EQ(t2ch, t2ch);
+}
+
 } // namespace test
 } // namespace fizz

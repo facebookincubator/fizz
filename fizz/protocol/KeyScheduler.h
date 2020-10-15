@@ -35,6 +35,7 @@ enum class AppTrafficSecrets { ClientAppTraffic, ServerAppTraffic };
   F(AppTrafficSecrets, __VA_ARGS__)
 
 FIZZ_DECLARE_COPYABLE_VARIANT_TYPE(SecretType, FIZZ_KEYSCHEDULER_SECRETTYPE)
+#undef FIZZ_KEYSCHEDULER_SECRETTYPE
 
 struct DerivedSecret {
   std::vector<uint8_t> secret;
@@ -45,6 +46,10 @@ struct DerivedSecret {
 
   DerivedSecret(folly::ByteRange secretIn, SecretType typeIn)
       : secret(secretIn.begin(), secretIn.end()), type(typeIn) {}
+
+  bool operator==(const DerivedSecret& other) const {
+    return secret == other.secret && type == other.type;
+  }
 };
 
 /**
@@ -53,7 +58,7 @@ struct DerivedSecret {
 class KeyScheduler {
  public:
   explicit KeyScheduler(std::unique_ptr<KeyDerivation> deriver)
-      : deriver_(std::move(deriver)) {}
+      : KeyScheduler(folly::none, folly::none, std::move(deriver)) {}
   virtual ~KeyScheduler() = default;
 
   /**
@@ -138,21 +143,44 @@ class KeyScheduler {
       folly::ByteRange resumptionMasterSecret,
       folly::ByteRange ticketNonce) const;
 
+  /**
+   * Clones the state of the KeyScheduler
+   */
+  std::unique_ptr<KeyScheduler> clone() const;
+
  private:
   struct EarlySecret {
     std::vector<uint8_t> secret;
+
+    bool operator==(const EarlySecret& other) const {
+      return secret == other.secret;
+    }
   };
   struct HandshakeSecret {
     std::vector<uint8_t> secret;
+
+    bool operator==(const HandshakeSecret& other) const {
+      return secret == other.secret;
+    }
   };
   struct MasterSecret {
     std::vector<uint8_t> secret;
+
+    bool operator==(const MasterSecret& other) const {
+      return secret == other.secret;
+    }
   };
   struct AppTrafficSecret {
     std::vector<uint8_t> client;
     uint32_t clientGeneration{0};
     std::vector<uint8_t> server;
     uint32_t serverGeneration{0};
+
+    bool operator==(const AppTrafficSecret& other) const {
+      return client == other.client &&
+          clientGeneration == other.clientGeneration &&
+          server == other.server && serverGeneration == other.serverGeneration;
+    }
   };
 
 #define FIZZ_KEYSCHEDULER_SECRETS(F, ...) \
@@ -160,7 +188,16 @@ class KeyScheduler {
   F(HandshakeSecret, __VA_ARGS__)         \
   F(MasterSecret, __VA_ARGS__)
 
-  FIZZ_DECLARE_VARIANT_TYPE(KeySchedulerSecret, FIZZ_KEYSCHEDULER_SECRETS)
+  FIZZ_DECLARE_COPYABLE_VARIANT_TYPE(KeySchedulerSecret, FIZZ_KEYSCHEDULER_SECRETS)
+#undef FIZZ_KEYSCHEDULER_SECRETS
+
+  KeyScheduler(
+      folly::Optional<KeySchedulerSecret> secret,
+      folly::Optional<AppTrafficSecret> appTrafficSecret,
+      std::unique_ptr<KeyDerivation> deriver)
+      : secret_(std::move(secret)),
+        appTrafficSecret_(std::move(appTrafficSecret)),
+        deriver_(std::move(deriver)) {}
 
   folly::Optional<KeySchedulerSecret> secret_;
   folly::Optional<AppTrafficSecret> appTrafficSecret_;

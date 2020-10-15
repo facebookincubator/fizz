@@ -54,6 +54,8 @@ class KeyDerivation {
       folly::ByteRange key,
       const folly::IOBuf& in,
       folly::MutableByteRange out) = 0;
+
+  virtual std::unique_ptr<KeyDerivation> clone() const = 0;
 };
 
 class KeyDerivationImpl : public KeyDerivation {
@@ -119,6 +121,11 @@ class KeyDerivationImpl : public KeyDerivation {
   std::vector<uint8_t> hkdfExtract(folly::ByteRange salt, folly::ByteRange ikm)
       override {
     return hkdf_.extract(salt, ikm);
+  }
+
+  std::unique_ptr<KeyDerivation> clone() const override {
+    return std::unique_ptr<KeyDerivation>(new KeyDerivationImpl(
+        labelPrefix_, hashLength_, hashFunc_, hmacFunc_, hkdf_, blankHash_));
   }
 
  private:

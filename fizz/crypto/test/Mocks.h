@@ -53,6 +53,7 @@ class MockKeyDerivation : public KeyDerivation {
           folly::ByteRange key,
           const folly::IOBuf& in,
           folly::MutableByteRange out));
+  MOCK_CONST_METHOD0(clone, std::unique_ptr<KeyDerivation>());
 };
 
 } // namespace fizz
