@@ -9,8 +9,8 @@
 #pragma once
 
 #include <fizz/crypto/aead/Aead.h>
-#include <fizz/crypto/HpkeContext.h>
-#include <fizz/crypto/DHKEM.h>
+#include <fizz/crypto/hpke/Context.h>
+#include <fizz/crypto/hpke/DHKEM.h>
 
 namespace fizz {
 namespace hpke {

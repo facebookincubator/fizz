@@ -6,7 +6,7 @@
  *  LICENSE file in the root directory of this source tree.
  */
 
-#include <fizz/crypto/HpkeUtils.h>
+#include <fizz/crypto/hpke/Utils.h>
 
 #include <fizz/crypto/aead/AESGCM128.h>
 #include <fizz/crypto/aead/AESGCM256.h>

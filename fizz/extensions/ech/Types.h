@@ -11,7 +11,7 @@
 #include <vector>
 #include <cstdint>
 #include <fizz/record/Extensions.h>
-#include <fizz/crypto/HpkeTypes.h>
+#include <fizz/crypto/hpke/Types.h>
 
 namespace fizz {
 namespace extensions {

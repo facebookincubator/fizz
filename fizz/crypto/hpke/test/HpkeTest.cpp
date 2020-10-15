@@ -7,11 +7,11 @@
  */
 
 #include <gtest/gtest.h>
-#include <fizz/crypto/Hpke.h>
+#include <fizz/crypto/hpke/Hpke.h>
 #include <fizz/crypto/Sha256.h>
-#include <fizz/crypto/HpkeUtils.h>
+#include <fizz/crypto/hpke/Utils.h>
+#include <fizz/crypto/hpke/test/Mocks.h>
 #include <fizz/crypto/test/TestUtil.h>
-#include <fizz/crypto/test/HpkeMocks.h>
 
 using namespace fizz::test;
 

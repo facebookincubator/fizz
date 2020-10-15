@@ -4,7 +4,7 @@
 
 #include <fizz/crypto/exchange/OpenSSLKeyExchange.h>
 #include <fizz/crypto/ECCurve.h>
-#include <fizz/crypto/HpkeHkdf.h>
+#include <fizz/crypto/hpke/Hkdf.h>
 #include <fizz/record/Types.h>
 
 namespace fizz {

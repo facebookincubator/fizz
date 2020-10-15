@@ -13,7 +13,7 @@
 #include <fizz/crypto/exchange/OpenSSLKeyExchange.h>
 #include <fizz/crypto/Sha256.h>
 #include <fizz/crypto/test/TestUtil.h>
-#include <fizz/crypto/DHKEM.h>
+#include <fizz/crypto/hpke/DHKEM.h>
 #include <fizz/record/Types.h>
 #include <folly/portability/GTest.h>
 

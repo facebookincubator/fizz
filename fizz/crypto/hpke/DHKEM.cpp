@@ -6,7 +6,7 @@
  *  LICENSE file in the root directory of this source tree.
  */
 
-#include <fizz/crypto/DHKEM.h>
+#include <fizz/crypto/hpke/DHKEM.h>
 #include <folly/io/Cursor.h>
 
 namespace fizz {

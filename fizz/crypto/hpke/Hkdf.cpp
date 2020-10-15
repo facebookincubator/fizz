@@ -7,7 +7,7 @@
  */
 
 #include <fizz/crypto/Sha256.h>
-#include <fizz/crypto/HpkeHkdf.h>
+#include <fizz/crypto/hpke/Hkdf.h>
 #include <fizz/record/Types.h>
 
 using namespace fizz::detail;

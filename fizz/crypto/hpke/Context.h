@@ -9,8 +9,10 @@
 #pragma once
 
 #include <fizz/crypto/aead/OpenSSLEVPCipher.h>
-#include <fizz/crypto/HpkeHkdf.h>
-#include <fizz/crypto/HpkeTypes.h>
+#include <fizz/crypto/hpke/Hkdf.h>
+
+#include <fizz/crypto/hpke/Types.h>
+
 #include <fizz/protocol/Types.h>
 
 namespace fizz {

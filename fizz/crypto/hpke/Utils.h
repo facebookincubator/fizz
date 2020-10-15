@@ -8,11 +8,11 @@
 
 #pragma once
 
-#include <fizz/crypto/HpkeTypes.h>
+#include <fizz/crypto/hpke/Types.h>
 
 #include <fizz/crypto/aead/Aead.h>
 #include <fizz/crypto/exchange/KeyExchange.h>
-#include <fizz/crypto/HpkeHkdf.h>
+#include <fizz/crypto/hpke/Hkdf.h>
 #include <fizz/protocol/Types.h>
 
 namespace fizz {
