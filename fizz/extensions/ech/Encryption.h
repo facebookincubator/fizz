@@ -8,7 +8,9 @@
 
 #pragma once
 
+#include <fizz/crypto/exchange/KeyExchange.h>
 #include <fizz/extensions/ech/Types.h>
+#include <fizz/extensions/ech/ECHExtensions.h>
 
 namespace fizz {
 namespace extensions {
@@ -21,6 +23,9 @@ struct SupportedECHConfig {
 folly::Optional<SupportedECHConfig> selectECHConfig(std::vector<ECHConfigContentDraft7> configs,
   std::vector<hpke::KEMId> supportedKEMs, std::vector<hpke::KDFId>  supportedHashFunctions,
   std::vector<hpke::AeadId>  supportedCiphers);
+
+EncryptedClientHello encryptClientHello(
+  std::unique_ptr<KeyExchange> kex, SupportedECHConfig supportedConfig, ClientHello clientHello);
 
 } // namespace extensions
 } // namespace fizz
