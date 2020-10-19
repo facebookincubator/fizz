@@ -74,11 +74,14 @@ TEST(EncryptionTest, TestValidECHConfigContent) {
   configs.push_back(std::move(invalidConfig));
   configs.push_back(std::move(validConfig));
 
-  std::vector<hpke::KEMId> supportedKEMs{hpke::KEMId::x25519, hpke::KEMId::secp256r1};
-  std::vector<hpke::KDFId> supportedHashFunctions{hpke::KDFId::Sha256, hpke::KDFId::Sha512};
-  std::vector<hpke::AeadId> supportedCiphers{hpke::AeadId::TLS_AES_256_GCM_SHA384, hpke::AeadId::TLS_AES_128_GCM_SHA256};
+  std::vector<hpke::KEMId> supportedKEMs{hpke::KEMId::x25519,
+                                         hpke::KEMId::secp256r1};
+  std::vector<hpke::AeadId> supportedAeads{
+      hpke::AeadId::TLS_AES_256_GCM_SHA384,
+      hpke::AeadId::TLS_AES_128_GCM_SHA256};
 
-  folly::Optional<SupportedECHConfig> result = selectECHConfig(std::move(configs), supportedKEMs, supportedHashFunctions, supportedCiphers);
+  folly::Optional<SupportedECHConfig> result =
+      selectECHConfig(std::move(configs), supportedKEMs, supportedAeads);
   EXPECT_TRUE(result.hasValue());
 
   ECHConfigContentDraft7 gotConfigContent = std::move(result.value().config);
@@ -98,11 +101,14 @@ TEST(EncryptionTest, TestInvalidECHConfigContent) {
   std::vector<ECHConfigContentDraft7> configs;
   configs.push_back(std::move(config));
 
-  std::vector<hpke::KEMId> supportedKEMs{hpke::KEMId::x25519, hpke::KEMId::secp256r1};
-  std::vector<hpke::KDFId> supportedHashFunctions{hpke::KDFId::Sha256};
-  std::vector<hpke::AeadId> supportedCiphers{hpke::AeadId::TLS_AES_128_GCM_SHA256};
+  std::vector<hpke::KEMId> supportedKEMs{hpke::KEMId::x25519,
+                                         hpke::KEMId::secp256r1};
+  std::vector<hpke::AeadId> supportedAeads{
+      hpke::AeadId::TLS_AES_128_GCM_SHA256};
 
-  folly::Optional<SupportedECHConfig> result = selectECHConfig(std::move(configs), supportedKEMs, supportedHashFunctions, supportedCiphers);
+  folly::Optional<SupportedECHConfig> result =
+      selectECHConfig(std::move(configs), supportedKEMs, supportedAeads);
+
   EXPECT_FALSE(result.hasValue());
 }
 

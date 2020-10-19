@@ -20,9 +20,10 @@ struct SupportedECHConfig {
   HpkeCipherSuite cipherSuite;
 };
 
-folly::Optional<SupportedECHConfig> selectECHConfig(std::vector<ECHConfigContentDraft7> configs,
-  std::vector<hpke::KEMId> supportedKEMs, std::vector<hpke::KDFId>  supportedHashFunctions,
-  std::vector<hpke::AeadId>  supportedCiphers);
+folly::Optional<SupportedECHConfig> selectECHConfig(
+    std::vector<ECHConfigContentDraft7> configs,
+    std::vector<hpke::KEMId> supportedKEMs,
+    std::vector<hpke::AeadId> supportedAeads);
 
 EncryptedClientHello encryptClientHello(
   std::unique_ptr<KeyExchange> kex, SupportedECHConfig supportedConfig, ClientHello clientHello);

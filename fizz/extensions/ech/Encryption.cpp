@@ -17,9 +17,10 @@
 namespace fizz {
 namespace extensions {
 
-folly::Optional<SupportedECHConfig> selectECHConfig(std::vector<ECHConfigContentDraft7> configs,
-  std::vector<hpke::KEMId> supportedKEMs, std::vector<hpke::KDFId>  supportedHashFunctions,
-  std::vector<hpke::AeadId>  supportedCiphers) {
+folly::Optional<SupportedECHConfig> selectECHConfig(
+    std::vector<ECHConfigContentDraft7> configs,
+    std::vector<hpke::KEMId> supportedKEMs,
+    std::vector<hpke::AeadId> supportedAeads) {
 
   // Received set of configs is in order of server preference so
   // we should be selecting the first one that we can support.
@@ -32,12 +33,17 @@ folly::Optional<SupportedECHConfig> selectECHConfig(std::vector<ECHConfigContent
 
     // Check if we (client) support the HPKE cipher suite.
     auto cipherSuites = config.cipher_suites;
-    for (auto &suite : cipherSuites) {
-      auto isKdfSupported = std::find(supportedHashFunctions.begin(), supportedHashFunctions.end(), suite.kdfId) != supportedHashFunctions.end();
-      auto isCipherSupported = std::find(supportedCiphers.begin(), supportedCiphers.end(), suite.aeadId) != supportedCiphers.end();
-
-      if (isKdfSupported && isCipherSupported) {
-        return SupportedECHConfig{std::move(config), suite};
+    for (auto& suite : cipherSuites) {
+      auto isCipherSupported =
+          std::find(
+              supportedAeads.begin(), supportedAeads.end(), suite.aeadId) !=
+          supportedAeads.end();
+      if (isCipherSupported) {
+        auto associatedCipherKdf =
+            hpke::getKDFId(getHashFunction(getCipherSuite(suite.aeadId)));
+        if (suite.kdfId == associatedCipherKdf) {
+          return SupportedECHConfig{std::move(config), suite};
+        }
       }
     }
   }
