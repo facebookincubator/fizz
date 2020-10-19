@@ -30,24 +30,24 @@ HpkeContext keySchedule(KeyScheduleParams params) {
   auto pskId = params.pskInputs.hasValue() ? std::move(params.pskInputs.value().id) : PskInputs::defaultId->clone();
 
   // Generate hashes for key schedule context
-  std::vector<uint8_t> pskIdHash = hkdf->labeledExtract(folly::IOBuf::copyBuffer(""), folly::Range("psk_id_hash"),
+  std::vector<uint8_t> pskIdHash = hkdf->labeledExtract(folly::IOBuf::copyBuffer(""), folly::ByteRange(folly::StringPiece("psk_id_hash")),
     std::move(pskId), params.suiteId->clone());
-  std::vector<uint8_t> infoHash = hkdf->labeledExtract(folly::IOBuf::copyBuffer(""), folly::Range("info_hash"),
+  std::vector<uint8_t> infoHash = hkdf->labeledExtract(folly::IOBuf::copyBuffer(""), folly::ByteRange(folly::StringPiece("info_hash")),
     std::move(params.info), params.suiteId->clone());
   std::unique_ptr<folly::IOBuf> keyScheduleContext = writeKeyScheduleContext(params.mode, pskIdHash, infoHash);
 
   // Generate hashes for cipher key
-  std::vector<uint8_t> pskHash = hkdf->labeledExtract(folly::IOBuf::copyBuffer(""), folly::Range("psk_hash"), std::move(psk),
+  std::vector<uint8_t> pskHash = hkdf->labeledExtract(folly::IOBuf::copyBuffer(""), folly::ByteRange(folly::StringPiece("psk_hash")), std::move(psk),
     params.suiteId->clone());
-  std::vector<uint8_t> secret = hkdf->labeledExtract(folly::IOBuf::copyBuffer(pskHash), folly::Range("secret"), std::move(params.sharedSecret),
+  std::vector<uint8_t> secret = hkdf->labeledExtract(folly::IOBuf::copyBuffer(pskHash), folly::ByteRange(folly::StringPiece("secret")), std::move(params.sharedSecret),
     params.suiteId->clone());
 
   // Generate additional values needed for contructing context
-  std::unique_ptr<folly::IOBuf> key = hkdf->labeledExpand(secret, folly::Range("key"), keyScheduleContext->clone(), params.cipher->keyLength(),
+  std::unique_ptr<folly::IOBuf> key = hkdf->labeledExpand(secret, folly::ByteRange(folly::StringPiece("key")), keyScheduleContext->clone(), params.cipher->keyLength(),
     params.suiteId->clone());
-  std::unique_ptr<folly::IOBuf> nonce = hkdf->labeledExpand(secret, folly::Range("nonce"), keyScheduleContext->clone(), params.cipher->ivLength(),
+  std::unique_ptr<folly::IOBuf> nonce = hkdf->labeledExpand(secret, folly::ByteRange(folly::StringPiece("nonce")), keyScheduleContext->clone(), params.cipher->ivLength(),
     params.suiteId->clone());
-  std::unique_ptr<folly::IOBuf> exporterSecret = hkdf->labeledExpand(secret, folly::Range("exp"), std::move(keyScheduleContext),
+  std::unique_ptr<folly::IOBuf> exporterSecret = hkdf->labeledExpand(secret, folly::ByteRange(folly::StringPiece("exp")), std::move(keyScheduleContext),
     hkdf->hashLength(), params.suiteId->clone());
 
   // Configure cipher to use our generated key

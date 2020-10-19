@@ -40,7 +40,7 @@ namespace hpke {
     if (desiredLength > maxL) {
       throw std::runtime_error("desired length for exported secret exceeds maximum");
     }
-    return hkdf_->labeledExpand(exporterSecret_->coalesce(), folly::Range("sec"), std::move(exporterContext), desiredLength, suiteId_->clone());
+    return hkdf_->labeledExpand(exporterSecret_->coalesce(), folly::ByteRange(folly::StringPiece("sec")), std::move(exporterContext), desiredLength, suiteId_->clone());
   }
 
   std::unique_ptr<folly::IOBuf> HpkeContext::getExporterSecret() {

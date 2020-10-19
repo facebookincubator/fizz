@@ -46,13 +46,13 @@ std::unique_ptr<folly::IOBuf> DHKEM::extractAndExpand(
     std::unique_ptr<folly::IOBuf> kemContext) {
   std::vector<uint8_t> eae_prkVec = hkdf_->labeledExtract(
       folly::IOBuf::copyBuffer(""),
-      folly::Range("eae_prk"),
+      folly::ByteRange(folly::StringPiece("eae_prk")),
       std::move(dh),
       generateSuiteId(group_));
   folly::ByteRange eaePrk(eae_prkVec.data(), eae_prkVec.size());
   std::unique_ptr<folly::IOBuf> sharedSecret = hkdf_->labeledExpand(
       eaePrk,
-      folly::Range("shared_secret"),
+      folly::ByteRange(folly::StringPiece("shared_secret")),
       std::move(kemContext),
       hkdf_->hashLength(),
       generateSuiteId(group_));
