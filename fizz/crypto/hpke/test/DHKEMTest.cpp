@@ -17,7 +17,6 @@
 #include <fizz/record/Types.h>
 #include <folly/portability/GTest.h>
 
-using namespace fizz::test;
 
 namespace fizz {
 namespace test {
