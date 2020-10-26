@@ -3,7 +3,15 @@
 
 cmake_minimum_required(VERSION 3.1)
 
-project("fizz" VERSION 1.0.0 LANGUAGES CXX C)
+if (NOT DEFINED PACKAGE_VERSION)
+  set(PACKAGE_VERSION "1.0.0")
+endif()
+
+if (NOT DEFINED SO_VERSION)
+  set(SO_VERSION 1)
+endif()
+
+project("fizz" VERSION ${PACKAGE_VERSION} LANGUAGES CXX C)
 
 if (NOT DEFINED CPACK_GENERATOR)
   set(CPACK_GENERATOR "RPM")
@@ -208,7 +216,7 @@ add_library(fizz
 
 if (BUILD_SHARED_LIBS)
   set_target_properties(fizz
-    PROPERTIES VERSION ${PROJECT_VERSION} SOVERSION 1)
+    PROPERTIES VERSION ${PROJECT_VERSION} SOVERSION ${SO_VERSION})
 endif()
 
 get_filename_component(FIZZ_BASE_DIR ${CMAKE_SOURCE_DIR}/.. ABSOLUTE)
