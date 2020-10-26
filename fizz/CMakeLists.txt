@@ -333,8 +333,8 @@ target_include_directories(fizz_test_support
 install(
   TARGETS fizz_test_support
   EXPORT fizz-exports
-  ARCHIVE DESTINATION ${FIZZ_TEST_INSTALL_PREFIX}/lib
-  LIBRARY DESTINATION ${FIZZ_TEST_INSTALL_PREFIX}/lib
+  ARCHIVE DESTINATION ${LIB_INSTALL_DIR}
+  LIBRARY DESTINATION ${LIB_INSTALL_DIR}
 )
 
 foreach(dir ${FIZZ_TEST_HEADER_DIRS})
