@@ -946,12 +946,16 @@ EventHandler<ClientTypes, StateEnum::ExpectingServerHello, Event::ServerHello>::
 
   ProtocolVersion version;
   CipherSuite cipher;
+  // GCC up to 10.2.1 does not realize exchange is actually being initialized below
+  FOLLY_PUSH_WARNING
+  FOLLY_GCC_DISABLE_WARNING("-Wmaybe-uninitialized")
   Optional<std::tuple<NamedGroup, Buf, const KeyExchange*>> exchange;
   std::tie(version, cipher, exchange) = negotiateParameters(
       shlo,
       state.context()->getSupportedVersions(),
       state.context()->getSupportedCiphers(),
       *state.keyExchangers());
+  FOLLY_POP_WARNING
 
   if (!folly::IOBufEqualTo()(
           state.legacySessionId(), shlo.legacy_session_id_echo)) {
@@ -1001,10 +1005,14 @@ EventHandler<ClientTypes, StateEnum::ExpectingServerHello, Event::ServerHello>::
       keyExchangeType = KeyExchangeType::OneRtt;
     }
 
+    // GCC up to 10.2.1 does not realize serverShare is actually being initialized below
+    FOLLY_PUSH_WARNING
+    FOLLY_GCC_DISABLE_WARNING("-Wmaybe-uninitialized")
     Buf serverShare;
     const KeyExchange* kex;
     std::tie(group, serverShare, kex) = std::move(*exchange);
     auto sharedSecret = kex->generateSharedSecret(serverShare->coalesce());
+    FOLLY_POP_WARNING
     scheduler->deriveHandshakeSecret(sharedSecret->coalesce());
   } else {
     keyExchangeType = KeyExchangeType::None;
