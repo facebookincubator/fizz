@@ -94,9 +94,11 @@ set(FIZZ_HEADER_DIRS
   crypto
   crypto/aead
   crypto/exchange
+  crypto/hpke
   crypto/signature
   crypto/openssl
   extensions/delegatedcred
+  extensions/ech
   extensions/exportedauth
   extensions/tokenbinding
   protocol
@@ -112,6 +114,7 @@ set(FIZZ_TEST_HEADER_DIRS
   crypto/aead/test
   crypto/exchange/test
   crypto/test
+  crypto/hpke/test
   protocol/test
   protocol/clock/test
   record/test
@@ -145,6 +148,11 @@ set(FIZZ_SOURCES
   crypto/KeyDerivation.cpp
   crypto/Sha256.cpp
   crypto/Sha384.cpp
+  crypto/hpke/Context.cpp
+  crypto/hpke/DHKEM.cpp
+  crypto/hpke/Hkdf.cpp
+  crypto/hpke/Hpke.cpp
+  crypto/hpke/Utils.cpp
   crypto/openssl/OpenSSLKeyUtils.cpp
   record/Types.cpp
   record/RecordLayer.cpp
@@ -172,6 +180,7 @@ set(FIZZ_SOURCES
   protocol/ZlibCertificateCompressor.cpp
   protocol/ZlibCertificateDecompressor.cpp
   protocol/clock/SystemClock.cpp
+  extensions/ech/Encryption.cpp
   extensions/delegatedcred/DelegatedCredentialCertManager.cpp
   extensions/delegatedcred/DelegatedCredentialClientExtension.cpp
   extensions/delegatedcred/DelegatedCredentialFactory.cpp
@@ -296,6 +305,7 @@ endif()
 add_library(fizz_test_support
   crypto/aead/test/TestUtil.cpp
   crypto/test/TestUtil.cpp
+  extensions/ech/test/TestUtil.cpp
   ${FIZZ_TEST_HEADERS}
 )
 
@@ -368,6 +378,9 @@ if(BUILD_TESTS)
   add_gtest(crypto/aead/test/IOBufUtilTest.cpp IOBufUtilTest)
   add_gtest(crypto/exchange/test/X25519KeyExchangeTest.cpp X25519KeyExchangeTest)
   add_gtest(crypto/exchange/test/ECKeyExchangeTest.cpp ECKeyExchangeTest)
+  add_gtest(crypto/hpke/test/ContextTest.cpp ContextTest)
+  add_gtest(crypto/hpke/test/DHKEMTest.cpp DHKEMTest)
+  add_gtest(crypto/hpke/test/HpkeTest.cpp HpkeTest)
   add_gtest(crypto/openssl/test/OpenSSLKeyUtilsTest.cpp OpenSSLKeyUtilsTest)
   add_gtest(crypto/signature/test/RSAPSSSignatureTest.cpp RSAPSSSignatureTest)
   add_gtest(crypto/signature/test/ECSignatureTest.cpp ECSignatureTest)
@@ -381,6 +394,8 @@ if(BUILD_TESTS)
   add_gtest(extensions/delegatedcred/test/PeerDelegatedCredentialTest.cpp PeerDelegatedCredentialTest)
   add_gtest(extensions/delegatedcred/test/SelfDelegatedCredentialTest.cpp SelfDelegatedCredentialTest)
   add_gtest(extensions/tokenbinding/test/TokenBindingConstructorTest.cpp TokenBindingConstructorTest)
+  add_gtest(extensions/ech/test/ECHTest.cpp ECHTest)
+  add_gtest(extensions/ech/test/EncryptionTest.cpp EncryptionTest)
   add_gtest(extensions/tokenbinding/test/ValidatorTest.cpp ValidatorTest)
   add_gtest(extensions/tokenbinding/test/TokenBindingServerExtensionTest.cpp TokenBindingServerExtensionTest)
   add_gtest(extensions/tokenbinding/test/TokenBindingTest.cpp TokenBindingTest)
