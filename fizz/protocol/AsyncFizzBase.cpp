@@ -357,6 +357,31 @@ void AsyncFizzBase::handshakeTimeoutExpired() noexcept {
   transportError(eof);
 }
 
+void AsyncFizzBase::endOfTLS(std::unique_ptr<folly::IOBuf> endOfData) noexcept {
+  DelayedDestruction::DestructorGuard dg(this);
+
+  if (connecting()) {
+    AsyncSocketException ex(AsyncSocketException::INVALID_STATE,
+        "tls connection torn down while connecting");
+    transportError(ex);
+    return;
+  }
+
+  if (endOfTLSCallback_) {
+    endOfTLSCallback_->endOfTLS(this, std::move(endOfData));
+  } else {
+    // The end of TLS callback may not want the socket to be closed but by default
+    // read callbacks often close on EOF, as such we defer to the setter of the
+    // end of tls callback to apply the appropriate behaviour if it's set
+    if (readCallback_) {
+      auto readCallback = readCallback_;
+      readCallback_ = nullptr;
+      readCallback->readEOF();
+    }
+    transport_->close();
+  }
+}
+
 // The below maps the secret type to the appropriate secret callback function.
 namespace {
 class SecretVisitor {

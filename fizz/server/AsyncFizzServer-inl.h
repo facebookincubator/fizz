@@ -330,11 +330,8 @@ void AsyncFizzServerT<SM>::ActionMoveVisitor::operator()(
 }
 
 template <typename SM>
-void AsyncFizzServerT<SM>::ActionMoveVisitor::operator()(EndOfData&) {
-  folly::AsyncSocketException ase(
-      folly::AsyncSocketException::END_OF_FILE,
-      "remote peer shutdown TLS connection");
-  server_.deliverError(std::move(ase), server_.closeTransportOnCloseNotify());
+void AsyncFizzServerT<SM>::ActionMoveVisitor::operator()(EndOfData& eod) {
+  server_.endOfTLS(std::move(eod.postTlsData));
 }
 } // namespace server
 } // namespace fizz

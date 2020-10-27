@@ -585,11 +585,8 @@ void AsyncFizzClientT<SM>::ActionMoveVisitor::operator()(
 }
 
 template <typename SM>
-void AsyncFizzClientT<SM>::ActionMoveVisitor::operator()(EndOfData&) {
-  folly::AsyncSocketException ase(
-      folly::AsyncSocketException::END_OF_FILE,
-      "remote peer shutdown TLS connection");
-  client_.deliverError(std::move(ase), client_.closeTransportOnCloseNotify());
+void AsyncFizzClientT<SM>::ActionMoveVisitor::operator()(EndOfData& eod) {
+  client_.endOfTLS(std::move(eod.postTlsData));
 }
 
 template <typename SM>

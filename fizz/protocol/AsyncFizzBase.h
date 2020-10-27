@@ -74,6 +74,14 @@ class AsyncFizzBase : public folly::WriteChainAsyncTransportWrapper<
         const std::vector<uint8_t>&) noexcept {}
   };
 
+  class EndOfTLSCallback {
+    public:
+      virtual ~EndOfTLSCallback() = default;
+      virtual void endOfTLS(
+          AsyncFizzBase* transport,
+          std::unique_ptr<folly::IOBuf> endOfData) = 0;
+  };
+
   explicit AsyncFizzBase(folly::AsyncTransportWrapper::UniquePtr transport);
 
   ~AsyncFizzBase() override;
@@ -180,24 +188,18 @@ class AsyncFizzBase : public folly::WriteChainAsyncTransportWrapper<
     return secretCallback_;
   }
 
-  /**
-   * Behavior tunables
-   */
-
-  /**
-   * setCloseTransportOnCloseNotify() defines the behavior taken when the remote
-   * peer sends us a close_notify alert, signaling their intention to tear
-   * down the TLS session.
-   *
-   * By default, upon receipt of a close_notify alert, we will immediately
-   * tear down the transport without responding with our own close_notify.
-   */
-  void setCloseTransportOnCloseNotify(bool flag) {
-    closeTransportOnCloseNotify_ = flag;
-  }
-
-  bool closeTransportOnCloseNotify() const {
-    return closeTransportOnCloseNotify_;
+  // Note we clearly do not own the callback, and thus it is the caller's
+  // responsibility to ensure the callback outlives the lifetime of
+  // the fizz base instance. There are a couple key behavior differences if
+  // this callback is set.
+  // 1. We do not close the transport on receivng a close notify. It is your
+  // responsibility to do whatever is appropriate.
+  // 2. We do not call readEOF on any read callback set on the transport.
+  // 3. Depending on when the tls connection is closed, there may be pending
+  // data that exists past the close notify, this is passed along to the caller
+  // in the endOfTLS method and the caller must decide what to do with the data
+  void setEndOfTLSCallback(EndOfTLSCallback* cb) {
+    endOfTLSCallback_ = cb;
   }
 
   /*
@@ -259,6 +261,11 @@ class AsyncFizzBase : public folly::WriteChainAsyncTransportWrapper<
    * Allows the derived class to give a derived secret to the secret callback.
    */
   virtual void secretAvailable(const DerivedSecret& secret) noexcept;
+
+  /*
+   * Signal end of tls connection by a graceful shutdown.
+   */
+  virtual void endOfTLS(std::unique_ptr<folly::IOBuf> endOfData) noexcept;
 
   folly::IOBufQueue transportReadBuf_{folly::IOBufQueue::cacheChainLength()};
 
@@ -331,7 +338,7 @@ class AsyncFizzBase : public folly::WriteChainAsyncTransportWrapper<
 
   HandshakeTimeout handshakeTimeout_;
 
-  bool closeTransportOnCloseNotify_{true};
   SecretCallback* secretCallback_{nullptr};
+  EndOfTLSCallback* endOfTLSCallback_{nullptr};
 };
 } // namespace fizz

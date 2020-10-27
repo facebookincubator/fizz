@@ -746,24 +746,89 @@ TEST_F(HandshakeTest, TestBadCookie) {
   doServerHandshake();
 }
 
+class KeepTransportAliveCallback : public AsyncFizzBase::EndOfTLSCallback {
+ public:
+  bool isCalled() {
+    return called;
+  }
+
+ private:
+  void endOfTLS(
+      AsyncFizzBase* /* unused */,
+      std::unique_ptr<folly::IOBuf> /* unused */) override {
+    called = true;
+  }
+
+  bool called{false};
+};
+
 TEST_F(HandshakeTest, TestTransportAliveAfterTLSShutdownByServer) {
-  client_->setCloseTransportOnCloseNotify(false);
-  server_->setCloseTransportOnCloseNotify(false);
+  KeepTransportAliveCallback clientKCB;
+  KeepTransportAliveCallback serverKCB;
+  client_->setEndOfTLSCallback(&clientKCB);
+  server_->setEndOfTLSCallback(&serverKCB);
   expectSuccess();
   doHandshake();
-  // client sees close notify sends EOF,
-  // responds with close notify and server sends EOF
-  EXPECT_CALL(clientRead_, readEOF_());
-  EXPECT_CALL(serverRead_, readEOF_());
+
   server_->tlsShutdown();
-  // transports still alive but the read callbacks on the fizz client and
-  // server are destroyed
+  EXPECT_TRUE(clientKCB.isCalled());
+  EXPECT_TRUE(serverKCB.isCalled());
+
   folly::test::MockReadCallback readCallback;
   ON_CALL(readCallback, isBufferMovable_()).WillByDefault(Return(true));
   serverTransport_->setReadCB(&readCallback);
 
   EXPECT_CALL(readCallback, readBufferAvailable_(BufMatches("foo")));
   clientTransport_->writeChain(nullptr, IOBuf::copyBuffer("foo"));
+}
+
+class MockAsyncFizzClient : public AsyncFizzClient {
+ public:
+  MockAsyncFizzClient(
+      folly::AsyncTransportWrapper::UniquePtr socket,
+      std::shared_ptr<const FizzClientContext> fizzContext,
+      const std::shared_ptr<ClientExtensions>& extensions)
+      : AsyncFizzClient(std::move(socket), std::move(fizzContext), extensions) {
+  }
+  MOCK_CONST_METHOD0(connecting, bool());
+};
+
+TEST_F(HandshakeTest, TestFailureOnInvalidCloseNotify) {
+  auto client = LocalTransport::UniquePtr(new LocalTransport());
+  auto server = LocalTransport::UniquePtr(new LocalTransport());
+  client->attachEventBase(&evb_);
+  server->attachEventBase(&evb_);
+  client->setPeer(server.get());
+  server->setPeer(client.get());
+
+  auto fizzClient = new MockAsyncFizzClient(
+      std::move(client), clientContext_, clientExtensions_);
+  server_.reset(new AsyncFizzServer(
+      std::move(server), serverContext_, serverExtensions_));
+  client_.reset(fizzClient);
+
+  KeepTransportAliveCallback clientKCB;
+  KeepTransportAliveCallback serverKCB;
+  fizzClient->setEndOfTLSCallback(&clientKCB);
+  server_->setEndOfTLSCallback(&serverKCB);
+
+  expectSuccess();
+  doHandshake();
+
+  ON_CALL(*fizzClient, connecting()).WillByDefault(Return(true));
+  // error callback will occur once client sees incorrect close notify
+  EXPECT_CALL(clientRead_, readErr_(_))
+      .WillOnce(Invoke([](folly::exception_wrapper ex) {
+        EXPECT_THAT(
+            ex.what().toStdString(), HasSubstr("tls connection torn down"));
+      }));
+  server_->tlsShutdown();
+
+  // EndOfTLS returns early with an error so this is never called
+  EXPECT_FALSE(clientKCB.isCalled());
+  // This can't actually happen in reality as there's no way the server should
+  // be reading !connecting as true while the client sees it as false
+  EXPECT_TRUE(serverKCB.isCalled());
 }
 
 INSTANTIATE_TEST_CASE_P(
