@@ -206,6 +206,12 @@ class AsyncFizzBase : public folly::WriteChainAsyncTransportWrapper<
    */
   virtual folly::Optional<Random> getClientRandom() const = 0;
 
+  /*
+   * Used to shut down the tls session, without shutting down the underlying
+   * transport. Note you will still need to set setCloseTransportOnCloseNotify.
+   */
+  virtual void tlsShutdown() = 0;
+
  protected:
   /**
    * Start reading raw data from the transport.

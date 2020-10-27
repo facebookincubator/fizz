@@ -73,6 +73,22 @@ class AsyncFizzClientTest : public Test {
   }
 
   void expectAppClose() {
+    EXPECT_CALL(*machine_, _processAppClose(_))
+        .WillOnce(InvokeWithoutArgs([]() {
+          WriteToSocket write;
+          TLSContent record;
+          record.contentType = ContentType::alert;
+          record.encryptionLevel = EncryptionLevel::Handshake;
+          record.data = IOBuf::copyBuffer("closenotify");
+          write.contents.emplace_back(std::move(record));
+          return detail::actions(
+              MutateState(
+                  [](State& newState) { newState.state() = StateEnum::Error; }),
+              std::move(write));
+        }));
+  }
+
+  void expectAppCloseImmediate() {
     EXPECT_CALL(*machine_, _processAppCloseImmediate(_))
         .WillOnce(InvokeWithoutArgs([]() {
           TLSContent record;
@@ -378,10 +394,17 @@ TEST_F(AsyncFizzClientTest, TestMutateState) {
 
 TEST_F(AsyncFizzClientTest, TestCloseHandshake) {
   connect();
-  expectAppClose();
+  expectAppCloseImmediate();
   EXPECT_CALL(handshakeCallback_, _fizzHandshakeError(_));
   EXPECT_CALL(*socket_, closeNow()).Times(AtLeast(1));
   client_->closeNow();
+}
+
+TEST_F(AsyncFizzClientTest, TestTLSShutdown) {
+  connect();
+  expectAppClose();
+  EXPECT_CALL(*socket_, close()).Times(0);
+  client_->tlsShutdown();
 }
 
 TEST_F(AsyncFizzClientTest, TestConnecting) {

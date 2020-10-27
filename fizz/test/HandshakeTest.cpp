@@ -745,6 +745,27 @@ TEST_F(HandshakeTest, TestBadCookie) {
 
   doServerHandshake();
 }
+
+TEST_F(HandshakeTest, TestTransportAliveAfterTLSShutdownByServer) {
+  client_->setCloseTransportOnCloseNotify(false);
+  server_->setCloseTransportOnCloseNotify(false);
+  expectSuccess();
+  doHandshake();
+  // client sees close notify sends EOF,
+  // responds with close notify and server sends EOF
+  EXPECT_CALL(clientRead_, readEOF_());
+  EXPECT_CALL(serverRead_, readEOF_());
+  server_->tlsShutdown();
+  // transports still alive but the read callbacks on the fizz client and
+  // server are destroyed
+  folly::test::MockReadCallback readCallback;
+  ON_CALL(readCallback, isBufferMovable_()).WillByDefault(Return(true));
+  serverTransport_->setReadCB(&readCallback);
+
+  EXPECT_CALL(readCallback, readBufferAvailable_(BufMatches("foo")));
+  clientTransport_->writeChain(nullptr, IOBuf::copyBuffer("foo"));
+}
+
 INSTANTIATE_TEST_CASE_P(
     SignatureSchemes,
     SigSchemeTest,

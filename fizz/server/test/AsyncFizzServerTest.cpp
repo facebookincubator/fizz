@@ -328,6 +328,13 @@ TEST_F(AsyncFizzServerTest, TestCloseHandshake) {
   server_->closeNow();
 }
 
+TEST_F(AsyncFizzServerTest, TestTLSShutdown) {
+  accept();
+  expectAppClose();
+  EXPECT_CALL(*socket_, close()).Times(0);
+  server_->tlsShutdown();
+}
+
 TEST_F(AsyncFizzServerTest, TestCloseNowInFlightAction) {
   completeHandshake();
   server_->setReadCB(&readCallback_);

@@ -87,11 +87,18 @@ class LocalTransport : public folly::AsyncTransportWrapper {
     evb_ = eventBase;
   }
 
-  void close() override {}
+  void close() override {
+    peer_ = nullptr;
+  }
 
-  void closeNow() override {}
+  void closeNow() override {
+    peer_ = nullptr;
+  }
 
-  void closeWithReset() override {}
+  void closeWithReset() override {
+    peer_ = nullptr;
+  }
+
 
   bool connecting() const override {
     return false;

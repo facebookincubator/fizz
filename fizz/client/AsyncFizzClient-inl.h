@@ -206,6 +206,15 @@ void AsyncFizzClientT<SM>::close() {
 }
 
 template <typename SM>
+void AsyncFizzClientT<SM>::tlsShutdown() {
+  if (transport_->good()) {
+    // do not immediately close, wait to receive a close notify from the other
+    // end
+    fizzClient_.appClose();
+  }
+}
+
+template <typename SM>
 void AsyncFizzClientT<SM>::closeWithReset() {
   DelayedDestruction::DestructorGuard dg(this);
   if (transport_->good()) {

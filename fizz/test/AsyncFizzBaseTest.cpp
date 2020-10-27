@@ -84,6 +84,7 @@ class AsyncFizzBaseTest : public testing::Test, public AsyncFizzBase {
   MOCK_METHOD0(transportDataAvailable, void());
 
   MOCK_CONST_METHOD0(getClientRandom, folly::Optional<Random>());
+  MOCK_METHOD0(tlsShutdown, void());
 
  protected:
   void expectReadBufRequest(size_t sizeToGive) {
