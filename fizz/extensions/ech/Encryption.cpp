@@ -18,31 +18,35 @@ namespace fizz {
 namespace extensions {
 
 folly::Optional<SupportedECHConfig> selectECHConfig(
-    std::vector<ECHConfigContentDraft7> configs,
+    std::vector<ECHConfig> configs,
     std::vector<hpke::KEMId> supportedKEMs,
     std::vector<hpke::AeadId> supportedAeads) {
-
   // Received set of configs is in order of server preference so
   // we should be selecting the first one that we can support.
   for (auto& config : configs) {
-    // Check if we (client) support the server's chosen KEM.
-    auto result = std::find(supportedKEMs.begin(), supportedKEMs.end(), config.kem_id);
-    if (result == supportedKEMs.end()) {
-      continue;
-    }
+    folly::io::Cursor cursor(config.ech_config_content.get());
+    if (config.version == ECHVersion::V7) {
+      auto echConfig = decode<ECHConfigContentDraft7>(cursor);
+      // Check if we (client) support the server's chosen KEM.
+      auto result = std::find(
+          supportedKEMs.begin(), supportedKEMs.end(), echConfig.kem_id);
+      if (result == supportedKEMs.end()) {
+        continue;
+      }
 
-    // Check if we (client) support the HPKE cipher suite.
-    auto cipherSuites = config.cipher_suites;
-    for (auto& suite : cipherSuites) {
-      auto isCipherSupported =
-          std::find(
-              supportedAeads.begin(), supportedAeads.end(), suite.aeadId) !=
-          supportedAeads.end();
-      if (isCipherSupported) {
-        auto associatedCipherKdf =
-            hpke::getKDFId(getHashFunction(getCipherSuite(suite.aeadId)));
-        if (suite.kdfId == associatedCipherKdf) {
-          return SupportedECHConfig{std::move(config), suite};
+      // Check if we (client) support the HPKE cipher suite.
+      auto cipherSuites = echConfig.cipher_suites;
+      for (auto& suite : cipherSuites) {
+        auto isCipherSupported =
+            std::find(
+                supportedAeads.begin(), supportedAeads.end(), suite.aeadId) !=
+            supportedAeads.end();
+        if (isCipherSupported) {
+          auto associatedCipherKdf =
+              hpke::getKDFId(getHashFunction(getCipherSuite(suite.aeadId)));
+          if (suite.kdfId == associatedCipherKdf) {
+            return SupportedECHConfig{std::move(config), suite};
+          }
         }
       }
     }
@@ -69,21 +73,21 @@ static hpke::SetupParam getSetupParam(
                           std::move(suiteId)};
 }
 
-static std::unique_ptr<folly::IOBuf> getRecordDigest(
-    std::unique_ptr<folly::IOBuf> clientHelloInner,
+std::unique_ptr<folly::IOBuf> getRecordDigest(
+    std::unique_ptr<folly::IOBuf> echConfig,
     hpke::KDFId id) {
   switch (id) {
     case hpke::KDFId::Sha256: {
       std::array<uint8_t, fizz::Sha256::HashLen> recordDigest;
       fizz::Sha256::hash(
-          *clientHelloInner,
+          *echConfig,
           folly::MutableByteRange(recordDigest.data(), recordDigest.size()));
       return folly::IOBuf::copyBuffer(recordDigest);
     }
     case hpke::KDFId::Sha384: {
       std::array<uint8_t, fizz::Sha384::HashLen> recordDigest;
       fizz::Sha384::hash(
-          *clientHelloInner,
+          *echConfig,
           folly::MutableByteRange(recordDigest.data(), recordDigest.size()));
       return folly::IOBuf::copyBuffer(recordDigest);
     }
@@ -117,7 +121,13 @@ EncryptedClientHello encryptClientHello(
     ClientHello clientHello) {
   const std::unique_ptr<folly::IOBuf> prefix{
       folly::IOBuf::copyBuffer("HPKE-05 ")};
-  auto config = std::move(supportedConfig.config);
+
+  if (supportedConfig.config.version != ECHVersion::V7) {
+    throw std::runtime_error("encrypt client hello: version not implemented");
+  }
+
+  folly::io::Cursor cursor(supportedConfig.config.ech_config_content.get());
+  auto config = decode<ECHConfigContentDraft7>(cursor);
   auto cipherSuite = supportedConfig.cipherSuite;
 
   // Get shared secret

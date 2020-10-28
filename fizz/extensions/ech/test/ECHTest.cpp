@@ -53,7 +53,7 @@ TEST(ECHTest, TestECHConfigEncodeDecode) {
   // Encode ECH config
   ECHConfig echConfig;
   echConfig.length = 1;
-  echConfig.version = 0xff07;
+  echConfig.version = ECHVersion::V7;
   echConfig.ech_config_content = encode<ECHConfigContentDraft7>(getECHConfigContent());
   std::unique_ptr<folly::IOBuf> encodedBuf = encode<ECHConfig>(std::move(echConfig));
 
@@ -63,7 +63,7 @@ TEST(ECHTest, TestECHConfigEncodeDecode) {
 
   // Check decode(encode(config)) = config
   EXPECT_EQ(gotECHConfig.length, 1);
-  EXPECT_EQ(gotECHConfig.version, 0xff07);
+  EXPECT_EQ(gotECHConfig.version, ECHVersion::V7);
   EXPECT_TRUE(folly::IOBufEqualTo()(gotECHConfig.ech_config_content,
     encode<ECHConfigContentDraft7>(getECHConfigContent())));
 }

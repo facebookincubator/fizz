@@ -37,6 +37,13 @@ ECHConfigContentDraft7 getECHConfigContent() {
   return echConfigContent;
 }
 
+ECHConfig getECHConfig() {
+  auto configContent = getECHConfigContent();
+  ECHConfig testConfig;
+  testConfig.version = ECHVersion::V7;
+  testConfig.ech_config_content = encode(getECHConfigContent());
+  return testConfig;
+}
 
 } // namespace test
 } // namespace extensions

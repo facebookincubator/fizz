@@ -133,7 +133,7 @@ inline extensions::ECHConfigContentDraft7 decode(folly::io::Cursor& cursor) {
 template <>
 inline extensions::ECHConfig decode(folly::io::Cursor& cursor) {
   extensions::ECHConfig echConfig;
-  detail::read<uint16_t>(echConfig.version, cursor);
+  detail::read(echConfig.version, cursor);
   detail::read<uint16_t>(echConfig.length, cursor);
   detail::readBuf<uint16_t>(echConfig.ech_config_content, cursor);
 

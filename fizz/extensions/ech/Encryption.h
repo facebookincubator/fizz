@@ -16,12 +16,12 @@ namespace fizz {
 namespace extensions {
 
 struct SupportedECHConfig {
-  ECHConfigContentDraft7 config;
+  ECHConfig config;
   HpkeCipherSuite cipherSuite;
 };
 
 folly::Optional<SupportedECHConfig> selectECHConfig(
-    std::vector<ECHConfigContentDraft7> configs,
+    std::vector<ECHConfig> configs,
     std::vector<hpke::KEMId> supportedKEMs,
     std::vector<hpke::AeadId> supportedAeads);
 

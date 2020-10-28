@@ -20,6 +20,10 @@ using Buf = std::unique_ptr<folly::IOBuf>;
 using HpkePublicKey = Buf;
 using HpkeNonce = std::array<uint8_t, 16>;
 
+enum class ECHVersion: uint16_t {
+    V7 = 0xff07,
+};
+
 struct HpkeCipherSuite {
     hpke::KDFId kdfId;
     hpke::AeadId aeadId;
@@ -36,7 +40,7 @@ struct ECHConfigContentDraft7 {
 
 
 struct ECHConfig {
-    uint16_t version;
+    ECHVersion version;
     uint16_t length;
     Buf ech_config_content;
 };

@@ -64,15 +64,18 @@ hpke::HpkeContext getContext(std::unique_ptr<folly::IOBuf> enc) {
 TEST(EncryptionTest, TestValidECHConfigContent) {
 
   // Add config that doesn't work and cannot be supported
-  ECHConfigContentDraft7 invalidConfig = getECHConfigContent();
-  invalidConfig.kem_id = hpke::KEMId::secp521r1;
+  ECHConfigContentDraft7 invalidConfigContent = getECHConfigContent();
+  invalidConfigContent.kem_id = hpke::KEMId::secp521r1;
+  std::vector<ECHConfig> configs;
+  ECHConfig invalid;
+  invalid.version = ECHVersion::V7;
+  invalid.ech_config_content = encode(std::move(invalidConfigContent));
 
   // Add config that works and can be supported
-  ECHConfigContentDraft7 validConfig = getECHConfigContent();
+  ECHConfig valid = getECHConfig();
 
-  std::vector<ECHConfigContentDraft7> configs;
-  configs.push_back(std::move(invalidConfig));
-  configs.push_back(std::move(validConfig));
+  configs.push_back(std::move(invalid));
+  configs.push_back(std::move(valid));
 
   std::vector<hpke::KEMId> supportedKEMs{hpke::KEMId::x25519,
                                          hpke::KEMId::secp256r1};
@@ -84,22 +87,26 @@ TEST(EncryptionTest, TestValidECHConfigContent) {
       selectECHConfig(std::move(configs), supportedKEMs, supportedAeads);
   EXPECT_TRUE(result.hasValue());
 
-  ECHConfigContentDraft7 gotConfigContent = std::move(result.value().config);
-  EXPECT_TRUE(folly::IOBufEqualTo()(encode(std::move(gotConfigContent)), encode(getECHConfigContent())));
+  ECHConfig gotConfig = std::move(result.value().config);
+  EXPECT_TRUE(folly::IOBufEqualTo()(gotConfig.ech_config_content, encode(getECHConfigContent())));
   EXPECT_EQ(result.value().cipherSuite.kdfId, hpke::KDFId::Sha256);
   EXPECT_EQ(result.value().cipherSuite.aeadId, hpke::AeadId::TLS_AES_128_GCM_SHA256);
 }
 
 TEST(EncryptionTest, TestInvalidECHConfigContent) {
-  ECHConfigContentDraft7 config = getECHConfigContent();
+  ECHConfigContentDraft7 configContent = getECHConfigContent();
 
-  config.kem_id = hpke::KEMId::secp256r1;
+  configContent.kem_id = hpke::KEMId::secp256r1;
   HpkeCipherSuite suite{hpke::KDFId::Sha512, hpke::AeadId::TLS_AES_128_GCM_SHA256};
   std::vector<HpkeCipherSuite> cipher_suites = {suite};
-  config.cipher_suites = cipher_suites;
+  configContent.cipher_suites = cipher_suites;
 
-  std::vector<ECHConfigContentDraft7> configs;
-  configs.push_back(std::move(config));
+  ECHConfig invalidConfig;
+  invalidConfig.version = ECHVersion::V7;
+  invalidConfig.ech_config_content = encode(std::move(configContent));
+
+  std::vector<ECHConfig> configs;
+  configs.push_back(std::move(invalidConfig));
 
   std::vector<hpke::KEMId> supportedKEMs{hpke::KEMId::x25519,
                                          hpke::KEMId::secp256r1};
@@ -116,11 +123,15 @@ TEST(EncryptionTest, TestValidEncryptClientHello) {
   auto testCipherSuite = HpkeCipherSuite{hpke::KDFId::Sha256,
                                          hpke::AeadId::TLS_AES_128_GCM_SHA256};
   auto getTestConfig = [testCipherSuite]() {
-    auto testConfig = getECHConfigContent();
-    testConfig.cipher_suites = {testCipherSuite};
+    auto testConfigContent = getECHConfigContent();
+    testConfigContent.cipher_suites = {testCipherSuite};
     auto publicKey = detail::encodeECPublicKey(getPublicKey(kP256PublicKey));
-    testConfig.kem_id = hpke::KEMId::secp256r1;
-    testConfig.public_key = std::move(publicKey);
+    testConfigContent.kem_id = hpke::KEMId::secp256r1;
+    testConfigContent.public_key = std::move(publicKey);
+
+    ECHConfig testConfig;
+    testConfig.version = ECHVersion::V7;
+    testConfig.ech_config_content = encode(std::move(testConfigContent));
     return testConfig;
   };
 

@@ -15,6 +15,7 @@ namespace extensions {
 namespace test {
 
 ECHConfigContentDraft7 getECHConfigContent();
+ECHConfig getECHConfig();
 
 } // namespace test
 } // namespace extensions
