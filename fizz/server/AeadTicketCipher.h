@@ -20,19 +20,37 @@ template <typename CodecType>
 class Aead128GCMTicketCipher : public TicketCipher {
  public:
   /**
-   * Set the PSK context used for these tickets. The PSK context is used as
-   * part of the key derivation so that different contexts will result in
-   * different keys, preventing keys from one context from being used for
-   * another.
+   * Constructs a ticket cipher that encrypts session data with AES128-GCM.
+   *
+   * `certManager` is used by the ticket cipher in order to include a serialized
+   *  representation of our certificate in the session data.
+   *
+   * `factory` is used to construct the serializer. It is important that the
+   *  same factory configuration is used among Fizz server instances so that
+   *  each Fizz instance is able to deserialize another instance's serialized
+   *  session data.
+   *
+   * `pskContext` is an opaque string used as part of the key derivation so
+   *  that different application contexts will result in different keys,
+   *  preventing keys from one context from being used for another.
    */
-  explicit Aead128GCMTicketCipher(std::string pskContext)
+  explicit Aead128GCMTicketCipher(
+      std::shared_ptr<Factory> factory,
+      std::shared_ptr<CertManager> certManager,
+      std::string pskContext)
       : tokenCipher_(std::vector<std::string>(
             {CodecType::Label.toString(), pskContext})),
-        policy_() {}
+        policy_(),
+        factory_(std::move(factory)),
+        certManager_(std::move(certManager)) {}
 
-  Aead128GCMTicketCipher()
+  Aead128GCMTicketCipher(
+      std::shared_ptr<Factory> factory,
+      std::shared_ptr<CertManager> certManager)
       : tokenCipher_(std::vector<std::string>({CodecType::Label.toString()})),
-        policy_() {}
+        policy_(),
+        factory_(std::move(factory)),
+        certManager_(std::move(certManager)) {}
 
   /**
    * Set ticket secrets to use for ticket encryption/decryption.
@@ -41,10 +59,6 @@ class Aead128GCMTicketCipher : public TicketCipher {
    */
   bool setTicketSecrets(const std::vector<folly::ByteRange>& ticketSecrets) {
     return tokenCipher_.setSecrets(ticketSecrets);
-  }
-
-  void setContext(const FizzServerContext* context) {
-    context_ = context;
   }
 
   /*
@@ -81,7 +95,8 @@ class Aead128GCMTicketCipher : public TicketCipher {
 
     ResumptionState resState;
     try {
-      resState = CodecType::decode(std::move(*plaintext), context_);
+      resState =
+          CodecType::decode(std::move(*plaintext), *factory_, *certManager_);
     } catch (const std::exception& ex) {
       VLOG(6) << "Failed to decode ticket, ex=" << ex.what();
       return std::make_pair(PskType::Rejected, folly::none);
@@ -99,7 +114,8 @@ class Aead128GCMTicketCipher : public TicketCipher {
   Aead128GCMTokenCipher tokenCipher_;
   TicketPolicy policy_;
 
-  const FizzServerContext* context_ = nullptr;
+  std::shared_ptr<Factory> factory_;
+  std::shared_ptr<CertManager> certManager_;
 };
 } // namespace server
 } // namespace fizz

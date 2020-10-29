@@ -13,6 +13,7 @@
 
 #include <fizz/crypto/test/TestUtil.h>
 #include <fizz/protocol/test/Mocks.h>
+#include <fizz/server/test/Mocks.h>
 
 using namespace fizz::test;
 using namespace folly;
@@ -52,6 +53,13 @@ static ResumptionState getTestResumptionState(
   rs.handshakeTime = std::chrono::time_point<std::chrono::system_clock>(
       std::chrono::seconds(15));
   return rs;
+}
+
+static ResumptionState x509Decode(Buf encoded) {
+  OpenSSLFactory factory;
+  CertManager certManager;
+  return TicketCodec<CertificateStorage::X509>::decode(
+      std::move(encoded), factory, certManager);
 }
 
 TEST(TicketCodecTest, TestEncode) {
@@ -110,6 +118,27 @@ TEST(TicketCodecTest, TestEncodeClientAuthIdentityOnly) {
       << folly::hexlify(encoded->coalesce());
 }
 
+TEST(TicketCodecTest, TestFactoryCert) {
+  auto cert = std::make_shared<MockSelfCert>();
+  auto peerCert = std::make_shared<MockPeerCert>();
+  auto rs = getTestResumptionState(cert, peerCert);
+  EXPECT_CALL(*cert, getIdentity()).WillOnce(Return("ident"));
+  EXPECT_CALL(*peerCert, getX509()).Times(2).WillRepeatedly(Invoke([]() {
+    return getCert(kRSACertificate);
+  }));
+  auto factory = std::make_unique<MockFactory>();
+  auto certManager = std::make_unique<MockCertManager>();
+  auto factoryCert = std::make_shared<MockPeerCert>();
+  EXPECT_CALL(*factory, _makePeerCert(_, _)).WillOnce(Return(factoryCert));
+  EXPECT_CALL(*factoryCert, getIdentity()).WillOnce(Return("factory clientid"));
+  EXPECT_CALL(*certManager, getCert(_)).WillOnce(Return(nullptr));
+  auto encoded = TicketCodec<CertificateStorage::X509>::encode(std::move(rs));
+  auto drs = TicketCodec<CertificateStorage::X509>::decode(
+      std::move(encoded), *factory, *certManager);
+  EXPECT_TRUE(drs.clientCert);
+  EXPECT_EQ(drs.clientCert->getIdentity(), "factory clientid");
+}
+
 TEST(TicketCodecTest, TestEncodeNoX509) {
   auto cert = std::make_shared<MockSelfCert>();
   auto peerCert = std::make_shared<MockPeerCert>();
@@ -118,8 +147,7 @@ TEST(TicketCodecTest, TestEncodeNoX509) {
   EXPECT_CALL(*peerCert, getX509()).WillOnce(Invoke([]() { return nullptr; }));
   EXPECT_CALL(*peerCert, getIdentity()).WillOnce(Return("clientid"));
   auto encoded = TicketCodec<CertificateStorage::X509>::encode(std::move(rs));
-  auto drs = TicketCodec<CertificateStorage::X509>::decode(
-      std::move(encoded), nullptr);
+  auto drs = x509Decode(std::move(encoded));
   EXPECT_TRUE(drs.clientCert);
   EXPECT_EQ(drs.clientCert->getIdentity(), "clientid");
   EXPECT_EQ(drs.clientCert->getX509(), nullptr);
@@ -134,8 +162,7 @@ TEST(TicketCodecTest, TestDecodeDifferentStorage) {
     return getCert(kRSACertificate);
   }));
   auto encoded = TicketCodec<CertificateStorage::X509>::encode(std::move(rs));
-  auto drs = TicketCodec<CertificateStorage::IdentityOnly>::decode(
-      std::move(encoded), nullptr);
+  auto drs = x509Decode(std::move(encoded));
   EXPECT_TRUE(drs.clientCert);
   EXPECT_EQ(drs.clientCert->getIdentity(), "Fizz");
   EXPECT_NE(drs.clientCert->getX509(), nullptr);
@@ -145,16 +172,14 @@ TEST(TicketCodecTest, TestDecodeDifferentStorage) {
   EXPECT_CALL(*peerCert, getIdentity()).WillOnce(Return("FizzIdOnly"));
   auto encodedIdOnly =
       TicketCodec<CertificateStorage::IdentityOnly>::encode(std::move(rs));
-  auto drsX509 = TicketCodec<CertificateStorage::X509>::decode(
-      std::move(encodedIdOnly), nullptr);
+  auto drsX509 = x509Decode(std::move(encodedIdOnly));
   EXPECT_TRUE(drsX509.clientCert);
   EXPECT_EQ(drsX509.clientCert->getIdentity(), "FizzIdOnly");
   EXPECT_EQ(drsX509.clientCert->getX509(), nullptr);
 }
 
 TEST(TicketCodecTest, TestDecode) {
-  auto rs = TicketCodec<CertificateStorage::X509>::decode(
-      toIOBuf(ticketClientAuthX509), nullptr);
+  auto rs = x509Decode(toIOBuf(ticketClientAuthX509));
   EXPECT_EQ(rs.version, ProtocolVersion::tls_1_3);
   EXPECT_EQ(rs.cipher, CipherSuite::TLS_AES_128_GCM_SHA256);
   EXPECT_TRUE(IOBufEqualTo()(rs.resumptionSecret, IOBuf::copyBuffer("secret")));
@@ -173,22 +198,18 @@ TEST(TicketCodecTest, TestDecode) {
 }
 
 TEST(TicketCodecTest, TestDecodeNoAlpn) {
-  auto rs = TicketCodec<CertificateStorage::X509>::decode(
-      toIOBuf(ticketNoAlpn), nullptr);
+  auto rs = x509Decode(toIOBuf(ticketNoAlpn));
   EXPECT_FALSE(rs.alpn.has_value());
 }
 
 TEST(TicketCodecTest, TestDecodeTooShort) {
   auto buf = toIOBuf(ticket);
   buf->trimEnd(1);
-  EXPECT_THROW(
-      TicketCodec<CertificateStorage::X509>::decode(std::move(buf), nullptr),
-      std::exception);
+  EXPECT_THROW(x509Decode(std::move(buf)), std::exception);
 }
 
 TEST(TicketCodecTest, TestDecodeWithAppToken) {
-  auto rs = TicketCodec<CertificateStorage::X509>::decode(
-      toIOBuf(ticketWithAppToken), nullptr);
+  auto rs = x509Decode(toIOBuf(ticketWithAppToken));
   EXPECT_EQ(rs.version, ProtocolVersion::tls_1_3);
   EXPECT_EQ(rs.cipher, CipherSuite::TLS_AES_128_GCM_SHA256);
   EXPECT_TRUE(IOBufEqualTo()(rs.resumptionSecret, IOBuf::copyBuffer("secret")));
@@ -206,8 +227,7 @@ TEST(TicketCodecTest, TestDecodeWithAppToken) {
 }
 
 TEST(TicketCodecTest, TestDecodeWithAppTokenAndTime) {
-  auto rs = TicketCodec<CertificateStorage::X509>::decode(
-      toIOBuf(ticketWithAppTokenAndHandshakeTime), nullptr);
+  auto rs = x509Decode(toIOBuf(ticketWithAppTokenAndHandshakeTime));
   EXPECT_EQ(rs.version, ProtocolVersion::tls_1_3);
   EXPECT_EQ(rs.cipher, CipherSuite::TLS_AES_128_GCM_SHA256);
   EXPECT_TRUE(IOBufEqualTo()(rs.resumptionSecret, IOBuf::copyBuffer("secret")));
@@ -225,8 +245,7 @@ TEST(TicketCodecTest, TestDecodeWithAppTokenAndTime) {
 }
 
 TEST(TicketCodecTest, TestDecodeWithEmptyAppToken) {
-  auto rs =
-      TicketCodec<CertificateStorage::X509>::decode(toIOBuf(ticket), nullptr);
+  auto rs = x509Decode(toIOBuf(ticket));
   EXPECT_EQ(rs.version, ProtocolVersion::tls_1_3);
   EXPECT_EQ(rs.cipher, CipherSuite::TLS_AES_128_GCM_SHA256);
   EXPECT_TRUE(IOBufEqualTo()(rs.resumptionSecret, IOBuf::copyBuffer("secret")));
@@ -243,8 +262,7 @@ TEST(TicketCodecTest, TestDecodeWithEmptyAppToken) {
 }
 
 TEST(TicketCodecTest, TestDecodeWithoutAppToken) {
-  auto rs = TicketCodec<CertificateStorage::X509>::decode(
-      toIOBuf(ticketWithoutAppToken), nullptr);
+  auto rs = x509Decode(toIOBuf(ticketWithoutAppToken));
   EXPECT_EQ(rs.version, ProtocolVersion::tls_1_3);
   EXPECT_EQ(rs.cipher, CipherSuite::TLS_AES_128_GCM_SHA256);
   EXPECT_TRUE(IOBufEqualTo()(rs.resumptionSecret, IOBuf::copyBuffer("secret")));

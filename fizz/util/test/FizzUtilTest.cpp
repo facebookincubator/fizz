@@ -45,6 +45,8 @@ TEST(UtilTest, CreateTicketCipher) {
       std::vector<std::string>(),
       std::chrono::seconds(100),
       std::chrono::minutes(100),
+      std::make_shared<OpenSSLFactory>(),
+      std::make_shared<server::CertManager>(),
       folly::Optional<std::string>("fakeContext"));
   auto clock = std::make_shared<MockClock>();
   server::TicketPolicy policy;
@@ -64,6 +66,8 @@ TEST(UtilTest, CreateTicketCipher) {
         std::vector<std::string>(),
         std::chrono::seconds(100),
         std::chrono::minutes(100),
+        std::make_shared<OpenSSLFactory>(),
+        std::make_shared<server::CertManager>(),
         folly::Optional<std::string>("fakeContext"));
     newCipher->setPolicy(std::move(policy));
     server::ResumptionState state;

@@ -264,6 +264,9 @@ class FizzServerContext {
   const Factory* getFactory() const {
     return factory_.get();
   }
+  std::shared_ptr<Factory> getFactoryPtr() const {
+    return factory_;
+  }
 
   /**
    * Fizz will automatically send NewSessionTicket before reporting handshake

@@ -53,9 +53,12 @@ namespace test {
 class MockTicketCodecInstance {
  public:
   MOCK_CONST_METHOD1(_encode, Buf(ResumptionState& state));
-  MOCK_CONST_METHOD2(
+  MOCK_CONST_METHOD3(
       _decode,
-      ResumptionState(Buf& encoded, const FizzServerContext* context));
+      ResumptionState(
+          Buf& encoded,
+          const Factory& factory,
+          const CertManager& certManager));
 };
 
 class MockTicketCodec {
@@ -64,8 +67,9 @@ class MockTicketCodec {
   static Buf encode(ResumptionState state) {
     return instance->_encode(state);
   }
-  static ResumptionState decode(Buf encoded, const FizzServerContext* context) {
-    return instance->_decode(encoded, context);
+  static ResumptionState
+  decode(Buf encoded, const Factory& factory, const CertManager& certManager) {
+    return instance->_decode(encoded, factory, certManager);
   }
   static MockTicketCodecInstance* instance;
 };
@@ -76,6 +80,11 @@ using TestAeadTicketCipher = Aead128GCMTicketCipher<MockTicketCodec>;
 
 class AeadTicketCipherTest : public Test {
  public:
+  AeadTicketCipherTest()
+      : cipher_(
+            std::make_shared<OpenSSLFactory>(),
+            std::make_shared<CertManager>()) {}
+
   ~AeadTicketCipherTest() override = default;
   void SetUp() override {
     MockTicketCodec::instance = &codec_;
@@ -89,12 +98,18 @@ class AeadTicketCipherTest : public Test {
   TestAeadTicketCipher cipher_;
   MockTicketCodecInstance codec_;
   std::shared_ptr<MockClock> clock_;
+  std::shared_ptr<Factory> factory_;
+  std::shared_ptr<CertManager> certManager_;
 
   void rebuildCipher(std::string pskContext = "") {
     if (!pskContext.empty()) {
-      cipher_ = TestAeadTicketCipher(pskContext);
+      cipher_ = TestAeadTicketCipher(
+          std::make_shared<OpenSSLFactory>(),
+          std::make_shared<CertManager>(),
+          pskContext);
     } else {
-      cipher_ = TestAeadTicketCipher();
+      cipher_ = TestAeadTicketCipher(
+          std::make_shared<OpenSSLFactory>(), std::make_shared<CertManager>());
     }
     cipher_.setPolicy(policy_);
     auto s1 = toIOBuf(ticketSecret1);
@@ -104,13 +119,14 @@ class AeadTicketCipherTest : public Test {
   }
 
   void expectDecode() {
-    EXPECT_CALL(codec_, _decode(_, _))
-        .WillOnce(
-            Invoke([](Buf& encoded, const FizzServerContext* /*context*/) {
-              EXPECT_TRUE(
-                  IOBufEqualTo()(encoded, IOBuf::copyBuffer("encodedticket")));
-              return ResumptionState();
-            }));
+    EXPECT_CALL(codec_, _decode(_, _, _))
+        .WillOnce(Invoke([](Buf& encoded,
+                            const Factory& /* factory */,
+                            const CertManager& /* certManager */) {
+          EXPECT_TRUE(
+              IOBufEqualTo()(encoded, IOBuf::copyBuffer("encodedticket")));
+          return ResumptionState();
+        }));
   }
 
   void checkUnsetEncrypt() {
@@ -156,7 +172,7 @@ TEST_F(AeadTicketCipherTest, TestHandshakeExpiration) {
   EXPECT_CALL(codec_, _encode(_)).WillOnce(InvokeWithoutArgs([]() {
     return IOBuf::copyBuffer("encodedticket");
   }));
-  EXPECT_CALL(codec_, _decode(_, _))
+  EXPECT_CALL(codec_, _decode(_, _, _))
       .Times(2)
       .WillRepeatedly(InvokeWithoutArgs([time]() {
         ResumptionState res;
