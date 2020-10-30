@@ -47,7 +47,7 @@ struct detail::Sizer<extensions::ECHConfig> {
 template <>
 struct detail::Sizer<extensions::HpkeCipherSuite> {
   template <class T>
-  size_t getSize(const extensions::HpkeCipherSuite& proto) {
+  size_t getSize(const extensions::HpkeCipherSuite&) {
     return sizeof(uint16_t) + sizeof(uint16_t);
   }
 };

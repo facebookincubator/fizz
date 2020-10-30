@@ -22,7 +22,8 @@ void FizzClient<ActionMoveVisitor, SM>::connect(
       std::move(verifier),
       std::move(sni),
       std::move(cachedPsk),
-      extensions));
+      extensions,
+      folly::none));
 }
 
 template <typename ActionMoveVisitor, typename SM>

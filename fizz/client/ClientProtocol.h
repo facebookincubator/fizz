@@ -13,6 +13,7 @@
 #include <fizz/client/FizzClientContext.h>
 #include <fizz/client/PskCache.h>
 #include <fizz/client/State.h>
+#include <fizz/extensions/ech/Types.h>
 
 namespace fizz {
 namespace client {
@@ -31,7 +32,8 @@ class ClientStateMachine {
       std::shared_ptr<const CertificateVerifier> verifier,
       folly::Optional<std::string> sni,
       folly::Optional<CachedPsk> cachedPsk,
-      const std::shared_ptr<ClientExtensions>& extensions);
+      const std::shared_ptr<ClientExtensions>& extensions,
+      folly::Optional<std::vector<extensions::ECHConfig>> echConfigs);
 
   virtual Actions processSocketData(const State&, folly::IOBufQueue&);
 

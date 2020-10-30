@@ -106,7 +106,7 @@ class AsyncFizzClientTest : public Test {
 
   void connect() {
     expectTransportReadCallback();
-    EXPECT_CALL(*machine_, _processConnect(_, _, _, _, _, _))
+    EXPECT_CALL(*machine_, _processConnect(_, _, _, _, _, _, _))
         .WillOnce(InvokeWithoutArgs([]() { return Actions(); }));
     const auto sni = std::string("www.example.com");
     client_->connect(&handshakeCallback_, nullptr, sni, pskIdentity_);
@@ -452,7 +452,7 @@ TEST_F(AsyncFizzClientTest, TestSocketConnect) {
   machine_ = MockClientStateMachineInstance::instance;
   auto server = std::make_unique<TestServer>();
 
-  EXPECT_CALL(*machine_, _processConnect(_, _, _, _, _, _))
+  EXPECT_CALL(*machine_, _processConnect(_, _, _, _, _, _, _))
       .WillOnce(InvokeWithoutArgs([]() {
         return detail::actions(ReportHandshakeSuccess(), WaitForData());
       }));
@@ -497,7 +497,7 @@ TEST_F(AsyncFizzClientTest, TestHandshakeConnectWithUnopenedSocket) {
             ex.what().toStdString(),
             HasSubstr("handshake connect called but socket isn't open"));
       }));
-  EXPECT_CALL(*machine_, _processConnect(_, _, _, _, _, _)).Times(0);
+  EXPECT_CALL(*machine_, _processConnect(_, _, _, _, _, _, _)).Times(0);
   evbClient->connect(
       &handshakeCallback_,
       nullptr,
@@ -524,7 +524,7 @@ TEST_F(AsyncFizzClientTest, TestSocketConnectWithOpenSocket) {
         cb->connectErr(AsyncSocketException(
             AsyncSocketException::ALREADY_OPEN, "socket already open"));
       }));
-  EXPECT_CALL(*machine_, _processConnect(_, _, _, _, _, _)).Times(0);
+  EXPECT_CALL(*machine_, _processConnect(_, _, _, _, _, _, _)).Times(0);
   client_->connect(
       SocketAddress(),
       &cb,

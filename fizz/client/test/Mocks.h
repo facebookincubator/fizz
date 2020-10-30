@@ -19,7 +19,7 @@ namespace test {
 
 class MockClientStateMachine : public ClientStateMachine {
  public:
-  MOCK_METHOD6(
+  MOCK_METHOD7(
       _processConnect,
       folly::Optional<Actions>(
           const State&,
@@ -27,16 +27,18 @@ class MockClientStateMachine : public ClientStateMachine {
           std::shared_ptr<const CertificateVerifier>,
           folly::Optional<std::string> host,
           folly::Optional<CachedPsk> cachedPsk,
-          const std::shared_ptr<ClientExtensions>& extensions));
+          const std::shared_ptr<ClientExtensions>& extensions,
+          const folly::Optional<std::vector<extensions::ECHConfig>>& echConfigs));
   Actions processConnect(
       const State& state,
       std::shared_ptr<const FizzClientContext> context,
       std::shared_ptr<const CertificateVerifier> verifier,
       folly::Optional<std::string> host,
       folly::Optional<CachedPsk> cachedPsk,
-      const std::shared_ptr<ClientExtensions>& extensions) override {
+      const std::shared_ptr<ClientExtensions>& extensions,
+      folly::Optional<std::vector<extensions::ECHConfig>> echConfigs) override {
     return *_processConnect(
-        state, context, verifier, host, cachedPsk, extensions);
+        state, context, verifier, host, cachedPsk, extensions, echConfigs);
   }
 
   MOCK_METHOD2(

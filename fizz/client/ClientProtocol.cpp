@@ -160,13 +160,15 @@ Actions ClientStateMachine::processConnect(
     std::shared_ptr<const CertificateVerifier> verifier,
     Optional<std::string> sni,
     Optional<CachedPsk> cachedPsk,
-    const std::shared_ptr<ClientExtensions>& extensions) {
+    const std::shared_ptr<ClientExtensions>& extensions,
+    Optional<std::vector<extensions::ECHConfig>> echConfigs) {
   Connect connect;
   connect.context = std::move(context);
   connect.sni = std::move(sni);
   connect.verifier = std::move(verifier);
   connect.extensions = extensions;
   connect.cachedPsk = std::move(cachedPsk);
+  connect.echConfigs = std::move(echConfigs);
   return detail::processEvent(state, std::move(connect));
 }
 
@@ -650,20 +652,20 @@ EventHandler<ClientTypes, StateEnum::Uninitialized, Event::Connect>::handle(
   auto keyExchangers = getKeyExchangers(*context->getFactory(), selectedShares);
 
   auto chlo = getClientHello(
-      *context->getFactory(),
-      random,
-      context->getSupportedCiphers(),
-      context->getSupportedVersions(),
-      context->getSupportedGroups(),
-      keyExchangers,
-      context->getSupportedSigSchemes(),
-      context->getSupportedPskModes(),
-      connect.sni,
-      context->getSupportedAlpns(),
-      context->getSupportedCertDecompressionAlgorithms(),
-      earlyDataParams,
-      legacySessionId,
-      connect.extensions.get());
+    *context->getFactory(),
+    random,
+    context->getSupportedCiphers(),
+    context->getSupportedVersions(),
+    context->getSupportedGroups(),
+    keyExchangers,
+    context->getSupportedSigSchemes(),
+    context->getSupportedPskModes(),
+    connect.sni,
+    context->getSupportedAlpns(),
+    context->getSupportedCertDecompressionAlgorithms(),
+    earlyDataParams,
+    legacySessionId,
+    connect.extensions.get());
 
   std::vector<ExtensionType> requestedExtensions;
   for (const auto& extension : chlo.extensions) {

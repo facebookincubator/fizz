@@ -61,7 +61,7 @@ class FizzClientTest : public Test {
 TEST_F(FizzClientTest, TestConnect) {
   EXPECT_CALL(
       *MockClientStateMachineInstance::instance,
-      _processConnect(_, _, _, _, _, _))
+      _processConnect(_, _, _, _, _, _, _))
       .WillOnce(InvokeWithoutArgs([] { return Actions(); }));
   const auto sni = std::string("www.example.com");
   fizzClient_->fizzClient_.connect(context_, nullptr, sni, folly::none);
@@ -71,7 +71,7 @@ TEST_F(FizzClientTest, TestConnectPskIdentity) {
   std::string psk("psk");
   EXPECT_CALL(
       *MockClientStateMachineInstance::instance,
-      _processConnect(_, _, _, _, _, _))
+      _processConnect(_, _, _, _, _, _, _))
       .WillOnce(
           Invoke([psk](
                      const State&,
@@ -79,7 +79,8 @@ TEST_F(FizzClientTest, TestConnectPskIdentity) {
                      std::shared_ptr<const CertificateVerifier> verifier,
                      folly::Optional<std::string> sni,
                      folly::Optional<CachedPsk> cachedPsk,
-                     const std::shared_ptr<ClientExtensions>& extensions) {
+                     const std::shared_ptr<ClientExtensions>& /* unused */,
+                     const folly::Optional<std::vector<extensions::ECHConfig>>& /* unused */) {
             EXPECT_TRUE(cachedPsk);
             EXPECT_EQ(cachedPsk->psk, psk);
             EXPECT_EQ(sni, "www.example.com");
