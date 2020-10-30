@@ -221,8 +221,7 @@ int fizzServerBenchmarkCommand(const std::vector<std::string>& args) {
   auto serverContext = std::make_shared<FizzServerContext>();
   serverContext->setSupportedCiphers(std::move(ciphers));
   auto ticketCipher = std::make_shared<
-      Aead128GCMTicketCipher<TicketCodec<CertificateStorage::X509>>>(
-      std::make_shared<OpenSSLFactory>(), std::make_shared<CertManager>());
+      Aead128GCMTicketCipher<TicketCodec<CertificateStorage::X509>>>();
   auto ticketSeed = RandomGenerator<32>().generateRandom();
   ticketCipher->setTicketSecrets({{range(ticketSeed)}});
   serverContext->setTicketCipher(ticketCipher);

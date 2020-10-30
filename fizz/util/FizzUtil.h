@@ -51,16 +51,12 @@ class FizzUtil {
       const std::vector<std::string>& newSecrets,
       std::chrono::seconds ticketValidity,
       std::chrono::seconds handshakeValidity,
-      std::shared_ptr<Factory> factory,
-      std::shared_ptr<server::CertManager> certManager,
       folly::Optional<std::string> pskContext) {
     std::unique_ptr<TicketCipherT> cipher;
     if (pskContext.hasValue()) {
-      cipher = std::make_unique<TicketCipherT>(
-          std::move(factory), std::move(certManager), std::move(*pskContext));
+      cipher = std::make_unique<TicketCipherT>(std::move(*pskContext));
     } else {
-      cipher = std::make_unique<TicketCipherT>(
-          std::move(factory), std::move(certManager));
+      cipher = std::make_unique<TicketCipherT>();
     }
     cipher->setTicketSecrets(
         compileSecrets(oldSecrets, currentSecret, newSecrets));

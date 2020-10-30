@@ -30,9 +30,7 @@ void appendClientCertificate(
     const std::shared_ptr<const Cert>& cert,
     folly::io::Appender& appender);
 
-std::shared_ptr<const Cert> readClientCertificate(
-    folly::io::Cursor& cursor,
-    const Factory& factory);
+std::shared_ptr<const Cert> readClientCertificate(folly::io::Cursor& cursor);
 
 template <CertificateStorage Storage>
 struct TicketCodec {
@@ -44,8 +42,7 @@ struct TicketCodec {
 
   static Buf encode(ResumptionState state);
 
-  static ResumptionState
-  decode(Buf encoded, const Factory& factory, const CertManager& certManager);
+  static ResumptionState decode(Buf encoded, const FizzServerContext* context);
 };
 } // namespace server
 } // namespace fizz

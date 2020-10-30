@@ -44,18 +44,16 @@ void appendClientCertificate(
   }
 }
 
-std::shared_ptr<const Cert> readClientCertificate(
-    folly::io::Cursor& cursor,
-    const Factory& factory) {
+std::shared_ptr<const Cert> readClientCertificate(folly::io::Cursor& cursor) {
   CertificateStorage storage;
   fizz::detail::read(storage, cursor);
   switch (storage) {
     case CertificateStorage::None:
       return nullptr;
     case CertificateStorage::X509: {
-      CertificateEntry certEntry;
-      fizz::detail::readBuf<uint16_t>(certEntry.cert_data, cursor);
-      return factory.makePeerCert(std::move(certEntry), /* leaf */ true);
+      Buf clientCertBuf;
+      fizz::detail::readBuf<uint16_t>(clientCertBuf, cursor);
+      return CertUtils::makePeerCert(std::move(clientCertBuf));
     }
     case CertificateStorage::IdentityOnly: {
       Buf ident;
