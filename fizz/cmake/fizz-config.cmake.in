@@ -25,6 +25,8 @@ endif()
 
 set(FIZZ_LIBRARIES fizz::fizz)
 
+find_dependency(Sodium)
+
 if (NOT fizz_FIND_QUIETLY)
   message(STATUS "Found fizz: ${PACKAGE_PREFIX_DIR}")
 endif()
