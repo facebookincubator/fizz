@@ -529,12 +529,11 @@ static ClientPresharedKey getPskExtension(
 
 /**
  * Returns the encoded client hello after updating the binder.
- *
  * Will derive the early secret on the key scheduler and append the client hello
  * to the handshake context.
  */
 static Buf encodeAndAddBinders(
-    ClientHello chlo,
+    ClientHello& chlo,
     const CachedPsk& psk,
     KeyScheduler& scheduler,
     HandshakeContext& handshakeContext,
@@ -570,7 +569,7 @@ static Buf encodeAndAddBinders(
   chlo.extensions.pop_back();
   chlo.extensions.push_back(encodeExtension(std::move(pskExt)));
 
-  auto encoded = encodeHandshake(std::move(chlo));
+  auto encoded = encodeHandshake(chlo);
 
   // Add the binder list to the transcript.
   folly::IOBufQueue chloQueue(folly::IOBufQueue::cacheChainLength());
@@ -683,7 +682,7 @@ EventHandler<ClientTypes, StateEnum::Uninitialized, Event::Connect>::handle(
         context->getFactory()->makeHandshakeContext(psk->cipher);
 
     encodedClientHello = encodeAndAddBinders(
-        std::move(chlo),
+        chlo,
         *psk,
         *keyScheduler,
         *handshakeContext,
@@ -717,7 +716,7 @@ EventHandler<ClientTypes, StateEnum::Uninitialized, Event::Connect>::handle(
       reportEarlySuccess->maxEarlyDataSize = psk->maxEarlyDataSize;
     }
   } else {
-    encodedClientHello = encodeHandshake(std::move(chlo));
+    encodedClientHello = encodeHandshake(chlo);
   }
 
   auto readRecordLayer = context->getFactory()->makePlaintextReadRecordLayer();
@@ -1240,11 +1239,11 @@ Actions EventHandler<
     auto keyScheduler = state.context()->getFactory()->makeKeyScheduler(cipher);
 
     encodedClientHello = encodeAndAddBinders(
-        std::move(chlo),
-        *attemptedPsk,
-        *keyScheduler,
-        *handshakeContext,
-        *state.context()->getClock());
+      chlo,
+      *attemptedPsk,
+      *keyScheduler,
+      *handshakeContext,
+      *state.context()->getClock());
   } else {
     encodedClientHello = encodeHandshake(std::move(chlo));
     handshakeContext->appendToTranscript(encodedClientHello);
