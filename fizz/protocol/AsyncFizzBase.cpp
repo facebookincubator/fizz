@@ -177,7 +177,9 @@ void AsyncFizzBase::writeChain(
   // buffer is unshared (because we can encrypt in-place). We also skip this
   // when sending early data to avoid the possibility of splitting writes
   // between early data and normal data.
-  bool needsToQueue = writeSize > kPartialWriteThreshold && buf->isShared() &&
+  bool largeWrite = writeSize > kPartialWriteThreshold;
+  bool transportBuffering = transport_->getRawBytesBuffered() > 0;
+  bool needsToQueue = (largeWrite || transportBuffering) && buf->isShared() &&
       !connecting() && isReplaySafe();
   if (tailWriteRequest_ || needsToQueue) {
     auto newWriteRequest =

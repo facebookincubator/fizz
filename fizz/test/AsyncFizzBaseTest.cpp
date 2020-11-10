@@ -667,6 +667,21 @@ TEST_F(AsyncFizzBaseTest, TestWriteBuffering) {
   wcb->writeSuccess();
 }
 
+TEST_F(AsyncFizzBaseTest, TestWriteBufferingTransportBuffer) {
+  AsyncTransportWrapper::WriteCallback* wcb;
+
+  ON_CALL(*socket_, getRawBytesBuffered())
+    .WillByDefault(Return(25));
+
+  expectWrite('a', 10, &wcb);
+  auto buf = getBuf('a', 10);
+  writeChain(nullptr, buf->clone());
+
+  writeChain(nullptr, getBuf('b', 10));
+  expectWrite('b', 10);
+  wcb->writeSuccess();
+}
+
 TEST_F(AsyncFizzBaseTest, TestNoWriteBufferingUnshared) {
   expectWrite('a', kPartialWriteThreshold * 10);
   auto buf = getBuf('a', kPartialWriteThreshold * 10);
