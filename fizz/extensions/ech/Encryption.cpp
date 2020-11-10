@@ -8,7 +8,6 @@
 
 #include <fizz/extensions/ech/Encryption.h>
 
-#include <fizz/crypto/hpke/Hpke.h>
 #include <fizz/crypto/hpke/Utils.h>
 #include <fizz/crypto/Sha256.h>
 #include <fizz/crypto/Sha384.h>
@@ -96,11 +95,15 @@ std::unique_ptr<folly::IOBuf> getRecordDigest(
   }
 }
 
-static std::unique_ptr<folly::IOBuf> generateClientHelloInner(
-    ClientHello clientHello,
-    std::unique_ptr<folly::IOBuf> echNonceValue) {
-  // Create nonce extension
+void addECHNonceExtensionToClientHello(
+    const hpke::HpkeContext& context,
+    ClientHello& clientHello) {
   std::array<uint8_t, 16> nonceValueArr;
+
+  // Generate nonce value
+  std::unique_ptr<folly::IOBuf> echNonceValue =
+      context.exportSecret(folly::IOBuf::copyBuffer("tls13-ech-nonce"), 16);
+
   auto nonceValueRange = echNonceValue->coalesce();
   std::copy(
       nonceValueRange.begin(),
@@ -108,17 +111,13 @@ static std::unique_ptr<folly::IOBuf> generateClientHelloInner(
       nonceValueArr.begin());
   ECHNonce echNonce{nonceValueArr};
 
-  // Add nonce extension to client hello
-  Extension encodedNonce = encodeExtension(echNonce);
-  clientHello.extensions.push_back(std::move(encodedNonce));
-
-  return encode(clientHello);
+  auto echNonceExt = encodeExtension(echNonce);
+  clientHello.extensions.push_back(std::move(echNonceExt));
 }
 
-EncryptedClientHello encryptClientHello(
+hpke::SetupResult constructHpkeSetupResult(
     std::unique_ptr<KeyExchange> kex,
-    SupportedECHConfig supportedConfig,
-    ClientHello clientHello) {
+    const SupportedECHConfig& supportedConfig) {
   const std::unique_ptr<folly::IOBuf> prefix{
       folly::IOBuf::copyBuffer("HPKE-05 ")};
 
@@ -136,32 +135,37 @@ EncryptedClientHello encryptClientHello(
       std::move(kex), getKexGroup(config.kem_id), std::move(hkdf));
 
   // Get context
-  hpke::SetupResult result = setupWithEncap(
+  return setupWithEncap(
       hpke::Mode::Base,
       config.public_key->clone()->coalesce(),
       folly::IOBuf::copyBuffer("tls13-ech"),
       folly::none,
       getSetupParam(
           std::move(dhkem), prefix->clone(), config.kem_id, cipherSuite));
-  hpke::HpkeContext context = std::move(result.context);
+}
 
-  // Generate values used for encryption
-  std::unique_ptr<folly::IOBuf> echNonceValue =
-      context.exportSecret(folly::IOBuf::copyBuffer("tls13-ech-nonce"), 16);
+EncryptedClientHello encryptClientHello(
+    const SupportedECHConfig& supportedConfig,
+    ClientHello clientHello,
+    hpke::SetupResult setupResult) {
+  auto context = std::move(setupResult.context);
+  auto cipherSuite = supportedConfig.cipherSuite;
+  folly::io::Cursor cursor(supportedConfig.config.ech_config_content.get());
+  auto config = decode<ECHConfigContentDraft7>(cursor);
 
   // Create client hello inner
-  std::unique_ptr<folly::IOBuf> clientHelloInner = generateClientHelloInner(
-      std::move(clientHello), std::move(echNonceValue));
+  std::unique_ptr<folly::IOBuf> clientHelloInner = encode(clientHello);
   std::unique_ptr<folly::IOBuf> encryptedCh = context.seal(
       folly::IOBuf::copyBuffer("").get(), clientHelloInner->clone());
 
   // Create client hello outer
   EncryptedClientHello clientHelloOuter;
   clientHelloOuter.suite = cipherSuite;
+
   // Hash the ECH config
   clientHelloOuter.record_digest =
       getRecordDigest(encode(std::move(config)), cipherSuite.kdfId);
-  clientHelloOuter.enc = std::move(result.enc);
+  clientHelloOuter.enc = std::move(setupResult.enc);
   clientHelloOuter.encrypted_ch = std::move(encryptedCh);
 
   return clientHelloOuter;

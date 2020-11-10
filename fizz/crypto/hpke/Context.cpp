@@ -35,8 +35,10 @@ namespace hpke {
     return pt;
   }
 
-  std::unique_ptr<folly::IOBuf> HpkeContext::exportSecret(std::unique_ptr<folly::IOBuf> exporterContext, size_t desiredLength) {
-    auto maxL = 255*hkdf_->hashLength();
+  std::unique_ptr<folly::IOBuf> HpkeContext::exportSecret(
+      std::unique_ptr<folly::IOBuf> exporterContext,
+      size_t desiredLength) const {
+    auto maxL = 255 * hkdf_->hashLength();
     if (desiredLength > maxL) {
       throw std::runtime_error("desired length for exported secret exceeds maximum");
     }

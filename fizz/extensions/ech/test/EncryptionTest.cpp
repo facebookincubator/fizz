@@ -23,7 +23,7 @@ namespace extensions {
 namespace test {
 
 static constexpr folly::StringPiece expectedClientHelloInner{
-    "03034444444444444444444444444444444444444444444444444444444444444444000004130113020100006a002b0003020304000a00060004001d00170033000e000c001d00086b65797368617265000d00060004040308040000001500130000107777772e686f73746e616d652e636f6d001000050003026832002d0003020100ff030010972a9c468ef0891fd22c052c6785f6a6"};
+    "030344444444444444444444444444444444444444444444444444444444444444440000041301130201000056002b0003020304000a00060004001d00170033000e000c001d00086b65797368617265000d00060004040308040000001500130000107777772e686f73746e616d652e636f6d001000050003026832002d0003020100"};
 static constexpr folly::StringPiece expectedRecordDigest{
     "fb651f6d036df7b3f54d96e1e5bcc1c7db78056dff861ea4e798d03e65a2ca1e"};
 
@@ -142,8 +142,11 @@ TEST(EncryptionTest, TestValidEncryptClientHello) {
   kex->setPrivateKey(std::move(privateKey));
   EXPECT_CALL(*kex, generateKeyPair()).Times(1);
 
+  auto setupResult = constructHpkeSetupResult(std::move(kex), supportedConfig);
   auto gotECH = encryptClientHello(
-      std::move(kex), std::move(supportedConfig), TestMessages::clientHello());
+      std::move(supportedConfig),
+      TestMessages::clientHello(),
+      std::move(setupResult));
   EXPECT_EQ(gotECH.suite.kdfId, testCipherSuite.kdfId);
   EXPECT_EQ(gotECH.suite.aeadId, testCipherSuite.aeadId);
 

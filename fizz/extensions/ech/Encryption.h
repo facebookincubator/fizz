@@ -9,6 +9,7 @@
 #pragma once
 
 #include <fizz/crypto/exchange/KeyExchange.h>
+#include <fizz/crypto/hpke/Hpke.h>
 #include <fizz/extensions/ech/Types.h>
 #include <fizz/extensions/ech/ECHExtensions.h>
 
@@ -25,8 +26,18 @@ folly::Optional<SupportedECHConfig> selectECHConfig(
     std::vector<hpke::KEMId> supportedKEMs,
     std::vector<hpke::AeadId> supportedAeads);
 
+void addECHNonceExtensionToClientHello(
+    const hpke::HpkeContext& context,
+    ClientHello& clientHello);
+
+hpke::SetupResult constructHpkeSetupResult(
+    std::unique_ptr<KeyExchange> kex,
+    const SupportedECHConfig& supportedConfig);
+
 EncryptedClientHello encryptClientHello(
-  std::unique_ptr<KeyExchange> kex, SupportedECHConfig supportedConfig, ClientHello clientHello);
+    const SupportedECHConfig& supportedConfig,
+    ClientHello clientHello,
+    hpke::SetupResult setupResult);
 
 } // namespace extensions
 } // namespace fizz
