@@ -65,7 +65,7 @@ class HandshakeTest : public Test {
     auto pskCache = std::make_shared<BasicPskCache>();
     clientContext_->setPskCache(std::move(pskCache));
 
-    auto certManager = std::make_unique<CertManager>();
+    auto certManager = std::make_shared<CertManager>();
     std::vector<std::shared_ptr<CertificateCompressor>> compressors = {
         std::make_shared<ZlibCertificateCompressor>(9)};
     std::vector<ssl::X509UniquePtr> rsaCerts;
@@ -86,7 +86,7 @@ class HandshakeTest : public Test {
         getPrivateKey(kP384Key), std::move(p384Certs), compressors));
     certManager->addCert(std::make_shared<SelfCertImpl<KeyType::P521>>(
         getPrivateKey(kP521Key), std::move(p521Certs), compressors));
-    serverContext_->setCertManager(std::move(certManager));
+    serverContext_->setCertManager(certManager);
     serverContext_->setEarlyDataSettings(
         true,
         {std::chrono::seconds(-60), std::chrono::seconds(60)},
@@ -106,7 +106,8 @@ class HandshakeTest : public Test {
         std::move(clientKey), std::move(certVec));
     clientContext_->setClientCertificate(std::move(clientSelfCert));
 
-    auto ticketCipher = std::make_shared<AES128TicketCipher>();
+    auto ticketCipher = std::make_shared<AES128TicketCipher>(
+        serverContext_->getFactoryPtr(), std::move(certManager));
     auto ticketSeed = RandomGenerator<32>().generateRandom();
     ticketCipher->setTicketSecrets({{range(ticketSeed)}});
     server::TicketPolicy policy;

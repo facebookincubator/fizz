@@ -297,21 +297,23 @@ std::unique_ptr<SelfCert> readSelfCert() {
 }
 
 int serverTest() {
-  auto certManager = std::make_unique<CertManager>();
+  auto certManager = std::make_shared<CertManager>();
   certManager->addCert(readSelfCert(), true);
 
-  auto ticketCipher = std::make_shared<AES128TicketCipher>();
+  auto serverContext = std::make_shared<FizzServerContext>();
+  serverContext->setCertManager(certManager);
+  serverContext->setSupportedAlpns({"h2", "http/1.1"});
+  serverContext->setVersionFallbackEnabled(true);
+
+  auto ticketCipher = std::make_shared<AES128TicketCipher>(
+      serverContext->getFactoryPtr(), std::move(certManager));
   auto ticketSeed = RandomGenerator<32>().generateRandom();
   ticketCipher->setTicketSecrets({{range(ticketSeed)}});
   server::TicketPolicy policy;
   policy.setTicketValidity(std::chrono::seconds(60));
   ticketCipher->setPolicy(std::move(policy));
 
-  auto serverContext = std::make_shared<FizzServerContext>();
-  serverContext->setCertManager(std::move(certManager));
   serverContext->setTicketCipher(ticketCipher);
-  serverContext->setSupportedAlpns({"h2", "http/1.1"});
-  serverContext->setVersionFallbackEnabled(true);
 
   EventBase evb;
   std::vector<std::unique_ptr<BogoTestServer>> servers;

@@ -50,7 +50,8 @@ Buf TicketCodec<Storage>::encode(ResumptionState resState) {
 template <CertificateStorage Storage>
 ResumptionState TicketCodec<Storage>::decode(
     Buf encoded,
-    const FizzServerContext* context) {
+    const Factory& factory,
+    const CertManager& certManager) {
   folly::io::Cursor cursor(encoded.get());
 
   ResumptionState resState;
@@ -60,7 +61,7 @@ ResumptionState TicketCodec<Storage>::decode(
   Buf selfIdentity;
   fizz::detail::readBuf<uint16_t>(selfIdentity, cursor);
 
-  resState.clientCert = readClientCertificate(cursor);
+  resState.clientCert = readClientCertificate(cursor, factory);
 
   fizz::detail::read(resState.ticketAgeAdd, cursor);
   uint64_t seconds;
@@ -76,10 +77,8 @@ ResumptionState TicketCodec<Storage>::decode(
   // If unset, set handshake timestamp to ticket timestamp
   resState.handshakeTime = resState.ticketIssueTime;
 
-  if (context) {
-    resState.serverCert =
-        context->getCert(selfIdentity->moveToFbString().toStdString());
-  }
+  resState.serverCert =
+      certManager.getCert(selfIdentity->moveToFbString().toStdString());
 
   if (cursor.isAtEnd()) {
     return resState;

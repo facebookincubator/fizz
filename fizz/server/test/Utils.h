@@ -70,7 +70,8 @@ class FizzTestServer : public folly::AsyncServerSocket::AcceptCallback {
   void setResumption(bool enable) {
     if (enable) {
       auto ticketCipher = std::make_shared<
-          Aead128GCMTicketCipher<TicketCodec<CertificateStorage::X509>>>();
+          Aead128GCMTicketCipher<TicketCodec<CertificateStorage::X509>>>(
+          std::make_shared<OpenSSLFactory>(), std::make_shared<CertManager>());
       auto ticketSeed = RandomGenerator<32>().generateRandom();
       ticketCipher->setTicketSecrets({{folly::range(ticketSeed)}});
       ctx_->setTicketCipher(ticketCipher);
