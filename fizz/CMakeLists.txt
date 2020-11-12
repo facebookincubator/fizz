@@ -106,11 +106,11 @@ set(FIZZ_HEADER_DIRS
   crypto/signature
   crypto/openssl
   extensions/delegatedcred
-  extensions/ech
   extensions/exportedauth
   extensions/tokenbinding
   protocol
   protocol/clock
+  protocol/ech
   record
   server
   util
@@ -188,7 +188,7 @@ set(FIZZ_SOURCES
   protocol/ZlibCertificateCompressor.cpp
   protocol/ZlibCertificateDecompressor.cpp
   protocol/clock/SystemClock.cpp
-  extensions/ech/Encryption.cpp
+  protocol/ech/Encryption.cpp
   extensions/delegatedcred/DelegatedCredentialCertManager.cpp
   extensions/delegatedcred/DelegatedCredentialClientExtension.cpp
   extensions/delegatedcred/DelegatedCredentialFactory.cpp
@@ -310,7 +310,7 @@ endif()
 add_library(fizz_test_support
   crypto/aead/test/TestUtil.cpp
   crypto/test/TestUtil.cpp
-  extensions/ech/test/TestUtil.cpp
+  protocol/ech/test/TestUtil.cpp
   ${FIZZ_TEST_HEADERS}
 )
 
@@ -399,8 +399,6 @@ if(BUILD_TESTS)
   add_gtest(extensions/delegatedcred/test/PeerDelegatedCredentialTest.cpp PeerDelegatedCredentialTest)
   add_gtest(extensions/delegatedcred/test/SelfDelegatedCredentialTest.cpp SelfDelegatedCredentialTest)
   add_gtest(extensions/tokenbinding/test/TokenBindingConstructorTest.cpp TokenBindingConstructorTest)
-  add_gtest(extensions/ech/test/ECHTest.cpp ECHTest)
-  add_gtest(extensions/ech/test/EncryptionTest.cpp EncryptionTest)
   add_gtest(extensions/tokenbinding/test/ValidatorTest.cpp ValidatorTest)
   add_gtest(extensions/tokenbinding/test/TokenBindingServerExtensionTest.cpp TokenBindingServerExtensionTest)
   add_gtest(extensions/tokenbinding/test/TokenBindingTest.cpp TokenBindingTest)
@@ -410,6 +408,8 @@ if(BUILD_TESTS)
   add_gtest(experimental/crypto/test/MerkleTreeTest.cpp MerkleTreeTest)
   add_gtest(experimental/protocol/test/BatchSignatureTypesTest.cpp BatchSignatureTypesTest)
   add_gtest(experimental/server/test/BatchSignatureAsyncSelfCertTest.cpp BatchSignatureAsyncSelfCertTest)
+  add_gtest(protocol/ech/test/ECHTest.cpp ECHTest)
+  add_gtest(protocol/ech/test/EncryptionTest.cpp EncryptionTest)
   add_gtest(protocol/test/CertTest.cpp CertTest)
   add_gtest(protocol/test/FizzBaseTest.cpp FizzBaseTest)
   add_gtest(protocol/test/KeySchedulerTest.cpp KeySchedulerTest)

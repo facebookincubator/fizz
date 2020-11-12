@@ -8,12 +8,12 @@
 
 #pragma once
 
-#include <fizz/extensions/ech/Types.h>
+#include <fizz/protocol/ech/Types.h>
 #include <folly/io/Cursor.h>
 
 namespace fizz {
 template <>
-struct detail::Writer<extensions::HpkeNonce> {
+struct detail::Writer<ech::HpkeNonce> {
   template <class T>
   void write(const std::array<uint8_t, 16>& arr, folly::io::Appender& out) {
     out.push(arr.data(), arr.size());
@@ -21,8 +21,8 @@ struct detail::Writer<extensions::HpkeNonce> {
 };
 
 template <>
-inline void detail::write<extensions::ECHConfig>(
-    const extensions::ECHConfig& echConfig,
+inline void detail::write<ech::ECHConfig>(
+    const ech::ECHConfig& echConfig,
     folly::io::Appender& out) {
   detail::write(echConfig.version, out);
   detail::write(echConfig.length, out);
@@ -30,41 +30,41 @@ inline void detail::write<extensions::ECHConfig>(
 }
 
 template <>
-inline void detail::write<extensions::HpkeCipherSuite>(
-  const extensions::HpkeCipherSuite& suite, folly::io::Appender& out) {
+inline void detail::write<ech::HpkeCipherSuite>(
+  const ech::HpkeCipherSuite& suite, folly::io::Appender& out) {
   detail::write(suite.kdfId, out);
   detail::write(suite.aeadId, out);
 }
 
 template <>
-struct detail::Sizer<extensions::ECHConfig> {
+struct detail::Sizer<ech::ECHConfig> {
   template <class T>
-  size_t getSize(const extensions::ECHConfig& proto) {
+  size_t getSize(const ech::ECHConfig& proto) {
     return sizeof(uint16_t) + sizeof(uint16_t) + detail::getBufSize<uint16_t>(proto.ech_config_content);
   }
 };
 
 template <>
-struct detail::Sizer<extensions::HpkeCipherSuite> {
+struct detail::Sizer<ech::HpkeCipherSuite> {
   template <class T>
-  size_t getSize(const extensions::HpkeCipherSuite&) {
+  size_t getSize(const ech::HpkeCipherSuite&) {
     return sizeof(uint16_t) + sizeof(uint16_t);
   }
 };
 
 template <>
-struct detail::Reader<extensions::HpkeCipherSuite> {
+struct detail::Reader<ech::HpkeCipherSuite> {
   template <class T>
-  size_t read(extensions::HpkeCipherSuite& suite, folly::io::Cursor& cursor) {
+  size_t read(ech::HpkeCipherSuite& suite, folly::io::Cursor& cursor) {
     size_t len = detail::read(suite.kdfId, cursor) + detail::read(suite.aeadId, cursor);
     return len;
   }
 };
 
 template <>
-struct detail::Reader<extensions::ECHConfig> {
+struct detail::Reader<ech::ECHConfig> {
   template <class T>
-  size_t read(extensions::ECHConfig& echConfig, folly::io::Cursor& cursor) {
+  size_t read(ech::ECHConfig& echConfig, folly::io::Cursor& cursor) {
     size_t len = 0;
     len += detail::read(echConfig.version, cursor);
     len += detail::read(echConfig.length, cursor);
@@ -83,12 +83,12 @@ struct detail::Reader<std::array<uint8_t, 16>> {
 };
 
 template <>
-inline Buf encode<extensions::ECHConfigContentDraft7>(extensions::ECHConfigContentDraft7&& ech) {
+inline Buf encode<ech::ECHConfigContentDraft7>(ech::ECHConfigContentDraft7&& ech) {
   auto buf = folly::IOBuf::create(
     detail::getBufSize<uint16_t>(ech.public_name)
     + detail::getBufSize<uint16_t>(ech.public_key)
     + sizeof(uint16_t)
-    + sizeof(extensions::HpkeCipherSuite) * ech.cipher_suites.size()
+    + sizeof(ech::HpkeCipherSuite) * ech.cipher_suites.size()
     + sizeof(uint16_t)
     + 20);
 
@@ -103,7 +103,7 @@ inline Buf encode<extensions::ECHConfigContentDraft7>(extensions::ECHConfigConte
 }
 
 template <>
-inline Buf encode<extensions::ECHConfig>(extensions::ECHConfig&& echConfig) {
+inline Buf encode<ech::ECHConfig>(ech::ECHConfig&& echConfig) {
   auto buf = folly::IOBuf::create(
     sizeof(uint16_t)
     + sizeof(uint16_t)
@@ -118,8 +118,8 @@ inline Buf encode<extensions::ECHConfig>(extensions::ECHConfig&& echConfig) {
 }
 
 template <>
-inline extensions::ECHConfigContentDraft7 decode(folly::io::Cursor& cursor) {
-  extensions::ECHConfigContentDraft7 echConfigContent;
+inline ech::ECHConfigContentDraft7 decode(folly::io::Cursor& cursor) {
+  ech::ECHConfigContentDraft7 echConfigContent;
   detail::readBuf<uint16_t>(echConfigContent.public_name, cursor);
   detail::readBuf<uint16_t>(echConfigContent.public_key, cursor);
   detail::read(echConfigContent.kem_id, cursor);
@@ -131,8 +131,8 @@ inline extensions::ECHConfigContentDraft7 decode(folly::io::Cursor& cursor) {
 }
 
 template <>
-inline extensions::ECHConfig decode(folly::io::Cursor& cursor) {
-  extensions::ECHConfig echConfig;
+inline ech::ECHConfig decode(folly::io::Cursor& cursor) {
+  ech::ECHConfig echConfig;
   detail::read(echConfig.version, cursor);
   detail::read<uint16_t>(echConfig.length, cursor);
   detail::readBuf<uint16_t>(echConfig.ech_config_content, cursor);

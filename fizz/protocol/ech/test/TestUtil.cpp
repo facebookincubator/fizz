@@ -6,11 +6,11 @@
  *  LICENSE file in the root directory of this source tree.
  */
 
-#include <fizz/extensions/ech/test/TestUtil.h>
+#include <fizz/protocol/ech/test/TestUtil.h>
 #include <fizz/crypto/aead/test/TestUtil.h>
 
 namespace fizz {
-namespace extensions {
+namespace ech {
 namespace test {
 
 std::vector<Extension> getExtensions(folly::StringPiece hex) {
@@ -46,5 +46,5 @@ ECHConfig getECHConfig() {
 }
 
 } // namespace test
-} // namespace extensions
+} // namespace ech
 } // namespace fizz

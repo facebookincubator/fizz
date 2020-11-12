@@ -11,11 +11,11 @@
 #include <vector>
 #include <cstdint>
 
-#include <fizz/extensions/ech/Types.h>
+#include <fizz/protocol/ech/Types.h>
 #include <fizz/record/Types.h>
 
 namespace fizz {
-namespace extensions {
+namespace ech {
 struct EncryptedClientHello {
   // The HpkeCipherSuite cipher suite used to encrypt
   // ClientHelloInner.
@@ -42,7 +42,7 @@ struct ECHNonce {
   static constexpr ExtensionType extension_type =
     ExtensionType::ech_nonce;
 };
-} // namespace extensions
+} // namespace ech
 } // namespace fizz
 
-#include <fizz/extensions/ech/ECHExtensions-inl.h>
+#include <fizz/protocol/ech/ECHExtensions-inl.h>

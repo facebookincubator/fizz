@@ -13,7 +13,7 @@
 
 namespace fizz {
 template <>
-inline Extension encodeExtension(const extensions::EncryptedClientHello &ech) {
+inline Extension encodeExtension(const ech::EncryptedClientHello &ech) {
   Extension ext;
   ext.extension_type = ExtensionType::encrypted_client_hello;
   ext.extension_data = folly::IOBuf::create(0);
@@ -28,7 +28,7 @@ inline Extension encodeExtension(const extensions::EncryptedClientHello &ech) {
 }
 
 template <>
-inline Extension encodeExtension(const extensions::ECHNonce &echNonce) {
+inline Extension encodeExtension(const ech::ECHNonce &echNonce) {
   Extension ext;
   ext.extension_type = ExtensionType::ech_nonce;
   ext.extension_data = folly::IOBuf::create(16);
@@ -40,8 +40,8 @@ inline Extension encodeExtension(const extensions::ECHNonce &echNonce) {
 }
 
 template <>
-inline extensions::EncryptedClientHello getExtension(folly::io::Cursor& cs) {
-  extensions::EncryptedClientHello ech;
+inline ech::EncryptedClientHello getExtension(folly::io::Cursor& cs) {
+  ech::EncryptedClientHello ech;
   detail::read(ech.suite, cs);
   detail::readBuf<uint16_t>(ech.record_digest, cs);
   detail::readBuf<uint16_t>(ech.enc, cs);
@@ -51,9 +51,9 @@ inline extensions::EncryptedClientHello getExtension(folly::io::Cursor& cs) {
 }
 
 template <>
-inline extensions::ECHNonce getExtension(folly::io::Cursor& cs) {
-  extensions::ECHNonce echNonce;
+inline ech::ECHNonce getExtension(folly::io::Cursor& cs) {
+  ech::ECHNonce echNonce;
   detail::read(echNonce.nonce, cs);
   return echNonce;
 }
-} // namespace extensions
+} // namespace ech::

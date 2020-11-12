@@ -14,7 +14,7 @@
 #include <fizz/crypto/hpke/Types.h>
 
 namespace fizz {
-namespace extensions {
+namespace ech {
 
 using Buf = std::unique_ptr<folly::IOBuf>;
 using HpkePublicKey = Buf;
@@ -45,7 +45,7 @@ struct ECHConfig {
     Buf ech_config_content;
 };
 
-} // namespace extensions
+} // namespace ech
 } // namespace fizz
 
-#include <fizz/extensions/ech/Types-inl.h>
+#include <fizz/protocol/ech/Types-inl.h>

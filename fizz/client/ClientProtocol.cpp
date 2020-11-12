@@ -161,7 +161,7 @@ Actions ClientStateMachine::processConnect(
     Optional<std::string> sni,
     Optional<CachedPsk> cachedPsk,
     const std::shared_ptr<ClientExtensions>& extensions,
-    Optional<std::vector<extensions::ECHConfig>> echConfigs) {
+    Optional<std::vector<ech::ECHConfig>> echConfigs) {
   Connect connect;
   connect.context = std::move(context);
   connect.sni = std::move(sni);

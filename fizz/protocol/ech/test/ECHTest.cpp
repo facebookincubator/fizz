@@ -9,11 +9,11 @@
 
 #include <folly/portability/GMock.h>
 #include <folly/portability/GTest.h>
-#include <fizz/extensions/ech/ECHExtensions.h>
-#include <fizz/extensions/ech/test/TestUtil.h>
+#include <fizz/protocol/ech/ECHExtensions.h>
+#include <fizz/protocol/ech/test/TestUtil.h>
 
 namespace fizz {
-namespace extensions {
+namespace ech {
 namespace test {
 
 const std::array<unsigned char, 16> kTestECHNonce = {0xCF, 0x21, 0xAD, 0x74, 0xE5, 0x9A, 0x61, 0x11, 0xBE, 0x1D, 0x8C,0x02, 0x1E, 0x65, 0xB8, 0x91};
@@ -75,7 +75,7 @@ TEST(ECHTest, TestECHExtensionEncode) {
   ech.enc = getBuf(kTestEncStr);
   ech.encrypted_ch = getBuf(kTestClientHelloInnerStr);
 
-  Extension encoded = encodeExtension<extensions::EncryptedClientHello>(ech);
+  Extension encoded = encodeExtension<ech::EncryptedClientHello>(ech);
 
   EXPECT_EQ(encoded.extension_type, ExtensionType::encrypted_client_hello);
   EXPECT_TRUE(folly::IOBufEqualTo()(
@@ -109,7 +109,7 @@ TEST(ECHTest, TestECHExtensionDecode) {
 TEST(ECHTest, TestECHNonceEncode) {
   ECHNonce echNonce;
   echNonce.nonce = kTestECHNonce;
-  Extension encoded = encodeExtension<extensions::ECHNonce>(echNonce);
+  Extension encoded = encodeExtension<ech::ECHNonce>(echNonce);
 
   EXPECT_EQ(encoded.extension_type, ExtensionType::ech_nonce);
   EXPECT_TRUE(folly::IOBufEqualTo()(
@@ -130,5 +130,5 @@ TEST(ECHTest, TestECHNonceDecode) {
 }
 
 } // namespace test
-} // namespace extensions
+} // namespace ech
 } // namespace fizz

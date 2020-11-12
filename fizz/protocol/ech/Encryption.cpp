@@ -6,15 +6,15 @@
  *  LICENSE file in the root directory of this source tree.
  */
 
-#include <fizz/extensions/ech/Encryption.h>
+#include <fizz/protocol/ech/Encryption.h>
 
 #include <fizz/crypto/hpke/Utils.h>
 #include <fizz/crypto/Sha256.h>
 #include <fizz/crypto/Sha384.h>
-#include <fizz/extensions/ech/Types.h>
+#include <fizz/protocol/ech/Types.h>
 
 namespace fizz {
-namespace extensions {
+namespace ech {
 
 folly::Optional<SupportedECHConfig> selectECHConfig(
     std::vector<ECHConfig> configs,
@@ -171,5 +171,5 @@ EncryptedClientHello encryptClientHello(
   return clientHelloOuter;
 }
 
-} // namespace extensions
+} // namespace ech
 } // namespace fizz

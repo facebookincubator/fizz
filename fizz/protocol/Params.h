@@ -10,7 +10,7 @@
 
 #include <fizz/client/ClientExtensions.h>
 #include <fizz/client/PskCache.h>
-#include <fizz/extensions/ech/Types.h>
+#include <fizz/protocol/ech/Types.h>
 #include <fizz/protocol/Events.h>
 #include <fizz/record/Types.h>
 #include <fizz/util/Variant.h>
@@ -42,7 +42,7 @@ struct Connect : EventType<Event::Connect> {
   folly::Optional<std::string> sni;
   folly::Optional<client::CachedPsk> cachedPsk;
   std::shared_ptr<ClientExtensions> extensions;
-  folly::Optional<std::vector<extensions::ECHConfig>> echConfigs;
+  folly::Optional<std::vector<ech::ECHConfig>> echConfigs;
 };
 
 struct EarlyAppWrite : EventType<Event::EarlyAppWrite> {

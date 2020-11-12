@@ -28,7 +28,7 @@ class MockClientStateMachine : public ClientStateMachine {
           folly::Optional<std::string> host,
           folly::Optional<CachedPsk> cachedPsk,
           const std::shared_ptr<ClientExtensions>& extensions,
-          const folly::Optional<std::vector<extensions::ECHConfig>>& echConfigs));
+          const folly::Optional<std::vector<ech::ECHConfig>>& echConfigs));
   Actions processConnect(
       const State& state,
       std::shared_ptr<const FizzClientContext> context,
@@ -36,7 +36,7 @@ class MockClientStateMachine : public ClientStateMachine {
       folly::Optional<std::string> host,
       folly::Optional<CachedPsk> cachedPsk,
       const std::shared_ptr<ClientExtensions>& extensions,
-      folly::Optional<std::vector<extensions::ECHConfig>> echConfigs) override {
+      folly::Optional<std::vector<ech::ECHConfig>> echConfigs) override {
     return *_processConnect(
         state, context, verifier, host, cachedPsk, extensions, echConfigs);
   }

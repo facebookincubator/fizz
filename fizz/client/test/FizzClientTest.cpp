@@ -80,7 +80,7 @@ TEST_F(FizzClientTest, TestConnectPskIdentity) {
                      folly::Optional<std::string> sni,
                      folly::Optional<CachedPsk> cachedPsk,
                      const std::shared_ptr<ClientExtensions>& /* unused */,
-                     const folly::Optional<std::vector<extensions::ECHConfig>>& /* unused */) {
+                     const folly::Optional<std::vector<ech::ECHConfig>>& /* unused */) {
             EXPECT_TRUE(cachedPsk);
             EXPECT_EQ(cachedPsk->psk, psk);
             EXPECT_EQ(sni, "www.example.com");

@@ -8,15 +8,15 @@
 
 #pragma once
 
-#include <fizz/extensions/ech/Types.h>
+#include <fizz/protocol/ech/Types.h>
 
 namespace fizz {
-namespace extensions {
+namespace ech {
 namespace test {
 
 ECHConfigContentDraft7 getECHConfigContent();
 ECHConfig getECHConfig();
 
 } // namespace test
-} // namespace extensions
+} // namespace ech
 } // namespace fizz

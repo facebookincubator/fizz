@@ -10,11 +10,11 @@
 
 #include <fizz/crypto/exchange/KeyExchange.h>
 #include <fizz/crypto/hpke/Hpke.h>
-#include <fizz/extensions/ech/Types.h>
-#include <fizz/extensions/ech/ECHExtensions.h>
+#include <fizz/protocol/ech/Types.h>
+#include <fizz/protocol/ech/ECHExtensions.h>
 
 namespace fizz {
-namespace extensions {
+namespace ech {
 
 struct SupportedECHConfig {
   ECHConfig config;
@@ -39,5 +39,5 @@ EncryptedClientHello encryptClientHello(
     ClientHello clientHello,
     hpke::SetupResult setupResult);
 
-} // namespace extensions
+} // namespace ech
 } // namespace fizz

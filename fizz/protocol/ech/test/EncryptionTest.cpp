@@ -12,14 +12,14 @@
 
 #include <fizz/crypto/hpke/Hpke.h>
 #include <fizz/crypto/hpke/Utils.h>
-#include <fizz/extensions/ech/Encryption.h>
-#include <fizz/extensions/ech/test/TestUtil.h>
+#include <fizz/protocol/ech/Encryption.h>
+#include <fizz/protocol/ech/test/TestUtil.h>
 #include <fizz/protocol/test/TestMessages.h>
 
 using namespace fizz::test;
 
 namespace fizz {
-namespace extensions {
+namespace ech {
 namespace test {
 
 static constexpr folly::StringPiece expectedClientHelloInner{
@@ -162,5 +162,5 @@ TEST(EncryptionTest, TestValidEncryptClientHello) {
 }
 
 } // namespace test
-} // namespace extensions
+} // namespace ech
 } // namespace fizz
