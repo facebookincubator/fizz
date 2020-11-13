@@ -11,7 +11,7 @@
 
 namespace fizz {
 
-uint16_t getDHKEMId(NamedGroup group) {
+static uint16_t getDHKEMId(NamedGroup group) {
   switch (group) {
     case NamedGroup::secp256r1:
       return 0x0010;
@@ -26,7 +26,7 @@ uint16_t getDHKEMId(NamedGroup group) {
   }
 }
 
-Buf generateSuiteId(NamedGroup group) {
+static Buf generateSuiteId(NamedGroup group) {
   std::unique_ptr<folly::IOBuf> buf = folly::IOBuf::copyBuffer("KEM");
   folly::io::Appender appender(buf.get(), 2);
   appender.writeBE<uint16_t>(getDHKEMId(group));

@@ -12,7 +12,7 @@
 namespace fizz {
 namespace hpke {
 
-std::unique_ptr<folly::IOBuf> writeKeyScheduleContext(Mode mode, const std::vector<uint8_t> &pskIdHash,
+static std::unique_ptr<folly::IOBuf> writeKeyScheduleContext(Mode mode, const std::vector<uint8_t> &pskIdHash,
   const std::vector<uint8_t> &infoHash) {
   std::unique_ptr<folly::IOBuf> keyScheduleContext = folly::IOBuf::create(0);
   folly::io::Appender appender(keyScheduleContext.get(), 20);

@@ -73,7 +73,7 @@ static hpke::SetupParam getSetupParam(
                           std::move(suiteId)};
 }
 
-std::unique_ptr<folly::IOBuf> getRecordDigest(
+static std::unique_ptr<folly::IOBuf> getRecordDigest(
     std::unique_ptr<folly::IOBuf> echConfig,
     hpke::KDFId id) {
   switch (id) {
