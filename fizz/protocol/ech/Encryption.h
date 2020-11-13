@@ -12,6 +12,7 @@
 #include <fizz/crypto/hpke/Hpke.h>
 #include <fizz/protocol/ech/Types.h>
 #include <fizz/protocol/ech/ECHExtensions.h>
+#include <fizz/protocol/Factory.h>
 
 namespace fizz {
 namespace ech {
@@ -37,6 +38,12 @@ EncryptedClientHello encryptClientHello(
     const SupportedECHConfig& supportedConfig,
     ClientHello clientHello,
     hpke::SetupResult setupResult);
+
+folly::Optional<ClientHello> tryToDecryptECH(
+    const Factory& factory,
+    NamedGroup group,
+    const ech::EncryptedClientHello& echExtension,
+    std::unique_ptr<KeyExchange> kex);
 
 } // namespace ech
 } // namespace fizz

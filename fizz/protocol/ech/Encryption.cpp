@@ -8,10 +8,11 @@
 
 #include <fizz/protocol/ech/Encryption.h>
 
-#include <fizz/crypto/hpke/Utils.h>
 #include <fizz/crypto/Sha256.h>
 #include <fizz/crypto/Sha384.h>
+#include <fizz/protocol/ech/ECHExtensions.h>
 #include <fizz/protocol/ech/Types.h>
+#include <fizz/crypto/hpke/Utils.h>
 
 namespace fizz {
 namespace ech {
@@ -166,6 +167,70 @@ EncryptedClientHello encryptClientHello(
   clientHelloOuter.encrypted_ch = std::move(encryptedCh);
 
   return clientHelloOuter;
+}
+
+folly::Optional<ClientHello> tryToDecryptECH(
+    const Factory& factory,
+    NamedGroup group,
+    const ech::EncryptedClientHello& echExtension,
+    std::unique_ptr<KeyExchange> kex) {
+  const std::unique_ptr<folly::IOBuf> prefix{
+      folly::IOBuf::copyBuffer("HPKE-05 ")};
+
+  hpke::KDFId kdfId = echExtension.suite.kdfId;
+
+  // Try to decrypt and get the client hello inner
+  try {
+    auto dhkem = std::make_unique<DHKEM>(
+        std::move(kex),
+        group,
+        hpke::makeHpkeHkdf(prefix->clone(), kdfId));
+    auto aeadId = echExtension.suite.aeadId;
+    auto suiteId = hpke::generateHpkeSuiteId(
+        group, hpke::getHashFunction(kdfId), hpke::getCipherSuite(aeadId));
+
+    hpke::SetupParam setupParam{
+        std::move(dhkem),
+        factory.makeAead(hpke::getCipherSuite(aeadId)),
+        hpke::makeHpkeHkdf(prefix->clone(), kdfId),
+        std::move(suiteId)};
+
+    auto context = hpke::setupWithDecap(
+        hpke::Mode::Base,
+        echExtension.enc->clone()->coalesce(),
+        folly::IOBuf::copyBuffer("tls13-ech"),
+        folly::none,
+        std::move(setupParam));
+
+    auto encodedClientHelloInner = context.open(
+        folly::IOBuf::copyBuffer("").get(), echExtension.encrypted_ch->clone());
+
+    // Set actual client hello, ECH acceptance
+    folly::io::Cursor encodedECHInnerCursor(encodedClientHelloInner.get());
+    auto decodedChlo = decode<ClientHello>(encodedECHInnerCursor);
+    decodedChlo.originalEncoding = encodeHandshake(decodedChlo);
+
+    // Check ECH nonce
+    std::unique_ptr<folly::IOBuf> expectedNonceValue =
+      context.exportSecret(folly::IOBuf::copyBuffer("tls13-ech-nonce"), 16);
+    auto it = findExtension(decodedChlo.extensions, ExtensionType::ech_nonce);
+    if (it == decodedChlo.extensions.end()) {
+      return folly::none;
+    }
+    folly::io::Cursor cs{it->extension_data.get()};
+    auto gotEchNonceExtension = getExtension<ech::ECHNonce>(cs);
+
+    auto gotNonceValue = folly::IOBuf::copyBuffer(gotEchNonceExtension.nonce);
+    if (!folly::IOBufEqualTo()(gotNonceValue, expectedNonceValue)) {
+      return folly::none;
+    }
+
+    // TODO: Scan for outer_extensions extension.
+    return decodedChlo;
+  } catch (const std::exception&) {
+  }
+
+  return folly::none;
 }
 
 } // namespace ech
