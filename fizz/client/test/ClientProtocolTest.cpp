@@ -13,6 +13,8 @@
 #include <fizz/client/test/Mocks.h>
 #include <fizz/client/test/Utilities.h>
 #include <fizz/protocol/clock/test/Mocks.h>
+#include <fizz/protocol/ech/ECHExtensions.h>
+#include <fizz/protocol/ech/test/TestUtil.h>
 #include <fizz/protocol/test/Matchers.h>
 #include <fizz/protocol/test/ProtocolTest.h>
 #include <fizz/protocol/test/TestMessages.h>
@@ -967,6 +969,163 @@ TEST_F(ClientProtocolTest, TestConnectCompat) {
   EXPECT_EQ(state_.state(), StateEnum::ExpectingServerHello);
   EXPECT_FALSE(state_.sentCCS());
   EXPECT_FALSE(state_.legacySessionId().value()->empty());
+}
+
+TEST_F(ClientProtocolTest, TestConnectECH) {
+  Connect connect;
+  connect.context = context_;
+  connect.echConfigs = std::vector<ech::ECHConfig>();
+  connect.echConfigs->push_back(ech::test::getECHConfig());
+  connect.sni = "www.hostname.com";
+  auto actualChlo = getDefaultClientHello();
+
+  // Two randoms should be generated, 1 for the client hello inner and 1 for the
+  // client hello outer.
+  EXPECT_CALL(*factory_, makeRandom()).Times(2);
+
+  auto actions = detail::processEvent(state_, std::move(connect));
+  expectActions<MutateState, WriteToSocket>(actions);
+  processStateMutations(actions);
+
+  EXPECT_EQ(state_.state(), StateEnum::ExpectingServerHello);
+  EXPECT_TRUE(state_.encodedClientHello().has_value());
+
+  auto encodedClientHello = state_.encodedClientHello().value()->clone();
+
+  // We expect this to be false because the encoded client hello should be
+  // the encrypted client hello, which contains the actualChlo.
+  EXPECT_FALSE(
+      IOBufEqualTo()(encodedClientHello, encodeHandshake(actualChlo)));
+
+  // Get rid of handshake header (type + version).
+  encodedClientHello->trimStart(4);
+  ClientHello decodedChlo = decode<ClientHello>(std::move(encodedClientHello));
+
+  // Check we used fake server name.
+  auto sniExt = getExtension<ServerNameList>(decodedChlo.extensions);
+  EXPECT_TRUE(sniExt.hasValue());
+  auto echConfigContent = ech::test::getECHConfigContent();
+  EXPECT_TRUE(IOBufEqualTo()(
+      sniExt.value().server_name_list[0].hostname,
+      echConfigContent.public_name->clone()));
+
+  // Check there exists client hello inner extension.
+  auto echExtension =
+      getExtension<ech::EncryptedClientHello>(decodedChlo.extensions);
+  EXPECT_TRUE(echExtension.hasValue());
+}
+
+TEST_F(ClientProtocolTest, TestConnectECHWithPSK) {
+  Connect connect;
+  connect.context = context_;
+  connect.echConfigs = std::vector<ech::ECHConfig>();
+  connect.echConfigs->push_back(ech::test::getECHConfig());
+
+  CachedPsk psk;
+  psk.psk = "External";
+  psk.secret = "externalsecret";
+  psk.type = PskType::External;
+  psk.version = ProtocolVersion::tls_1_3;
+  psk.cipher = CipherSuite::TLS_AES_128_GCM_SHA256;
+  connect.cachedPsk = psk;
+
+  auto actions = detail::processEvent(state_, std::move(connect));
+  expectActions<MutateState, WriteToSocket>(actions);
+  processStateMutations(actions);
+
+  EXPECT_EQ(state_.attemptedPsk()->psk, psk.psk);
+  EXPECT_TRUE(state_.encodedClientHello().has_value());
+
+  // Check client hello outer doesn't have a PSK extension.
+  auto encodedHello = std::move(state_.encodedClientHello().value());
+  encodedHello->trimStart(4);
+  ClientHello decodedChlo = decode<ClientHello>(std::move(encodedHello));
+  auto pskExt = getExtension<ClientPresharedKey>(decodedChlo.extensions);
+  EXPECT_FALSE(pskExt.hasValue());
+}
+
+TEST_F(ClientProtocolTest, TestECHKeyUsedInKeyGeneration) {
+  setupExpectingServerHello();
+  auto encodedEncryptedClientHello = "encrypted client hello";
+  state_.encodedClientHello() =
+      folly::IOBuf::copyBuffer(encodedEncryptedClientHello);
+
+  mockKeyScheduler_ = new MockKeyScheduler();
+  mockHandshakeContext_ = new MockHandshakeContext();
+  EXPECT_CALL(*factory_, makeKeyScheduler(CipherSuite::TLS_AES_128_GCM_SHA256))
+      .WillOnce(InvokeWithoutArgs(
+          [=]() { return std::unique_ptr<KeyScheduler>(mockKeyScheduler_); }));
+  EXPECT_CALL(
+      *factory_, makeHandshakeContext(CipherSuite::TLS_AES_128_GCM_SHA256))
+      .WillOnce(InvokeWithoutArgs([=]() {
+        return std::unique_ptr<HandshakeContext>(mockHandshakeContext_);
+      }));
+
+  Sequence contextSeq;
+  EXPECT_CALL(
+      *mockHandshakeContext_,
+      appendToTranscript(BufMatches(encodedEncryptedClientHello)))
+      .InSequence(contextSeq);
+
+  EXPECT_CALL(
+      *mockHandshakeContext_, appendToTranscript(BufMatches("shloencoding")))
+      .InSequence(contextSeq);
+  EXPECT_CALL(*mockHandshakeContext_, getHandshakeContext())
+      .InSequence(contextSeq)
+      .WillRepeatedly(Invoke([]() { return IOBuf::copyBuffer("chlo_shlo"); }));
+  EXPECT_CALL(
+      *mockKeyScheduler_,
+      getSecret(
+          HandshakeSecrets::ServerHandshakeTraffic, RangeMatches("chlo_shlo")))
+      .WillOnce(InvokeWithoutArgs([]() {
+        return DerivedSecret(
+            std::vector<uint8_t>({'s', 'h', 't'}),
+            HandshakeSecrets::ServerHandshakeTraffic);
+      }));
+  EXPECT_CALL(
+      *mockKeyScheduler_,
+      getSecret(
+          HandshakeSecrets::ClientHandshakeTraffic, RangeMatches("chlo_shlo")))
+      .WillOnce(InvokeWithoutArgs([]() {
+        return DerivedSecret(
+            std::vector<uint8_t>({'e', 'c', 'h', 'k', 'e', 'y'}),
+            HandshakeSecrets::ClientHandshakeTraffic);
+      }));
+  EXPECT_CALL(*mockKeyScheduler_, getTrafficKey(RangeMatches("sht"), _, _))
+      .WillOnce(InvokeWithoutArgs([]() {
+        return TrafficKey{IOBuf::copyBuffer("serverkey"),
+                          IOBuf::copyBuffer("serveriv")};
+      }));
+  EXPECT_CALL(*mockKeyScheduler_, getTrafficKey(RangeMatches("echkey"), _, _))
+      .WillOnce(InvokeWithoutArgs([]() {
+        return TrafficKey{IOBuf::copyBuffer("clientkey"),
+                          IOBuf::copyBuffer("clientiv")};
+      }));
+  MockAead* raead;
+  MockAead* waead;
+  MockEncryptedReadRecordLayer* rrl;
+  MockEncryptedWriteRecordLayer* wrl;
+  expectAeadCreation(&waead, &raead);
+
+  expectEncryptedReadRecordLayerCreation(&rrl, &raead, StringPiece("sht"));
+  expectEncryptedWriteRecordLayerCreation(&wrl, &waead, StringPiece("echkey"));
+
+  auto actions = detail::processEvent(state_, TestMessages::serverHello());
+  expectActions<MutateState, SecretAvailable>(actions);
+
+  expectSecret(
+      actions, HandshakeSecrets::ServerHandshakeTraffic, StringPiece("sht"));
+  expectSecret(
+      actions, HandshakeSecrets::ClientHandshakeTraffic, StringPiece("echkey"));
+  processStateMutations(actions);
+  EXPECT_EQ(state_.state(), StateEnum::ExpectingEncryptedExtensions);
+  EXPECT_EQ(state_.readRecordLayer().get(), rrl);
+  EXPECT_EQ(
+      state_.readRecordLayer()->getEncryptionLevel(),
+      EncryptionLevel::Handshake);
+  EXPECT_EQ(state_.writeRecordLayer().get(), wrl);
+  EXPECT_EQ(state_.handshakeContext().get(), mockHandshakeContext_);
+  EXPECT_EQ(state_.keyScheduler().get(), mockKeyScheduler_);
 }
 
 TEST_F(ClientProtocolTest, TestConnectCompatEarly) {

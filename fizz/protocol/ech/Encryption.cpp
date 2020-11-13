@@ -95,9 +95,8 @@ std::unique_ptr<folly::IOBuf> getRecordDigest(
   }
 }
 
-void addECHNonceExtensionToClientHello(
-    const hpke::HpkeContext& context,
-    ClientHello& clientHello) {
+ech::ECHNonce createNonceExtension(
+    const hpke::HpkeContext& context) {
   std::array<uint8_t, 16> nonceValueArr;
 
   // Generate nonce value
@@ -109,10 +108,8 @@ void addECHNonceExtensionToClientHello(
       nonceValueRange.begin(),
       nonceValueRange.begin() + 16,
       nonceValueArr.begin());
-  ECHNonce echNonce{nonceValueArr};
 
-  auto echNonceExt = encodeExtension(echNonce);
-  clientHello.extensions.push_back(std::move(echNonceExt));
+  return ECHNonce{nonceValueArr};
 }
 
 hpke::SetupResult constructHpkeSetupResult(

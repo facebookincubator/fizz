@@ -267,6 +267,15 @@ class State {
   }
 
   /**
+   * Contains the encoded encrypted client hello. May be null.
+   *
+   * Should not be used outside of the state machine.
+   */
+  const folly::Optional<Buf>& encodedECH() const {
+    return encodedECH_;
+  }
+
+  /**
    * Contains the extensions requested in the initial ClientHello. Used to
    * later verify extensions sent by the server.
    *
@@ -473,6 +482,10 @@ class State {
     return encodedClientHello_;
   }
 
+  auto& encodedECH() {
+    return encodedECH_;
+  }
+
   auto& keyExchangers() const {
     return keyExchangers_;
   }
@@ -554,6 +567,7 @@ class State {
   folly::Optional<Buf> legacySessionId_;
   bool sentCCS_{false};
   folly::Optional<Buf> encodedClientHello_;
+  folly::Optional<Buf> encodedECH_;
   mutable folly::Optional<std::map<NamedGroup, std::unique_ptr<KeyExchange>>>
       keyExchangers_;
   folly::Optional<std::vector<ExtensionType>> requestedExtensions_;

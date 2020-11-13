@@ -11,6 +11,8 @@
 #include <fizz/client/PskCache.h>
 #include <fizz/client/State.h>
 #include <fizz/crypto/Utils.h>
+#include <fizz/crypto/hpke/Utils.h>
+#include <fizz/protocol/ech/Encryption.h>
 #include <fizz/protocol/CertificateVerifier.h>
 #include <fizz/protocol/Protocol.h>
 #include <fizz/protocol/StateMachine.h>
@@ -423,6 +425,8 @@ static ClientHello getClientHello(
     const Optional<EarlyDataParams>& earlyDataParams,
     const Buf& legacySessionId,
     ClientExtensions* extensions,
+    Optional<ech::ECHNonce> echNonceExtension,
+    Optional<ech::EncryptedClientHello> echExtension,
     Buf cookie = nullptr) {
   ClientHello chlo;
   chlo.legacy_version = ProtocolVersion::tls_1_2;
@@ -497,6 +501,14 @@ static ClientHello getClientHello(
     for (auto& ext : additionalExtensions) {
       chlo.extensions.push_back(std::move(ext));
     }
+  }
+
+  if (echNonceExtension.has_value()) {
+    chlo.extensions.push_back(encodeExtension(std::move(echNonceExtension.value())));
+  }
+
+  if (echExtension.has_value()) {
+    chlo.extensions.push_back(encodeExtension(std::move(echExtension.value())));
   }
 
   return chlo;
@@ -608,6 +620,61 @@ static Optional<EarlyDataParams> getEarlyDataParams(
   return params;
 }
 
+static ech::SupportedECHConfig getSupportedECHConfig(
+    std::vector<ech::ECHConfig> echConfigs,
+    const std::vector<CipherSuite>& supportedCiphers,
+    const std::vector<NamedGroup>& supportedGroups) {
+
+  // Convert vectors to use HPKE types.
+  std::vector<hpke::KEMId> supportedKEMs(supportedGroups.size());
+  for (const auto& group : supportedGroups) {
+    supportedKEMs.push_back(hpke::getKEMId(group));
+  }
+  std::vector<hpke::AeadId> supportedAeads(supportedCiphers.size());
+  for (const auto& suite : supportedCiphers) {
+    supportedAeads.push_back(hpke::getAeadId(suite));
+  }
+
+  // Get a supported ECH config.
+  folly::Optional<ech::SupportedECHConfig> supportedConfig =
+      selectECHConfig(
+          std::move(echConfigs), supportedKEMs, supportedAeads);
+  if (!supportedConfig.hasValue()) {
+    throw FizzException(
+        "ECH requested but we don't support any of the provided configs",
+        AlertDescription::internal_error);
+  }
+
+  return std::move(supportedConfig.value());
+}
+
+namespace {
+  struct ECHParams {
+    hpke::SetupResult setupResult;
+    ech::SupportedECHConfig supportedECHConfig;
+    Buf fakeSni;
+  };
+}
+
+static ECHParams setupECH(
+    std::vector<ech::ECHConfig> echConfigs,
+    const std::vector<CipherSuite>& supportedCiphers,
+    const std::vector<NamedGroup>& supportedGroups,
+    const Factory& factory) {
+  auto supportedECHConfig = getSupportedECHConfig(
+      std::move(echConfigs), supportedCiphers, supportedGroups);
+
+  auto configContent = supportedECHConfig.config.ech_config_content->clone();
+  folly::io::Cursor cursor(configContent.get());
+  auto echConfigContent = decode<ech::ECHConfigContentDraft7>(cursor);
+  auto fakeSni = echConfigContent.public_name->clone();
+
+  auto kex = factory.makeKeyExchange(getKexGroup(echConfigContent.kem_id));
+  auto setupResult = constructHpkeSetupResult(std::move(kex), supportedECHConfig);
+
+  return ECHParams{std::move(setupResult), std::move(supportedECHConfig), std::move(fakeSni)};
+}
+
 Actions
 EventHandler<ClientTypes, StateEnum::Uninitialized, Event::Connect>::handle(
     const State& /*state*/,
@@ -650,6 +717,23 @@ EventHandler<ClientTypes, StateEnum::Uninitialized, Event::Connect>::handle(
 
   auto keyExchangers = getKeyExchangers(*context->getFactory(), selectedShares);
 
+  // If ECH requested, setup ECH primitives.
+  // These will also be used later in the construction of the client hello outer for ECH.
+  folly::Optional<ECHParams> echParams = folly::none;
+  if (connect.echConfigs.has_value()) {
+    echParams = setupECH(
+        std::move(connect.echConfigs.value()),
+        context->getSupportedCiphers(),
+        context->getSupportedGroups(),
+        *context->getFactory());
+  }
+
+  // Create ECH nonce extension, if we're constructing an ECH.
+  auto echNonceExt = echParams.has_value()
+      ? folly::Optional<ech::ECHNonce>(
+            ech::createNonceExtension(echParams->setupResult.context))
+      : folly::none;
+
   auto chlo = getClientHello(
     *context->getFactory(),
     random,
@@ -664,7 +748,9 @@ EventHandler<ClientTypes, StateEnum::Uninitialized, Event::Connect>::handle(
     context->getSupportedCertDecompressionAlgorithms(),
     earlyDataParams,
     legacySessionId,
-    connect.extensions.get());
+    connect.extensions.get(),
+    echNonceExt,
+    Optional<ech::EncryptedClientHello>(folly::none));
 
   std::vector<ExtensionType> requestedExtensions;
   for (const auto& extension : chlo.extensions) {
@@ -719,6 +805,46 @@ EventHandler<ClientTypes, StateEnum::Uninitialized, Event::Connect>::handle(
     encodedClientHello = encodeHandshake(chlo);
   }
 
+  // Create the ECH (both the client hello inner and client hello outer)
+  folly::Optional<Buf> encodedECH = folly::none;
+  if (echParams.has_value()) {
+
+    // Create the encrypted client hello inner extension.
+    auto innerClientHelloExtension = encryptClientHello(
+        echParams->supportedECHConfig,
+        std::move(chlo),
+        std::move(echParams->setupResult));
+
+    // Set ECH to be the client hello that is sent
+    auto newFakeRandom = context->getFactory()->makeRandom();
+    auto newFakeSni =
+        echParams->fakeSni->clone()->moveToFbString().toStdString();
+
+    chlo = getClientHello(
+        *context->getFactory(),
+        newFakeRandom,
+        context->getSupportedCiphers(),
+        context->getSupportedVersions(),
+        context->getSupportedGroups(),
+        keyExchangers,
+        context->getSupportedSigSchemes(),
+        context->getSupportedPskModes(),
+        newFakeSni,
+        context->getSupportedAlpns(),
+        context->getSupportedCertDecompressionAlgorithms(),
+        earlyDataParams,
+        legacySessionId,
+        connect.extensions.get(),
+        Optional<ech::ECHNonce>(folly::none),
+        std::move(innerClientHelloExtension));
+
+    // Save client hello inner
+    encodedECH = std::move(encodedClientHello);
+
+    // Update the client hello with the ECH client hello outer
+    encodedClientHello = encodeHandshake(chlo);
+  }
+
   auto readRecordLayer = context->getFactory()->makePlaintextReadRecordLayer();
   auto writeRecordLayer =
       context->getFactory()->makePlaintextWriteRecordLayer();
@@ -733,6 +859,7 @@ EventHandler<ClientTypes, StateEnum::Uninitialized, Event::Connect>::handle(
   MutateState saveState([context = std::move(context),
                          verifier = connect.verifier,
                          encodedClientHello = std::move(encodedClientHello),
+                         encodedECH = std::move(encodedECH),
                          readRecordLayer = std::move(readRecordLayer),
                          writeRecordLayer = std::move(writeRecordLayer),
                          keyExchangers = std::move(keyExchangers),
@@ -746,6 +873,7 @@ EventHandler<ClientTypes, StateEnum::Uninitialized, Event::Connect>::handle(
     newState.context() = std::move(context);
     newState.verifier() = verifier;
     newState.encodedClientHello() = std::move(encodedClientHello);
+    newState.encodedECH() = std::move(encodedECH);
     newState.readRecordLayer() = std::move(readRecordLayer);
     newState.writeRecordLayer() = std::move(writeRecordLayer);
     newState.keyExchangers() = std::move(keyExchangers);
@@ -987,7 +1115,11 @@ EventHandler<ClientTypes, StateEnum::ExpectingServerHello, Event::ServerHello>::
   } else {
     handshakeContext =
         state.context()->getFactory()->makeHandshakeContext(cipher);
-    handshakeContext->appendToTranscript(state.encodedClientHello());
+    if (state.encodedECH().has_value()) {
+      handshakeContext->appendToTranscript(state.encodedECH().value());
+    } else {
+      handshakeContext->appendToTranscript(state.encodedClientHello());
+    }
   }
   handshakeContext->appendToTranscript(*shlo.originalEncoding);
 
@@ -1214,6 +1346,8 @@ Actions EventHandler<
       folly::none,
       state.legacySessionId(),
       state.extensions(),
+      Optional<ech::ECHNonce>(folly::none),
+      Optional<ech::EncryptedClientHello>(folly::none),
       cookie ? std::move(cookie->cookie) : nullptr);
 
   auto firstHandshakeContext =

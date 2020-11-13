@@ -26,9 +26,8 @@ folly::Optional<SupportedECHConfig> selectECHConfig(
     std::vector<hpke::KEMId> supportedKEMs,
     std::vector<hpke::AeadId> supportedAeads);
 
-void addECHNonceExtensionToClientHello(
-    const hpke::HpkeContext& context,
-    ClientHello& clientHello);
+ech::ECHNonce createNonceExtension(
+    const hpke::HpkeContext& context);
 
 hpke::SetupResult constructHpkeSetupResult(
     std::unique_ptr<KeyExchange> kex,
