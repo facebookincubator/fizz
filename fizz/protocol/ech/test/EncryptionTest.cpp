@@ -159,6 +159,23 @@ TEST(EncryptionTest, TestValidEncryptClientHello) {
 
   EXPECT_TRUE(folly::IOBufEqualTo()(
       gotECH.record_digest, toIOBuf(expectedRecordDigest)));
+
+  folly::io::Cursor encodedECHInnerCursor(gotClientHelloInner.get());
+  auto decodedChlo = decode<ClientHello>(encodedECHInnerCursor);
+  auto expectedChlo = TestMessages::clientHello();
+
+  EXPECT_TRUE(folly::IOBufEqualTo()(
+      decodedChlo.legacy_session_id, expectedChlo.legacy_session_id));
+  EXPECT_EQ(decodedChlo.extensions.size(), expectedChlo.extensions.size());
+  for (size_t extIndex = 0; extIndex < decodedChlo.extensions.size(); ++extIndex) {
+    EXPECT_TRUE(folly::IOBufEqualTo()(
+        decodedChlo.extensions[extIndex].extension_data,
+        expectedChlo.extensions[extIndex].extension_data));
+  }
+  EXPECT_EQ(decodedChlo.random, expectedChlo.random);
+  EXPECT_EQ(decodedChlo.cipher_suites, expectedChlo.cipher_suites);
+  EXPECT_EQ(decodedChlo.legacy_compression_methods, expectedChlo.legacy_compression_methods);
+
 }
 
 } // namespace test

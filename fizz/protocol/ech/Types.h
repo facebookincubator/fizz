@@ -27,6 +27,9 @@ enum class ECHVersion: uint16_t {
 struct HpkeCipherSuite {
     hpke::KDFId kdfId;
     hpke::AeadId aeadId;
+    bool operator==(const HpkeCipherSuite& other) const {
+    return kdfId == other.kdfId && aeadId == other.aeadId;
+  }
 };
 
 struct ECHConfigContentDraft7 {
