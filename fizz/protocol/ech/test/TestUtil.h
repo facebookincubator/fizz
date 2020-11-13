@@ -9,6 +9,8 @@
 #pragma once
 
 #include <fizz/protocol/ech/Types.h>
+#include <fizz/protocol/ech/ECHExtensions.h>
+#include <fizz/crypto/exchange/KeyExchange.h>
 
 namespace fizz {
 namespace ech {
@@ -16,6 +18,7 @@ namespace test {
 
 ECHConfigContentDraft7 getECHConfigContent();
 ECHConfig getECHConfig();
+EncryptedClientHello getECH(ClientHello chlo, std::unique_ptr<KeyExchange> kex);
 
 } // namespace test
 } // namespace ech

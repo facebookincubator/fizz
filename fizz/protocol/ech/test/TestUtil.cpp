@@ -7,6 +7,7 @@
  */
 
 #include <fizz/protocol/ech/test/TestUtil.h>
+#include <fizz/protocol/ech/Encryption.h>
 #include <fizz/crypto/aead/test/TestUtil.h>
 
 namespace fizz {
@@ -43,6 +44,16 @@ ECHConfig getECHConfig() {
   testConfig.version = ECHVersion::V7;
   testConfig.ech_config_content = encode(getECHConfigContent());
   return testConfig;
+}
+
+EncryptedClientHello getECH(ClientHello chlo, std::unique_ptr<KeyExchange> kex) {
+  auto echConfigContent = getECHConfigContent();
+  auto cipherSuite = echConfigContent.cipher_suites[0];
+  auto supportedECHConfig = SupportedECHConfig{getECHConfig(), cipherSuite};
+  auto setupResult =
+      constructHpkeSetupResult(std::move(kex), supportedECHConfig);
+  return encryptClientHello(
+      supportedECHConfig, std::move(chlo), std::move(setupResult));
 }
 
 } // namespace test
