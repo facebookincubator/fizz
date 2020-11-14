@@ -127,7 +127,7 @@ TEST(EncryptionTest, TestValidECHConfigContent) {
       hpke::AeadId::TLS_AES_128_GCM_SHA256};
 
   folly::Optional<SupportedECHConfig> result =
-      selectECHConfig(std::move(configs), supportedKEMs, supportedAeads);
+      selectECHConfig(configs, supportedKEMs, supportedAeads);
   EXPECT_TRUE(result.hasValue());
 
   ECHConfig gotConfig = std::move(result.value().config);
@@ -157,7 +157,7 @@ TEST(EncryptionTest, TestInvalidECHConfigContent) {
       hpke::AeadId::TLS_AES_128_GCM_SHA256};
 
   folly::Optional<SupportedECHConfig> result =
-      selectECHConfig(std::move(configs), supportedKEMs, supportedAeads);
+      selectECHConfig(configs, supportedKEMs, supportedAeads);
 
   EXPECT_FALSE(result.hasValue());
 }

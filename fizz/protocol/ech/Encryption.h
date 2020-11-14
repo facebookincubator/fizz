@@ -23,7 +23,7 @@ struct SupportedECHConfig {
 };
 
 folly::Optional<SupportedECHConfig> selectECHConfig(
-    std::vector<ECHConfig> configs,
+    const std::vector<ECHConfig>& configs,
     std::vector<hpke::KEMId> supportedKEMs,
     std::vector<hpke::AeadId> supportedAeads);
 

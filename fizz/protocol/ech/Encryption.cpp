@@ -18,12 +18,12 @@ namespace fizz {
 namespace ech {
 
 folly::Optional<SupportedECHConfig> selectECHConfig(
-    std::vector<ECHConfig> configs,
+    const std::vector<ECHConfig>& configs,
     std::vector<hpke::KEMId> supportedKEMs,
     std::vector<hpke::AeadId> supportedAeads) {
   // Received set of configs is in order of server preference so
   // we should be selecting the first one that we can support.
-  for (auto& config : configs) {
+  for (const auto& config : configs) {
     folly::io::Cursor cursor(config.ech_config_content.get());
     if (config.version == ECHVersion::V7) {
       auto echConfig = decode<ECHConfigContentDraft7>(cursor);
@@ -45,7 +45,7 @@ folly::Optional<SupportedECHConfig> selectECHConfig(
           auto associatedCipherKdf =
               hpke::getKDFId(getHashFunction(getCipherSuite(suite.aeadId)));
           if (suite.kdfId == associatedCipherKdf) {
-            return SupportedECHConfig{std::move(config), suite};
+            return SupportedECHConfig{config.clone(), suite};
           }
         }
       }

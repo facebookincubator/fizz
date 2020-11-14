@@ -41,11 +41,17 @@ struct ECHConfigContentDraft7 {
     std::vector<Extension> extensions;
 };
 
-
 struct ECHConfig {
-    ECHVersion version;
-    uint16_t length;
-    Buf ech_config_content;
+  ECHVersion version;
+  uint16_t length;
+  Buf ech_config_content;
+  ECHConfig clone() const {
+    ECHConfig copy;
+    copy.version = this->version;
+    copy.length = this->length;
+    copy.ech_config_content = this->ech_config_content->clone();
+    return copy;
+  }
 };
 
 } // namespace ech
