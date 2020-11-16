@@ -26,8 +26,8 @@ static std::unique_ptr<folly::IOBuf> writeKeyScheduleContext(Mode mode, const st
 HpkeContext keySchedule(KeyScheduleParams params) {
   auto hkdf = std::move(params.hkdf);
 
-  auto psk = params.pskInputs.hasValue() ? std::move(params.pskInputs.value().psk) : PskInputs::defaultPsk->clone();
-  auto pskId = params.pskInputs.hasValue() ? std::move(params.pskInputs.value().id) : PskInputs::defaultId->clone();
+  auto psk = params.pskInputs.hasValue() ? std::move(params.pskInputs.value().psk) : PskInputs::getDefaultPsk();
+  auto pskId = params.pskInputs.hasValue() ? std::move(params.pskInputs.value().id) : PskInputs::getDefaultId();
 
   // Generate hashes for key schedule context
   std::vector<uint8_t> pskIdHash = hkdf->labeledExtract(folly::IOBuf::copyBuffer(""), folly::ByteRange(folly::StringPiece("psk_id_hash")),

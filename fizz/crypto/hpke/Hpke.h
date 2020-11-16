@@ -16,20 +16,17 @@ namespace fizz {
 namespace hpke {
 
 struct PskInputs {
-    static inline std::unique_ptr<folly::IOBuf> defaultPsk = folly::IOBuf::copyBuffer("");
-    static inline std::unique_ptr<folly::IOBuf> defaultId = folly::IOBuf::copyBuffer("");
-
     Mode mode;
     std::unique_ptr<folly::IOBuf> psk;
     std::unique_ptr<folly::IOBuf> id;
 
    PskInputs(Mode givenMode, std::unique_ptr<folly::IOBuf> givenPsk, std::unique_ptr<folly::IOBuf> givenId):
     mode(givenMode), psk(std::move(givenPsk)), id(std::move(givenId)) {
-      bool gotPsk = folly::IOBufNotEqualTo()(psk, defaultPsk);
-      bool gotPskId = folly::IOBufNotEqualTo()(id, defaultId);
+    bool gotPsk = folly::IOBufNotEqualTo()(psk, getDefaultPsk());
+    bool gotPskId = folly::IOBufNotEqualTo()(id, getDefaultId());
 
-      if (gotPsk != gotPskId) {
-        throw std::runtime_error("Inconsistent PSK inputs");
+    if (gotPsk != gotPskId) {
+      throw std::runtime_error("Inconsistent PSK inputs");
       }
 
       if (gotPsk && (mode == Mode::Base ||
@@ -41,6 +38,14 @@ struct PskInputs {
         mode == Mode::AuthPsk)) {
         throw std::runtime_error("Missing required PSK input");
       }
+    }
+
+    static std::unique_ptr<folly::IOBuf> getDefaultPsk() {
+      return folly::IOBuf::copyBuffer("");
+    }
+
+    static std::unique_ptr<folly::IOBuf> getDefaultId() {
+      return folly::IOBuf::copyBuffer("");
     }
 };
 
