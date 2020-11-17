@@ -34,5 +34,22 @@ TEST(X25519KeyExchange, SmallKeyExchange) {
   EXPECT_THROW(
       kex.generateSharedSecret(folly::range(keyShare)), std::runtime_error);
 }
+
+TEST(X25519KeyExchange, KeyExchangeClone) {
+  static constexpr StringPiece keyShareHex =
+      "c81e57c7485ba417280bc2d48d864afd3966ff77b684bfaf85f418f9b4583347";
+  auto keyShare = unhexlify(keyShareHex);
+  X25519KeyExchange kex;
+  kex.generateKeyPair();
+
+  auto sharedSecret = kex.generateSharedSecret(folly::range(keyShare));
+
+  // Copy current key exchange
+  auto kexCopy = kex.clone();
+  auto sharedSecretOfCopy = kexCopy->generateSharedSecret(folly::range(keyShare));
+
+  EXPECT_TRUE(folly::IOBufEqualTo()(sharedSecret, sharedSecretOfCopy));
+}
+
 } // namespace test
 } // namespace fizz

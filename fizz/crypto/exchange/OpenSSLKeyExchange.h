@@ -31,6 +31,8 @@ class OpenSSLECKeyExchange : public KeyExchange {
   std::unique_ptr<folly::IOBuf> generateSharedSecret(
       folly::ByteRange keyShare) const override;
 
+  std::unique_ptr<KeyExchange> clone() const override;
+
   std::unique_ptr<folly::IOBuf> generateSharedSecret(
       const folly::ssl::EvpPkeyUniquePtr& peerKey) const;
 

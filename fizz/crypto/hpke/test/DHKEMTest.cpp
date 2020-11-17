@@ -37,6 +37,10 @@ class MockKeyExchange  : public KeyExchange {
         return actualKex_->generateSharedSecret(keyShare);
     }
 
+    std::unique_ptr<KeyExchange> clone() const override {
+      return nullptr;
+    }
+
   private:
     std::unique_ptr<KeyExchange> actualKex_;
     folly::ssl::EvpPkeyUniquePtr privateKey_;

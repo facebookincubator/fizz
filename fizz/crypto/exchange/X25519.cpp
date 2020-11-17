@@ -72,4 +72,16 @@ std::unique_ptr<folly::IOBuf> X25519KeyExchange::generateSharedSecret(
   }
   return key;
 }
+
+std::unique_ptr<KeyExchange> X25519KeyExchange::clone() const {
+  if (!privKey_ || !pubKey_) {
+    throw std::runtime_error("Key not generated");
+  }
+
+  auto kexCopy = std::make_unique<X25519KeyExchange>();
+  kexCopy->privKey_ = privKey_;
+  kexCopy->pubKey_ = pubKey_;
+  return kexCopy;
+}
+
 } // namespace fizz

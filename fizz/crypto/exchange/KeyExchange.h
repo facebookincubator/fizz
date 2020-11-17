@@ -42,5 +42,11 @@ class KeyExchange {
    */
   virtual std::unique_ptr<folly::IOBuf> generateSharedSecret(
       folly::ByteRange keyShare) const = 0;
+
+  /**
+   * Clone this key exchange. A key exchange must only be cloned after
+   * a key pair is set.
+   */
+  virtual std::unique_ptr<KeyExchange> clone() const = 0;
 };
 } // namespace fizz

@@ -70,4 +70,23 @@ const folly::ssl::EvpPkeyUniquePtr& OpenSSLECKeyExchange<T>::getPrivateKey()
   return key_;
 }
 
+template <class T>
+std::unique_ptr<KeyExchange> OpenSSLECKeyExchange<T>::clone()
+    const {
+  if (!key_) {
+    throw std::runtime_error("Key not initialized");
+  }
+
+  // Increment the reference for the current key
+  EVP_PKEY_up_ref(key_.get());
+  // Create key copy
+  folly::ssl::EvpPkeyUniquePtr keyCopy(key_.get());
+
+  // Construct a new copy key exchange to return
+  auto copyKex = std::make_unique<OpenSSLECKeyExchange<T>>();
+  copyKex->setPrivateKey(std::move(keyCopy));
+
+  return copyKex;
+}
+
 } // namespace fizz

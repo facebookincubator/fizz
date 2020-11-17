@@ -213,16 +213,35 @@ EvpPkeyUniquePtr getKey(const Params& param) {
   return pkeyPrivateKey;
 }
 
+void checkShared(std::unique_ptr<folly::IOBuf> shared, const Params& param) {
+  ASSERT_TRUE(shared);
+  auto sharedString = shared->moveToFbString();
+  auto hexShared = hexlify(sharedString);
+  if (param.success) {
+    EXPECT_EQ(param.shared, hexShared);
+  } else {
+    EXPECT_NE(param.shared, hexShared);
+  }
+}
+
+EvpPkeyUniquePtr createPublicKey(const Params& param) {
+  // Create the peer key
+  EcKeyUniquePtr peerKey(EC_KEY_new_by_curve_name(getNid(param)));
+  setPoint(peerKey, param.peerX, param.peerY);
+
+  EvpPkeyUniquePtr pkeyPeerKey(EVP_PKEY_new());
+  CHECK_EQ(1, EVP_PKEY_set1_EC_KEY(pkeyPeerKey.get(), peerKey.get()));
+
+  return pkeyPeerKey;
+}
+
 TEST_P(ECDHTest, TestKeyAgreement) {
   try {
     auto privateKey = getKey(GetParam());
     ASSERT_TRUE(privateKey);
-    // Create the peer key
-    EcKeyUniquePtr peerKey(EC_KEY_new_by_curve_name(getNid(GetParam())));
-    setPoint(peerKey, GetParam().peerX, GetParam().peerY);
 
-    EvpPkeyUniquePtr pkeyPeerKey(EVP_PKEY_new());
-    ASSERT_EQ(1, EVP_PKEY_set1_EC_KEY(pkeyPeerKey.get(), peerKey.get()));
+    auto pkeyPeerKey = createPublicKey(GetParam());
+
     std::unique_ptr<folly::IOBuf> shared;
     switch (GetParam().key) {
       case KeyType::P256: {
@@ -247,14 +266,56 @@ TEST_P(ECDHTest, TestKeyAgreement) {
         throw std::runtime_error("unknown key type");
     }
 
-    ASSERT_TRUE(shared);
-    auto sharedString = shared->moveToFbString();
-    auto hexShared = hexlify(sharedString);
-    if (GetParam().success) {
-      EXPECT_EQ(GetParam().shared, hexShared);
-    } else {
-      EXPECT_NE(GetParam().shared, hexShared);
+    checkShared(std::move(shared), GetParam());
+  } catch (const std::runtime_error& ex) {
+    EXPECT_FALSE(GetParam().success) << ex.what();
+  }
+}
+
+TEST_P(ECDHTest, TestKexClone) {
+  try {
+    auto privateKey = getKey(GetParam());
+    ASSERT_TRUE(privateKey);
+
+    auto pkeyPeerKey = createPublicKey(GetParam());
+
+    std::unique_ptr<KeyExchange> chosenKex;
+    switch (GetParam().key) {
+      case KeyType::P256: {
+        P256KeyExchange kex;
+        kex.setPrivateKey(std::move(privateKey));
+
+        chosenKex = kex.clone();
+        break;
+      }
+      case KeyType::P384: {
+        P384KeyExchange kex;
+        kex.setPrivateKey(std::move(privateKey));
+
+        chosenKex = kex.clone();
+        break;
+      }
+      case KeyType::P521: {
+        P521KeyExchange kex;
+        kex.setPrivateKey(std::move(privateKey));
+
+        chosenKex = kex.clone();
+        break;
+      }
+      default:
+        throw std::runtime_error("unknown key type");
     }
+
+    folly::ssl::EcKeyUniquePtr ecKey(EVP_PKEY_get1_EC_KEY(pkeyPeerKey.get()));
+    auto point = EC_KEY_get0_public_key(ecKey.get());
+    if (!point) {
+      throw std::runtime_error("public key invalid");
+    }
+
+    auto encodedPubKey = detail::encodeECPublicKey(pkeyPeerKey);
+    auto shared = chosenKex->generateSharedSecret(encodedPubKey->coalesce());
+
+    checkShared(std::move(shared), GetParam());
   } catch (const std::runtime_error& ex) {
     EXPECT_FALSE(GetParam().success) << ex.what();
   }

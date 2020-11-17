@@ -24,6 +24,7 @@ class MockKeyExchange : public KeyExchange {
   MOCK_CONST_METHOD1(
       generateSharedSecret,
       std::unique_ptr<folly::IOBuf>(folly::ByteRange keyShare));
+  MOCK_CONST_METHOD0(clone, std::unique_ptr<KeyExchange>());
 
   void setDefaults() {
     ON_CALL(*this, getKeyShare()).WillByDefault(InvokeWithoutArgs([]() {
