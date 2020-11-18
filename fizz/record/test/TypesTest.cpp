@@ -53,8 +53,8 @@ TEST(TestTypes, Write24BitsBuffer) {
 }
 
 TEST(TestTypes, Write24BitsBufferOverflow) {
-  auto buf = IOBuf::create(std::numeric_limits<uint32_t>::max());
-  buf->append(std::numeric_limits<uint32_t>::max());
+  auto buf = IOBuf::create(0x1000000);
+  buf->append(0x1000000);
 
   auto out = IOBuf::create(10);
   Appender appender(out.get(), 0);
