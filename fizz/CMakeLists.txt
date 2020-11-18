@@ -188,6 +188,7 @@ set(FIZZ_SOURCES
   protocol/ZlibCertificateCompressor.cpp
   protocol/ZlibCertificateDecompressor.cpp
   protocol/clock/SystemClock.cpp
+  protocol/ech/Decrypter.cpp
   protocol/ech/Encryption.cpp
   extensions/delegatedcred/DelegatedCredentialCertManager.cpp
   extensions/delegatedcred/DelegatedCredentialClientExtension.cpp
@@ -408,6 +409,7 @@ if(BUILD_TESTS)
   add_gtest(experimental/crypto/test/MerkleTreeTest.cpp MerkleTreeTest)
   add_gtest(experimental/protocol/test/BatchSignatureTypesTest.cpp BatchSignatureTypesTest)
   add_gtest(experimental/server/test/BatchSignatureAsyncSelfCertTest.cpp BatchSignatureAsyncSelfCertTest)
+  add_gtest(protocol/ech/test/DecrypterTest.cpp DecrypterTest)
   add_gtest(protocol/ech/test/ECHTest.cpp ECHTest)
   add_gtest(protocol/ech/test/EncryptionTest.cpp EncryptionTest)
   add_gtest(protocol/test/CertTest.cpp CertTest)
