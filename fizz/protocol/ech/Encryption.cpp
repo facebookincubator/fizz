@@ -73,7 +73,7 @@ static hpke::SetupParam getSetupParam(
                           std::move(suiteId)};
 }
 
-static std::unique_ptr<folly::IOBuf> getRecordDigest(
+std::unique_ptr<folly::IOBuf> getRecordDigest(
     std::unique_ptr<folly::IOBuf> echConfig,
     hpke::KDFId id) {
   switch (id) {
@@ -170,14 +170,14 @@ EncryptedClientHello encryptClientHello(
 }
 
 folly::Optional<ClientHello> tryToDecryptECH(
-    const Factory& factory,
-    NamedGroup group,
+    hpke::KEMId kemId,
     const ech::EncryptedClientHello& echExtension,
     std::unique_ptr<KeyExchange> kex) {
   const std::unique_ptr<folly::IOBuf> prefix{
       folly::IOBuf::copyBuffer("HPKE-05 ")};
 
   hpke::KDFId kdfId = echExtension.suite.kdfId;
+  NamedGroup group = hpke::getKexGroup(kemId);
 
   // Try to decrypt and get the client hello inner
   try {
@@ -191,7 +191,7 @@ folly::Optional<ClientHello> tryToDecryptECH(
 
     hpke::SetupParam setupParam{
         std::move(dhkem),
-        factory.makeAead(hpke::getCipherSuite(aeadId)),
+        makeCipher(aeadId),
         hpke::makeHpkeHkdf(prefix->clone(), kdfId),
         std::move(suiteId)};
 

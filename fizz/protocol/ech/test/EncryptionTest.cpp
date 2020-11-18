@@ -204,14 +204,9 @@ TEST(EncryptionTest, TestTryToDecryptECH) {
     return testChlo;
   };
 
-  auto factory = std::make_unique<MockFactory>();
   auto kex = std::make_unique<MockOpenSSLECKeyExchange256>();
   auto privateKey = getPrivateKey(kP256Key);
   kex->setPrivateKey(std::move(privateKey));
-
-  EXPECT_CALL(*factory, makeAead(_)).WillOnce(InvokeWithoutArgs([=]() {
-    return OpenSSLEVPCipher::makeCipher<AESGCM128>();
-  }));
 
   auto testECH =  getTestECH(makeChloWithNonce());
   auto context = getContext(testECH.enc->clone());
@@ -220,7 +215,7 @@ TEST(EncryptionTest, TestTryToDecryptECH) {
 
   EXPECT_TRUE(folly::IOBufEqualTo()(expectedNonceValue, toIOBuf(nonceHex)));
 
-  auto decodedChloResult = tryToDecryptECH(*factory, NamedGroup::secp256r1, std::move(testECH), std::move(kex));
+  auto decodedChloResult = tryToDecryptECH(hpke::KEMId::secp256r1, std::move(testECH), std::move(kex));
   EXPECT_TRUE(decodedChloResult.has_value());
   EXPECT_TRUE(folly::IOBufEqualTo()(expectedNonceValue, toIOBuf(nonceHex)));
 

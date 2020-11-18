@@ -40,10 +40,13 @@ EncryptedClientHello encryptClientHello(
     hpke::SetupResult setupResult);
 
 folly::Optional<ClientHello> tryToDecryptECH(
-    const Factory& factory,
-    NamedGroup group,
+    hpke::KEMId kemId,
     const ech::EncryptedClientHello& echExtension,
     std::unique_ptr<KeyExchange> kex);
+
+std::unique_ptr<folly::IOBuf> getRecordDigest(
+    std::unique_ptr<folly::IOBuf> echConfig,
+    hpke::KDFId id);
 
 } // namespace ech
 } // namespace fizz
