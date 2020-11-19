@@ -621,10 +621,9 @@ static Optional<EarlyDataParams> getEarlyDataParams(
 }
 
 static ech::SupportedECHConfig getSupportedECHConfig(
-    std::vector<ech::ECHConfig> echConfigs,
+    const std::vector<ech::ECHConfig>& echConfigs,
     const std::vector<CipherSuite>& supportedCiphers,
     const std::vector<NamedGroup>& supportedGroups) {
-
   // Convert vectors to use HPKE types.
   std::vector<hpke::KEMId> supportedKEMs(supportedGroups.size());
   for (const auto& group : supportedGroups) {
@@ -637,8 +636,7 @@ static ech::SupportedECHConfig getSupportedECHConfig(
 
   // Get a supported ECH config.
   folly::Optional<ech::SupportedECHConfig> supportedConfig =
-      selectECHConfig(
-          std::move(echConfigs), supportedKEMs, supportedAeads);
+      selectECHConfig(echConfigs, supportedKEMs, supportedAeads);
   if (!supportedConfig.hasValue()) {
     throw FizzException(
         "ECH requested but we don't support any of the provided configs",
@@ -656,13 +654,16 @@ namespace {
   };
 }
 
-static ECHParams setupECH(
-    std::vector<ech::ECHConfig> echConfigs,
+static folly::Optional<ECHParams> setupECH(
+    const folly::Optional<std::vector<ech::ECHConfig>>& echConfigs,
     const std::vector<CipherSuite>& supportedCiphers,
     const std::vector<NamedGroup>& supportedGroups,
     const Factory& factory) {
+  if (!echConfigs.has_value()) {
+    return folly::none;
+  }
   auto supportedECHConfig = getSupportedECHConfig(
-      std::move(echConfigs), supportedCiphers, supportedGroups);
+      echConfigs.value(), supportedCiphers, supportedGroups);
 
   auto configContent = supportedECHConfig.config.ech_config_content->clone();
   folly::io::Cursor cursor(configContent.get());
@@ -670,9 +671,12 @@ static ECHParams setupECH(
   auto fakeSni = echConfigContent.public_name->clone();
 
   auto kex = factory.makeKeyExchange(getKexGroup(echConfigContent.kem_id));
-  auto setupResult = constructHpkeSetupResult(std::move(kex), supportedECHConfig);
+  auto setupResult =
+      constructHpkeSetupResult(std::move(kex), supportedECHConfig);
 
-  return ECHParams{std::move(setupResult), std::move(supportedECHConfig), std::move(fakeSni)};
+  return ECHParams{std::move(setupResult),
+                   std::move(supportedECHConfig),
+                   std::move(fakeSni)};
 }
 
 Actions
@@ -718,15 +722,13 @@ EventHandler<ClientTypes, StateEnum::Uninitialized, Event::Connect>::handle(
   auto keyExchangers = getKeyExchangers(*context->getFactory(), selectedShares);
 
   // If ECH requested, setup ECH primitives.
-  // These will also be used later in the construction of the client hello outer for ECH.
-  folly::Optional<ECHParams> echParams = folly::none;
-  if (connect.echConfigs.has_value()) {
-    echParams = setupECH(
-        std::move(connect.echConfigs.value()),
-        context->getSupportedCiphers(),
-        context->getSupportedGroups(),
-        *context->getFactory());
-  }
+  // These will also be used later in the construction of the client hello outer
+  // for ECH.
+  folly::Optional<ECHParams> echParams = setupECH(
+      connect.echConfigs,
+      context->getSupportedCiphers(),
+      context->getSupportedGroups(),
+      *context->getFactory());
 
   // Create ECH nonce extension, if we're constructing an ECH.
   auto echNonceExt = echParams.has_value()
