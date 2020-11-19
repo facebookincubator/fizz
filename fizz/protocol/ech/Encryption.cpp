@@ -45,7 +45,8 @@ folly::Optional<SupportedECHConfig> selectECHConfig(
           auto associatedCipherKdf =
               hpke::getKDFId(getHashFunction(getCipherSuite(suite.aeadId)));
           if (suite.kdfId == associatedCipherKdf) {
-            return SupportedECHConfig{config.clone(), suite};
+            auto supportedConfig = config;
+            return SupportedECHConfig{supportedConfig, suite};
           }
         }
       }

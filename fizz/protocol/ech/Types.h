@@ -45,12 +45,11 @@ struct ECHConfig {
   ECHVersion version;
   uint16_t length;
   Buf ech_config_content;
-  ECHConfig clone() const {
-    ECHConfig copy;
-    copy.version = this->version;
-    copy.length = this->length;
-    copy.ech_config_content = this->ech_config_content->clone();
-    return copy;
+  ECHConfig() {}
+  ECHConfig(const ECHConfig& other) {
+    version = other.version;
+    length = other.length;
+    ech_config_content = other.ech_config_content->clone();
   }
 };
 
