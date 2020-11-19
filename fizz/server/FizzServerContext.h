@@ -11,6 +11,7 @@
 #include <fizz/protocol/Certificate.h>
 #include <fizz/protocol/OpenSSLFactory.h>
 #include <fizz/protocol/clock/SystemClock.h>
+#include <fizz/protocol/ech/Decrypter.h>
 #include <fizz/record/Types.h>
 #include <fizz/server/CertManager.h>
 #include <fizz/server/CookieCipher.h>
@@ -326,6 +327,17 @@ class FizzServerContext {
     return requireAlpn_;
   }
 
+  /**
+   * Return an ECH decrypter that is able to decrypt an encrypted client hello.
+   */
+  void setECHDecrypter(std::shared_ptr<ech::Decrypter> decrypter) {
+    decrypter_ = decrypter;
+  }
+
+  std::shared_ptr<ech::Decrypter> getECHDecrypter() const {
+    return decrypter_;
+  }
+
  private:
   std::shared_ptr<Factory> factory_;
 
@@ -373,6 +385,8 @@ class FizzServerContext {
   bool omitEarlyRecordLayer_{false};
 
   bool requireAlpn_{false};
+
+  std::shared_ptr<ech::Decrypter> decrypter_;
 };
 } // namespace server
 } // namespace fizz

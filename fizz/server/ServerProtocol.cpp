@@ -12,6 +12,7 @@
 #include <fizz/protocol/CertificateVerifier.h>
 #include <fizz/protocol/Protocol.h>
 #include <fizz/protocol/StateMachine.h>
+#include <fizz/protocol/ech/Decrypter.h>
 #include <fizz/record/Extensions.h>
 #include <fizz/record/PlaintextRecordLayer.h>
 #include <fizz/server/AsyncSelfCert.h>
@@ -982,10 +983,22 @@ static Buf getCertificateRequest(
   return encodedCertificateRequest;
 }
 
+static void updateClientHelloIfECH(std::shared_ptr<ech::Decrypter> decrypter, ClientHello& chlo) {
+  if (decrypter) {
+    auto gotChlo = decrypter->decryptClientHello(chlo);
+    if (gotChlo.has_value()) {
+      chlo = std::move(gotChlo.value());
+    }
+  }
+}
+
 AsyncActions
 EventHandler<ServerTypes, StateEnum::ExpectingClientHello, Event::ClientHello>::
     handle(const State& state, Param param) {
-  auto chlo = std::move(*param.asClientHello());
+  ClientHello chlo = std::move(*param.asClientHello());
+
+  // Update the client hello if we are using ECH
+  updateClientHelloIfECH(state.context()->getECHDecrypter(),chlo);
 
   addHandshakeLogging(state, chlo);
 
