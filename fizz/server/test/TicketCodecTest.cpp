@@ -15,7 +15,6 @@
 #include <fizz/protocol/test/Mocks.h>
 #include <fizz/server/test/Mocks.h>
 
-using namespace fizz::test;
 using namespace folly;
 
 static constexpr StringPiece ticket{
