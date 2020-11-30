@@ -32,8 +32,8 @@ inline void detail::write<ech::ECHConfig>(
 template <>
 inline void detail::write<ech::HpkeCipherSuite>(
   const ech::HpkeCipherSuite& suite, folly::io::Appender& out) {
-  detail::write(suite.kdfId, out);
-  detail::write(suite.aeadId, out);
+  detail::write(suite.kdf_id, out);
+  detail::write(suite.aead_id, out);
 }
 
 template <>
@@ -56,7 +56,7 @@ template <>
 struct detail::Reader<ech::HpkeCipherSuite> {
   template <class T>
   size_t read(ech::HpkeCipherSuite& suite, folly::io::Cursor& cursor) {
-    size_t len = detail::read(suite.kdfId, cursor) + detail::read(suite.aeadId, cursor);
+    size_t len = detail::read(suite.kdf_id, cursor) + detail::read(suite.aead_id, cursor);
     return len;
   }
 };

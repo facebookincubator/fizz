@@ -132,8 +132,8 @@ TEST(EncryptionTest, TestValidECHConfigContent) {
 
   ECHConfig gotConfig = std::move(result.value().config);
   EXPECT_TRUE(folly::IOBufEqualTo()(gotConfig.ech_config_content, encode(getECHConfigContent())));
-  EXPECT_EQ(result.value().cipherSuite.kdfId, hpke::KDFId::Sha256);
-  EXPECT_EQ(result.value().cipherSuite.aeadId, hpke::AeadId::TLS_AES_128_GCM_SHA256);
+  EXPECT_EQ(result.value().cipherSuite.kdf_id, hpke::KDFId::Sha256);
+  EXPECT_EQ(result.value().cipherSuite.aead_id, hpke::AeadId::TLS_AES_128_GCM_SHA256);
 }
 
 TEST(EncryptionTest, TestInvalidECHConfigContent) {
@@ -166,8 +166,8 @@ TEST(EncryptionTest, TestValidEncryptClientHello) {
   auto testCipherSuite = HpkeCipherSuite{hpke::KDFId::Sha256,
                                          hpke::AeadId::TLS_AES_128_GCM_SHA256};
   auto gotECH = getTestECH(TestMessages::clientHello());
-  EXPECT_EQ(gotECH.suite.kdfId, testCipherSuite.kdfId);
-  EXPECT_EQ(gotECH.suite.aeadId, testCipherSuite.aeadId);
+  EXPECT_EQ(gotECH.suite.kdf_id, testCipherSuite.kdf_id);
+  EXPECT_EQ(gotECH.suite.aead_id, testCipherSuite.aead_id);
 
   auto context = getContext(std::move(gotECH.enc));
   std::unique_ptr<folly::IOBuf> gotClientHelloInner = context.open(

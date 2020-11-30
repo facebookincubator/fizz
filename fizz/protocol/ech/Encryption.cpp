@@ -39,12 +39,12 @@ folly::Optional<SupportedECHConfig> selectECHConfig(
       for (auto& suite : cipherSuites) {
         auto isCipherSupported =
             std::find(
-                supportedAeads.begin(), supportedAeads.end(), suite.aeadId) !=
+                supportedAeads.begin(), supportedAeads.end(), suite.aead_id) !=
             supportedAeads.end();
         if (isCipherSupported) {
           auto associatedCipherKdf =
-              hpke::getKDFId(getHashFunction(getCipherSuite(suite.aeadId)));
-          if (suite.kdfId == associatedCipherKdf) {
+              hpke::getKDFId(getHashFunction(getCipherSuite(suite.aead_id)));
+          if (suite.kdf_id == associatedCipherKdf) {
             auto supportedConfig = config;
             return SupportedECHConfig{supportedConfig, suite};
           }
@@ -62,14 +62,14 @@ static hpke::SetupParam getSetupParam(
     const HpkeCipherSuite& cipherSuite) {
   // Get suite id
   auto group = getKexGroup(kemId);
-  auto hash = getHashFunction(cipherSuite.kdfId);
-  auto suite = getCipherSuite(cipherSuite.aeadId);
+  auto hash = getHashFunction(cipherSuite.kdf_id);
+  auto suite = getCipherSuite(cipherSuite.aead_id);
   auto suiteId = hpke::generateHpkeSuiteId(group, hash, suite);
 
-  auto hkdf = hpke::makeHpkeHkdf(std::move(prefix), cipherSuite.kdfId);
+  auto hkdf = hpke::makeHpkeHkdf(std::move(prefix), cipherSuite.kdf_id);
 
   return hpke::SetupParam{std::move(dhkem),
-                          makeCipher(cipherSuite.aeadId),
+                          makeCipher(cipherSuite.aead_id),
                           std::move(hkdf),
                           std::move(suiteId)};
 }
@@ -129,7 +129,7 @@ hpke::SetupResult constructHpkeSetupResult(
   auto cipherSuite = supportedConfig.cipherSuite;
 
   // Get shared secret
-  auto hkdf = hpke::makeHpkeHkdf(prefix->clone(), cipherSuite.kdfId);
+  auto hkdf = hpke::makeHpkeHkdf(prefix->clone(), cipherSuite.kdf_id);
   std::unique_ptr<DHKEM> dhkem = std::make_unique<DHKEM>(
       std::move(kex), getKexGroup(config.kem_id), std::move(hkdf));
 
@@ -163,7 +163,7 @@ EncryptedClientHello encryptClientHello(
 
   // Hash the ECH config
   clientHelloOuter.record_digest =
-      getRecordDigest(encode(std::move(config)), cipherSuite.kdfId);
+      getRecordDigest(encode(std::move(config)), cipherSuite.kdf_id);
   clientHelloOuter.enc = std::move(setupResult.enc);
   clientHelloOuter.encrypted_ch = std::move(encryptedCh);
 
@@ -177,7 +177,7 @@ folly::Optional<ClientHello> tryToDecryptECH(
   const std::unique_ptr<folly::IOBuf> prefix{
       folly::IOBuf::copyBuffer("HPKE-05 ")};
 
-  hpke::KDFId kdfId = echExtension.suite.kdfId;
+  hpke::KDFId kdfId = echExtension.suite.kdf_id;
   NamedGroup group = hpke::getKexGroup(kemId);
 
   // Try to decrypt and get the client hello inner
@@ -186,7 +186,7 @@ folly::Optional<ClientHello> tryToDecryptECH(
         std::move(kex),
         group,
         hpke::makeHpkeHkdf(prefix->clone(), kdfId));
-    auto aeadId = echExtension.suite.aeadId;
+    auto aeadId = echExtension.suite.aead_id;
     auto suiteId = hpke::generateHpkeSuiteId(
         group, hpke::getHashFunction(kdfId), hpke::getCipherSuite(aeadId));
 

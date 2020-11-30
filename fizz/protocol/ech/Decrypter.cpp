@@ -46,7 +46,7 @@ folly::Optional<ClientHello> tryToDecodeECH(
         // Check if this ECH config record digest matches the ECH extension.
         const auto& currentRecordDigest = getRecordDigest(
             encode(getDecodedConfig()),
-            echExtension.suite.kdfId);
+            echExtension.suite.kdf_id);
         if (!folly::IOBufEqualTo()(
                 currentRecordDigest, echExtension.record_digest)) {
           continue;

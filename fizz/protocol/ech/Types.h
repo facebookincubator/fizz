@@ -25,10 +25,10 @@ enum class ECHVersion: uint16_t {
 };
 
 struct HpkeCipherSuite {
-    hpke::KDFId kdfId;
-    hpke::AeadId aeadId;
+    hpke::KDFId kdf_id;
+    hpke::AeadId aead_id;
     bool operator==(const HpkeCipherSuite& other) const {
-    return kdfId == other.kdfId && aeadId == other.aeadId;
+    return kdf_id == other.kdf_id && aead_id == other.aead_id;
   }
 };
 

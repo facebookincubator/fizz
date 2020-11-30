@@ -91,7 +91,7 @@ TEST(ECHTest, TestECHExtensionDecode) {
   vec.push_back(std::move(e));
   auto ech = getExtension<EncryptedClientHello>(vec);
 
-  EXPECT_EQ(ech->suite.kdfId, hpke::KDFId::Sha256);
+  EXPECT_EQ(ech->suite.kdf_id, hpke::KDFId::Sha256);
   EXPECT_TRUE(folly::IOBufEqualTo()(
     ech->record_digest,
     getBuf(kTestRecordDigestStr)
