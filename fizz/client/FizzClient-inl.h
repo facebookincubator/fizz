@@ -15,6 +15,7 @@ void FizzClient<ActionMoveVisitor, SM>::connect(
     std::shared_ptr<const CertificateVerifier> verifier,
     folly::Optional<std::string> sni,
     folly::Optional<CachedPsk> cachedPsk,
+    folly::Optional<std::vector<ech::ECHConfig>> echConfigs,
     const std::shared_ptr<ClientExtensions>& extensions) {
   this->addProcessingActions(this->machine_.processConnect(
       this->state_,
@@ -23,7 +24,7 @@ void FizzClient<ActionMoveVisitor, SM>::connect(
       std::move(sni),
       std::move(cachedPsk),
       extensions,
-      folly::none));
+      std::move(echConfigs)));
 }
 
 template <typename ActionMoveVisitor, typename SM>

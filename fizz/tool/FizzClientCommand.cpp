@@ -134,7 +134,12 @@ class Connection : public AsyncSocket::ConnectCallback,
     transport_ = AsyncFizzClient::UniquePtr(
         new AsyncFizzClient(std::move(sock_), clientContext_, extensions_));
     transport_->setSecretCallback(this);
-    transport_->connect(this, verifier_, sni_, sni_);
+    transport_->connect(
+        this,
+        verifier_,
+        sni_,
+        sni_,
+        folly::Optional<std::vector<fizz::ech::ECHConfig>>(folly::none));
   }
 
   void fizzHandshakeSuccess(AsyncFizzClient* /*client*/) noexcept override {

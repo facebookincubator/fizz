@@ -31,6 +31,7 @@ class FizzClient : public FizzBase<
       std::shared_ptr<const CertificateVerifier> verifier,
       folly::Optional<std::string> sni,
       folly::Optional<CachedPsk> cachedPsk,
+      folly::Optional<std::vector<ech::ECHConfig>> echConfigs,
       const std::shared_ptr<ClientExtensions>& extensions = nullptr);
 
   /**

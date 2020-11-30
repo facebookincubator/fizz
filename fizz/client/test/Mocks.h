@@ -102,13 +102,14 @@ class MockAsyncFizzClient : public AsyncFizzClient {
             folly::AsyncTransportWrapper::UniquePtr(
                 new folly::test::MockAsyncTransport()),
             std::make_shared<FizzClientContext>()) {}
-  MOCK_METHOD5(
+  MOCK_METHOD6(
       connect,
       void(
           HandshakeCallback*,
           std::shared_ptr<const CertificateVerifier>,
           folly::Optional<std::string>,
           folly::Optional<std::string>,
+          folly::Optional<std::vector<ech::ECHConfig>>,
           std::chrono::milliseconds));
   MOCK_METHOD0(close, void());
   MOCK_METHOD0(closeWithReset, void());

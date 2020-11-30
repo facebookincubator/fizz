@@ -173,7 +173,11 @@ class BogoTestClient : public AsyncSocket::ConnectCallback,
     transport_ = AsyncFizzClient::UniquePtr(
         new AsyncFizzClient(std::move(socket_), clientContext_));
     transport_->connect(
-        this, nullptr, folly::none, std::string("resumption-id"));
+        this,
+        nullptr,
+        folly::none,
+        std::string("resumption-id"),
+        folly::Optional<std::vector<fizz::ech::ECHConfig>>(folly::none));
   }
 
   void connectErr(const AsyncSocketException& ex) noexcept override {

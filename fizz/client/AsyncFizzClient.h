@@ -65,6 +65,7 @@ class AsyncFizzClientT : public AsyncFizzBase,
       std::shared_ptr<const CertificateVerifier> verifier,
       folly::Optional<std::string> sni,
       folly::Optional<std::string> pskIdentity,
+      folly::Optional<std::vector<ech::ECHConfig>> echConfigs,
       std::chrono::milliseconds = std::chrono::milliseconds(0));
 
   /**
@@ -88,6 +89,7 @@ class AsyncFizzClientT : public AsyncFizzBase,
   virtual void connect(
       HandshakeCallback* callback,
       folly::Optional<std::string> hostname,
+      folly::Optional<std::vector<ech::ECHConfig>> echConfigs,
       std::chrono::milliseconds = std::chrono::milliseconds(0));
 
   bool good() const override;

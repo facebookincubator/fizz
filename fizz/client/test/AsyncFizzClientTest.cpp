@@ -109,7 +109,12 @@ class AsyncFizzClientTest : public Test {
     EXPECT_CALL(*machine_, _processConnect(_, _, _, _, _, _, _))
         .WillOnce(InvokeWithoutArgs([]() { return Actions(); }));
     const auto sni = std::string("www.example.com");
-    client_->connect(&handshakeCallback_, nullptr, sni, pskIdentity_);
+    client_->connect(
+        &handshakeCallback_,
+        nullptr,
+        sni,
+        pskIdentity_,
+        folly::Optional<std::vector<ech::ECHConfig>>(folly::none));
   }
 
   void fullHandshakeSuccess(
@@ -502,7 +507,8 @@ TEST_F(AsyncFizzClientTest, TestHandshakeConnectWithUnopenedSocket) {
       &handshakeCallback_,
       nullptr,
       std::string("www.example.com"),
-      pskIdentity_);
+      pskIdentity_,
+      folly::Optional<std::vector<ech::ECHConfig>>(folly::none));
   EXPECT_FALSE(evbClient->good());
 }
 

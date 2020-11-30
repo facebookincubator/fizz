@@ -184,7 +184,11 @@ class HandshakeTest : public Test {
 
   void startHandshake() {
     client_->connect(
-        &clientCallback_, nullptr, folly::none, std::string("Fizz"));
+        &clientCallback_,
+        nullptr,
+        folly::none,
+        std::string("Fizz"),
+        folly::Optional<std::vector<ech::ECHConfig>>(folly::none));
     server_->accept(&serverCallback_);
   }
 
@@ -195,7 +199,11 @@ class HandshakeTest : public Test {
 
   void doClientHandshake() {
     client_->connect(
-        &clientCallback_, nullptr, folly::none, std::string("Fizz"));
+        &clientCallback_,
+        nullptr,
+        folly::none,
+        std::string("Fizz"),
+        folly::Optional<std::vector<ech::ECHConfig>>(folly::none));
     evb_.loop();
   }
 
@@ -203,7 +211,12 @@ class HandshakeTest : public Test {
   void doClientHandshakeNullCallback() {
     // register read callback here because we don't call expectClientSuccess
     client_->setReadCB(&clientRead_);
-    client_->connect(nullptr, nullptr, folly::none, std::string("Fizz"));
+    client_->connect(
+        nullptr,
+        nullptr,
+        folly::none,
+        std::string("Fizz"),
+        folly::Optional<std::vector<ech::ECHConfig>>(folly::none));
     evb_.loop();
   }
 

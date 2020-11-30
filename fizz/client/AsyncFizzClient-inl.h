@@ -36,6 +36,7 @@ template <typename SM>
 void AsyncFizzClientT<SM>::connect(
     HandshakeCallback* callback,
     folly::Optional<std::string> hostname,
+    folly::Optional<std::vector<ech::ECHConfig>> echConfigs,
     std::chrono::milliseconds timeout) {
   auto pskIdentity = hostname;
   connect(
@@ -43,6 +44,7 @@ void AsyncFizzClientT<SM>::connect(
       std::make_shared<DefaultCertificateVerifier>(VerificationContext::Client),
       std::move(hostname),
       std::move(pskIdentity),
+      std::move(echConfigs),
       std::move(timeout));
 }
 
@@ -52,6 +54,7 @@ void AsyncFizzClientT<SM>::connect(
     std::shared_ptr<const CertificateVerifier> verifier,
     folly::Optional<std::string> sni,
     folly::Optional<std::string> pskIdentity,
+    folly::Optional<std::vector<ech::ECHConfig>> echConfigs,
     std::chrono::milliseconds timeout) {
   DelayedDestruction::DestructorGuard dg(this);
 
@@ -85,6 +88,7 @@ void AsyncFizzClientT<SM>::connect(
       std::move(verifier),
       std::move(sni),
       std::move(cachedPsk),
+      std::move(echConfigs),
       extensions_);
 }
 
@@ -251,6 +255,7 @@ void AsyncFizzClientT<SM>::connectSuccess() noexcept {
       std::move(verifier_),
       sni_,
       std::move(cachedPsk),
+      folly::Optional<std::vector<ech::ECHConfig>>(folly::none),
       extensions_);
 }
 

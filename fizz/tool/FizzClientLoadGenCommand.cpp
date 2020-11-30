@@ -88,7 +88,12 @@ class ClientTask : public AsyncSocket::ConnectCallback,
   void connectSuccess() noexcept override {
     fizzClient_ = AsyncFizzClient::UniquePtr(
         new AsyncFizzClient(std::move(sock_), clientContext_));
-    fizzClient_->connect(this, verifier_, none, none);
+    fizzClient_->connect(
+        this,
+        verifier_,
+        none,
+        none,
+        folly::Optional<std::vector<ech::ECHConfig>>(folly::none));
   }
 
   void connectErr(const AsyncSocketException& ex) noexcept override {
