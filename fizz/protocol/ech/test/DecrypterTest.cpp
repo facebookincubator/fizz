@@ -36,7 +36,7 @@ TEST(DecrypterTest, TestDecodeSuccess) {
     // Setup ECH extension
     auto supportedECHConfig = SupportedECHConfig{
         constructECHConfigV7(),
-        HpkeCipherSuite{hpke::KDFId::Sha256,
+        ECHCipherSuite{hpke::KDFId::Sha256,
                         hpke::AeadId::TLS_AES_128_GCM_SHA256}};
     auto setupResult =
         constructHpkeSetupResult(std::move(kex), supportedECHConfig);

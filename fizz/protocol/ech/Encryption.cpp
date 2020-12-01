@@ -59,7 +59,7 @@ static hpke::SetupParam getSetupParam(
     std::unique_ptr<DHKEM> dhkem,
     std::unique_ptr<folly::IOBuf> prefix,
     hpke::KEMId kemId,
-    const HpkeCipherSuite& cipherSuite) {
+    const ECHCipherSuite& cipherSuite) {
   // Get suite id
   auto group = getKexGroup(kemId);
   auto hash = getHashFunction(cipherSuite.kdf_id);

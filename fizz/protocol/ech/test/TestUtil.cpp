@@ -26,7 +26,7 @@ std::vector<Extension> getExtensions(folly::StringPiece hex) {
 }
 
 ECHConfigContentDraft7 getECHConfigContent() {
-  HpkeCipherSuite suite{hpke::KDFId::Sha256, hpke::AeadId::TLS_AES_128_GCM_SHA256};
+  ECHCipherSuite suite{hpke::KDFId::Sha256, hpke::AeadId::TLS_AES_128_GCM_SHA256};
   ECHConfigContentDraft7 echConfigContent;
   echConfigContent.public_name = ::fizz::test::toIOBuf("7075626c69636e616d65");
   echConfigContent.public_key = ::fizz::test::toIOBuf("7075626c69635f6b6579");

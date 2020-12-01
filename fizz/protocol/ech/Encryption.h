@@ -19,7 +19,7 @@ namespace ech {
 
 struct SupportedECHConfig {
   ECHConfig config;
-  HpkeCipherSuite cipherSuite;
+  ECHCipherSuite cipherSuite;
 };
 
 folly::Optional<SupportedECHConfig> selectECHConfig(

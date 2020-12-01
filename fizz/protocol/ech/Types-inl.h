@@ -30,8 +30,8 @@ inline void detail::write<ech::ECHConfig>(
 }
 
 template <>
-inline void detail::write<ech::HpkeCipherSuite>(
-  const ech::HpkeCipherSuite& suite, folly::io::Appender& out) {
+inline void detail::write<ech::ECHCipherSuite>(
+  const ech::ECHCipherSuite& suite, folly::io::Appender& out) {
   detail::write(suite.kdf_id, out);
   detail::write(suite.aead_id, out);
 }
@@ -45,17 +45,17 @@ struct detail::Sizer<ech::ECHConfig> {
 };
 
 template <>
-struct detail::Sizer<ech::HpkeCipherSuite> {
+struct detail::Sizer<ech::ECHCipherSuite> {
   template <class T>
-  size_t getSize(const ech::HpkeCipherSuite&) {
+  size_t getSize(const ech::ECHCipherSuite&) {
     return sizeof(uint16_t) + sizeof(uint16_t);
   }
 };
 
 template <>
-struct detail::Reader<ech::HpkeCipherSuite> {
+struct detail::Reader<ech::ECHCipherSuite> {
   template <class T>
-  size_t read(ech::HpkeCipherSuite& suite, folly::io::Cursor& cursor) {
+  size_t read(ech::ECHCipherSuite& suite, folly::io::Cursor& cursor) {
     size_t len = detail::read(suite.kdf_id, cursor) + detail::read(suite.aead_id, cursor);
     return len;
   }
@@ -88,7 +88,7 @@ inline Buf encode<ech::ECHConfigContentDraft7>(ech::ECHConfigContentDraft7&& ech
     detail::getBufSize<uint16_t>(ech.public_name)
     + detail::getBufSize<uint16_t>(ech.public_key)
     + sizeof(uint16_t)
-    + sizeof(ech::HpkeCipherSuite) * ech.cipher_suites.size()
+    + sizeof(ech::ECHCipherSuite) * ech.cipher_suites.size()
     + sizeof(uint16_t)
     + 20);
 

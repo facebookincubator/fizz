@@ -70,7 +70,7 @@ TEST(ECHTest, TestECHConfigEncodeDecode) {
 
 TEST(ECHTest, TestECHExtensionEncode) {
   EncryptedClientHello ech;
-  ech.suite = HpkeCipherSuite{hpke::KDFId::Sha256, hpke::AeadId::TLS_AES_128_GCM_SHA256};
+  ech.suite = ECHCipherSuite{hpke::KDFId::Sha256, hpke::AeadId::TLS_AES_128_GCM_SHA256};
   ech.record_digest = getBuf(kTestRecordDigestStr);
   ech.enc = getBuf(kTestEncStr);
   ech.encrypted_ch = getBuf(kTestClientHelloInnerStr);

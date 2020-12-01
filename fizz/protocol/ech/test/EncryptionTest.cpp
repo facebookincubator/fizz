@@ -77,7 +77,7 @@ void checkDecodedChlo(ClientHello decodedChlo, ClientHello expectedChlo) {
 }
 
 EncryptedClientHello getTestECH(ClientHello chlo) {
-  auto testCipherSuite = HpkeCipherSuite{hpke::KDFId::Sha256,
+  auto testCipherSuite = ECHCipherSuite{hpke::KDFId::Sha256,
                                          hpke::AeadId::TLS_AES_128_GCM_SHA256};
   auto getTestConfig = [testCipherSuite]() {
     auto testConfigContent = getECHConfigContent();
@@ -140,8 +140,8 @@ TEST(EncryptionTest, TestInvalidECHConfigContent) {
   ECHConfigContentDraft7 configContent = getECHConfigContent();
 
   configContent.kem_id = hpke::KEMId::secp256r1;
-  HpkeCipherSuite suite{hpke::KDFId::Sha512, hpke::AeadId::TLS_AES_128_GCM_SHA256};
-  std::vector<HpkeCipherSuite> cipher_suites = {suite};
+  ECHCipherSuite suite{hpke::KDFId::Sha512, hpke::AeadId::TLS_AES_128_GCM_SHA256};
+  std::vector<ECHCipherSuite> cipher_suites = {suite};
   configContent.cipher_suites = cipher_suites;
 
   ECHConfig invalidConfig;
@@ -163,7 +163,7 @@ TEST(EncryptionTest, TestInvalidECHConfigContent) {
 }
 
 TEST(EncryptionTest, TestValidEncryptClientHello) {
-  auto testCipherSuite = HpkeCipherSuite{hpke::KDFId::Sha256,
+  auto testCipherSuite = ECHCipherSuite{hpke::KDFId::Sha256,
                                          hpke::AeadId::TLS_AES_128_GCM_SHA256};
   auto gotECH = getTestECH(TestMessages::clientHello());
   EXPECT_EQ(gotECH.suite.kdf_id, testCipherSuite.kdf_id);

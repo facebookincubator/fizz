@@ -17,9 +17,9 @@
 namespace fizz {
 namespace ech {
 struct EncryptedClientHello {
-  // The HpkeCipherSuite cipher suite used to encrypt
+  // The ECHCipherSuite cipher suite used to encrypt
   // ClientHelloInner.
-  HpkeCipherSuite suite;
+  ECHCipherSuite suite;
   // A cryptographic hash of the ECHConfig structure from
   // which the ECH key was obtained.
   Buf record_digest;
