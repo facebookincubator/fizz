@@ -9,10 +9,13 @@
 #pragma once
 
 #include <fizz/protocol/AsyncFizzBase.h>
+#include <fizz/protocol/ech/Types.h>
 #include <fizz/util/Parse.h>
+#include <folly/FileUtil.h>
 #include <folly/io/IOBuf.h>
 #include <folly/io/async/EventBase.h>
 #include <folly/io/async/EventHandler.h>
+#include <folly/json.h>
 
 #include <algorithm>
 #include <cstdint>
@@ -26,6 +29,13 @@
 
 namespace fizz {
 namespace tool {
+
+folly::Optional<std::vector<ech::ECHConfig>> parseECHConfigs(
+    folly::dynamic json);
+
+folly::Optional<folly::dynamic> readECHConfigsJson(std::string echFile);
+
+hpke::KEMId getKEMId(std::string kemStr);
 
 inline uint16_t portFromString(const std::string& portStr, bool serverSide) {
   unsigned long converted = 0;

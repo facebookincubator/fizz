@@ -207,6 +207,7 @@ set(FIZZ_SOURCES
   client/PskSerializationUtils.cpp
   client/SynchronizedLruPskCache.cpp
   client/EarlyDataRejectionPolicy.cpp
+  tool/FizzCommandCommon.cpp
   util/FizzUtil.cpp
 )
 
