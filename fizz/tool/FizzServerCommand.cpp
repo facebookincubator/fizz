@@ -32,6 +32,7 @@
 
 #include <string>
 #include <vector>
+#include <fstream>
 
 using namespace fizz::server;
 using namespace folly;
@@ -70,8 +71,20 @@ void printUsage() {
     << " -v verbosity             (set verbose log level for VLOG macros. Default: 0)\n"
     << " -vmodule m1=N,...        (set per-module verbose log level for VLOG macros. Default: none)\n"
     << " -http                    (run a crude HTTP server that returns stats for GET requests. Default: false)\n"
-    << " -delegatedcred cred      (use a delegated credential. If set, -cert and -key must also be set. Default: none)\n";
-  // clang-format on
+    << " -delegatedcred cred      (use a delegated credential. If set, -cert and -key must also be set. Default: none)\n"
+    << " -ech                     (use default values to simulate the sending of an encrypted client hello.)\n"
+    << " -echconfigs file         (path to read ECH configs to use when decrypting an encrypted client hello.)\n"
+    << "                          (If more than 1 ECH config is provided, the first config will be used.)\n"
+    << "                          (The ech configs should be in JSON format: {echconfigs: [${your ECH config here with all the fields..}]})\n"
+    << "                          (See FizzCommandCommonTest for an example.)\n"
+    << "                          (Note ECH is implicitly enabled if this and a private key are provided.)\n"
+    << " -echprivatekey key       (path to read the private key used in the ECH decryption.)\n"
+    << "                          (This MUST correspond to the public key set in the ECH config.)\n"
+    << "                          (If this option is specified, a corresponding ECH config must be set.)\n"
+    << "                          (For OpenSSL key exchanges, please use the PEM format for the private key.)\n"
+    << "                          (For the X25519 key exchange, please specify the private key in hex on the first line, "
+    << "                          (and the public key in hex on the second line.)\n";
+    // clang-format on
 }
 
 class FizzServerAcceptor : AsyncServerSocket::AcceptCallback {
@@ -302,7 +315,12 @@ class FizzExampleServer : public AsyncFizzServer::HandshakeCallback,
         folly::to<std::string>(
             "    Client Traffic: ", secretStr(clientAppTrafficSecret_)),
         folly::to<std::string>(
-            "    Server Traffic: ", secretStr(serverAppTrafficSecret_))};
+            "    Server Traffic: ", secretStr(serverAppTrafficSecret_)),
+        folly::to<std::string>(
+            "",
+            state.context()->getECHDecrypter()
+                ? "Encrypted client hello (ECH) is successful."
+                : "")};
   }
 
   std::vector<std::string> fallbackSuccessLog() {
@@ -475,6 +493,115 @@ void FizzServerAcceptor::done() {
   }
 }
 
+std::unique_ptr<KeyExchange> createKeyExchange(
+    hpke::KEMId kemId,
+    std::string echPrivateKeyFile) {
+  auto getPrivateKey = [&echPrivateKeyFile]() {
+    std::string keyData;
+    folly::ssl::EvpPkeyUniquePtr privKey;
+    if (readFile(echPrivateKeyFile.c_str(), keyData)) {
+      privKey = CertUtils::readPrivateKeyFromBuffer(keyData);
+    }
+    return privKey;
+  };
+
+  switch (kemId) {
+    case hpke::KEMId::secp256r1: {
+      auto kex = std::make_unique<OpenSSLECKeyExchange<P256>>();
+      kex->setPrivateKey(getPrivateKey());
+      return kex;
+    }
+    case hpke::KEMId::secp384r1: {
+      auto kex = std::make_unique<OpenSSLECKeyExchange<P384>>();
+      kex->setPrivateKey(getPrivateKey());
+      return kex;
+    }
+    case hpke::KEMId::secp521r1: {
+      auto kex = std::make_unique<OpenSSLECKeyExchange<P521>>();
+      kex->setPrivateKey(getPrivateKey());
+      return kex;
+    }
+    case hpke::KEMId::x25519: {
+      auto kex = std::make_unique<X25519KeyExchange>();
+      std::string keyData;
+      std::ifstream infile(echPrivateKeyFile);
+
+      // Assume the first line is the private key in hex, the second line is the
+      // public key in hex.
+      std::string privKeyStr, pubKeyStr;
+      infile >> privKeyStr;
+      infile >> pubKeyStr;
+
+      kex->setKeyPair(
+          folly::IOBuf::copyBuffer(folly::unhexlify(privKeyStr)),
+          folly::IOBuf::copyBuffer(folly::unhexlify(pubKeyStr)));
+
+      return kex;
+    }
+    default: {
+      // We don't support other key exchanges right now.
+      break;
+    }
+  }
+  return nullptr;
+}
+
+std::shared_ptr<ech::Decrypter> setupDecrypterFromInputs(std::string echConfigsFile, std::string echPrivateKeyFile) {
+  // Get the ECH config that corresponds to the client setup.
+  auto echConfigsJson = readECHConfigsJson(echConfigsFile);
+  if (!echConfigsJson.has_value()) {
+    LOG(ERROR) << "Unable to load ECH configs from json file";
+    return nullptr;
+  }
+  auto gotECHConfigs = parseECHConfigs(echConfigsJson.value());
+  if (!gotECHConfigs.has_value()) {
+    LOG(ERROR)
+        << "Unable to parse JSON file and make ECH config."
+        << "Ensure the format matches what is expected."
+        << "Rough example of format: {echconfigs: [${your ECH config here with all the fields..}]}"
+        << "See FizzCommandCommonTest for a more concrete example.";
+    return nullptr;
+  }
+
+  auto decrypter = std::make_shared<ech::ECHConfigManager>();
+
+  // If more that 1 ECH config is provided, we use the first one.
+  ech::ECHConfig gotConfig = gotECHConfigs.value()[0];
+  auto kemId = getKEMId((*echConfigsJson)["echconfigs"][0]["kem_id"].asString());
+
+  // Create a key exchange and set the private key
+  auto kexWithPrivateKey = createKeyExchange(kemId, echPrivateKeyFile);
+  if (!kexWithPrivateKey) {
+    LOG(ERROR) << "Unable to create a key exchange and set a private key for it.";
+    return nullptr;
+  }
+
+  // Configure ECH decrpyter to be used server side.
+  decrypter->addDecryptionConfig(
+      ech::DecrypterParams{gotConfig, std::move(kexWithPrivateKey)});
+
+
+  return decrypter;
+}
+
+std::shared_ptr<ech::Decrypter> setupDefaultDecrypter() {
+  auto defaultPrivateKey = folly::IOBuf::copyBuffer(folly::unhexlify(
+      "8c490e5b0c7dbe0c6d2192484d2b7a0423b3b4544f2481095a99dbf238fb350f"));
+  auto defaultPublicKey = folly::IOBuf::copyBuffer(folly::unhexlify(
+      "8a07563949fac6232936ed6f36c4fa735930ecdeaef6734e314aeac35a56fd0a"));
+
+  ech::ECHConfig chosenConfig = getDefaultECHConfigs()[0];
+  auto kex = std::make_unique<X25519KeyExchange>();
+  kex->setKeyPair(std::move(defaultPrivateKey), std::move(defaultPublicKey));
+
+  // Configure ECH decrpyter to be used server side.
+  auto decrypter = std::make_shared<ech::ECHConfigManager>();
+  decrypter->addDecryptionConfig(
+      ech::DecrypterParams{chosenConfig, std::move(kex)});
+
+  return decrypter;
+}
+
 } // namespace
 
 int fizzServerCommand(const std::vector<std::string>& args) {
@@ -502,6 +629,9 @@ int fizzServerCommand(const std::vector<std::string>& args) {
 #endif
   };
   std::string credPath;
+  bool ech = false;
+  std::string echConfigsFile;
+  std::string echPrivateKeyFile;
 
   // clang-format off
   FizzArgHandlerMap handlers = {
@@ -562,7 +692,16 @@ int fizzServerCommand(const std::vector<std::string>& args) {
     }}},
     {"-delegatedcred", {true, [&credPath](const std::string& arg) {
         credPath = arg;
-    }}}
+    }}},
+    {"-ech", {false, [&ech](const std::string&) {
+        ech = true;
+    }}},
+    {"-echconfigs", {true, [&echConfigsFile](const std::string& arg) {
+        echConfigsFile = arg;
+    }}},
+    {"-echprivatekey", {true, [&echPrivateKeyFile](const std::string& arg) {
+        echPrivateKeyFile = arg;
+    }}},
   };
   // clang-format on
 
@@ -611,6 +750,31 @@ int fizzServerCommand(const std::vector<std::string>& args) {
   }
 
   auto serverContext = std::make_shared<FizzServerContext>();
+
+  if (ech) {
+    // Use ECH  default values.
+    serverContext->setECHDecrypter(setupDefaultDecrypter());
+  }
+
+  if ((echConfigsFile.empty() && !echPrivateKeyFile.empty()) ||
+      (!echConfigsFile.empty() && echPrivateKeyFile.empty())) {
+    LOG(ERROR)
+        << "Must provide both an ECH configs file (\"-echconfigs [config file]\") and an ECH private key (\"-echprivatekey [key file]\") or neither.";
+    return 1;
+  }
+
+  // ECH is implicitly enabled if ECH configs and a private key are provided.
+  // Note that if there are ECH configs provided, there must be an associated key file.
+  if (!echConfigsFile.empty()) {
+    // Setup ECH decrypting tools based on user provided ECH configs and private key.
+    auto decrypter = setupDecrypterFromInputs(echConfigsFile, echPrivateKeyFile);
+    if (!decrypter) {
+      LOG(ERROR) << "Unable to setup decrypter.";
+      return 1;
+    }
+    serverContext->setECHDecrypter(decrypter);
+  }
+
   serverContext->setSupportedCiphers(std::move(ciphers));
   serverContext->setClientAuthMode(clientAuthMode);
   serverContext->setClientCertVerifier(verifier);
