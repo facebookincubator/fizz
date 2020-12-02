@@ -7,6 +7,7 @@
  */
 
 #include <fizz/client/AsyncFizzClient.h>
+#include <fizz/crypto/hpke/Utils.h>
 #include <fizz/extensions/delegatedcred/DelegatedCredentialClientExtension.h>
 #include <fizz/extensions/delegatedcred/DelegatedCredentialFactory.h>
 #ifdef FIZZ_TOOL_ENABLE_BROTLI
@@ -67,8 +68,13 @@ void printUsage() {
     << " -v verbosity             (set verbose log level for VLOG macros. Default: 0)\n"
     << " -vmodule m1=N,...        (set per-module verbose log level for VLOG macros. Default: none)\n"
     << " -httpproxy host:port     (set an HTTP proxy to use. Default: none)\n"
-    << " -delegatedcred           (enable delegated credential support. Default: false)\n";
-  // clang-format on
+    << " -delegatedcred           (enable delegated credential support. Default: false)\n"
+    << " -ech                     (use default values to simulate the sending of an encrypted client hello.)\n"
+    << " -echconfigs file         (path to read ECH configs from. Format for contents is JSON.)\n"
+    << "                          (JSON format: {echconfigs: [${your ECH config here with all the fields..}]})\n"
+    << "                          (See FizzCommandCommonTest for an example.)\n"
+    << "                          (Note: Setting ech configs implicitly enables ECH.)\n";
+    // clang-format on
 }
 
 class Connection : public AsyncSocket::ConnectCallback,
@@ -85,14 +91,16 @@ class Connection : public AsyncSocket::ConnectCallback,
       std::shared_ptr<const CertificateVerifier> verifier,
       bool willResume,
       std::string proxyTarget,
-      std::shared_ptr<ClientExtensions> extensions)
+      std::shared_ptr<ClientExtensions> extensions,
+      folly::Optional<std::vector<ech::ECHConfig>> echConfigs)
       : evb_(evb),
         clientContext_(clientContext),
         sni_(sni),
         verifier_(std::move(verifier)),
         willResume_(willResume),
         proxyTarget_(proxyTarget),
-        extensions_(extensions) {}
+        extensions_(extensions),
+        echConfigs_(std::move(echConfigs)) {}
 
   void connect(const SocketAddress& addr) {
     sock_ = AsyncSocket::UniquePtr(new AsyncSocket(evb_));
@@ -134,12 +142,13 @@ class Connection : public AsyncSocket::ConnectCallback,
     transport_ = AsyncFizzClient::UniquePtr(
         new AsyncFizzClient(std::move(sock_), clientContext_, extensions_));
     transport_->setSecretCallback(this);
+    auto echConfigs = echConfigs_;
     transport_->connect(
         this,
         verifier_,
         sni_,
         sni_,
-        folly::Optional<std::vector<fizz::ech::ECHConfig>>(folly::none));
+        std::move(echConfigs));
   }
 
   void fizzHandshakeSuccess(AsyncFizzClient* /*client*/) noexcept override {
@@ -315,6 +324,10 @@ class Connection : public AsyncSocket::ConnectCallback,
     LOG(INFO) << "    Client Traffic: " << secretStr(clientAppTrafficSecret_);
     LOG(INFO) << "    Server Traffic: " << secretStr(serverAppTrafficSecret_);
 
+    if (echConfigs_.has_value()) {
+      printECHSuccess(state);
+    }
+
     if (keyLogger_) {
       if (clientEarlyTrafficSecret_) {
         keyLogger_->write(
@@ -355,6 +368,31 @@ class Connection : public AsyncSocket::ConnectCallback,
     }
   }
 
+  void printECHSuccess(const State& state) {
+    LOG(INFO) << "  Encrypted client hello (ECH) enabled: ";
+    auto echResult = state.encodedECH().has_value()
+        ? "    Successfully sent the server an ECH"
+        : "    Unable to send server an ECH";
+    LOG(INFO) << echResult;
+
+    // Get ECH config content
+    const auto& echConfig = echConfigs_.value()[0];
+    const auto& configContent = echConfig.ech_config_content;
+    folly::io::Cursor cursor(configContent.get());
+    auto echConfigContent = decode<ech::ECHConfigContentDraft7>(cursor);
+
+    auto ciphersuite = echConfigContent.cipher_suites[0];
+    LOG(INFO) << "    Hash function: "
+              << toString(getHashFunction(ciphersuite.kdf_id));
+    LOG(INFO) << "    Cipher Suite: "
+              << toString(getCipherSuite(ciphersuite.aead_id));
+    LOG(INFO) << "    Named Group: "
+              << toString(getKexGroup(echConfigContent.kem_id));
+    LOG(INFO) << "    Fake SNI Used: "
+              << echConfigContent.public_name->clone()->moveToFbString();
+
+  }
+
   EventBase* evb_;
   std::shared_ptr<FizzClientContext> clientContext_;
   Optional<std::string> sni_;
@@ -367,6 +405,7 @@ class Connection : public AsyncSocket::ConnectCallback,
   std::unique_ptr<IOBuf> proxyResponseBuffer_;
   std::shared_ptr<ClientExtensions> extensions_;
   std::unique_ptr<KeyLogWriter> keyLogger_;
+  folly::Optional<std::vector<ech::ECHConfig>> echConfigs_;
 };
 
 class ResumptionPskCache : public BasicPskCache {
@@ -451,6 +490,8 @@ int fizzClientCommand(const std::vector<std::string>& args) {
 #endif
   };
   bool delegatedCredentials = false;
+  bool ech = false;
+  std::string echConfigsFile;
 
   // clang-format off
   FizzArgHandlerMap handlers = {
@@ -506,6 +547,12 @@ int fizzClientCommand(const std::vector<std::string>& args) {
     }}},
     {"-delegatedcred", {false, [&delegatedCredentials](const std::string&) {
         delegatedCredentials = true;
+    }}},
+    {"-ech", {false, [&ech](const std::string&) {
+        ech = true;
+    }}},
+    {"-echconfigs", {true, [&echConfigsFile](const std::string& arg) {
+        echConfigsFile = arg;
     }}}
   };
   // clang-format on
@@ -619,6 +666,32 @@ int fizzClientCommand(const std::vector<std::string>& args) {
             clientContext->getSupportedSigSchemes());
   }
 
+  folly::Optional<std::vector<ech::ECHConfig>> echConfigs = folly::none;
+
+  if (ech) {
+    // Use default ECH config values.
+    echConfigs = getDefaultECHConfigs();
+  }
+
+  if (!echConfigsFile.empty()) {
+    // Parse user set ECH configs.
+    auto echConfigsJson = readECHConfigsJson(echConfigsFile);
+    if (!echConfigsJson.has_value()) {
+      LOG(ERROR) << "Unable to load ECH configs from json file";
+      return 1;
+    }
+    auto gotECHConfigs = parseECHConfigs(echConfigsJson.value());
+    if (!gotECHConfigs.has_value()) {
+      LOG(ERROR)
+          << "Unable to parse JSON file and make ECH config."
+          << "Ensure the format matches what is expected."
+          << "Rough example of format: {echconfigs: [${your ECH config here with all the fields..}]}"
+          << "See FizzCommandCommonTest for a more concrete example.";
+      return 1;
+    }
+    echConfigs = std::move(gotECHConfigs.value());
+  }
+
   try {
     auto sni = customSNI.empty() ? host : customSNI;
     auto connectHost = proxyHost.empty() ? host : proxyHost;
@@ -628,9 +701,9 @@ int fizzClientCommand(const std::vector<std::string>& args) {
         : folly::to<std::string>(host, ":", port);
     SocketAddress addr(connectHost, connectPort, true);
     Connection conn(
-        &evb, clientContext, sni, verifier, reconnect, proxiedHost, extensions);
+        &evb, clientContext, sni, verifier, reconnect, proxiedHost, extensions, std::move(echConfigs));
     Connection resumptionConn(
-        &evb, clientContext, sni, verifier, false, proxiedHost, extensions);
+        &evb, clientContext, sni, verifier, false, proxiedHost, extensions, folly::none);
     Connection* inputTarget = &conn;
     if (reconnect) {
       auto pskCache = std::make_shared<ResumptionPskCache>(
