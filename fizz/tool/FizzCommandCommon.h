@@ -37,6 +37,8 @@ folly::Optional<folly::dynamic> readECHConfigsJson(std::string echFile);
 
 hpke::KEMId getKEMId(std::string kemStr);
 
+std::vector<ech::ECHConfig> getDefaultECHConfigs();
+
 inline uint16_t portFromString(const std::string& portStr, bool serverSide) {
   unsigned long converted = 0;
   try {

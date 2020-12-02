@@ -196,5 +196,42 @@ folly::Optional<std::vector<ech::ECHConfig>> parseECHConfigs(
   return std::move(echConfigs);
 }
 
+std::vector<ech::ECHConfig> getDefaultECHConfigs() {
+  // TODO: Generate a public and private key pair each time,
+  // and output it so the user can use it on the client side.
+  // This allows the user to more easily use ECH without needing
+  // to generate ECH configs and private keys themselves, without having
+  // the keys hardcoded.
+  LOG(INFO) << "Using default ECH configs.";
+
+  // Set the ECH config content.
+  ech::ECHConfigContentDraft7 echConfigContent;
+  echConfigContent.public_name = folly::IOBuf::copyBuffer("publicname");
+
+  echConfigContent.cipher_suites = {ech::ECHCipherSuite{
+      hpke::KDFId::Sha256, hpke::AeadId::TLS_AES_128_GCM_SHA256}};
+  echConfigContent.maximum_name_length = 1000;
+  folly::StringPiece cookie{"002c00080006636f6f6b6965"};
+  echConfigContent.extensions = getExtensions(cookie);
+
+  // Set default public key (which corresponds to the private key set on the
+  // server side).
+  echConfigContent.public_key = folly::IOBuf::copyBuffer(folly::unhexlify(
+      "8a07563949fac6232936ed6f36c4fa735930ecdeaef6734e314aeac35a56fd0a"));
+
+  // Corresponds to the public key set above.
+  echConfigContent.kem_id = hpke::KEMId::x25519;
+
+  // Construct an ECH config to pass in to the client.
+  ech::ECHConfig echConfig;
+  echConfig.version = ech::ECHVersion::V7;
+  echConfig.ech_config_content = encode(std::move(echConfigContent));
+  auto configs = std::vector<ech::ECHConfig>();
+  configs.push_back(std::move(echConfig));
+
+  return configs;
+}
+
+
 } // namespace tool
 } // namespace fizz
