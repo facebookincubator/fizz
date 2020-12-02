@@ -39,6 +39,21 @@ inline Extension encodeExtension(const ech::ECHNonce &echNonce) {
   return ext;
 }
 
+template<>
+inline Extension encodeExtension(const ech::ClientECH& clientECH) {
+  Extension ext;
+  ext.extension_type = ExtensionType::client_ech;
+  ext.extension_data = folly::IOBuf::create(0);
+
+  folly::io::Appender appender(ext.extension_data.get(), 20);
+  detail::write(clientECH.cipher_suite, appender);
+  detail::writeBuf<uint16_t>(clientECH.config_id, appender);
+  detail::writeBuf<uint16_t>(clientECH.enc, appender);
+  detail::writeBuf<uint16_t>(clientECH.payload, appender);
+
+  return ext;
+}
+
 template <>
 inline ech::EncryptedClientHello getExtension(folly::io::Cursor& cs) {
   ech::EncryptedClientHello ech;
@@ -56,4 +71,15 @@ inline ech::ECHNonce getExtension(folly::io::Cursor& cs) {
   detail::read(echNonce.nonce, cs);
   return echNonce;
 }
-} // namespace ech::
+
+template <>
+inline ech::ClientECH getExtension(folly::io::Cursor& cs) {
+  ech::ClientECH clientECH;
+  detail::read(clientECH.cipher_suite, cs);
+  detail::readBuf<uint16_t>(clientECH.config_id, cs);
+  detail::readBuf<uint16_t>(clientECH.enc, cs);
+  detail::readBuf<uint16_t>(clientECH.payload, cs);
+
+  return clientECH;
+}
+} // namespace ech

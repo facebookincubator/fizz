@@ -38,6 +38,19 @@ ECHConfigContentDraft7 getECHConfigContent() {
   return echConfigContent;
 }
 
+ECHConfigContentDraft8 getECHConfigContentV8() {
+  ECHCipherSuite suite{hpke::KDFId::Sha256, hpke::AeadId::TLS_AES_128_GCM_SHA256};
+  ECHConfigContentDraft8 echConfigContent;
+  echConfigContent.public_name = ::fizz::test::toIOBuf("7075626c69636e616d65");
+  echConfigContent.public_key = ::fizz::test::toIOBuf("7075626c69635f6b6579");
+  echConfigContent.kem_id = hpke::KEMId::secp256r1;
+  echConfigContent.cipher_suites = {suite};
+  echConfigContent.maximum_name_length = 1000;
+  folly::StringPiece cookie{"002c00080006636f6f6b6965"};
+  echConfigContent.extensions = getExtensions(cookie);
+  return echConfigContent;
+}
+
 ECHConfig getECHConfig() {
   auto configContent = getECHConfigContent();
   ECHConfig testConfig;
