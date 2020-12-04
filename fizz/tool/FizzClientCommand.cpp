@@ -18,12 +18,15 @@
 #include <fizz/protocol/ZstdCertificateDecompressor.h>
 #endif
 #include <fizz/client/PskSerializationUtils.h>
+#include <fizz/protocol/DefaultCertificateVerifier.h>
+#include <fizz/tool/CertificateVerifiers.h>
 #include <fizz/tool/FizzCommandCommon.h>
 #include <fizz/util/KeyLogWriter.h>
 #include <fizz/util/Parse.h>
 #include <folly/FileUtil.h>
 #include <folly/Format.h>
 #include <folly/io/async/SSLContext.h>
+#include <folly/ssl/OpenSSLCertUtils.h>
 
 #include <iostream>
 #include <string>
@@ -31,6 +34,7 @@
 
 using namespace fizz::client;
 using namespace folly;
+using namespace folly::ssl;
 
 namespace fizz {
 namespace tool {
@@ -88,7 +92,7 @@ class Connection : public AsyncSocket::ConnectCallback,
       EventBase* evb,
       std::shared_ptr<FizzClientContext> clientContext,
       Optional<std::string> sni,
-      std::shared_ptr<const CertificateVerifier> verifier,
+      std::shared_ptr<StoreCertificateChain> verifier,
       bool willResume,
       std::string proxyTarget,
       std::shared_ptr<ClientExtensions> extensions,
@@ -275,8 +279,18 @@ class Connection : public AsyncSocket::ConnectCallback,
               << (serverCert ? serverCert->getIdentity() : "(none)");
     LOG(INFO) << "  Client Identity: "
               << (clientCert ? clientCert->getIdentity() : "(none)");
+
+    LOG(INFO) << "  Certificate Chain:";
+    auto certs = verifier_->getCerts();
+    for (size_t i = 0; i < certs.size(); i++) {
+      auto x509Cert = certs[i]->getX509().get();
+      LOG(INFO) << "   " << i
+                << " s:" << OpenSSLCertUtils::getSubject(*x509Cert).value();
+      LOG(INFO) << "     i:" << OpenSSLCertUtils::getIssuer(*x509Cert).value();
+    }
+
     if (serverCert) {
-      folly::ssl::BioUniquePtr bio(BIO_new(BIO_s_mem()));
+      BioUniquePtr bio(BIO_new(BIO_s_mem()));
       if (!PEM_write_bio_X509(bio.get(), serverCert->getX509().get())) {
         LOG(ERROR) << "  Couldn't convert server certificate to PEM: "
                    << SSLContext::getErrors();
@@ -289,7 +303,7 @@ class Connection : public AsyncSocket::ConnectCallback,
     }
 
     if (clientCert) {
-      folly::ssl::BioUniquePtr bio(BIO_new(BIO_s_mem()));
+      BioUniquePtr bio(BIO_new(BIO_s_mem()));
       if (!PEM_write_bio_X509(bio.get(), clientCert->getX509().get())) {
         LOG(ERROR) << "  Couldn't convert client certificate to PEM: "
                    << SSLContext::getErrors();
@@ -396,7 +410,7 @@ class Connection : public AsyncSocket::ConnectCallback,
   EventBase* evb_;
   std::shared_ptr<FizzClientContext> clientContext_;
   Optional<std::string> sni_;
-  std::shared_ptr<const CertificateVerifier> verifier_;
+  std::shared_ptr<StoreCertificateChain> verifier_;
   AsyncSocket::UniquePtr sock_;
   AsyncFizzClient::UniquePtr transport_;
   bool willResume_{false};
@@ -574,7 +588,6 @@ int fizzClientCommand(const std::vector<std::string>& args) {
   }
 
   EventBase evb;
-  std::shared_ptr<const CertificateVerifier> verifier;
   auto clientContext = std::make_shared<FizzClientContext>();
 
   if (!alpns.empty()) {
@@ -618,24 +631,42 @@ int fizzClientCommand(const std::vector<std::string>& args) {
     clientContext->setCertDecompressionManager(std::move(mgr));
   }
 
+  X509StoreUniquePtr connStore;
+  X509StoreUniquePtr resumptionStore;
   if (verify) {
     // Initialize CA store first, if given.
-    folly::ssl::X509StoreUniquePtr storePtr;
     if (!caPath.empty() || !caFile.empty()) {
-      storePtr.reset(X509_STORE_new());
+      connStore.reset(X509_STORE_new());
       auto caFilePtr = caFile.empty() ? nullptr : caFile.c_str();
       auto caPathPtr = caPath.empty() ? nullptr : caPath.c_str();
 
-      if (X509_STORE_load_locations(storePtr.get(), caFilePtr, caPathPtr) ==
+      if (X509_STORE_load_locations(connStore.get(), caFilePtr, caPathPtr) ==
           0) {
         LOG(ERROR) << "Failed to load CA certificates";
         return 1;
       }
+      resumptionStore.reset(connStore.get());
+      X509_STORE_up_ref(resumptionStore.get());
     }
-
-    verifier = std::make_shared<const DefaultCertificateVerifier>(
-        VerificationContext::Client, std::move(storePtr));
   }
+
+  auto makeVerifier = [](X509StoreUniquePtr storePtr)
+      -> std::unique_ptr<StoreCertificateChain> {
+    std::unique_ptr<CertificateVerifier> verifier;
+    if (storePtr) {
+      verifier = std::make_unique<DefaultCertificateVerifier>(
+          VerificationContext::Client, std::move(storePtr));
+    } else {
+      verifier = std::make_unique<InsecureAcceptAnyCertificate>();
+    }
+    auto storeChainVerifier =
+        std::make_unique<StoreCertificateChain>(std::move(verifier));
+
+    return storeChainVerifier;
+  };
+
+  auto connVerifier = makeVerifier(std::move(connStore));
+  auto resumptionVerifier = makeVerifier(std::move(resumptionStore));
 
   if (!certPath.empty()) {
     std::string certData;
@@ -701,9 +732,9 @@ int fizzClientCommand(const std::vector<std::string>& args) {
         : folly::to<std::string>(host, ":", port);
     SocketAddress addr(connectHost, connectPort, true);
     Connection conn(
-        &evb, clientContext, sni, verifier, reconnect, proxiedHost, extensions, std::move(echConfigs));
+        &evb, clientContext, sni, std::move(connVerifier), reconnect, proxiedHost, extensions, std::move(echConfigs));
     Connection resumptionConn(
-        &evb, clientContext, sni, verifier, false, proxiedHost, extensions, folly::none);
+        &evb, clientContext, sni, std::move(resumptionVerifier), false, proxiedHost, extensions, folly::none);
     Connection* inputTarget = &conn;
     if (reconnect) {
       auto pskCache = std::make_shared<ResumptionPskCache>(
