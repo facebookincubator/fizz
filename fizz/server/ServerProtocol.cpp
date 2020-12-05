@@ -516,7 +516,7 @@ static ResumptionStateResult getResumptionState(
   }
 }
 
-Future<ReplayCacheResult> getReplayCacheResult(
+static Future<ReplayCacheResult> getReplayCacheResult(
     const ClientHello& chlo,
     bool zeroRttEnabled,
     ReplayCache* replayCache) {
