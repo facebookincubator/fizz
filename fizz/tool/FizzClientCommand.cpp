@@ -393,7 +393,7 @@ class Connection : public AsyncSocket::ConnectCallback,
     const auto& echConfig = echConfigs_.value()[0];
     const auto& configContent = echConfig.ech_config_content;
     folly::io::Cursor cursor(configContent.get());
-    auto echConfigContent = decode<ech::ECHConfigContentDraft7>(cursor);
+    auto echConfigContent = decode<ech::ECHConfigContentDraft>(cursor);
 
     auto ciphersuite = echConfigContent.cipher_suites[0];
     LOG(INFO) << "    Hash function: "

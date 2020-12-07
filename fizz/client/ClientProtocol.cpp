@@ -667,7 +667,7 @@ static folly::Optional<ECHParams> setupECH(
 
   auto configContent = supportedECHConfig.config.ech_config_content->clone();
   folly::io::Cursor cursor(configContent.get());
-  auto echConfigContent = decode<ech::ECHConfigContentDraft7>(cursor);
+  auto echConfigContent = decode<ech::ECHConfigContentDraft>(cursor);
   auto fakeSni = echConfigContent.public_name->clone();
 
   auto kex = factory.makeKeyExchange(getKexGroup(echConfigContent.kem_id));

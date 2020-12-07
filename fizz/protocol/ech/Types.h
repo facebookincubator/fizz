@@ -33,22 +33,13 @@ struct ECHCipherSuite {
   }
 };
 
-struct ECHConfigContentDraft7 {
+struct ECHConfigContentDraft {
     Buf public_name;
     HpkePublicKey public_key;
     hpke::KEMId kem_id;
     std::vector<ECHCipherSuite> cipher_suites;
     uint16_t maximum_name_length;
     std::vector<Extension> extensions;
-};
-
-struct ECHConfigContentDraft8 {
-  Buf public_name;
-  HpkePublicKey public_key;
-  hpke::KEMId kem_id;
-  std::vector<ECHCipherSuite> cipher_suites;
-  uint16_t maximum_name_length;
-  std::vector<Extension> extensions;
 };
 
 struct ECHConfig {

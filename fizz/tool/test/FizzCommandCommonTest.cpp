@@ -77,7 +77,7 @@ TEST(FizzCommandCommonTest, TestParseECHConfigsSuccess) {
   ASSERT_EQ(echConfig.version, ech::ECHVersion::V7);
 
   folly::io::Cursor cursor(echConfig.ech_config_content.get());
-  auto echConfigContent = decode<ech::ECHConfigContentDraft7>(cursor);
+  auto echConfigContent = decode<ech::ECHConfigContentDraft>(cursor);
   ASSERT_TRUE(folly::IOBufEqualTo()(
       echConfigContent.public_name, folly::IOBuf::copyBuffer("publicname")));
   auto expectedPubKey =

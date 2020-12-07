@@ -107,7 +107,7 @@ EncryptedClientHello getTestECH(ClientHello chlo) {
 TEST(EncryptionTest, TestValidECHConfigContent) {
 
   // Add config that doesn't work and cannot be supported
-  ECHConfigContentDraft7 invalidConfigContent = getECHConfigContent();
+  ECHConfigContentDraft invalidConfigContent = getECHConfigContent();
   invalidConfigContent.kem_id = hpke::KEMId::secp521r1;
   std::vector<ECHConfig> configs;
   ECHConfig invalid;
@@ -137,7 +137,7 @@ TEST(EncryptionTest, TestValidECHConfigContent) {
 }
 
 TEST(EncryptionTest, TestInvalidECHConfigContent) {
-  ECHConfigContentDraft7 configContent = getECHConfigContent();
+  ECHConfigContentDraft configContent = getECHConfigContent();
 
   configContent.kem_id = hpke::KEMId::secp256r1;
   ECHCipherSuite suite{hpke::KDFId::Sha512, hpke::AeadId::TLS_AES_128_GCM_SHA256};

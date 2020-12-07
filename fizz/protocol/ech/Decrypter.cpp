@@ -13,7 +13,7 @@ namespace ech {
 
 namespace {
 ClientHello decryptClientHello(
-    const ECHConfigContentDraft7& supportedConfig,
+    const ECHConfigContentDraft& supportedConfig,
     const EncryptedClientHello& echExtension,
     std::unique_ptr<KeyExchange> kex) {
   auto decryptionResult = tryToDecryptECH(
@@ -40,7 +40,7 @@ folly::Optional<ClientHello> tryToDecodeECH(
         auto getDecodedConfig = [&]() {
           const auto& configContent = param.echConfig.ech_config_content;
           folly::io::Cursor echConfigCursor(configContent.get());
-          return decode<ECHConfigContentDraft7>(echConfigCursor);
+          return decode<ECHConfigContentDraft>(echConfigCursor);
         };
 
         // Check if this ECH config record digest matches the ECH extension.

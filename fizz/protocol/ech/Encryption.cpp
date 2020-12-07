@@ -26,7 +26,7 @@ folly::Optional<SupportedECHConfig> selectECHConfig(
   for (const auto& config : configs) {
     folly::io::Cursor cursor(config.ech_config_content.get());
     if (config.version == ECHVersion::V7) {
-      auto echConfig = decode<ECHConfigContentDraft7>(cursor);
+      auto echConfig = decode<ECHConfigContentDraft>(cursor);
       // Check if we (client) support the server's chosen KEM.
       auto result = std::find(
           supportedKEMs.begin(), supportedKEMs.end(), echConfig.kem_id);
@@ -125,7 +125,7 @@ hpke::SetupResult constructHpkeSetupResult(
   }
 
   folly::io::Cursor cursor(supportedConfig.config.ech_config_content.get());
-  auto config = decode<ECHConfigContentDraft7>(cursor);
+  auto config = decode<ECHConfigContentDraft>(cursor);
   auto cipherSuite = supportedConfig.cipherSuite;
 
   // Get shared secret
@@ -150,7 +150,7 @@ EncryptedClientHello encryptClientHello(
   auto context = std::move(setupResult.context);
   auto cipherSuite = supportedConfig.cipherSuite;
   folly::io::Cursor cursor(supportedConfig.config.ech_config_content.get());
-  auto config = decode<ECHConfigContentDraft7>(cursor);
+  auto config = decode<ECHConfigContentDraft>(cursor);
 
   // Create client hello inner
   std::unique_ptr<folly::IOBuf> clientHelloInner = encode(clientHello);

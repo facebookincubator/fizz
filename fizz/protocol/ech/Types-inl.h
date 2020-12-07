@@ -83,27 +83,7 @@ struct detail::Reader<std::array<uint8_t, 16>> {
 };
 
 template <>
-inline Buf encode<ech::ECHConfigContentDraft7>(ech::ECHConfigContentDraft7&& ech) {
-  auto buf = folly::IOBuf::create(
-    detail::getBufSize<uint16_t>(ech.public_name)
-    + detail::getBufSize<uint16_t>(ech.public_key)
-    + sizeof(uint16_t)
-    + sizeof(ech::ECHCipherSuite) * ech.cipher_suites.size()
-    + sizeof(uint16_t)
-    + 20);
-
-  folly::io::Appender appender(buf.get(), 20);
-  detail::writeBuf<uint16_t>(ech.public_name, appender);
-  detail::writeBuf<uint16_t>(ech.public_key, appender);
-  detail::write(ech.kem_id, appender);
-  detail::writeVector<uint16_t>(ech.cipher_suites, appender);
-  detail::write(ech.maximum_name_length, appender);
-  detail::writeVector<uint16_t>(ech.extensions, appender);
-  return buf;
-}
-
-template <>
-inline Buf encode<ech::ECHConfigContentDraft8>(ech::ECHConfigContentDraft8&& ech) {
+inline Buf encode<ech::ECHConfigContentDraft>(ech::ECHConfigContentDraft&& ech) {
   auto buf = folly::IOBuf::create(
     detail::getBufSize<uint16_t>(ech.public_name)
     + detail::getBufSize<uint16_t>(ech.public_key)
@@ -138,21 +118,8 @@ inline Buf encode<ech::ECHConfig>(ech::ECHConfig&& echConfig) {
 }
 
 template <>
-inline ech::ECHConfigContentDraft7 decode(folly::io::Cursor& cursor) {
-  ech::ECHConfigContentDraft7 echConfigContent;
-  detail::readBuf<uint16_t>(echConfigContent.public_name, cursor);
-  detail::readBuf<uint16_t>(echConfigContent.public_key, cursor);
-  detail::read(echConfigContent.kem_id, cursor);
-  detail::readVector<uint16_t>(echConfigContent.cipher_suites, cursor);
-  detail::read<uint16_t>(echConfigContent.maximum_name_length, cursor);
-  detail::readVector<uint16_t>(echConfigContent.extensions, cursor);
-
-  return echConfigContent;
-}
-
-template <>
-inline ech::ECHConfigContentDraft8 decode(folly::io::Cursor& cursor) {
-  ech::ECHConfigContentDraft8 echConfigContent;
+inline ech::ECHConfigContentDraft decode(folly::io::Cursor& cursor) {
+  ech::ECHConfigContentDraft echConfigContent;
   detail::readBuf<uint16_t>(echConfigContent.public_name, cursor);
   detail::readBuf<uint16_t>(echConfigContent.public_key, cursor);
   detail::read(echConfigContent.kem_id, cursor);

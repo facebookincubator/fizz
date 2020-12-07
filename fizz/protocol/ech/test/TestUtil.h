@@ -16,8 +16,7 @@ namespace fizz {
 namespace ech {
 namespace test {
 
-ECHConfigContentDraft7 getECHConfigContent();
-ECHConfigContentDraft8 getECHConfigContentV8();
+ECHConfigContentDraft getECHConfigContent();
 ECHConfig getECHConfig();
 EncryptedClientHello getECH(ClientHello chlo, std::unique_ptr<KeyExchange> kex);
 

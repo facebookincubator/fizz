@@ -163,7 +163,7 @@ folly::Optional<std::vector<ech::ECHConfig>> parseECHConfigs(
     if (version != "V7") {
       return folly::none;
     }
-    ech::ECHConfigContentDraft7 configContent;
+    ech::ECHConfigContentDraft configContent;
     configContent.public_name =
         folly::IOBuf::copyBuffer(config["public_name"].asString());
     configContent.public_key = folly::IOBuf::copyBuffer(
@@ -205,7 +205,7 @@ std::vector<ech::ECHConfig> getDefaultECHConfigs() {
   LOG(INFO) << "Using default ECH configs.";
 
   // Set the ECH config content.
-  ech::ECHConfigContentDraft7 echConfigContent;
+  ech::ECHConfigContentDraft echConfigContent;
   echConfigContent.public_name = folly::IOBuf::copyBuffer("publicname");
 
   echConfigContent.cipher_suites = {ech::ECHCipherSuite{

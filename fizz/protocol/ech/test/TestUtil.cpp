@@ -25,22 +25,9 @@ std::vector<Extension> getExtensions(folly::StringPiece hex) {
   return exts;
 }
 
-ECHConfigContentDraft7 getECHConfigContent() {
+ECHConfigContentDraft getECHConfigContent() {
   ECHCipherSuite suite{hpke::KDFId::Sha256, hpke::AeadId::TLS_AES_128_GCM_SHA256};
-  ECHConfigContentDraft7 echConfigContent;
-  echConfigContent.public_name = ::fizz::test::toIOBuf("7075626c69636e616d65");
-  echConfigContent.public_key = ::fizz::test::toIOBuf("7075626c69635f6b6579");
-  echConfigContent.kem_id = hpke::KEMId::secp256r1;
-  echConfigContent.cipher_suites = {suite};
-  echConfigContent.maximum_name_length = 1000;
-  folly::StringPiece cookie{"002c00080006636f6f6b6965"};
-  echConfigContent.extensions = getExtensions(cookie);
-  return echConfigContent;
-}
-
-ECHConfigContentDraft8 getECHConfigContentV8() {
-  ECHCipherSuite suite{hpke::KDFId::Sha256, hpke::AeadId::TLS_AES_128_GCM_SHA256};
-  ECHConfigContentDraft8 echConfigContent;
+  ECHConfigContentDraft echConfigContent;
   echConfigContent.public_name = ::fizz::test::toIOBuf("7075626c69636e616d65");
   echConfigContent.public_key = ::fizz::test::toIOBuf("7075626c69635f6b6579");
   echConfigContent.kem_id = hpke::KEMId::secp256r1;

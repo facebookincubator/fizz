@@ -31,11 +31,11 @@ Buf getBuf(folly::StringPiece hex) {
 
 TEST(ECHTest, TestConfigContentEncodeDecodeV7) {
   // Encode config content
-  std::unique_ptr<folly::IOBuf> echConfigContentBuf = encode<ECHConfigContentDraft7>(getECHConfigContent());
+  std::unique_ptr<folly::IOBuf> echConfigContentBuf = encode<ECHConfigContentDraft>(getECHConfigContent());
 
   // Decode config content
   folly::io::Cursor cursor(echConfigContentBuf.get());
-  auto gotEchConfigContent = decode<ECHConfigContentDraft7>(cursor);
+  auto gotEchConfigContent = decode<ECHConfigContentDraft>(cursor);
 
   // Check decode(encode(content)) = content
   auto expectedEchConfigContent = getECHConfigContent();
@@ -51,14 +51,14 @@ TEST(ECHTest, TestConfigContentEncodeDecodeV7) {
 
 TEST(ECHTest, TestConfigContentEncodeDecodeV8) {
   // Encode config contents
-  std::unique_ptr<folly::IOBuf> echConfigContentBuf = encode<ECHConfigContentDraft8>(getECHConfigContentV8());
+  std::unique_ptr<folly::IOBuf> echConfigContentBuf = encode<ECHConfigContentDraft>(getECHConfigContent());
 
   // Decode config content
   folly::io::Cursor cursor(echConfigContentBuf.get());
-  auto gotEchConfigContent = decode<ECHConfigContentDraft8>(cursor);
+  auto gotEchConfigContent = decode<ECHConfigContentDraft>(cursor);
 
   // Check decode(encode(content)) = content
-  auto expectedEchConfigContent = getECHConfigContentV8();
+  auto expectedEchConfigContent = getECHConfigContent();
   EXPECT_TRUE(folly::IOBufEqualTo()(gotEchConfigContent.public_name, expectedEchConfigContent.public_name));
   EXPECT_TRUE(folly::IOBufEqualTo()(gotEchConfigContent.public_key, expectedEchConfigContent.public_key));
   EXPECT_EQ(gotEchConfigContent.kem_id, expectedEchConfigContent.kem_id);
@@ -74,7 +74,7 @@ TEST(ECHTest, TestECHConfigEncodeDecode) {
   ECHConfig echConfig;
   echConfig.length = 1;
   echConfig.version = ECHVersion::V7;
-  echConfig.ech_config_content = encode<ECHConfigContentDraft7>(getECHConfigContent());
+  echConfig.ech_config_content = encode<ECHConfigContentDraft>(getECHConfigContent());
   std::unique_ptr<folly::IOBuf> encodedBuf = encode<ECHConfig>(std::move(echConfig));
 
   // Decode ECH config
@@ -85,7 +85,7 @@ TEST(ECHTest, TestECHConfigEncodeDecode) {
   EXPECT_EQ(gotECHConfig.length, 1);
   EXPECT_EQ(gotECHConfig.version, ECHVersion::V7);
   EXPECT_TRUE(folly::IOBufEqualTo()(gotECHConfig.ech_config_content,
-    encode<ECHConfigContentDraft7>(getECHConfigContent())));
+    encode<ECHConfigContentDraft>(getECHConfigContent())));
 }
 
 TEST(ECHTest, TestECHExtensionEncode) {
