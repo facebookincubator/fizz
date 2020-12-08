@@ -44,6 +44,10 @@ folly::Optional<ClientHello> tryToDecryptECH(
     const ech::EncryptedClientHello& echExtension,
     std::unique_ptr<KeyExchange> kex);
 
+std::unique_ptr<folly::IOBuf> constructConfigId(
+    hpke::KDFId kdfId,
+    ECHConfig echConfig);
+
 std::unique_ptr<folly::IOBuf> getRecordDigest(
     std::unique_ptr<folly::IOBuf> echConfig,
     hpke::KDFId id);

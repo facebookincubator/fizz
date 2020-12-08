@@ -17,6 +17,33 @@
 namespace fizz {
 namespace ech {
 
+std::unique_ptr<folly::IOBuf> constructConfigId(
+    hpke::KDFId kdfId,
+    ECHConfig echConfig) {
+  std::unique_ptr<HkdfImpl> hkdf;
+  size_t hashLen;
+  switch (kdfId) {
+    case (hpke::KDFId::Sha256): {
+      hkdf = std::make_unique<HkdfImpl>(HkdfImpl::create<Sha256>());
+      hashLen = Sha256::HashLen;
+      break;
+    }
+    case (hpke::KDFId::Sha384): {
+      hkdf = std::make_unique<HkdfImpl>(HkdfImpl::create<Sha384>());
+      hashLen = Sha384::HashLen;
+      break;
+    }
+    default: {
+      throw std::runtime_error("kdf: not implemented");
+    }
+  }
+
+  auto extractedChlo = hkdf->extract(
+      folly::IOBuf::copyBuffer("")->coalesce(), encode(std::move(echConfig))->coalesce());
+  return hkdf->expand(
+      extractedChlo, *folly::IOBuf::copyBuffer("tls ech config id"), hashLen);
+}
+
 folly::Optional<SupportedECHConfig> selectECHConfig(
     const std::vector<ECHConfig>& configs,
     std::vector<hpke::KEMId> supportedKEMs,
