@@ -112,7 +112,7 @@ TEST(ECHTest, TestClientECHEncode) {
 
   Extension encoded = encodeExtension<ech::ClientECH>(ech);
 
-  EXPECT_EQ(encoded.extension_type, ExtensionType::client_ech);
+  EXPECT_EQ(encoded.extension_type, ExtensionType::encrypted_client_hello);
   // This was captured as the expected output from generating the result.
   EXPECT_TRUE(folly::IOBufEqualTo()(
       encoded.extension_data,
@@ -144,7 +144,7 @@ TEST(ECHTest, TestECHExtensionDecode) {
 
 TEST(ECHTest, TestClientECHDecode) {
   Extension e;
-  e.extension_type = ExtensionType::client_ech;
+  e.extension_type = ExtensionType::encrypted_client_hello;
   e.extension_data = folly::IOBuf::copyBuffer(folly::unhexlify(kClientECHExtensionData));
   std::vector<Extension> vec;
   vec.push_back(std::move(e));

@@ -99,8 +99,6 @@ std::string toString(ExtensionType extType) {
       return "encrypted_client_hello";
     case ExtensionType::ech_nonce:
       return "ech_nonce";
-    case ExtensionType::client_ech:
-      return "client_ech";
   }
   return enumToHex(extType);
 }

@@ -42,7 +42,7 @@ inline Extension encodeExtension(const ech::ECHNonce &echNonce) {
 template<>
 inline Extension encodeExtension(const ech::ClientECH& clientECH) {
   Extension ext;
-  ext.extension_type = ExtensionType::client_ech;
+  ext.extension_type = ExtensionType::encrypted_client_hello;
   ext.extension_data = folly::IOBuf::create(0);
 
   folly::io::Appender appender(ext.extension_data.get(), 20);

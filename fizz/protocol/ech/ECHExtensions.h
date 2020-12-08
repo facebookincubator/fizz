@@ -56,7 +56,7 @@ struct ClientECH {
   Buf payload;
 
   static constexpr ExtensionType extension_type =
-    ExtensionType::client_ech;
+    ExtensionType::encrypted_client_hello;
 };
 
 struct ECHNonce {
