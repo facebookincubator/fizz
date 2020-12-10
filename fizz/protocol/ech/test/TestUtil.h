@@ -18,7 +18,9 @@ namespace test {
 
 ECHConfigContentDraft getECHConfigContent();
 ECHConfig getECHConfig();
+ECHConfig getECHConfigV8();
 EncryptedClientHello getECH(ClientHello chlo, std::unique_ptr<KeyExchange> kex);
+ClientHello getClientHelloOuter();
 
 } // namespace test
 } // namespace ech
