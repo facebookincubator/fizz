@@ -174,6 +174,15 @@ std::string toString(CertificateCompressionAlgorithm);
 struct Extension {
   ExtensionType extension_type;
   Buf extension_data; // Limited to 2^16-1 bytes.
+
+  Extension clone() const {
+    Extension clone;
+    clone.extension_type = this->extension_type;
+    if (this->extension_data) {
+      clone.extension_data = this->extension_data->clone();
+    }
+    return clone;
+  }
 };
 
 struct HkdfLabel {
@@ -192,6 +201,24 @@ struct ClientHello
   std::vector<CipherSuite> cipher_suites;
   std::vector<uint8_t> legacy_compression_methods;
   std::vector<Extension> extensions;
+
+  ClientHello clone() const {
+    ClientHello clone;
+
+    clone.legacy_version = this->legacy_version;
+    clone.random = this->random;
+    if (this->legacy_session_id) {
+      clone.legacy_session_id = this->legacy_session_id->clone();
+    }
+    clone.cipher_suites = this->cipher_suites;
+    clone.legacy_compression_methods = this->legacy_compression_methods;
+
+    for (const auto& ext: this->extensions) {
+      clone.extensions.push_back(ext.clone());
+    }
+
+    return clone;
+  }
 };
 
 struct ServerHello
