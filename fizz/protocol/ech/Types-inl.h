@@ -26,7 +26,7 @@ inline void detail::write<ech::ECHConfig>(
     folly::io::Appender& out) {
   detail::write(echConfig.version, out);
   detail::write(echConfig.length, out);
-  detail::writeBuf<uint16_t>(echConfig.ech_config_content, out);
+  detail::writeBufWithoutLength(echConfig.ech_config_content, out);
 }
 
 template <>
@@ -40,7 +40,7 @@ template <>
 struct detail::Sizer<ech::ECHConfig> {
   template <class T>
   size_t getSize(const ech::ECHConfig& proto) {
-    return sizeof(uint16_t) + sizeof(uint16_t) + detail::getBufSize<uint16_t>(proto.ech_config_content);
+    return sizeof(uint16_t) + sizeof(uint16_t) + proto.length;
   }
 };
 

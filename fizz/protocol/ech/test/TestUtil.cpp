@@ -42,6 +42,7 @@ ECHConfig getECHConfig() {
   ECHConfig testConfig;
   testConfig.version = ECHVersion::V7;
   testConfig.ech_config_content = encode(getECHConfigContent());
+  testConfig.length = testConfig.ech_config_content->computeChainDataLength();
   return testConfig;
 }
 
@@ -53,7 +54,7 @@ ECHConfig getECHConfigV8() {
   testConfigContent.public_key =
       detail::encodeECPublicKey(::fizz::test::getPublicKey(::fizz::test::kP256PublicKey));
   config.ech_config_content = encode(std::move(testConfigContent));
-
+  config.length = config.ech_config_content->computeChainDataLength();
   return config;
 }
 
