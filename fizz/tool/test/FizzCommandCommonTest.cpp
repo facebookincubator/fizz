@@ -75,6 +75,7 @@ TEST(FizzCommandCommonTest, TestParseECHConfigsSuccess) {
   ASSERT_EQ(echConfigs->size(), 1);
   auto echConfig = echConfigs.value()[0];
   ASSERT_EQ(echConfig.version, ech::ECHVersion::V7);
+  ASSERT_EQ(echConfig.length, 103);
 
   folly::io::Cursor cursor(echConfig.ech_config_content.get());
   auto echConfigContent = decode<ech::ECHConfigContentDraft>(cursor);

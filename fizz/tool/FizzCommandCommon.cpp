@@ -191,6 +191,7 @@ folly::Optional<std::vector<ech::ECHConfig>> parseECHConfigs(
     ech::ECHConfig parsedConfig;
     parsedConfig.version = ech::ECHVersion::V7;
     parsedConfig.ech_config_content = encode(std::move(configContent));
+    parsedConfig.length = parsedConfig.ech_config_content->computeChainDataLength();
     echConfigs.push_back(parsedConfig);
   }
   return std::move(echConfigs);
@@ -226,6 +227,7 @@ std::vector<ech::ECHConfig> getDefaultECHConfigs() {
   ech::ECHConfig echConfig;
   echConfig.version = ech::ECHVersion::V7;
   echConfig.ech_config_content = encode(std::move(echConfigContent));
+  echConfig.length = echConfig.ech_config_content->computeChainDataLength();
   auto configs = std::vector<ech::ECHConfig>();
   configs.push_back(std::move(echConfig));
 
