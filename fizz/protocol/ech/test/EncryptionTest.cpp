@@ -23,17 +23,24 @@ namespace fizz {
 namespace ech {
 namespace test {
 
+namespace {
 static constexpr folly::StringPiece expectedClientHelloInner{
     "030344444444444444444444444444444444444444444444444444444444444444440000041301130201000056002b0003020304000a00060004001d00170033000e000c001d00086b65797368617265000d00060004040308040000001500130000107777772e686f73746e616d652e636f6d001000050003026832002d0003020100"};
 static constexpr folly::StringPiece expectedRecordDigest{
     "fb651f6d036df7b3f54d96e1e5bcc1c7db78056dff861ea4e798d03e65a2ca1e"};
+static constexpr folly::StringPiece testLegacySessionId{"test legacy session id"};
+static std::vector<hpke::KEMId> supportedKEMs{hpke::KEMId::x25519,
+                                              hpke::KEMId::secp256r1};
+static std::vector<hpke::AeadId> supportedAeads{
+    hpke::AeadId::TLS_AES_256_GCM_SHA384,
+    hpke::AeadId::TLS_AES_128_GCM_SHA256};
 
 class MockOpenSSLECKeyExchange256 : public OpenSSLECKeyExchange<P256> {
  public:
   MOCK_METHOD0(generateKeyPair, void());
 };
 
-hpke::HpkeContext getContext(std::unique_ptr<folly::IOBuf> enc) {
+hpke::HpkeContext getContext(std::unique_ptr<folly::IOBuf> enc, std::unique_ptr<folly::IOBuf> info) {
   auto kex = std::make_unique<MockOpenSSLECKeyExchange256>();
   kex->setPrivateKey(getPrivateKey(kP256Key));
   auto suiteId = hpke::generateHpkeSuiteId(
@@ -57,7 +64,7 @@ hpke::HpkeContext getContext(std::unique_ptr<folly::IOBuf> enc) {
   return setupWithDecap(
       hpke::Mode::Base,
       enc->coalesce(),
-      folly::IOBuf::copyBuffer("tls13-ech"),
+      std::move(info),
       folly::none,
       std::move(setupParam));
 }
@@ -74,6 +81,27 @@ void checkDecodedChlo(ClientHello decodedChlo, ClientHello expectedChlo) {
   EXPECT_EQ(decodedChlo.random, expectedChlo.random);
   EXPECT_EQ(decodedChlo.cipher_suites, expectedChlo.cipher_suites);
   EXPECT_EQ(decodedChlo.legacy_compression_methods, expectedChlo.legacy_compression_methods);
+}
+
+ECHConfig getInvalidVECHConfigV8() {
+  // Add invalid config
+  ECHConfig invalidConfig;
+  invalidConfig.version = ECHVersion::V8;
+  auto configContent = getECHConfigContent();
+  configContent.kem_id = hpke::KEMId::secp384r1;
+  invalidConfig.ech_config_content = encode(std::move(configContent));
+  invalidConfig.length = invalidConfig.ech_config_content->computeChainDataLength();
+
+  return invalidConfig;
+}
+
+hpke::SetupResult constructSetupResult(const SupportedECHConfig& supportedConfig) {
+  auto kex = std::make_unique<MockOpenSSLECKeyExchange256>();
+  auto privateKey = getPrivateKey(kP256Key);
+  kex->setPrivateKey(std::move(privateKey));
+  EXPECT_CALL(*kex, generateKeyPair()).Times(1);
+
+  return constructHpkeSetupResult(std::move(kex), supportedConfig);
 }
 
 EncryptedClientHello getTestECH(ClientHello chlo) {
@@ -94,16 +122,42 @@ EncryptedClientHello getTestECH(ClientHello chlo) {
   };
 
   SupportedECHConfig supportedConfig{getTestConfig(), testCipherSuite};
-
-  auto kex = std::make_unique<MockOpenSSLECKeyExchange256>();
-  auto privateKey = getPrivateKey(kP256Key);
-  kex->setPrivateKey(std::move(privateKey));
-  EXPECT_CALL(*kex, generateKeyPair()).Times(1);
-
-  auto setupResult = constructHpkeSetupResult(std::move(kex), supportedConfig);
+  auto setupResult = constructSetupResult(supportedConfig);
   return encryptClientHello(
       std::move(supportedConfig), std::move(chlo), std::move(setupResult));
 }
+
+ClientECH getTestClientECH() {
+  SupportedECHConfig supportedConfig{
+      getECHConfigV8(),
+      ECHCipherSuite{hpke::KDFId::Sha256,
+                     hpke::AeadId::TLS_AES_128_GCM_SHA256}};
+
+  auto setupResult = constructSetupResult(supportedConfig);
+  auto chloInner = TestMessages::clientHello();
+  chloInner.legacy_session_id = folly::IOBuf::copyBuffer(testLegacySessionId);
+
+  return encryptClientHelloV8(
+      supportedConfig,
+      std::move(chloInner),
+      getClientHelloOuter(),
+      std::move(setupResult));
+}
+
+void checkSupportedConfigValid(
+    const std::vector<ECHConfig>& configs,
+    std::unique_ptr<folly::IOBuf> expectedECHConfigContent) {
+  folly::Optional<SupportedECHConfig> result =
+      selectECHConfig(configs, supportedKEMs, supportedAeads);
+  EXPECT_TRUE(result.hasValue());
+
+  ECHConfig gotConfig = std::move(result.value().config);
+  EXPECT_TRUE(folly::IOBufEqualTo()(gotConfig.ech_config_content, expectedECHConfigContent));
+  EXPECT_EQ(result.value().cipherSuite.kdf_id, hpke::KDFId::Sha256);
+  EXPECT_EQ(result.value().cipherSuite.aead_id, hpke::AeadId::TLS_AES_128_GCM_SHA256);
+}
+
+} // namespace
 
 TEST(EncryptionTest, TestValidECHConfigContent) {
 
@@ -122,20 +176,7 @@ TEST(EncryptionTest, TestValidECHConfigContent) {
   configs.push_back(std::move(invalid));
   configs.push_back(std::move(valid));
 
-  std::vector<hpke::KEMId> supportedKEMs{hpke::KEMId::x25519,
-                                         hpke::KEMId::secp256r1};
-  std::vector<hpke::AeadId> supportedAeads{
-      hpke::AeadId::TLS_AES_256_GCM_SHA384,
-      hpke::AeadId::TLS_AES_128_GCM_SHA256};
-
-  folly::Optional<SupportedECHConfig> result =
-      selectECHConfig(configs, supportedKEMs, supportedAeads);
-  EXPECT_TRUE(result.hasValue());
-
-  ECHConfig gotConfig = std::move(result.value().config);
-  EXPECT_TRUE(folly::IOBufEqualTo()(gotConfig.ech_config_content, encode(getECHConfigContent())));
-  EXPECT_EQ(result.value().cipherSuite.kdf_id, hpke::KDFId::Sha256);
-  EXPECT_EQ(result.value().cipherSuite.aead_id, hpke::AeadId::TLS_AES_128_GCM_SHA256);
+  checkSupportedConfigValid(configs, encode(getECHConfigContent()));
 }
 
 TEST(EncryptionTest, TestInvalidECHConfigContent) {
@@ -154,10 +195,28 @@ TEST(EncryptionTest, TestInvalidECHConfigContent) {
   std::vector<ECHConfig> configs;
   configs.push_back(std::move(invalidConfig));
 
-  std::vector<hpke::KEMId> supportedKEMs{hpke::KEMId::x25519,
-                                         hpke::KEMId::secp256r1};
-  std::vector<hpke::AeadId> supportedAeads{
-      hpke::AeadId::TLS_AES_128_GCM_SHA256};
+  folly::Optional<SupportedECHConfig> result =
+      selectECHConfig(configs, supportedKEMs, supportedAeads);
+
+  EXPECT_FALSE(result.hasValue());
+}
+
+TEST(EncryptionTest, TestValidSelectECHConfigContentV8) {
+  // Add valid config
+  ECHConfig validConfig;
+  validConfig.version = ECHVersion::V8;
+  validConfig.ech_config_content = encode(getECHConfigContent());
+
+  std::vector<ECHConfig> configs;
+  configs.push_back(getInvalidVECHConfigV8());
+  configs.push_back(std::move(validConfig));
+
+  checkSupportedConfigValid(configs, encode(getECHConfigContent()));
+}
+
+TEST(EncryptionTest, TestInvalidSelectECHConfigContentV8) {
+  std::vector<ECHConfig> configs;
+  configs.push_back(getInvalidVECHConfigV8());
 
   folly::Optional<SupportedECHConfig> result =
       selectECHConfig(configs, supportedKEMs, supportedAeads);
@@ -172,7 +231,7 @@ TEST(EncryptionTest, TestValidEncryptClientHello) {
   EXPECT_EQ(gotECH.suite.kdf_id, testCipherSuite.kdf_id);
   EXPECT_EQ(gotECH.suite.aead_id, testCipherSuite.aead_id);
 
-  auto context = getContext(std::move(gotECH.enc));
+  auto context = getContext(std::move(gotECH.enc), folly::IOBuf::copyBuffer("tls13-ech"));
   std::unique_ptr<folly::IOBuf> gotClientHelloInner = context.open(
       folly::IOBuf::copyBuffer("").get(), std::move(gotECH.encrypted_ch));
 
@@ -187,6 +246,38 @@ TEST(EncryptionTest, TestValidEncryptClientHello) {
   auto expectedChlo = TestMessages::clientHello();
 
   checkDecodedChlo(std::move(decodedChlo), std::move(expectedChlo));
+}
+
+TEST(EncryptionTest, TestValidEncryptClientHelloV8) {
+  auto clientECH = getTestClientECH();
+  auto expectedChlo = TestMessages::clientHello();
+  // Add a legacy_session_id to match client hello inner used in getTestClientECH()
+  expectedChlo.legacy_session_id = folly::IOBuf::copyBuffer("test legacy session id");
+
+  // Create HPKE setup prefix
+  std::string tlsEchPrefix = "tls ech";
+  tlsEchPrefix += '\0';
+  auto hpkePrefix = folly::IOBuf::copyBuffer(tlsEchPrefix);
+  hpkePrefix->prependChain(encode(getECHConfigV8()));
+
+  auto context = getContext(std::move(clientECH.enc), std::move(hpkePrefix));
+
+  // Get client hello inner by decrypting
+  auto clientHelloOuterAad = encode(getClientHelloOuter());
+  std::unique_ptr<folly::IOBuf> gotClientHelloInner =
+      context.open(clientHelloOuterAad.get(), std::move(clientECH.payload));
+
+  folly::io::Cursor encodedECHInnerCursor(gotClientHelloInner.get());
+  auto gotChlo = decode<ClientHello>(encodedECHInnerCursor);
+
+  // Check that we don't have a legacy_session_id (it should have gotten removed
+  // during encryption)
+  EXPECT_TRUE(folly::IOBufEqualTo()(
+      gotChlo.legacy_session_id, folly::IOBuf::copyBuffer("")));
+
+  // Replace legacy_session_id that was removed during encryption
+  gotChlo.legacy_session_id = folly::IOBuf::copyBuffer("test legacy session id");
+  checkDecodedChlo(std::move(gotChlo), std::move(expectedChlo));
 }
 
 TEST(EncryptionTest, TestTryToDecryptECH) {
@@ -212,7 +303,7 @@ TEST(EncryptionTest, TestTryToDecryptECH) {
   kex->setPrivateKey(std::move(privateKey));
 
   auto testECH =  getTestECH(makeChloWithNonce());
-  auto context = getContext(testECH.enc->clone());
+  auto context = getContext(testECH.enc->clone(), folly::IOBuf::copyBuffer("tls13-ech"));
   std::unique_ptr<folly::IOBuf> expectedNonceValue =
     context.exportSecret(folly::IOBuf::copyBuffer("tls13-ech-nonce"), 16);
 

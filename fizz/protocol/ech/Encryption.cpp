@@ -17,6 +17,28 @@
 namespace fizz {
 namespace ech {
 
+namespace {
+std::unique_ptr<folly::IOBuf> makeHpkeContextInfoParam(const ECHConfig& echConfig) {
+  switch (echConfig.version) {
+    case ECHVersion::V7:
+      return folly::IOBuf::copyBuffer("tls13-ech");
+    case ECHVersion::V8: {
+      // The "info" parameter to setupWithEncap is the
+      // concatenation of "tls ech", a zero byte, and the serialized
+      // ECHConfig.
+      std::string tlsEchPrefix = "tls ech";
+      tlsEchPrefix += '\0';
+      auto bufContents = folly::IOBuf::copyBuffer(tlsEchPrefix);
+      bufContents->prependChain(encode(echConfig));
+
+      return bufContents;
+    }
+  }
+  return nullptr;
+}
+
+} // namespace
+
 std::unique_ptr<folly::IOBuf> constructConfigId(
     hpke::KDFId kdfId,
     ECHConfig echConfig) {
@@ -52,7 +74,7 @@ folly::Optional<SupportedECHConfig> selectECHConfig(
   // we should be selecting the first one that we can support.
   for (const auto& config : configs) {
     folly::io::Cursor cursor(config.ech_config_content.get());
-    if (config.version == ECHVersion::V7) {
+    if (config.version == ECHVersion::V7 || config.version == ECHVersion::V8) {
       auto echConfig = decode<ECHConfigContentDraft>(cursor);
       // Check if we (client) support the server's chosen KEM.
       auto result = std::find(
@@ -147,7 +169,8 @@ hpke::SetupResult constructHpkeSetupResult(
   const std::unique_ptr<folly::IOBuf> prefix{
       folly::IOBuf::copyBuffer("HPKE-05 ")};
 
-  if (supportedConfig.config.version != ECHVersion::V7) {
+  if (supportedConfig.config.version != ECHVersion::V7 &&
+      supportedConfig.config.version != ECHVersion::V8) {
     throw std::runtime_error("encrypt client hello: version not implemented");
   }
 
@@ -161,28 +184,48 @@ hpke::SetupResult constructHpkeSetupResult(
       std::move(kex), getKexGroup(config.kem_id), std::move(hkdf));
 
   // Get context
+  std::unique_ptr<folly::IOBuf> info = makeHpkeContextInfoParam(supportedConfig.config);
+
   return setupWithEncap(
-      hpke::Mode::Base,
-      config.public_key->clone()->coalesce(),
-      folly::IOBuf::copyBuffer("tls13-ech"),
-      folly::none,
-      getSetupParam(
-          std::move(dhkem), prefix->clone(), config.kem_id, cipherSuite));
+    hpke::Mode::Base,
+    config.public_key->clone()->coalesce(),
+    std::move(info),
+    folly::none,
+    getSetupParam(
+        std::move(dhkem), prefix->clone(), config.kem_id, cipherSuite));
+}
+
+ClientECH encryptClientHelloV8(
+    const SupportedECHConfig& supportedConfig,
+    const ClientHello& clientHelloInner,
+    const ClientHello& clientHelloOuter,
+    hpke::SetupResult setupResult) {
+  // Create ECH extension
+  ClientECH echExtension;
+  echExtension.cipher_suite = supportedConfig.cipherSuite;
+  echExtension.config_id = constructConfigId(
+      supportedConfig.cipherSuite.kdf_id, supportedConfig.config);
+  echExtension.enc = std::move(setupResult.enc);
+
+  // Remove legacy_session_id and serialize the client hello inner
+  auto chloInnerCopy = clientHelloInner.clone();
+  chloInnerCopy.legacy_session_id = folly::IOBuf::copyBuffer("");
+  auto encodedClientHelloInner = encode(chloInnerCopy);
+
+  // Encrypt and serialize client hello inner
+  auto clientHelloOuterAad = encode(clientHelloOuter);
+  echExtension.payload = setupResult.context.seal(
+      clientHelloOuterAad.get(), std::move(encodedClientHelloInner));
+  return echExtension;
 }
 
 EncryptedClientHello encryptClientHello(
     const SupportedECHConfig& supportedConfig,
     ClientHello clientHello,
     hpke::SetupResult setupResult) {
-  auto context = std::move(setupResult.context);
   auto cipherSuite = supportedConfig.cipherSuite;
   folly::io::Cursor cursor(supportedConfig.config.ech_config_content.get());
   auto config = decode<ECHConfigContentDraft>(cursor);
-
-  // Create client hello inner
-  std::unique_ptr<folly::IOBuf> clientHelloInner = encode(clientHello);
-  std::unique_ptr<folly::IOBuf> encryptedCh = context.seal(
-      folly::IOBuf::copyBuffer("").get(), clientHelloInner->clone());
 
   // Create client hello outer
   EncryptedClientHello clientHelloOuter;
@@ -192,7 +235,10 @@ EncryptedClientHello encryptClientHello(
   clientHelloOuter.record_digest =
       getRecordDigest(encode(std::move(config)), cipherSuite.kdf_id);
   clientHelloOuter.enc = std::move(setupResult.enc);
-  clientHelloOuter.encrypted_ch = std::move(encryptedCh);
+
+    // Create client hello inner
+  clientHelloOuter.encrypted_ch = setupResult.context.seal(
+      folly::IOBuf::copyBuffer("").get(), encode(clientHello));
 
   return clientHelloOuter;
 }

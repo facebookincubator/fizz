@@ -39,6 +39,12 @@ EncryptedClientHello encryptClientHello(
     ClientHello clientHello,
     hpke::SetupResult setupResult);
 
+ClientECH encryptClientHelloV8(
+    const SupportedECHConfig& supportedConfig,
+    const ClientHello& clientHelloInner,
+    const ClientHello& clientHelloOuter,
+    hpke::SetupResult setupResult);
+
 folly::Optional<ClientHello> tryToDecryptECH(
     hpke::KEMId kemId,
     const ech::EncryptedClientHello& echExtension,
