@@ -28,6 +28,7 @@ static ECHConfig constructECHConfigV7() {
   ECHConfig testConfig;
   testConfig.version = ECHVersion::V7;
   testConfig.ech_config_content = encode(std::move(configContent));
+  testConfig.length = testConfig.ech_config_content->computeChainDataLength();
   return testConfig;
 }
 

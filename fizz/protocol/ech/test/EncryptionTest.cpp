@@ -89,6 +89,7 @@ EncryptedClientHello getTestECH(ClientHello chlo) {
     ECHConfig testConfig;
     testConfig.version = ECHVersion::V7;
     testConfig.ech_config_content = encode(std::move(testConfigContent));
+    testConfig.length = testConfig.ech_config_content->computeChainDataLength();
     return testConfig;
   };
 
@@ -113,6 +114,7 @@ TEST(EncryptionTest, TestValidECHConfigContent) {
   ECHConfig invalid;
   invalid.version = ECHVersion::V7;
   invalid.ech_config_content = encode(std::move(invalidConfigContent));
+  invalid.length = invalid.ech_config_content->computeChainDataLength();
 
   // Add config that works and can be supported
   ECHConfig valid = getECHConfig();
@@ -147,6 +149,7 @@ TEST(EncryptionTest, TestInvalidECHConfigContent) {
   ECHConfig invalidConfig;
   invalidConfig.version = ECHVersion::V7;
   invalidConfig.ech_config_content = encode(std::move(configContent));
+  invalidConfig.length = invalidConfig.ech_config_content->computeChainDataLength();
 
   std::vector<ECHConfig> configs;
   configs.push_back(std::move(invalidConfig));
