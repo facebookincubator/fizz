@@ -103,7 +103,7 @@ inline Buf encode<ech::ECHConfigContentDraft>(ech::ECHConfigContentDraft&& ech) 
 }
 
 template <>
-inline Buf encode<ech::ECHConfig>(ech::ECHConfig&& echConfig) {
+inline Buf encode<const ech::ECHConfig&>(const ech::ECHConfig& echConfig) {
   auto buf = folly::IOBuf::create(
     sizeof(uint16_t)
     + sizeof(uint16_t)
@@ -115,6 +115,11 @@ inline Buf encode<ech::ECHConfig>(ech::ECHConfig&& echConfig) {
   detail::writeBuf<uint16_t>(echConfig.ech_config_content, appender);
 
   return buf;
+}
+
+template <>
+inline Buf encode<ech::ECHConfig>(ech::ECHConfig&& echConfig) {
+  return encode<const ech::ECHConfig&>(echConfig);
 }
 
 template <>
