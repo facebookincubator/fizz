@@ -27,7 +27,7 @@ namespace {
 static constexpr folly::StringPiece expectedClientHelloInner{
     "030344444444444444444444444444444444444444444444444444444444444444440000041301130201000056002b0003020304000a00060004001d00170033000e000c001d00086b65797368617265000d00060004040308040000001500130000107777772e686f73746e616d652e636f6d001000050003026832002d0003020100"};
 static constexpr folly::StringPiece expectedRecordDigest{
-    "fb651f6d036df7b3f54d96e1e5bcc1c7db78056dff861ea4e798d03e65a2ca1e"};
+    "ab5b04f4c3762a3899b44268bf63feb3a58e01befafa924e3b52a1e55a93ad0c"};
 static constexpr folly::StringPiece testLegacySessionId{"test legacy session id"};
 static std::vector<hpke::KEMId> supportedKEMs{hpke::KEMId::x25519,
                                               hpke::KEMId::secp256r1};

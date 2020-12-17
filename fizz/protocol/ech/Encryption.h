@@ -55,7 +55,7 @@ std::unique_ptr<folly::IOBuf> constructConfigId(
     ECHConfig echConfig);
 
 std::unique_ptr<folly::IOBuf> getRecordDigest(
-    std::unique_ptr<folly::IOBuf> echConfig,
+    const ECHConfig& echConfig,
     hpke::KDFId id);
 
 } // namespace ech

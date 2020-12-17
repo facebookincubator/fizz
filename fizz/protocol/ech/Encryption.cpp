@@ -124,20 +124,20 @@ static hpke::SetupParam getSetupParam(
 }
 
 std::unique_ptr<folly::IOBuf> getRecordDigest(
-    std::unique_ptr<folly::IOBuf> echConfig,
+    const ECHConfig& echConfig,
     hpke::KDFId id) {
   switch (id) {
     case hpke::KDFId::Sha256: {
       std::array<uint8_t, fizz::Sha256::HashLen> recordDigest;
       fizz::Sha256::hash(
-          *echConfig,
+          *encode(echConfig),
           folly::MutableByteRange(recordDigest.data(), recordDigest.size()));
       return folly::IOBuf::copyBuffer(recordDigest);
     }
     case hpke::KDFId::Sha384: {
       std::array<uint8_t, fizz::Sha384::HashLen> recordDigest;
       fizz::Sha384::hash(
-          *echConfig,
+          *encode(echConfig),
           folly::MutableByteRange(recordDigest.data(), recordDigest.size()));
       return folly::IOBuf::copyBuffer(recordDigest);
     }
@@ -225,7 +225,6 @@ EncryptedClientHello encryptClientHello(
     hpke::SetupResult setupResult) {
   auto cipherSuite = supportedConfig.cipherSuite;
   folly::io::Cursor cursor(supportedConfig.config.ech_config_content.get());
-  auto config = decode<ECHConfigContentDraft>(cursor);
 
   // Create client hello outer
   EncryptedClientHello clientHelloOuter;
@@ -233,7 +232,7 @@ EncryptedClientHello encryptClientHello(
 
   // Hash the ECH config
   clientHelloOuter.record_digest =
-      getRecordDigest(encode(std::move(config)), cipherSuite.kdf_id);
+      getRecordDigest(supportedConfig.config, cipherSuite.kdf_id);
   clientHelloOuter.enc = std::move(setupResult.enc);
 
     // Create client hello inner
