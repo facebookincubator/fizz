@@ -19,11 +19,25 @@ namespace ech {
 
 namespace {
 
+std::unique_ptr<folly::IOBuf> makeClientHelloOuterAad(const ClientHello& clientHelloOuter) {
+  // Copy client hello outer
+  ClientHello chloCopy = clientHelloOuter.clone();
+
+  // Remove ech extension from the copy
+  auto it = findExtension(chloCopy.extensions, ExtensionType::encrypted_client_hello);
+  chloCopy.extensions.erase(it);
+
+  // Get the serialized version of the client hello outer
+  // without the ECH extension to use
+  auto clientHelloOuterAad = encode(chloCopy);
+  return clientHelloOuterAad;
+}
+
 std::unique_ptr<folly::IOBuf> extractEncodedClientHelloInner(
     ECHVersion version,
     std::unique_ptr<folly::IOBuf> encryptedCh,
     hpke::HpkeContext& context,
-    const ClientHello&) {
+    const ClientHello& clientHelloOuter) {
   std::unique_ptr<folly::IOBuf> encodedClientHelloInner;
   switch (version) {
     case ECHVersion::V7: {
@@ -32,10 +46,11 @@ std::unique_ptr<folly::IOBuf> extractEncodedClientHelloInner(
       break;
     }
     case ECHVersion::V8: {
-      throw std::runtime_error("version not implemented yet");
+      auto chloOuterAad = makeClientHelloOuterAad(clientHelloOuter);
+      encodedClientHelloInner = context.open(chloOuterAad.get(), std::move(encryptedCh));
+      break;
     }
   }
-
   return encodedClientHelloInner;
 }
 
@@ -331,6 +346,11 @@ folly::Optional<ClientHello> tryToDecryptECH(
     folly::io::Cursor encodedECHInnerCursor(encodedClientHelloInner.get());
     auto decodedChlo = decode<ClientHello>(encodedECHInnerCursor);
     decodedChlo.originalEncoding = encodeHandshake(decodedChlo);
+
+    if (version == ECHVersion::V8) {
+      // Replace legacy_session_id that got removed during encryption
+      decodedChlo.legacy_session_id = clientHelloOuter.legacy_session_id->clone();
+    }
 
     // Check ECH nonce if V7
     if (version == ECHVersion::V7 &&

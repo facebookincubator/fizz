@@ -323,6 +323,34 @@ TEST(EncryptionTest, TestTryToDecryptECHV7) {
   checkDecodedChlo(std::move(decodedChloResult.value()), makeChloWithNonce());
 }
 
+TEST(EncryptionTest, TestTryToDecryptECHV8) {
+  auto expectedChlo = TestMessages::clientHello();
+  expectedChlo.legacy_session_id = folly::IOBuf::copyBuffer("test legacy session id");
+
+  // Add ECH extension to client hello outer.
+  auto chloOuter = getClientHelloOuter();
+  auto testECH =  getTestClientECH();
+  chloOuter.extensions.push_back(encodeExtension(testECH));
+
+  auto kex = std::make_unique<MockOpenSSLECKeyExchange256>();
+  auto privateKey = getPrivateKey(kP256Key);
+  kex->setPrivateKey(std::move(privateKey));
+
+  auto decodedChloResult = tryToDecryptECH(
+    chloOuter,
+    getECHConfigV8(),
+    testECH.cipher_suite,
+    std::move(testECH.enc),
+    std::move(testECH.payload),
+    std::move(kex),
+    ECHVersion::V8
+  );
+
+  EXPECT_TRUE(decodedChloResult.has_value());
+
+  checkDecodedChlo(std::move(decodedChloResult.value()), std::move(expectedChlo));
+}
+
 } // namespace test
 } // namespace ech
 } // namespace fizz

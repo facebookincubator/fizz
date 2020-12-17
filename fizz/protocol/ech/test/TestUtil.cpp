@@ -71,6 +71,7 @@ EncryptedClientHello getECH(ClientHello chlo, std::unique_ptr<KeyExchange> kex) 
 ClientHello getClientHelloOuter() {
   // Create fake client hello outer
   ClientHello chloOuter;
+  chloOuter.legacy_session_id = folly::IOBuf::copyBuffer("test legacy session id");
 
   // Set fake server name
   ServerNameList sni;
