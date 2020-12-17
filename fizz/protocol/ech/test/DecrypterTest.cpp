@@ -20,7 +20,8 @@ namespace fizz {
 namespace ech {
 namespace test {
 
-static ECHConfig constructECHConfigV7() {
+namespace {
+ECHConfig constructECHConfigV7() {
   auto configContent = getECHConfigContent();
   configContent.public_key =
       detail::encodeECPublicKey(getPublicKey(kP256PublicKey));
@@ -31,6 +32,31 @@ static ECHConfig constructECHConfigV7() {
   testConfig.length = testConfig.ech_config_content->computeChainDataLength();
   return testConfig;
 }
+
+void checkDecryptionResult(
+    folly::Optional<ClientHello> gotChlo,
+    const std::unique_ptr<folly::IOBuf>& chloOuterHandshake,
+    ECHVersion version) {
+  EXPECT_TRUE(gotChlo.has_value());
+
+  auto expectedChloInner = TestMessages::clientHello();
+  EXPECT_FALSE(folly::IOBufEqualTo()(
+      chloOuterHandshake, encodeHandshake(expectedChloInner)));
+
+  auto chlo = std::move(gotChlo.value());
+  if (version == ECHVersion::V7) {
+    TestMessages::removeExtension(chlo, ExtensionType::ech_nonce);
+  } else if (version == ECHVersion::V8) {
+    // Remove the empty ECH extension from the client hello inner
+    TestMessages::removeExtension(chlo, ExtensionType::encrypted_client_hello);
+  }
+
+  EXPECT_TRUE(folly::IOBufEqualTo()(
+      encodeHandshake(chlo), encodeHandshake(expectedChloInner)));
+}
+
+} // namespace
+
 
 TEST(DecrypterTest, TestDecodeSuccess) {
   auto getClientHelloOuter = [](std::unique_ptr<KeyExchange> kex) {
@@ -66,27 +92,65 @@ TEST(DecrypterTest, TestDecodeSuccess) {
   auto chloOuter = getClientHelloOuter(kex->clone());
   auto gotChlo = decrypter.decryptClientHello(chloOuter);
 
-  EXPECT_TRUE(gotChlo.has_value());
-
-  auto expectedChloInner = TestMessages::clientHello();
-  EXPECT_FALSE(folly::IOBufEqualTo()(
-      encodeHandshake(chloOuter), encodeHandshake(expectedChloInner)));
-
-  auto chlo = std::move(gotChlo.value());
-  TestMessages::removeExtension(chlo, ExtensionType::ech_nonce);
-  EXPECT_TRUE(folly::IOBufEqualTo()(
-      encodeHandshake(chlo), encodeHandshake(TestMessages::clientHello())));
+  checkDecryptionResult(std::move(gotChlo), encodeHandshake(chloOuter), ECHVersion::V7);
 }
 
-TEST(DecrypterTest, TestDecodeFailure) {
+TEST(DecrypterTest, TestDecodeSuccessV8) {
+  auto getChloOuterWithExt = [](std::unique_ptr<KeyExchange> kex) {
+    // Setup ECH extension
+    auto supportedECHConfig = SupportedECHConfig{
+        getECHConfigV8(),
+        ECHCipherSuite{hpke::KDFId::Sha256,
+                        hpke::AeadId::TLS_AES_128_GCM_SHA256}};
+    auto setupResult =
+        constructHpkeSetupResult(std::move(kex), supportedECHConfig);
+
+    // Add empty ECH extension to client hello inner
+    auto chloInner = TestMessages::clientHello();
+    ClientECH chloInnerECHExt;
+    chloInner.extensions.push_back(encodeExtension(chloInnerECHExt));
+
+    // Encrypt client hello
+    ClientHello chloOuter = getClientHelloOuter();
+    chloOuter.legacy_session_id = folly::IOBuf::create(0);
+
+    ClientECH echExt = encryptClientHelloV8(
+        supportedECHConfig,
+        chloInner,
+        chloOuter,
+        std::move(setupResult));
+
+    // Add ECH extension
+    chloOuter.extensions.push_back(encodeExtension(echExt));
+
+    return chloOuter;
+  };
+
   auto kex = std::make_unique<OpenSSLECKeyExchange<P256>>();
   kex->setPrivateKey(getPrivateKey(kP256Key));
 
   ECHConfigManager decrypter;
-  decrypter.addDecryptionConfig(DecrypterParams{constructECHConfigV7(), kex->clone()});
+  decrypter.addDecryptionConfig(DecrypterParams{getECHConfigV8(), kex->clone()});
+  auto chloOuter = getChloOuterWithExt(kex->clone());
+  auto gotChlo = decrypter.decryptClientHello(chloOuter);
+
+  checkDecryptionResult(std::move(gotChlo), encodeHandshake(chloOuter), ECHVersion::V8);
+}
+
+void testFailure(ECHConfig echConfig) {
+  auto kex = std::make_unique<OpenSSLECKeyExchange<P256>>();
+  kex->setPrivateKey(getPrivateKey(kP256Key));
+
+  ECHConfigManager decrypter;
+  decrypter.addDecryptionConfig(DecrypterParams{std::move(echConfig), kex->clone()});
   auto gotChlo = decrypter.decryptClientHello(TestMessages::clientHello());
 
   EXPECT_FALSE(gotChlo.has_value());
+}
+
+TEST(DecrypterTest, TestDecodeFailure) {
+  testFailure(constructECHConfigV7());
+  testFailure(getECHConfigV8());
 }
 
 } // namespace test
