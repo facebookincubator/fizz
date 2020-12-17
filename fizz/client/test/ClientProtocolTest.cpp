@@ -257,6 +257,10 @@ class ClientProtocolTest : public ProtocolTest<ClientTypes, Actions> {
   }
 
   void doFinishedFlow(ClientAuthType authType);
+  void doECHConnectFlow(
+      ech::ECHConfig echConfig,
+      Buf expectedPublicName,
+      ech::ECHVersion echVersion);
 
   std::shared_ptr<FizzClientContext> context_;
   MockPlaintextReadRecordLayer* mockRead_;
@@ -971,48 +975,18 @@ TEST_F(ClientProtocolTest, TestConnectCompat) {
   EXPECT_FALSE(state_.legacySessionId().value()->empty());
 }
 
-TEST_F(ClientProtocolTest, TestConnectECH) {
-  Connect connect;
-  connect.context = context_;
-  connect.echConfigs = std::vector<ech::ECHConfig>();
-  connect.echConfigs->push_back(ech::test::getECHConfig());
-  connect.sni = "www.hostname.com";
-  auto actualChlo = getDefaultClientHello();
+TEST_F(ClientProtocolTest, TestConnectECHV7) {
+  doECHConnectFlow(
+      ech::test::getECHConfig(),
+      IOBuf::copyBuffer("publicname"),
+      ech::ECHVersion::V7);
+}
 
-  // Two randoms should be generated, 1 for the client hello inner and 1 for the
-  // client hello outer.
-  EXPECT_CALL(*factory_, makeRandom()).Times(2);
-
-  auto actions = detail::processEvent(state_, std::move(connect));
-  expectActions<MutateState, WriteToSocket>(actions);
-  processStateMutations(actions);
-
-  EXPECT_EQ(state_.state(), StateEnum::ExpectingServerHello);
-  EXPECT_TRUE(state_.encodedClientHello().has_value());
-
-  auto encodedClientHello = state_.encodedClientHello().value()->clone();
-
-  // We expect this to be false because the encoded client hello should be
-  // the encrypted client hello, which contains the actualChlo.
-  EXPECT_FALSE(
-      IOBufEqualTo()(encodedClientHello, encodeHandshake(actualChlo)));
-
-  // Get rid of handshake header (type + version).
-  encodedClientHello->trimStart(4);
-  ClientHello decodedChlo = decode<ClientHello>(std::move(encodedClientHello));
-
-  // Check we used fake server name.
-  auto sniExt = getExtension<ServerNameList>(decodedChlo.extensions);
-  EXPECT_TRUE(sniExt.hasValue());
-  auto echConfigContent = ech::test::getECHConfigContent();
-  EXPECT_TRUE(IOBufEqualTo()(
-      sniExt.value().server_name_list[0].hostname,
-      echConfigContent.public_name->clone()));
-
-  // Check there exists client hello inner extension.
-  auto echExtension =
-      getExtension<ech::EncryptedClientHello>(decodedChlo.extensions);
-  EXPECT_TRUE(echExtension.hasValue());
+TEST_F(ClientProtocolTest, TestConnectECHV8) {
+  doECHConnectFlow(
+    ech::test::getECHConfigV8(),
+    IOBuf::copyBuffer("v8 publicname"),
+    ech::ECHVersion::V8);
 }
 
 TEST_F(ClientProtocolTest, TestConnectECHWithPSK) {
@@ -3360,6 +3334,60 @@ void ClientProtocolTest::doFinishedFlow(ClientAuthType authType) {
   EXPECT_TRUE(
       IOBufEqualTo()(*state_.resumptionSecret(), IOBuf::copyBuffer("res")));
   EXPECT_FALSE(state_.sentCCS());
+}
+
+void ClientProtocolTest::doECHConnectFlow(ech::ECHConfig echConfig, Buf fakeSni,
+  ech::ECHVersion echVersion) {
+  Connect connect;
+  connect.context = context_;
+  connect.echConfigs = std::vector<ech::ECHConfig>();
+  connect.echConfigs->push_back(echConfig);
+  connect.sni = "www.hostname.com";
+  const auto& actualChlo = getDefaultClientHello();
+
+  // Two randoms should be generated, 1 for the client hello inner and 1 for the
+  // client hello outer.
+  EXPECT_CALL(*factory_, makeRandom()).Times(2);
+
+  auto actions = detail::processEvent(state_, std::move(connect));
+  expectActions<MutateState, WriteToSocket>(actions);
+  processStateMutations(actions);
+
+  EXPECT_EQ(state_.state(), StateEnum::ExpectingServerHello);
+  EXPECT_TRUE(state_.encodedClientHello().has_value());
+
+  auto encodedClientHello = state_.encodedClientHello().value()->clone();
+
+  // We expect this to be false because the encoded client hello should be
+  // the encrypted client hello, which contains the actualChlo.
+  EXPECT_FALSE(
+      IOBufEqualTo()(encodedClientHello, encodeHandshake(actualChlo)));
+
+  // Get rid of handshake header (type + version).
+  encodedClientHello->trimStart(4);
+  ClientHello chloOuter = decode<ClientHello>(std::move(encodedClientHello));
+
+  // Check we used fake server name.
+  auto sniExt = getExtension<ServerNameList>(chloOuter.extensions);
+  EXPECT_TRUE(sniExt.hasValue());
+  EXPECT_TRUE(IOBufEqualTo()(
+      sniExt.value().server_name_list[0].hostname,
+      fakeSni));
+
+  // Check the legacy session id is the same in both the client hello inner
+  // and the client hello outer
+  EXPECT_TRUE(IOBufEqualTo()(actualChlo.legacy_session_id, chloOuter.legacy_session_id));
+
+  // Check there exists client hello inner extension.
+  if (echVersion == ech::ECHVersion::V7) {
+    auto echExtension =
+      getExtension<ech::EncryptedClientHello>(chloOuter.extensions);
+    EXPECT_TRUE(echExtension.hasValue());
+  } else if (echVersion == ech::ECHVersion::V8) {
+    auto echExtension =
+      getExtension<ech::ClientECH>(chloOuter.extensions);
+    EXPECT_TRUE(echExtension.hasValue());
+  }
 }
 
 TEST_F(ClientProtocolTest, TestFinished) {

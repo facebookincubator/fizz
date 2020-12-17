@@ -426,7 +426,7 @@ static ClientHello getClientHello(
     const Buf& legacySessionId,
     ClientExtensions* extensions,
     Optional<ech::ECHNonce> echNonceExtension,
-    Optional<ech::EncryptedClientHello> echExtension,
+    Optional<Extension> encodedECHExtension,
     Buf cookie = nullptr) {
   ClientHello chlo;
   chlo.legacy_version = ProtocolVersion::tls_1_2;
@@ -507,8 +507,8 @@ static ClientHello getClientHello(
     chlo.extensions.push_back(encodeExtension(std::move(echNonceExtension.value())));
   }
 
-  if (echExtension.has_value()) {
-    chlo.extensions.push_back(encodeExtension(std::move(echExtension.value())));
+  if (encodedECHExtension.has_value()) {
+    chlo.extensions.push_back(std::move(encodedECHExtension.value()));
   }
 
   return chlo;
@@ -669,8 +669,8 @@ static folly::Optional<ECHParams> setupECH(
   folly::io::Cursor cursor(configContent.get());
   auto echConfigContent = decode<ech::ECHConfigContentDraft>(cursor);
   auto fakeSni = echConfigContent.public_name->clone();
-
-  auto kex = factory.makeKeyExchange(getKexGroup(echConfigContent.kem_id));
+  auto kemId = echConfigContent.kem_id;
+  auto kex = factory.makeKeyExchange(getKexGroup(kemId));
   auto setupResult =
       constructHpkeSetupResult(std::move(kex), supportedECHConfig);
 
@@ -730,11 +730,23 @@ EventHandler<ClientTypes, StateEnum::Uninitialized, Event::Connect>::handle(
       context->getSupportedGroups(),
       *context->getFactory());
 
-  // Create ECH nonce extension, if we're constructing an ECH.
-  auto echNonceExt = echParams.has_value()
-      ? folly::Optional<ech::ECHNonce>(
-            ech::createNonceExtension(echParams->setupResult.context))
-      : folly::none;
+  // Create ECH nonce extension, if we're constructing an ECH V7.
+  auto echNonceExt = (echParams.has_value() && (
+    echParams.value().supportedECHConfig.config.version == ech::ECHVersion::V7))
+    ? folly::Optional<ech::ECHNonce>(
+          ech::createNonceExtension(echParams->setupResult.context))
+    : folly::none;
+
+  auto encodedEmptyECHExt = Optional<Extension>(folly::none);
+  if (echParams.has_value() &&
+      echParams.value().supportedECHConfig.config.version ==
+          ech::ECHVersion::V8) {
+    // When offering the "encrypted_client_hello" extension in its
+    // ClientHelloOuter, the client MUST also offer an empty
+    // "encrypted_client_hello" extension in its ClientHelloInner.
+    ech::ClientECH chloInnerExt;
+    encodedEmptyECHExt = encodeExtension(std::move(chloInnerExt));
+  }
 
   auto chlo = getClientHello(
     *context->getFactory(),
@@ -752,7 +764,7 @@ EventHandler<ClientTypes, StateEnum::Uninitialized, Event::Connect>::handle(
     legacySessionId,
     connect.extensions.get(),
     echNonceExt,
-    Optional<ech::EncryptedClientHello>(folly::none));
+    std::move(encodedEmptyECHExt));
 
   std::vector<ExtensionType> requestedExtensions;
   for (const auto& extension : chlo.extensions) {
@@ -810,35 +822,73 @@ EventHandler<ClientTypes, StateEnum::Uninitialized, Event::Connect>::handle(
   // Create the ECH (both the client hello inner and client hello outer)
   folly::Optional<Buf> encodedECH = folly::none;
   if (echParams.has_value()) {
-
-    // Create the encrypted client hello inner extension.
-    auto innerClientHelloExtension = encryptClientHello(
-        echParams->supportedECHConfig,
-        std::move(chlo),
-        std::move(echParams->setupResult));
-
-    // Set ECH to be the client hello that is sent
     auto newFakeRandom = context->getFactory()->makeRandom();
     auto newFakeSni =
         echParams->fakeSni->clone()->moveToFbString().toStdString();
 
+    Extension encodedECHExtension;
+    // Create the encrypted client hello inner extension.
+    switch (echParams->supportedECHConfig.config.version) {
+      case (ech::ECHVersion::V7): {
+        ech::EncryptedClientHello innerClientHelloExtension = encryptClientHello(
+          echParams->supportedECHConfig,
+          std::move(chlo),
+          std::move(echParams->setupResult));
+        encodedECHExtension = encodeExtension(std::move(innerClientHelloExtension));
+        break;
+      }
+      case (ech::ECHVersion::V8): {
+        // Generate a client hello outer to be used for
+        // encrypting the ECH extension.
+        auto chloOuterNoECHExt = getClientHello(
+            *context->getFactory(),
+            newFakeRandom,
+            context->getSupportedCiphers(),
+            context->getSupportedVersions(),
+            context->getSupportedGroups(),
+            keyExchangers,
+            context->getSupportedSigSchemes(),
+            context->getSupportedPskModes(),
+            newFakeSni,
+            context->getSupportedAlpns(),
+            context->getSupportedCertDecompressionAlgorithms(),
+            earlyDataParams,
+            legacySessionId,
+            connect.extensions.get(),
+            Optional<ech::ECHNonce>(folly::none),
+            Optional<Extension>(folly::none));
+        ech::ClientECH clientECHExtension = encryptClientHelloV8(
+            echParams->supportedECHConfig,
+            std::move(chlo),
+            std::move(chloOuterNoECHExt),
+            std::move(echParams->setupResult));
+        encodedECHExtension = encodeExtension(std::move(clientECHExtension));
+        break;
+      }
+    }
+
+    // Set client hello outer with ECH extension to be the client hello that is sent
     chlo = getClientHello(
-        *context->getFactory(),
-        newFakeRandom,
-        context->getSupportedCiphers(),
-        context->getSupportedVersions(),
-        context->getSupportedGroups(),
-        keyExchangers,
-        context->getSupportedSigSchemes(),
-        context->getSupportedPskModes(),
-        newFakeSni,
-        context->getSupportedAlpns(),
-        context->getSupportedCertDecompressionAlgorithms(),
-        earlyDataParams,
-        legacySessionId,
-        connect.extensions.get(),
-        Optional<ech::ECHNonce>(folly::none),
-        std::move(innerClientHelloExtension));
+            *context->getFactory(),
+            newFakeRandom,
+            context->getSupportedCiphers(),
+            context->getSupportedVersions(),
+            context->getSupportedGroups(),
+            keyExchangers,
+            context->getSupportedSigSchemes(),
+            context->getSupportedPskModes(),
+            newFakeSni,
+            context->getSupportedAlpns(),
+            context->getSupportedCertDecompressionAlgorithms(),
+            earlyDataParams,
+            // The legacy_session_id field MUST be copied from the client hello inner (chlo).
+            // This allows the server to echo the correct session ID for TLS
+            // 1.3's compatibility mode (see Appendix D.4 of [RFC8446]) when ECH
+            // is negotiated.
+            legacySessionId,
+            connect.extensions.get(),
+            Optional<ech::ECHNonce>(folly::none),
+            std::move(encodedECHExtension));
 
     // Save client hello inner
     encodedECH = std::move(encodedClientHello);
@@ -1349,7 +1399,7 @@ Actions EventHandler<
       state.legacySessionId(),
       state.extensions(),
       Optional<ech::ECHNonce>(folly::none),
-      Optional<ech::EncryptedClientHello>(folly::none),
+      Optional<Extension>(folly::none),
       cookie ? std::move(cookie->cookie) : nullptr);
 
   auto firstHandshakeContext =
