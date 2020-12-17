@@ -46,9 +46,13 @@ ClientECH encryptClientHelloV8(
     hpke::SetupResult setupResult);
 
 folly::Optional<ClientHello> tryToDecryptECH(
-    hpke::KEMId kemId,
-    const ech::EncryptedClientHello& echExtension,
-    std::unique_ptr<KeyExchange> kex);
+    const ClientHello& clientHelloOuter,
+    const ECHConfig& echConfig,
+    ECHCipherSuite cipherSuite,
+    std::unique_ptr<folly::IOBuf> encapsulatedKey,
+    std::unique_ptr<folly::IOBuf> encryptedCh,
+    std::unique_ptr<KeyExchange> kex,
+    ECHVersion version);
 
 std::unique_ptr<folly::IOBuf> constructConfigId(
     hpke::KDFId kdfId,

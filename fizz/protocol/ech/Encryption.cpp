@@ -18,7 +18,29 @@ namespace fizz {
 namespace ech {
 
 namespace {
-std::unique_ptr<folly::IOBuf> makeHpkeContextInfoParam(const ECHConfig& echConfig) {
+
+std::unique_ptr<folly::IOBuf> extractEncodedClientHelloInner(
+    ECHVersion version,
+    std::unique_ptr<folly::IOBuf> encryptedCh,
+    hpke::HpkeContext& context,
+    const ClientHello&) {
+  std::unique_ptr<folly::IOBuf> encodedClientHelloInner;
+  switch (version) {
+    case ECHVersion::V7: {
+      encodedClientHelloInner = context.open(
+          folly::IOBuf::copyBuffer("").get(), std::move(encryptedCh));
+      break;
+    }
+    case ECHVersion::V8: {
+      throw std::runtime_error("version not implemented yet");
+    }
+  }
+
+  return encodedClientHelloInner;
+}
+
+std::unique_ptr<folly::IOBuf> makeHpkeContextInfoParam(
+    const ECHConfig& echConfig) {
   switch (echConfig.version) {
     case ECHVersion::V7:
       return folly::IOBuf::copyBuffer("tls13-ech");
@@ -35,6 +57,26 @@ std::unique_ptr<folly::IOBuf> makeHpkeContextInfoParam(const ECHConfig& echConfi
     }
   }
   return nullptr;
+}
+
+bool isNonceValueEqual(
+    const hpke::HpkeContext& context,
+    const ClientHello& decodedChlo) {
+  std::unique_ptr<folly::IOBuf> expectedNonceValue =
+      context.exportSecret(folly::IOBuf::copyBuffer("tls13-ech-nonce"), 16);
+  auto it = findExtension(decodedChlo.extensions, ExtensionType::ech_nonce);
+  if (it == decodedChlo.extensions.end()) {
+    return false;
+  }
+  folly::io::Cursor cs{it->extension_data.get()};
+  auto gotEchNonceExtension = getExtension<ech::ECHNonce>(cs);
+
+  auto gotNonceValue = folly::IOBuf::copyBuffer(gotEchNonceExtension.nonce);
+  if (!folly::IOBufEqualTo()(gotNonceValue, expectedNonceValue)) {
+    return false;
+  }
+
+  return true;
 }
 
 } // namespace
@@ -243,58 +285,56 @@ EncryptedClientHello encryptClientHello(
 }
 
 folly::Optional<ClientHello> tryToDecryptECH(
-    hpke::KEMId kemId,
-    const ech::EncryptedClientHello& echExtension,
-    std::unique_ptr<KeyExchange> kex) {
+    const ClientHello& clientHelloOuter,
+    const ECHConfig& echConfig,
+    ECHCipherSuite cipherSuite,
+    std::unique_ptr<folly::IOBuf> encapsulatedKey,
+    std::unique_ptr<folly::IOBuf> encryptedCh,
+    std::unique_ptr<KeyExchange> kex,
+    ECHVersion version) {
   const std::unique_ptr<folly::IOBuf> prefix{
       folly::IOBuf::copyBuffer("HPKE-05 ")};
 
-  hpke::KDFId kdfId = echExtension.suite.kdf_id;
+  // Get crypto primitive types used for decrypting
+  hpke::KDFId kdfId = cipherSuite.kdf_id;
+  folly::io::Cursor echConfigCursor(echConfig.ech_config_content.get());
+  auto decodedConfigContent = decode<ECHConfigContentDraft>(echConfigCursor);
+  auto kemId = decodedConfigContent.kem_id;
   NamedGroup group = hpke::getKexGroup(kemId);
 
   // Try to decrypt and get the client hello inner
   try {
     auto dhkem = std::make_unique<DHKEM>(
-        std::move(kex),
-        group,
-        hpke::makeHpkeHkdf(prefix->clone(), kdfId));
-    auto aeadId = echExtension.suite.aead_id;
+        std::move(kex), group, hpke::makeHpkeHkdf(prefix->clone(), kdfId));
+    auto aeadId = cipherSuite.aead_id;
     auto suiteId = hpke::generateHpkeSuiteId(
         group, hpke::getHashFunction(kdfId), hpke::getCipherSuite(aeadId));
 
-    hpke::SetupParam setupParam{
-        std::move(dhkem),
-        makeCipher(aeadId),
-        hpke::makeHpkeHkdf(prefix->clone(), kdfId),
-        std::move(suiteId)};
+    hpke::SetupParam setupParam{std::move(dhkem),
+                                makeCipher(aeadId),
+                                hpke::makeHpkeHkdf(prefix->clone(), kdfId),
+                                std::move(suiteId)};
 
+    std::unique_ptr<folly::IOBuf> info =
+        makeHpkeContextInfoParam(echConfig);
     auto context = hpke::setupWithDecap(
         hpke::Mode::Base,
-        echExtension.enc->clone()->coalesce(),
-        folly::IOBuf::copyBuffer("tls13-ech"),
+        encapsulatedKey->coalesce(),
+        std::move(info),
         folly::none,
         std::move(setupParam));
 
-    auto encodedClientHelloInner = context.open(
-        folly::IOBuf::copyBuffer("").get(), echExtension.encrypted_ch->clone());
+    auto encodedClientHelloInner = extractEncodedClientHelloInner(
+      version, std::move(encryptedCh), context, clientHelloOuter);
 
     // Set actual client hello, ECH acceptance
     folly::io::Cursor encodedECHInnerCursor(encodedClientHelloInner.get());
     auto decodedChlo = decode<ClientHello>(encodedECHInnerCursor);
     decodedChlo.originalEncoding = encodeHandshake(decodedChlo);
 
-    // Check ECH nonce
-    std::unique_ptr<folly::IOBuf> expectedNonceValue =
-      context.exportSecret(folly::IOBuf::copyBuffer("tls13-ech-nonce"), 16);
-    auto it = findExtension(decodedChlo.extensions, ExtensionType::ech_nonce);
-    if (it == decodedChlo.extensions.end()) {
-      return folly::none;
-    }
-    folly::io::Cursor cs{it->extension_data.get()};
-    auto gotEchNonceExtension = getExtension<ech::ECHNonce>(cs);
-
-    auto gotNonceValue = folly::IOBuf::copyBuffer(gotEchNonceExtension.nonce);
-    if (!folly::IOBufEqualTo()(gotNonceValue, expectedNonceValue)) {
+    // Check ECH nonce if V7
+    if (version == ECHVersion::V7 &&
+        !isNonceValueEqual(context, decodedChlo)) {
       return folly::none;
     }
 

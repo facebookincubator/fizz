@@ -13,13 +13,18 @@ namespace ech {
 
 namespace {
 ClientHello decryptClientHello(
-    const ECHConfigContentDraft& supportedConfig,
+    const ClientHello& clientHelloOuter,
+    const ECHConfig& echConfig,
     const EncryptedClientHello& echExtension,
     std::unique_ptr<KeyExchange> kex) {
   auto decryptionResult = tryToDecryptECH(
-      supportedConfig.kem_id,
-      echExtension,
-      std::move(kex));
+      clientHelloOuter,
+      echConfig,
+      echExtension.suite,
+      echExtension.enc->clone(),
+      echExtension.encrypted_ch->clone(),
+      std::move(kex),
+      ECHVersion::V7);
 
   if (decryptionResult.has_value()) {
     // We've successfully decrypted the client hello.
@@ -32,17 +37,12 @@ ClientHello decryptClientHello(
 }
 
 folly::Optional<ClientHello> tryToDecodeECH(
+    const ClientHello& chloOuter,
     const EncryptedClientHello& echExtension,
     const std::vector<DecrypterParams>& decrypterParams) {
   for (const auto& param : decrypterParams) {
     switch (param.echConfig.version) {
       case ECHVersion::V7: {
-        auto getDecodedConfig = [&]() {
-          const auto& configContent = param.echConfig.ech_config_content;
-          folly::io::Cursor echConfigCursor(configContent.get());
-          return decode<ECHConfigContentDraft>(echConfigCursor);
-        };
-
         // Check if this ECH config record digest matches the ECH extension.
         const auto& currentRecordDigest = getRecordDigest(
             param.echConfig,
@@ -54,7 +54,8 @@ folly::Optional<ClientHello> tryToDecodeECH(
 
         // Try to decode and get the client hello inner.
         return decryptClientHello(
-            getDecodedConfig(),
+            chloOuter,
+            param.echConfig,
             echExtension,
             param.kex->clone());
       }
@@ -67,7 +68,7 @@ folly::Optional<ClientHello> tryToDecodeECH(
   }
   return folly::none;
 }
-}
+} // namespace
 
 void ECHConfigManager::addDecryptionConfig(DecrypterParams decrypterParams) {
   configs_.push_back(std::move(decrypterParams));
@@ -83,7 +84,7 @@ folly::Optional<ClientHello> ECHConfigManager::decryptClientHello(
   }
   folly::io::Cursor cursor(it->extension_data.get());
   auto echExtension = getExtension<ech::EncryptedClientHello>(cursor);
-  return tryToDecodeECH(echExtension, configs_);
+  return tryToDecodeECH(chlo, echExtension, configs_);
 }
 
 } // namespace ech

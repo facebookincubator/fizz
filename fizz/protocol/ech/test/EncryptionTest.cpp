@@ -280,7 +280,7 @@ TEST(EncryptionTest, TestValidEncryptClientHelloV8) {
   checkDecodedChlo(std::move(gotChlo), std::move(expectedChlo));
 }
 
-TEST(EncryptionTest, TestTryToDecryptECH) {
+TEST(EncryptionTest, TestTryToDecryptECHV7) {
   // This value comes from what was printed when we get the context exported value.
   auto nonceHex = "972a9c468ef0891fd22c052c6785f6a6";
   auto makeChloWithNonce = [nonceHex]() {
@@ -309,7 +309,14 @@ TEST(EncryptionTest, TestTryToDecryptECH) {
 
   EXPECT_TRUE(folly::IOBufEqualTo()(expectedNonceValue, toIOBuf(nonceHex)));
 
-  auto decodedChloResult = tryToDecryptECH(hpke::KEMId::secp256r1, std::move(testECH), std::move(kex));
+  auto decodedChloResult = tryToDecryptECH(
+      makeChloWithNonce(),
+      getECHConfig(),
+      testECH.suite,
+      std::move(testECH.enc),
+      std::move(testECH.encrypted_ch),
+      std::move(kex),
+      ECHVersion::V7);
   EXPECT_TRUE(decodedChloResult.has_value());
   EXPECT_TRUE(folly::IOBufEqualTo()(expectedNonceValue, toIOBuf(nonceHex)));
 
