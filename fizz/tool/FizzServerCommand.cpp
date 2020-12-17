@@ -356,12 +356,12 @@ class FizzExampleServer : public AsyncFizzServer::HandshakeCallback,
 
   void finish() {
     if (transport_ || sslSocket_) {
+      auto transport = std::move(transport_);
+      sslSocket_ = nullptr;
       // Forcibly clean up connection
-      if (transport_) {
-        transport_->closeNow();
+      if (transport) {
+        transport->closeNow();
       }
-      transport_.reset();
-      sslSocket_.reset();
       acceptor_->done();
     }
   }
