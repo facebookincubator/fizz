@@ -2085,10 +2085,12 @@ EventHandler<ClientTypes, StateEnum::Established, Event::KeyUpdate>::handle(
       *state.keyScheduler());
 
   if (keyUpdate.request_update == KeyUpdateRequest::update_not_requested) {
-    return actions(MutateState(
-        [rRecordLayer = std::move(readRecordLayer)](State& newState) mutable {
+    return actions(
+        MutateState([rRecordLayer =
+                         std::move(readRecordLayer)](State& newState) mutable {
           newState.readRecordLayer() = std::move(rRecordLayer);
-        }));
+        }),
+        SecretAvailable(std::move(readSecret)));
   }
 
   auto encodedKeyUpdated =

@@ -3576,9 +3576,44 @@ TEST_F(ClientProtocolTest, TestAppWrite) {
 
 TEST_F(ClientProtocolTest, TestKeyUpdateNotRequested) {
   setupAcceptingData();
+  EXPECT_CALL(*mockKeyScheduler_, serverKeyUpdate());
+  EXPECT_CALL(*mockRead_, hasUnparsedHandshakeData()).WillOnce(Return(false));
+
+  EXPECT_CALL(
+      *mockKeyScheduler_, getSecret(AppTrafficSecrets::ServerAppTraffic))
+      .WillOnce(InvokeWithoutArgs([]() {
+        return DerivedSecret(
+            std::vector<uint8_t>({'s', 'a', 't'}),
+            AppTrafficSecrets::ServerAppTraffic);
+      }));
+
+  EXPECT_CALL(*mockKeyScheduler_, getTrafficKey(RangeMatches("sat"), _, _))
+      .WillOnce(InvokeWithoutArgs([]() {
+        return TrafficKey{IOBuf::copyBuffer("serverkey"),
+                          IOBuf::copyBuffer("serveriv")};
+      }));
+
+  MockAead* raead;
+  MockEncryptedReadRecordLayer* rrl;
+
+  expectAeadCreation({{"serverkey", &raead}});
+  expectEncryptedReadRecordLayerCreation(&rrl, &raead, StringPiece("sat"));
+
   auto actions = detail::processEvent(state_, TestMessages::keyUpdate(false));
-  expectActions<MutateState>(actions);
+  expectActions<MutateState, SecretAvailable>(actions);
   EXPECT_EQ(getNumActions<WriteToSocket>(actions, false), 0);
+
+  expectSecret(
+      actions, AppTrafficSecrets::ServerAppTraffic, StringPiece("sat"));
+  processStateMutations(actions);
+  EXPECT_EQ(state_.readRecordLayer().get(), rrl);
+  EXPECT_EQ(
+      state_.readRecordLayer()->getEncryptionLevel(),
+      EncryptionLevel::AppTraffic);
+  EXPECT_EQ(state_.state(), StateEnum::Established);
+  EXPECT_EQ(
+      state_.handshakeTime(),
+      std::chrono::system_clock::time_point(std::chrono::minutes(4)));
 }
 
 TEST_F(ClientProtocolTest, TestKeyUpdateExtraData) {
