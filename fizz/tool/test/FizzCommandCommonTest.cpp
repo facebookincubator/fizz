@@ -50,6 +50,26 @@ TEST(FizzCommandCommonTest, TestMissingPortHostPortFromString) {
   }
 }
 
+void checkECHConfigContent(const ech::ECHConfigContentDraft& echConfigContent) {
+  ASSERT_TRUE(folly::IOBufEqualTo()(
+      echConfigContent.public_name, folly::IOBuf::copyBuffer("publicname")));
+  auto expectedPubKey =
+      "049d87bcaddb65d8dcf6df8b148a9679b5b710db19c95a9badfff13468cb358b4e21d24a5c826112658ebb96d64e2985dfb41c1948334391a4aa81b67837e2dbf0";
+  ASSERT_TRUE(folly::IOBufEqualTo()(
+      echConfigContent.public_key,
+      folly::IOBuf::copyBuffer(folly::unhexlify(expectedPubKey))));
+  ASSERT_EQ(echConfigContent.kem_id, hpke::KEMId::secp256r1);
+  ASSERT_EQ(echConfigContent.cipher_suites[0].kdf_id, hpke::KDFId::Sha256);
+  ASSERT_EQ(
+      echConfigContent.cipher_suites[0].aead_id,
+      hpke::AeadId::TLS_AES_128_GCM_SHA256);
+  ASSERT_EQ(echConfigContent.maximum_name_length, 1000);
+
+  ASSERT_EQ(echConfigContent.extensions.size(), 1);
+  ASSERT_EQ(
+      echConfigContent.extensions[0].extension_type, ExtensionType::cookie);
+}
+
 TEST(FizzCommandCommonTest, TestParseECHConfigsSuccess) {
   auto json = folly::parseJson(R"(
       {
@@ -79,23 +99,39 @@ TEST(FizzCommandCommonTest, TestParseECHConfigsSuccess) {
 
   folly::io::Cursor cursor(echConfig.ech_config_content.get());
   auto echConfigContent = decode<ech::ECHConfigContentDraft>(cursor);
-  ASSERT_TRUE(folly::IOBufEqualTo()(
-      echConfigContent.public_name, folly::IOBuf::copyBuffer("publicname")));
-  auto expectedPubKey =
-      "049d87bcaddb65d8dcf6df8b148a9679b5b710db19c95a9badfff13468cb358b4e21d24a5c826112658ebb96d64e2985dfb41c1948334391a4aa81b67837e2dbf0";
-  ASSERT_TRUE(folly::IOBufEqualTo()(
-      echConfigContent.public_key,
-      folly::IOBuf::copyBuffer(folly::unhexlify(expectedPubKey))));
-  ASSERT_EQ(echConfigContent.kem_id, hpke::KEMId::secp256r1);
-  ASSERT_EQ(echConfigContent.cipher_suites[0].kdf_id, hpke::KDFId::Sha256);
-  ASSERT_EQ(
-      echConfigContent.cipher_suites[0].aead_id,
-      hpke::AeadId::TLS_AES_128_GCM_SHA256);
-  ASSERT_EQ(echConfigContent.maximum_name_length, 1000);
+  checkECHConfigContent(echConfigContent);
+}
 
-  ASSERT_EQ(echConfigContent.extensions.size(), 1);
-  ASSERT_EQ(
-      echConfigContent.extensions[0].extension_type, ExtensionType::cookie);
+TEST(FizzCommandCommonTest, TestParseV8ECHConfigsSuccess) {
+  auto json = folly::parseJson(R"(
+      {
+        "echconfigs": [{
+                "version": "V8",
+                "public_name": "publicname",
+                "public_key": "049d87bcaddb65d8dcf6df8b148a9679b5b710db19c95a9badfff13468cb358b4e21d24a5c826112658ebb96d64e2985dfb41c1948334391a4aa81b67837e2dbf0",
+                "kem_id": "secp256r1",
+                "cipher_suites": [{
+                        "kdf_id": "Sha256",
+                        "aead_id": "TLS_AES_128_GCM_SHA256"
+                }],
+                "maximum_name_length": 1000,
+                "extensions": "002c00080006636f6f6b6965"
+        }]
+      }
+  )");
+  folly::Optional<std::vector<ech::ECHConfig>> echConfigs =
+      parseECHConfigs(json);
+
+  ASSERT_TRUE(echConfigs.has_value());
+
+  ASSERT_EQ(echConfigs->size(), 1);
+  auto echConfig = echConfigs.value()[0];
+  ASSERT_EQ(echConfig.version, ech::ECHVersion::V8);
+  ASSERT_EQ(echConfig.length, 103);
+
+  folly::io::Cursor cursor(echConfig.ech_config_content.get());
+  auto echConfigContent = decode<ech::ECHConfigContentDraft>(cursor);
+  checkECHConfigContent(echConfigContent);
 }
 
 TEST(FizzCommandCommonTest, TestParseECHConfigsFailure) {

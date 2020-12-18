@@ -160,9 +160,16 @@ folly::Optional<std::vector<ech::ECHConfig>> parseECHConfigs(
   auto echConfigs = std::vector<ech::ECHConfig>();
   for (const auto& config : json["echconfigs"]) {
     std::string version = config["version"].asString();
-    if (version != "V7") {
+
+    ech::ECHVersion echVersion;
+    if (version == "V7") {
+      echVersion = ech::ECHVersion::V7;
+    } else if (version == "V8") {
+      echVersion = ech::ECHVersion::V8;
+    } else {
       return folly::none;
     }
+
     ech::ECHConfigContentDraft configContent;
     configContent.public_name =
         folly::IOBuf::copyBuffer(config["public_name"].asString());
@@ -189,7 +196,7 @@ folly::Optional<std::vector<ech::ECHConfig>> parseECHConfigs(
     configContent.extensions = getExtensions(config["extensions"].asString());
 
     ech::ECHConfig parsedConfig;
-    parsedConfig.version = ech::ECHVersion::V7;
+    parsedConfig.version = echVersion;
     parsedConfig.ech_config_content = encode(std::move(configContent));
     parsedConfig.length = parsedConfig.ech_config_content->computeChainDataLength();
     echConfigs.push_back(parsedConfig);
