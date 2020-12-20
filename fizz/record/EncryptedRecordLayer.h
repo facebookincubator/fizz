@@ -81,12 +81,14 @@ class EncryptedWriteRecordLayer : public WriteRecordLayer {
   void setMaxRecord(uint16_t size) {
     CHECK_GT(size, 0);
     DCHECK_LE(size, kMaxPlaintextRecordSize);
+    DCHECK_GE(maxRecord_, desiredMinRecord_);
     maxRecord_ = size;
   }
 
   void setMinDesiredRecord(uint16_t size) {
     CHECK_GT(size, 0);
     DCHECK_LE(size, kMaxPlaintextRecordSize);
+    DCHECK_LE(desiredMinRecord_, maxRecord_);
     desiredMinRecord_ = size;
   }
 
