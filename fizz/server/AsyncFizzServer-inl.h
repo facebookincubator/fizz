@@ -15,8 +15,9 @@ template <typename SM>
 AsyncFizzServerT<SM>::AsyncFizzServerT(
     folly::AsyncTransportWrapper::UniquePtr socket,
     const std::shared_ptr<const FizzServerContext>& fizzContext,
-    const std::shared_ptr<ServerExtensions>& extensions)
-    : AsyncFizzBase(std::move(socket)),
+    const std::shared_ptr<ServerExtensions>& extensions,
+    AsyncFizzBase::TransportOptions transportOptions)
+    : AsyncFizzBase(std::move(socket), std::move(transportOptions)),
       fizzContext_(fizzContext),
       extensions_(extensions),
       visitor_(*this),

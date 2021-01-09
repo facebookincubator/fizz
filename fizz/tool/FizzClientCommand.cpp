@@ -77,8 +77,17 @@ void printUsage() {
     << " -echconfigs file         (path to read ECH configs from. Format for contents is JSON.)\n"
     << "                          (JSON format: {echconfigs: [${your ECH config here with all the fields..}]})\n"
     << "                          (See FizzCommandCommonTest for an example.)\n"
-    << "                          (Note: Setting ech configs implicitly enables ECH.)\n";
-    // clang-format on
+    << "                          (Note: Setting ech configs implicitly enables ECH.)\n"
+#ifdef FIZZ_TOOL_ENABLE_IO_URING
+    << " -io_uring                (use io_uring for I/O. Default: false)\n"
+    << " -io_uring_capacity N     (backend capacity for io_uring. Default: 128)\n"
+    << " -io_uring_max_submit N   (maximum submit size for io_uring. Default: 64)\n"
+    << " -io_uring_max_get N      (maximum get size for io_uring. Default: no limit)\n"
+    << " -io_uring_register_fds   (use registered fds with io_uring. Default: false)\n"
+    << " -io_uring_async_recv     (use async recv for io_uring. Default: false)\n"
+#endif
+  ;
+  // clang-format on
 }
 
 class Connection : public AsyncSocket::ConnectCallback,
@@ -96,7 +105,8 @@ class Connection : public AsyncSocket::ConnectCallback,
       bool willResume,
       std::string proxyTarget,
       std::shared_ptr<ClientExtensions> extensions,
-      folly::Optional<std::vector<ech::ECHConfig>> echConfigs)
+      folly::Optional<std::vector<ech::ECHConfig>> echConfigs,
+      bool registerEventCallback)
       : evb_(evb),
         clientContext_(clientContext),
         sni_(sni),
@@ -104,7 +114,8 @@ class Connection : public AsyncSocket::ConnectCallback,
         willResume_(willResume),
         proxyTarget_(proxyTarget),
         extensions_(extensions),
-        echConfigs_(std::move(echConfigs)) {}
+        echConfigs_(std::move(echConfigs)),
+        registerEventCallback_(registerEventCallback) {}
 
   void connect(const SocketAddress& addr) {
     sock_ = AsyncSocket::UniquePtr(new AsyncSocket(evb_));
@@ -143,8 +154,10 @@ class Connection : public AsyncSocket::ConnectCallback,
   }
 
   void doHandshake() {
-    transport_ = AsyncFizzClient::UniquePtr(
-        new AsyncFizzClient(std::move(sock_), clientContext_, extensions_));
+    AsyncFizzBase::TransportOptions transportOpts;
+    transportOpts.registerEventCallback = registerEventCallback_;
+    transport_ = AsyncFizzClient::UniquePtr(new AsyncFizzClient(
+        std::move(sock_), clientContext_, extensions_, std::move(transportOpts)));
     transport_->setSecretCallback(this);
     auto echConfigs = echConfigs_;
     transport_->connect(
@@ -420,6 +433,7 @@ class Connection : public AsyncSocket::ConnectCallback,
   std::shared_ptr<ClientExtensions> extensions_;
   std::unique_ptr<KeyLogWriter> keyLogger_;
   folly::Optional<std::vector<ech::ECHConfig>> echConfigs_;
+  bool registerEventCallback_{false};
 };
 
 class ResumptionPskCache : public BasicPskCache {
@@ -506,6 +520,12 @@ int fizzClientCommand(const std::vector<std::string>& args) {
   bool delegatedCredentials = false;
   bool ech = false;
   std::string echConfigsFile;
+  bool uring = false;
+  bool uringAsync = false;
+  bool uringRegisterFds = false;
+  int32_t uringCapacity = 128;
+  int32_t uringMaxSubmit = 64;
+  int32_t uringMaxGet = -1;
 
   // clang-format off
   FizzArgHandlerMap handlers = {
@@ -568,6 +588,24 @@ int fizzClientCommand(const std::vector<std::string>& args) {
     {"-echconfigs", {true, [&echConfigsFile](const std::string& arg) {
         echConfigsFile = arg;
     }}}
+#ifdef FIZZ_TOOL_ENABLE_IO_URING
+    ,{"-io_uring", {false, [&uring](const std::string&) { uring = true; }}},
+    {"-io_uring_async_recv", {false, [&uringAsync](const std::string&) {
+        uringAsync = true;
+    }}},
+    {"-io_uring_register_fds", {false, [&uringRegisterFds](const std::string&) {
+        uringRegisterFds = true;
+    }}},
+    {"-io_uring_capacity", {true, [&uringCapacity](const std::string& arg) {
+        uringCapacity = folly::to<int32_t>(arg);
+    }}},
+    {"-io_uring_max_get", {true, [&uringMaxGet](const std::string& arg) {
+        uringMaxGet = folly::to<int32_t>(arg);
+    }}},
+    {"-io_uring_max_submit", {true, [&uringMaxSubmit](const std::string& arg) {
+        uringMaxSubmit = folly::to<int32_t>(arg);
+    }}}
+#endif
   };
   // clang-format on
 
@@ -587,7 +625,21 @@ int fizzClientCommand(const std::vector<std::string>& args) {
     return 1;
   }
 
-  EventBase evb;
+  EventBase evb(folly::EventBase::Options().setBackendFactory([uring,
+                                                               uringAsync,
+                                                               uringRegisterFds,
+                                                               uringCapacity,
+                                                               uringMaxSubmit,
+                                                               uringMaxGet] {
+    return setupBackend(
+        uring,
+        uringAsync,
+        uringRegisterFds,
+        uringCapacity,
+        uringMaxSubmit,
+        uringMaxGet);
+  }));
+
   auto clientContext = std::make_shared<FizzClientContext>();
 
   if (!alpns.empty()) {
@@ -730,11 +782,29 @@ int fizzClientCommand(const std::vector<std::string>& args) {
     auto proxiedHost = proxyHost.empty()
         ? std::string()
         : folly::to<std::string>(host, ":", port);
+
     SocketAddress addr(connectHost, connectPort, true);
     Connection conn(
-        &evb, clientContext, sni, std::move(connVerifier), reconnect, proxiedHost, extensions, std::move(echConfigs));
+        &evb,
+        clientContext,
+        sni,
+        std::move(connVerifier),
+        reconnect,
+        proxiedHost,
+        extensions,
+        std::move(echConfigs),
+        uringAsync);
     Connection resumptionConn(
-        &evb, clientContext, sni, std::move(resumptionVerifier), false, proxiedHost, extensions, folly::none);
+        &evb,
+        clientContext,
+        sni,
+        std::move(resumptionVerifier),
+        false,
+        proxiedHost,
+        extensions,
+        folly::none,
+        uringAsync);
+
     Connection* inputTarget = &conn;
     if (reconnect) {
       auto pskCache = std::make_shared<ResumptionPskCache>(

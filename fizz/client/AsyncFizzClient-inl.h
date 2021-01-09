@@ -13,8 +13,9 @@ template <typename SM>
 AsyncFizzClientT<SM>::AsyncFizzClientT(
     folly::AsyncTransportWrapper::UniquePtr socket,
     std::shared_ptr<const FizzClientContext> fizzContext,
-    const std::shared_ptr<ClientExtensions>& extensions)
-    : AsyncFizzBase(std::move(socket)),
+    const std::shared_ptr<ClientExtensions>& extensions,
+    AsyncFizzBase::TransportOptions transportOptions)
+    : AsyncFizzBase(std::move(socket), std::move(transportOptions)),
       fizzContext_(std::move(fizzContext)),
       extensions_(extensions),
       visitor_(*this),
@@ -24,9 +25,11 @@ template <typename SM>
 AsyncFizzClientT<SM>::AsyncFizzClientT(
     folly::EventBase* eventBase,
     std::shared_ptr<const FizzClientContext> fizzContext,
-    const std::shared_ptr<ClientExtensions>& extensions)
+    const std::shared_ptr<ClientExtensions>& extensions,
+    AsyncFizzBase::TransportOptions transportOptions)
     : AsyncFizzBase(
-          folly::AsyncSocket::UniquePtr(new folly::AsyncSocket(eventBase))),
+          folly::AsyncSocket::UniquePtr(new folly::AsyncSocket(eventBase)),
+          std::move(transportOptions)),
       fizzContext_(std::move(fizzContext)),
       extensions_(extensions),
       visitor_(*this),

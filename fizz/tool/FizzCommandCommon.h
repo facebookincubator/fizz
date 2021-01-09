@@ -27,6 +27,10 @@
 #include <string>
 #include <vector>
 
+#ifdef FIZZ_TOOL_ENABLE_IO_URING
+#include <folly/experimental/io/IoUringBackend.h>
+#endif
+
 namespace fizz {
 namespace tool {
 
@@ -111,6 +115,15 @@ inline std::vector<T> splitParse(
       pieces.begin(), pieces.end(), std::back_inserter(output), parse<T>);
   return output;
 }
+
+// io_uring setup
+std::unique_ptr<folly::EventBaseBackendBase> setupBackend(
+    FOLLY_MAYBE_UNUSED bool uring,
+    FOLLY_MAYBE_UNUSED bool uringAsync,
+    FOLLY_MAYBE_UNUSED bool uringRegisterFds,
+    FOLLY_MAYBE_UNUSED int32_t uringCapacity,
+    FOLLY_MAYBE_UNUSED int32_t uringMaxSubmit,
+    FOLLY_MAYBE_UNUSED int32_t uringMaxGet);
 
 // Echo client/server classes
 

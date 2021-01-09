@@ -40,7 +40,8 @@ class AsyncFizzServerT : public AsyncFizzBase {
   AsyncFizzServerT(
       folly::AsyncTransportWrapper::UniquePtr socket,
       const std::shared_ptr<const FizzServerContext>& fizzContext,
-      const std::shared_ptr<ServerExtensions>& extensions = nullptr);
+      const std::shared_ptr<ServerExtensions>& extensions = nullptr,
+      AsyncFizzBase::TransportOptions transportOptions = AsyncFizzBase::TransportOptions());
 
   virtual void accept(HandshakeCallback* callback);
 

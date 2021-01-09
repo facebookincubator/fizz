@@ -27,12 +27,14 @@ static const uint32_t kPartialWriteThreshold = 128 * 1024;
  * The test class itself implements AsyncFizzBase so that it has access to the
  * app data interfaces.
  */
+template <typename T>
 class AsyncFizzBaseTest : public testing::Test, public AsyncFizzBase {
  public:
   AsyncFizzBaseTest()
       : testing::Test(),
         AsyncFizzBase(
-            AsyncTransportWrapper::UniquePtr(new MockAsyncTransport())) {
+            AsyncTransportWrapper::UniquePtr(new MockAsyncTransport()),
+            T::Options) {
     socket_ = getUnderlyingTransport<MockAsyncTransport>();
     ON_CALL(*this, good()).WillByDefault(Return(true));
     ON_CALL(*this, isReplaySafe()).WillByDefault(Return(true));
@@ -40,6 +42,7 @@ class AsyncFizzBaseTest : public testing::Test, public AsyncFizzBase {
   }
 
   void TearDown() override {
+    EXPECT_CALL(*socket_, setEventCallback(nullptr));
     EXPECT_CALL(*socket_, setReadCB(nullptr));
   }
 
@@ -105,8 +108,20 @@ class AsyncFizzBaseTest : public testing::Test, public AsyncFizzBase {
   }
 
   void expectTransportReadCallback() {
+    if (T::Options.registerEventCallback) {
+      EXPECT_CALL(*socket_, setEventCallback(_))
+          .WillOnce(SaveArg<0>(&transportRecvCallback_));
+    }
     EXPECT_CALL(*socket_, setReadCB(_))
         .WillOnce(SaveArg<0>(&transportReadCallback_));
+  }
+
+  void checkCallbackConsistency() {
+    if (T::Options.registerEventCallback && (transportReadCallback_ || transportRecvCallback_)) {
+      EXPECT_EQ(
+          dynamic_cast<AsyncFizzBaseTest<T>*>(transportReadCallback_),
+          dynamic_cast<AsyncFizzBaseTest<T>*>(transportRecvCallback_));
+    }
   }
 
   void expectWrite(
@@ -114,7 +129,7 @@ class AsyncFizzBaseTest : public testing::Test, public AsyncFizzBase {
       size_t len,
       folly::AsyncTransportWrapper::WriteCallback** callbackToSave = nullptr) {
     EXPECT_CALL(*this, writeAppDataInternal(_, _, _))
-        .InSequence(writeSeq_)
+        .InSequence(this->writeSeq_)
         .WillOnce(
             Invoke([repeatedData, len, callbackToSave](
                        folly::AsyncTransportWrapper::WriteCallback* callback,
@@ -136,7 +151,8 @@ class AsyncFizzBaseTest : public testing::Test, public AsyncFizzBase {
 
   MockAsyncTransport* socket_;
   StrictMock<folly::test::MockReadCallback> readCallback_;
-  ReadCallback* transportReadCallback_;
+  ReadCallback* transportReadCallback_{nullptr};
+  EventRecvmsgCallback* transportRecvCallback_{nullptr};
   AsyncSocketException ase_{AsyncSocketException::UNKNOWN, "unit test"};
   AsyncSocketException eof_{AsyncSocketException::END_OF_FILE, "unit test eof"};
   Sequence readBufSeq_;
@@ -231,314 +247,351 @@ MATCHER_P(BufMatches, expected, "") {
   return eq(*arg, *expected);
 }
 
-TEST_F(AsyncFizzBaseTest, TestIsFizz) {
-  EXPECT_EQ(getSecurityProtocol(), "Fizz");
+struct ReadCB {
+  constexpr static AsyncFizzBase::TransportOptions Options = {
+    false,  // registerEventCallback
+  };
+};
+
+struct RecvCB {
+  constexpr static AsyncFizzBase::TransportOptions Options = {
+    true,  // registerEventCallback
+  };
+};
+
+using TestTypes = ::testing::Types<ReadCB, RecvCB>;
+TYPED_TEST_CASE(AsyncFizzBaseTest, TestTypes);
+
+TYPED_TEST(AsyncFizzBaseTest, TestIsFizz) {
+  EXPECT_EQ(this->getSecurityProtocol(), "Fizz");
 }
 
-TEST_F(AsyncFizzBaseTest, TestAppBytesWritten) {
-  EXPECT_EQ(getAppBytesWritten(), 0);
+TYPED_TEST(AsyncFizzBaseTest, TestAppBytesWritten) {
+  EXPECT_EQ(this->getAppBytesWritten(), 0);
 
   auto four = IOBuf::copyBuffer("4444");
-  writeChain(nullptr, std::move(four));
-  EXPECT_EQ(getAppBytesWritten(), 4);
+  this->writeChain(nullptr, std::move(four));
+  EXPECT_EQ(this->getAppBytesWritten(), 4);
 
   auto eight = IOBuf::copyBuffer("88888888");
   auto two = IOBuf::copyBuffer("22");
   eight->prependChain(std::move(two));
-  writeChain(nullptr, std::move(eight));
-  EXPECT_EQ(getAppBytesWritten(), 14);
+  this->writeChain(nullptr, std::move(eight));
+  EXPECT_EQ(this->getAppBytesWritten(), 14);
 }
 
-TEST_F(AsyncFizzBaseTest, TestAppBytesReceived) {
-  EXPECT_EQ(getAppBytesReceived(), 0);
+TYPED_TEST(AsyncFizzBaseTest, TestAppBytesReceived) {
+  EXPECT_EQ(this->getAppBytesReceived(), 0);
 
   auto four = IOBuf::copyBuffer("4444");
-  deliverAppData(std::move(four));
-  EXPECT_EQ(getAppBytesReceived(), 4);
+  this->deliverAppData(std::move(four));
+  EXPECT_EQ(this->getAppBytesReceived(), 4);
 
   auto eight = IOBuf::copyBuffer("88888888");
   auto two = IOBuf::copyBuffer("22");
   eight->prependChain(std::move(two));
-  deliverAppData(std::move(eight));
-  EXPECT_EQ(getAppBytesReceived(), 14);
+  this->deliverAppData(std::move(eight));
+  EXPECT_EQ(this->getAppBytesReceived(), 14);
 }
 
-TEST_F(AsyncFizzBaseTest, TestWrite) {
+TYPED_TEST(AsyncFizzBaseTest, TestWrite) {
   auto buf = IOBuf::copyBuffer("buf");
 
   EXPECT_CALL(*this, writeAppDataInternal(_, _, _));
-  writeChain(nullptr, std::move(buf));
+  this->writeChain(nullptr, std::move(buf));
 }
 
-TEST_F(AsyncFizzBaseTest, TestReadErr) {
-  setReadCB(&readCallback_);
+TYPED_TEST(AsyncFizzBaseTest, TestReadErr) {
+  this->setReadCB(&this->readCallback_);
 
-  EXPECT_CALL(readCallback_, readErr_(_));
-  EXPECT_CALL(*socket_, close());
-  deliverError(ase_);
-  EXPECT_EQ(getReadCallback(), nullptr);
+  EXPECT_CALL(this->readCallback_, readErr_(_));
+  EXPECT_CALL(*this->socket_, close());
+  this->deliverError(this->ase_);
+  EXPECT_EQ(this->getReadCallback(), nullptr);
 }
 
-TEST_F(AsyncFizzBaseTest, TestReadErrNoCallback) {
-  EXPECT_CALL(*socket_, close());
-  deliverError(ase_);
+TYPED_TEST(AsyncFizzBaseTest, TestReadErrNoCallback) {
+  EXPECT_CALL(*this->socket_, close());
+  this->deliverError(this->ase_);
 }
 
-TEST_F(AsyncFizzBaseTest, TestReadErrAsync) {
+TYPED_TEST(AsyncFizzBaseTest, TestReadErrAsync) {
   ON_CALL(*this, good()).WillByDefault(Return(false));
-  deliverError(ase_);
+  this->deliverError(this->ase_);
 
-  EXPECT_CALL(readCallback_, readErr_(_));
-  setReadCB(&readCallback_);
-  EXPECT_EQ(getReadCallback(), nullptr);
+  EXPECT_CALL(this->readCallback_, readErr_(_));
+  this->setReadCB(&this->readCallback_);
+  EXPECT_EQ(this->getReadCallback(), nullptr);
 }
 
-TEST_F(AsyncFizzBaseTest, TestReadEOF) {
-  setReadCB(&readCallback_);
+TYPED_TEST(AsyncFizzBaseTest, TestReadEOF) {
+  this->setReadCB(&this->readCallback_);
 
-  EXPECT_CALL(readCallback_, readEOF_());
-  deliverError(eof_);
-  EXPECT_EQ(getReadCallback(), nullptr);
+  EXPECT_CALL(this->readCallback_, readEOF_());
+  this->deliverError(this->eof_);
+  EXPECT_EQ(this->getReadCallback(), nullptr);
 }
 
-TEST_F(AsyncFizzBaseTest, TestReadEOFNoCallback) {
-  deliverError(eof_);
+TYPED_TEST(AsyncFizzBaseTest, TestReadEOFNoCallback) {
+  this->deliverError(this->eof_);
 }
 
-TEST_F(AsyncFizzBaseTest, TestMovableBuffer) {
-  EXPECT_CALL(readCallback_, isBufferMovable_()).WillRepeatedly(Return(true));
+TYPED_TEST(AsyncFizzBaseTest, TestMovableBuffer) {
+  EXPECT_CALL(this->readCallback_, isBufferMovable_())
+      .WillRepeatedly(Return(true));
 
-  setReadCB(&readCallback_);
+  this->setReadCB(&this->readCallback_);
 
   auto buf = IOBuf::copyBuffer("buf");
-  EXPECT_CALL(readCallback_, readBufferAvailable_(BufMatches(buf.get())));
-  deliverAppData(buf->clone());
+  EXPECT_CALL(this->readCallback_, readBufferAvailable_(BufMatches(buf.get())));
+  this->deliverAppData(buf->clone());
 
   auto buf2 = IOBuf::copyBuffer("buf2");
-  EXPECT_CALL(readCallback_, readBufferAvailable_(BufMatches(buf2.get())));
-  deliverAppData(buf2->clone());
+  EXPECT_CALL(
+      this->readCallback_, readBufferAvailable_(BufMatches(buf2.get())));
+  this->deliverAppData(buf2->clone());
 }
 
-TEST_F(AsyncFizzBaseTest, TestMovableBufferAsyncCallback) {
-  EXPECT_CALL(readCallback_, isBufferMovable_()).WillRepeatedly(Return(true));
+TYPED_TEST(AsyncFizzBaseTest, TestMovableBufferAsyncCallback) {
+  EXPECT_CALL(this->readCallback_, isBufferMovable_())
+      .WillRepeatedly(Return(true));
 
   auto buf = IOBuf::copyBuffer("buf");
-  deliverAppData(std::move(buf));
+  this->deliverAppData(std::move(buf));
 
   auto buf2 = IOBuf::copyBuffer("buf2");
-  deliverAppData(std::move(buf2));
+  this->deliverAppData(std::move(buf2));
 
   auto expected = IOBuf::copyBuffer("bufbuf2");
-  EXPECT_CALL(readCallback_, readBufferAvailable_(BufMatches(expected.get())));
-  setReadCB(&readCallback_);
+  EXPECT_CALL(
+      this->readCallback_, readBufferAvailable_(BufMatches(expected.get())));
+  this->setReadCB(&this->readCallback_);
 
   auto buf3 = IOBuf::copyBuffer("buf3");
-  EXPECT_CALL(readCallback_, readBufferAvailable_(BufMatches(buf3.get())));
-  deliverAppData(buf3->clone());
+  EXPECT_CALL(
+      this->readCallback_, readBufferAvailable_(BufMatches(buf3.get())));
+  this->deliverAppData(buf3->clone());
 }
 
-TEST_F(AsyncFizzBaseTest, TestReadBufferLarger) {
-  EXPECT_CALL(readCallback_, isBufferMovable_()).WillRepeatedly(Return(false));
+TYPED_TEST(AsyncFizzBaseTest, TestReadBufferLarger) {
+  EXPECT_CALL(this->readCallback_, isBufferMovable_())
+      .WillRepeatedly(Return(false));
 
-  setReadCB(&readCallback_);
+  this->setReadCB(&this->readCallback_);
 
   auto buf = IOBuf::copyBuffer("sup");
-  expectReadBufRequest(20);
-  expectReadData("sup");
-  deliverAppData(std::move(buf));
+  this->expectReadBufRequest(20);
+  this->expectReadData("sup");
+  this->deliverAppData(std::move(buf));
 }
 
-TEST_F(AsyncFizzBaseTest, TestReadBufferExact) {
-  EXPECT_CALL(readCallback_, isBufferMovable_()).WillRepeatedly(Return(false));
+TYPED_TEST(AsyncFizzBaseTest, TestReadBufferExact) {
+  EXPECT_CALL(this->readCallback_, isBufferMovable_())
+      .WillRepeatedly(Return(false));
 
-  setReadCB(&readCallback_);
+  this->setReadCB(&this->readCallback_);
 
   auto buf = IOBuf::copyBuffer("sup");
-  expectReadBufRequest(3);
-  expectReadData("sup");
-  deliverAppData(std::move(buf));
+  this->expectReadBufRequest(3);
+  this->expectReadData("sup");
+  this->deliverAppData(std::move(buf));
 }
 
-TEST_F(AsyncFizzBaseTest, TestReadBufferSmaller) {
-  EXPECT_CALL(readCallback_, isBufferMovable_()).WillRepeatedly(Return(false));
+TYPED_TEST(AsyncFizzBaseTest, TestReadBufferSmaller) {
+  EXPECT_CALL(this->readCallback_, isBufferMovable_())
+      .WillRepeatedly(Return(false));
 
-  setReadCB(&readCallback_);
+  this->setReadCB(&this->readCallback_);
 
   auto buf = IOBuf::copyBuffer("hello");
-  expectReadBufRequest(3);
-  expectReadData("hel");
-  expectReadBufRequest(3);
-  expectReadData("lo");
-  deliverAppData(std::move(buf));
+  this->expectReadBufRequest(3);
+  this->expectReadData("hel");
+  this->expectReadBufRequest(3);
+  this->expectReadData("lo");
+  this->deliverAppData(std::move(buf));
 }
 
-TEST_F(AsyncFizzBaseTest, TestReadBufferAsync) {
-  EXPECT_CALL(readCallback_, isBufferMovable_()).WillRepeatedly(Return(false));
+TYPED_TEST(AsyncFizzBaseTest, TestReadBufferAsync) {
+  EXPECT_CALL(this->readCallback_, isBufferMovable_())
+      .WillRepeatedly(Return(false));
 
   auto buf1 = IOBuf::copyBuffer("buf1");
-  deliverAppData(std::move(buf1));
+  this->deliverAppData(std::move(buf1));
   auto buf2 = IOBuf::copyBuffer("buf2");
-  deliverAppData(std::move(buf2));
+  this->deliverAppData(std::move(buf2));
 
-  expectReadBufRequest(20);
-  expectReadData("buf1buf2");
-  setReadCB(&readCallback_);
+  this->expectReadBufRequest(20);
+  this->expectReadData("buf1buf2");
+  this->setReadCB(&this->readCallback_);
 
   auto buf3 = IOBuf::copyBuffer("buf3");
-  expectReadBufRequest(20);
-  expectReadData("buf3");
-  deliverAppData(std::move(buf3));
+  this->expectReadBufRequest(20);
+  this->expectReadData("buf3");
+  this->deliverAppData(std::move(buf3));
 }
 
-TEST_F(AsyncFizzBaseTest, TestReadBufferZero) {
-  EXPECT_CALL(readCallback_, isBufferMovable_()).WillRepeatedly(Return(false));
+TYPED_TEST(AsyncFizzBaseTest, TestReadBufferZero) {
+  EXPECT_CALL(this->readCallback_, isBufferMovable_())
+      .WillRepeatedly(Return(false));
 
-  setReadCB(&readCallback_);
+  this->setReadCB(&this->readCallback_);
 
   auto buf = IOBuf::copyBuffer("hello");
-  expectReadBufRequest(0);
-  EXPECT_CALL(readCallback_, readErr_(_));
-  EXPECT_CALL(*socket_, close());
-  deliverAppData(std::move(buf));
+  this->expectReadBufRequest(0);
+  EXPECT_CALL(this->readCallback_, readErr_(_));
+  EXPECT_CALL(*this->socket_, close());
+  this->deliverAppData(std::move(buf));
 }
 
-TEST_F(AsyncFizzBaseTest, TestReadBufferPause) {
-  EXPECT_CALL(readCallback_, isBufferMovable_()).WillRepeatedly(Return(false));
+TYPED_TEST(AsyncFizzBaseTest, TestReadBufferPause) {
+  EXPECT_CALL(this->readCallback_, isBufferMovable_())
+      .WillRepeatedly(Return(false));
 
-  setReadCB(&readCallback_);
+  this->setReadCB(&this->readCallback_);
 
   auto buf = IOBuf::copyBuffer("hello");
-  expectReadBufRequest(3);
-  EXPECT_CALL(readCallback_, readDataAvailable_(3))
-      .InSequence(readBufSeq_)
+  this->expectReadBufRequest(3);
+  EXPECT_CALL(this->readCallback_, readDataAvailable_(3))
+      .InSequence(this->readBufSeq_)
       .WillOnce(Invoke([this](size_t len) {
-        EXPECT_TRUE(std::memcmp(readBuf_.data(), "hel", len) == 0);
+        EXPECT_TRUE(std::memcmp(this->readBuf_.data(), "hel", len) == 0);
         this->setReadCB(nullptr);
       }));
-  deliverAppData(std::move(buf));
+  this->deliverAppData(std::move(buf));
 
-  expectReadBufRequest(20);
-  expectReadData("lo");
-  setReadCB(&readCallback_);
+  this->expectReadBufRequest(20);
+  this->expectReadData("lo");
+  this->setReadCB(&this->readCallback_);
 }
 
-TEST_F(AsyncFizzBaseTest, TestTransportReadBufMovable) {
-  expectTransportReadCallback();
-  startTransportReads();
-  EXPECT_TRUE(transportReadCallback_->isBufferMovable());
+TYPED_TEST(AsyncFizzBaseTest, TestTransportReadBufMovable) {
+  this->expectTransportReadCallback();
+  this->startTransportReads();
+  this->checkCallbackConsistency();
+  EXPECT_TRUE(this->transportReadCallback_->isBufferMovable());
 }
 
-TEST_F(AsyncFizzBaseTest, TestTransportReadBufMove) {
+TYPED_TEST(AsyncFizzBaseTest, TestTransportReadBufMove) {
   IOBufEqualTo eq;
-  expectTransportReadCallback();
-  startTransportReads();
+  this->expectTransportReadCallback();
+  this->startTransportReads();
+  this->checkCallbackConsistency();
 
   auto buf = IOBuf::copyBuffer("hello");
   EXPECT_CALL(*this, transportDataAvailable());
-  transportReadCallback_->readBufferAvailable(buf->clone());
-  EXPECT_TRUE(eq(*buf, *transportReadBuf_.front()));
+  this->transportReadCallback_->readBufferAvailable(buf->clone());
+  EXPECT_TRUE(eq(*buf, *this->transportReadBuf_.front()));
 
   EXPECT_CALL(*this, transportDataAvailable());
-  transportReadCallback_->readBufferAvailable(IOBuf::copyBuffer("world"));
-  EXPECT_TRUE(eq(*IOBuf::copyBuffer("helloworld"), *transportReadBuf_.front()));
+  this->transportReadCallback_->readBufferAvailable(IOBuf::copyBuffer("world"));
+  EXPECT_TRUE(
+      eq(*IOBuf::copyBuffer("helloworld"), *this->transportReadBuf_.front()));
 }
 
-TEST_F(AsyncFizzBaseTest, TestTransportReadBufAvail) {
+TYPED_TEST(AsyncFizzBaseTest, TestTransportReadBufAvail) {
   void* buf;
   size_t len;
   IOBufEqualTo eq;
-  expectTransportReadCallback();
-  startTransportReads();
+  this->expectTransportReadCallback();
+  this->startTransportReads();
+  this->checkCallbackConsistency();
 
   EXPECT_CALL(*this, transportDataAvailable());
-  transportReadCallback_->getReadBuffer(&buf, &len);
+  this->transportReadCallback_->getReadBuffer(&buf, &len);
   // Make sure the buffer is a reasonable size.
   EXPECT_GE(len, 128);
   EXPECT_LE(len, 1024 * 64);
   std::memcpy(buf, "hello", 5);
-  transportReadCallback_->readDataAvailable(5);
-  EXPECT_TRUE(eq(*IOBuf::copyBuffer("hello"), *transportReadBuf_.front()));
+  this->transportReadCallback_->readDataAvailable(5);
+  EXPECT_TRUE(
+      eq(*IOBuf::copyBuffer("hello"), *this->transportReadBuf_.front()));
 
   EXPECT_CALL(*this, transportDataAvailable());
-  transportReadCallback_->getReadBuffer(&buf, &len);
+  this->transportReadCallback_->getReadBuffer(&buf, &len);
   std::memcpy(buf, "goodbye", 7);
-  transportReadCallback_->readDataAvailable(7);
+  this->transportReadCallback_->readDataAvailable(7);
   EXPECT_TRUE(
-      eq(*IOBuf::copyBuffer("hellogoodbye"), *transportReadBuf_.front()));
+      eq(*IOBuf::copyBuffer("hellogoodbye"), *this->transportReadBuf_.front()));
 }
 
-TEST_F(AsyncFizzBaseTest, TestTransportReadError) {
-  expectTransportReadCallback();
-  startTransportReads();
+TYPED_TEST(AsyncFizzBaseTest, TestTransportReadError) {
+  this->expectTransportReadCallback();
+  this->startTransportReads();
+  this->checkCallbackConsistency();
 
   EXPECT_CALL(*this, transportError(_));
-  transportReadCallback_->readErr(ase_);
+  this->transportReadCallback_->readErr(this->ase_);
 }
 
-TEST_F(AsyncFizzBaseTest, TestTransportReadEOF) {
-  expectTransportReadCallback();
-  startTransportReads();
+TYPED_TEST(AsyncFizzBaseTest, TestTransportReadEOF) {
+  this->expectTransportReadCallback();
+  this->startTransportReads();
+  this->checkCallbackConsistency();
 
   EXPECT_CALL(*this, transportError(_))
       .WillOnce(Invoke([](const AsyncSocketException& ex) {
         EXPECT_EQ(ex.getType(), AsyncSocketException::END_OF_FILE);
       }));
-  transportReadCallback_->readEOF();
+  this->transportReadCallback_->readEOF();
 }
 
-TEST_F(AsyncFizzBaseTest, TestTransportReadBufPause) {
-  expectTransportReadCallback();
-  startTransportReads();
+TYPED_TEST(AsyncFizzBaseTest, TestTransportReadBufPause) {
+  this->expectTransportReadCallback();
+  this->startTransportReads();
+  this->checkCallbackConsistency();
 
   auto bigBuf = IOBuf::create(1024 * 1024);
   bigBuf->append(1024 * 1024);
-  expectTransportReadCallback();
+  this->expectTransportReadCallback();
   EXPECT_CALL(*this, transportDataAvailable());
-  transportReadCallback_->readBufferAvailable(std::move(bigBuf));
-  EXPECT_EQ(transportReadCallback_, nullptr);
+  this->transportReadCallback_->readBufferAvailable(std::move(bigBuf));
+  EXPECT_EQ(this->transportReadCallback_, nullptr);
+  this->checkCallbackConsistency();
 
-  expectTransportReadCallback();
-  setReadCB(&readCallback_);
-  EXPECT_NE(transportReadCallback_, nullptr);
+  this->expectTransportReadCallback();
+  this->setReadCB(&this->readCallback_);
+  EXPECT_NE(this->transportReadCallback_, nullptr);
 }
 
-TEST_F(AsyncFizzBaseTest, TestAppReadBufPause) {
-  EXPECT_CALL(readCallback_, isBufferMovable_()).WillRepeatedly(Return(true));
-  expectTransportReadCallback();
-  startTransportReads();
+TYPED_TEST(AsyncFizzBaseTest, TestAppReadBufPause) {
+  EXPECT_CALL(this->readCallback_, isBufferMovable_())
+      .WillRepeatedly(Return(true));
+  this->expectTransportReadCallback();
+  this->startTransportReads();
+  this->checkCallbackConsistency();
 
   auto bigBuf = IOBuf::create(1024 * 1024);
   bigBuf->append(1024 * 1024);
-  expectTransportReadCallback();
-  deliverAppData(std::move(bigBuf));
-  EXPECT_EQ(transportReadCallback_, nullptr);
+  this->expectTransportReadCallback();
+  this->deliverAppData(std::move(bigBuf));
+  EXPECT_EQ(this->transportReadCallback_, nullptr);
 
-  expectTransportReadCallback();
-  EXPECT_CALL(readCallback_, readBufferAvailable_(_));
-  setReadCB(&readCallback_);
-  EXPECT_NE(transportReadCallback_, nullptr);
+  this->expectTransportReadCallback();
+  EXPECT_CALL(this->readCallback_, readBufferAvailable_(_));
+  this->setReadCB(&this->readCallback_);
+  EXPECT_NE(this->transportReadCallback_, nullptr);
 }
 
-TEST_F(AsyncFizzBaseTest, TestWriteSuccess) {
+TYPED_TEST(AsyncFizzBaseTest, TestWriteSuccess) {
   AsyncTransportWrapper::WriteCallback* writeCallback = this;
   writeCallback->writeSuccess();
 }
 
-TEST_F(AsyncFizzBaseTest, TestWriteError) {
+TYPED_TEST(AsyncFizzBaseTest, TestWriteError) {
   AsyncTransportWrapper::WriteCallback* writeCallback = this;
   EXPECT_CALL(*this, transportError(_));
-  writeCallback->writeErr(0, ase_);
+  writeCallback->writeErr(0, this->ase_);
 }
 
-TEST_F(AsyncFizzBaseTest, TestHandshakeTimeout) {
+TYPED_TEST(AsyncFizzBaseTest, TestHandshakeTimeout) {
   MockTimeoutManager manager;
   ON_CALL(manager, isInTimeoutManagerThread()).WillByDefault(Return(true));
-  attachTimeoutManager(&manager);
+  this->attachTimeoutManager(&manager);
   AsyncTimeout* timeout;
 
   EXPECT_CALL(manager, scheduleTimeout(_, std::chrono::milliseconds(2)))
       .WillOnce(DoAll(SaveArg<0>(&timeout), Return(true)));
-  startHandshakeTimeout(std::chrono::milliseconds(2));
+  this->startHandshakeTimeout(std::chrono::milliseconds(2));
 
   EXPECT_CALL(*this, transportError(_))
       .WillOnce(Invoke([](const AsyncSocketException& ex) {
@@ -547,43 +600,57 @@ TEST_F(AsyncFizzBaseTest, TestHandshakeTimeout) {
   timeout->timeoutExpired();
 }
 
-TEST_F(AsyncFizzBaseTest, TestAttachEventBase) {
+TYPED_TEST(AsyncFizzBaseTest, TestAttachEventBase) {
   EventBase evb;
-  expectTransportReadCallback();
-  startTransportReads();
-  ON_CALL(*socket_, good()).WillByDefault(Return(true));
+  this->expectTransportReadCallback();
+  this->startTransportReads();
+  this->checkCallbackConsistency();
+  ON_CALL(*this->socket_, good()).WillByDefault(Return(true));
   Sequence s;
 
-  EXPECT_CALL(*socket_, setReadCB(nullptr)).InSequence(s);
-  EXPECT_CALL(*socket_, detachEventBase()).InSequence(s);
-  detachEventBase();
+  EXPECT_CALL(*this->socket_, setEventCallback(nullptr)).InSequence(s);
+  EXPECT_CALL(*this->socket_, setReadCB(nullptr)).InSequence(s);
+  EXPECT_CALL(*this->socket_, detachEventBase()).InSequence(s);
+  this->detachEventBase();
 
-  EXPECT_CALL(*socket_, attachEventBase(&evb)).InSequence(s);
-  EXPECT_CALL(*socket_, setReadCB(transportReadCallback_)).InSequence(s);
-  attachEventBase(&evb);
+  EXPECT_CALL(*this->socket_, attachEventBase(&evb)).InSequence(s);
+  if (TypeParam::Options.registerEventCallback) {
+    EXPECT_CALL(*this->socket_, setEventCallback(this->transportRecvCallback_))
+        .InSequence(s);
+  }
+  EXPECT_CALL(*this->socket_, setReadCB(this->transportReadCallback_))
+      .InSequence(s);
+  this->attachEventBase(&evb);
 }
 
-TEST_F(AsyncFizzBaseTest, TestAttachEventBaseWithReadCb) {
+TYPED_TEST(AsyncFizzBaseTest, TestAttachEventBaseWithReadCb) {
   EventBase evb;
-  expectTransportReadCallback();
-  startTransportReads();
-  ON_CALL(*socket_, good()).WillByDefault(Return(false));
+  this->expectTransportReadCallback();
+  this->startTransportReads();
+  this->checkCallbackConsistency();
+  ON_CALL(*this->socket_, good()).WillByDefault(Return(false));
   Sequence s;
 
-  EXPECT_CALL(*socket_, setReadCB(nullptr)).InSequence(s);
-  EXPECT_CALL(*socket_, detachEventBase()).InSequence(s);
-  detachEventBase();
+  EXPECT_CALL(*this->socket_, setEventCallback(nullptr)).InSequence(s);
+  EXPECT_CALL(*this->socket_, setReadCB(nullptr)).InSequence(s);
+  EXPECT_CALL(*this->socket_, detachEventBase()).InSequence(s);
+  this->detachEventBase();
 
-  expectTransportReadCallback();
-  setReadCB(&readCallback_);
-  EXPECT_CALL(*socket_, attachEventBase(&evb)).InSequence(s);
-  EXPECT_CALL(*socket_, setReadCB(transportReadCallback_)).InSequence(s);
-  attachEventBase(&evb);
+  this->expectTransportReadCallback();
+  this->setReadCB(&this->readCallback_);
+  EXPECT_CALL(*this->socket_, attachEventBase(&evb)).InSequence(s);
+  if (TypeParam::Options.registerEventCallback) {
+    EXPECT_CALL(*this->socket_, setEventCallback(this->transportRecvCallback_))
+        .InSequence(s);
+  }
+  EXPECT_CALL(*this->socket_, setReadCB(this->transportReadCallback_))
+      .InSequence(s);
+  this->attachEventBase(&evb);
 }
 
-TEST_F(AsyncFizzBaseTest, TestSecretAvailable) {
+TYPED_TEST(AsyncFizzBaseTest, TestSecretAvailable) {
   MockSecretCallback cb;
-  setSecretCallback(&cb);
+  this->setSecretCallback(&cb);
   auto makeSecret = [](std::string secret, SecretType type) {
     std::vector<uint8_t> secretBuf(secret.begin(), secret.end());
     return DerivedSecret(std::move(secretBuf), type);
@@ -599,210 +666,210 @@ TEST_F(AsyncFizzBaseTest, TestSecretAvailable) {
       makeSecret("exPskBindSecret", EarlySecrets::ExternalPskBinder);
   EXPECT_CALL(cb, externalPskBinderAvailable_(_))
       .WillOnce(Invoke(checkSecret(exPskBinder)));
-  secretAvailable(exPskBinder);
+  this->secretAvailable(exPskBinder);
 
   auto resPskBinder =
       makeSecret("resPskBindSecret", EarlySecrets::ResumptionPskBinder);
   EXPECT_CALL(cb, resumptionPskBinderAvailable_(_))
       .WillOnce(Invoke(checkSecret(resPskBinder)));
-  secretAvailable(resPskBinder);
+  this->secretAvailable(resPskBinder);
 
   auto earlyExpSecret =
       makeSecret("earlyExpSecret", EarlySecrets::EarlyExporter);
   EXPECT_CALL(cb, earlyExporterSecretAvailable_(_))
       .WillOnce(Invoke(checkSecret(earlyExpSecret)));
-  secretAvailable(earlyExpSecret);
+  this->secretAvailable(earlyExpSecret);
 
   auto clientEarlySecret =
       makeSecret("clientEarlySecret", EarlySecrets::ClientEarlyTraffic);
   EXPECT_CALL(cb, clientEarlyTrafficSecretAvailable_(_))
       .WillOnce(Invoke(checkSecret(clientEarlySecret)));
-  secretAvailable(clientEarlySecret);
+  this->secretAvailable(clientEarlySecret);
 
   auto clientHandSecret =
       makeSecret("clientHandSecret", HandshakeSecrets::ClientHandshakeTraffic);
   EXPECT_CALL(cb, clientHandshakeTrafficSecretAvailable_(_))
       .WillOnce(Invoke(checkSecret(clientHandSecret)));
-  secretAvailable(clientHandSecret);
+  this->secretAvailable(clientHandSecret);
 
   auto serverHandSecret =
       makeSecret("serverHandSecret", HandshakeSecrets::ServerHandshakeTraffic);
   EXPECT_CALL(cb, serverHandshakeTrafficSecretAvailable_(_))
       .WillOnce(Invoke(checkSecret(serverHandSecret)));
-  secretAvailable(serverHandSecret);
+  this->secretAvailable(serverHandSecret);
 
   auto exporterMaster =
       makeSecret("exporterMaster", MasterSecrets::ExporterMaster);
   EXPECT_CALL(cb, exporterMasterSecretAvailable_(_))
       .WillOnce(Invoke(checkSecret(exporterMaster)));
-  secretAvailable(exporterMaster);
+  this->secretAvailable(exporterMaster);
 
   auto resumptionMaster =
       makeSecret("resumptionMaster", MasterSecrets::ResumptionMaster);
   EXPECT_CALL(cb, resumptionMasterSecretAvailable_(_))
       .WillOnce(Invoke(checkSecret(resumptionMaster)));
-  secretAvailable(resumptionMaster);
+  this->secretAvailable(resumptionMaster);
 
   auto clientAppSecret =
       makeSecret("clientAppSecret", AppTrafficSecrets::ClientAppTraffic);
   EXPECT_CALL(cb, clientAppTrafficSecretAvailable_(_))
       .WillOnce(Invoke(checkSecret(clientAppSecret)));
-  secretAvailable(clientAppSecret);
+  this->secretAvailable(clientAppSecret);
 
   auto serverAppSecret =
       makeSecret("serverAppSecret", AppTrafficSecrets::ServerAppTraffic);
   EXPECT_CALL(cb, serverAppTrafficSecretAvailable_(_))
       .WillOnce(Invoke(checkSecret(serverAppSecret)));
-  secretAvailable(serverAppSecret);
+  this->secretAvailable(serverAppSecret);
 }
 
-TEST_F(AsyncFizzBaseTest, TestWriteBuffering) {
+TYPED_TEST(AsyncFizzBaseTest, TestWriteBuffering) {
   AsyncTransportWrapper::WriteCallback* wcb;
 
-  expectWrite('a', kPartialWriteThreshold, &wcb);
+  this->expectWrite('a', kPartialWriteThreshold, &wcb);
   auto buf = getBuf('a', kPartialWriteThreshold + 1);
-  writeChain(nullptr, buf->clone());
+  this->writeChain(nullptr, buf->clone());
 
-  expectWrite('a', 1);
+  this->expectWrite('a', 1);
   wcb->writeSuccess();
 }
 
-TEST_F(AsyncFizzBaseTest, TestWriteBufferingTransportBuffer) {
+TYPED_TEST(AsyncFizzBaseTest, TestWriteBufferingTransportBuffer) {
   AsyncTransportWrapper::WriteCallback* wcb;
 
-  ON_CALL(*socket_, getRawBytesBuffered())
-    .WillByDefault(Return(25));
+  ON_CALL(*this->socket_, getRawBytesBuffered()).WillByDefault(Return(25));
 
-  expectWrite('a', 10, &wcb);
+  this->expectWrite('a', 10, &wcb);
   auto buf = getBuf('a', 10);
-  writeChain(nullptr, buf->clone());
+  this->writeChain(nullptr, buf->clone());
 
-  writeChain(nullptr, getBuf('b', 10));
-  expectWrite('b', 10);
+  this->writeChain(nullptr, getBuf('b', 10));
+  this->expectWrite('b', 10);
   wcb->writeSuccess();
 }
 
-TEST_F(AsyncFizzBaseTest, TestNoWriteBufferingUnshared) {
-  expectWrite('a', kPartialWriteThreshold * 10);
+TYPED_TEST(AsyncFizzBaseTest, TestNoWriteBufferingUnshared) {
+  this->expectWrite('a', kPartialWriteThreshold * 10);
   auto buf = getBuf('a', kPartialWriteThreshold * 10);
-  writeChain(nullptr, std::move(buf));
+  this->writeChain(nullptr, std::move(buf));
 }
 
-TEST_F(AsyncFizzBaseTest, TestNoWriteBufferingConnecting) {
+TYPED_TEST(AsyncFizzBaseTest, TestNoWriteBufferingConnecting) {
   EXPECT_CALL(*this, connecting()).WillRepeatedly(Return(true));
 
-  expectWrite('a', kPartialWriteThreshold * 10);
+  this->expectWrite('a', kPartialWriteThreshold * 10);
   auto buf = getBuf('a', kPartialWriteThreshold * 10);
-  writeChain(nullptr, buf->clone());
+  this->writeChain(nullptr, buf->clone());
 }
 
-TEST_F(AsyncFizzBaseTest, TestNoWriteBufferingReplayUnsafe) {
+TYPED_TEST(AsyncFizzBaseTest, TestNoWriteBufferingReplayUnsafe) {
   EXPECT_CALL(*this, isReplaySafe()).WillRepeatedly(Return(false));
 
-  expectWrite('a', kPartialWriteThreshold * 10);
+  this->expectWrite('a', kPartialWriteThreshold * 10);
   auto buf = getBuf('a', kPartialWriteThreshold * 10);
-  writeChain(nullptr, buf->clone());
+  this->writeChain(nullptr, buf->clone());
 }
 
-TEST_F(AsyncFizzBaseTest, TestWriteBufferingUnbufferedAfter) {
+TYPED_TEST(AsyncFizzBaseTest, TestWriteBufferingUnbufferedAfter) {
   AsyncTransportWrapper::WriteCallback* wcb;
 
-  expectWrite('a', kPartialWriteThreshold, &wcb);
+  this->expectWrite('a', kPartialWriteThreshold, &wcb);
   auto buf = getBuf('a', kPartialWriteThreshold + 1);
-  writeChain(nullptr, buf->clone());
+  this->writeChain(nullptr, buf->clone());
 
-  expectWrite('a', 1);
+  this->expectWrite('a', 1);
   wcb->writeSuccess();
 
-  expectWrite('b', 100);
-  writeChain(nullptr, getBuf('b', 100));
+  this->expectWrite('b', 100);
+  this->writeChain(nullptr, getBuf('b', 100));
 }
 
-TEST_F(AsyncFizzBaseTest, TestWriteBufferingSmallWritesFollowing) {
+TYPED_TEST(AsyncFizzBaseTest, TestWriteBufferingSmallWritesFollowing) {
   AsyncTransportWrapper::WriteCallback* wcb;
 
-  expectWrite('a', kPartialWriteThreshold, &wcb);
+  this->expectWrite('a', kPartialWriteThreshold, &wcb);
   auto buf = getBuf('a', kPartialWriteThreshold * 3);
-  writeChain(nullptr, buf->clone());
+  this->writeChain(nullptr, buf->clone());
 
-  expectWrite('a', kPartialWriteThreshold);
-  expectWrite('a', kPartialWriteThreshold);
-  expectWrite('b', 200);
-  expectWrite('c', 75);
+  this->expectWrite('a', kPartialWriteThreshold);
+  this->expectWrite('a', kPartialWriteThreshold);
+  this->expectWrite('b', 200);
+  this->expectWrite('c', 75);
 
-  writeChain(nullptr, getBuf('b', 200));
-  writeChain(nullptr, getBuf('c', 75));
+  this->writeChain(nullptr, getBuf('b', 200));
+  this->writeChain(nullptr, getBuf('c', 75));
 
   wcb->writeSuccess();
 }
 
-TEST_F(AsyncFizzBaseTest, TestWriteBufferingSuccessCallbacks) {
-  AsyncTransportWrapper::WriteCallback* wcb;
-  StrictMock<folly::test::MockWriteCallback> cb1;
-  StrictMock<folly::test::MockWriteCallback> cb2;
-
-  expectWrite('a', kPartialWriteThreshold, &wcb);
-  auto buf = getBuf('a', kPartialWriteThreshold * 3);
-  writeChain(&cb1, buf->clone());
-
-  expectWrite('a', kPartialWriteThreshold);
-  expectWrite('a', kPartialWriteThreshold);
-  EXPECT_CALL(cb1, writeSuccess_()).InSequence(writeSeq_);
-  expectWrite('b', 200);
-  EXPECT_CALL(cb2, writeSuccess_()).InSequence(writeSeq_);
-
-  writeChain(&cb2, getBuf('b', 200));
-
-  wcb->writeSuccess();
-}
-
-TEST_F(AsyncFizzBaseTest, TestWriteBufferingError) {
+TYPED_TEST(AsyncFizzBaseTest, TestWriteBufferingSuccessCallbacks) {
   AsyncTransportWrapper::WriteCallback* wcb;
   StrictMock<folly::test::MockWriteCallback> cb1;
   StrictMock<folly::test::MockWriteCallback> cb2;
 
-  expectWrite('a', kPartialWriteThreshold, &wcb);
+  this->expectWrite('a', kPartialWriteThreshold, &wcb);
   auto buf = getBuf('a', kPartialWriteThreshold * 3);
-  writeChain(&cb1, buf->clone());
+  this->writeChain(&cb1, buf->clone());
 
-  writeChain(&cb2, getBuf('b', 100));
+  this->expectWrite('a', kPartialWriteThreshold);
+  this->expectWrite('a', kPartialWriteThreshold);
+  EXPECT_CALL(cb1, writeSuccess_()).InSequence(this->writeSeq_);
+  this->expectWrite('b', 200);
+  EXPECT_CALL(cb2, writeSuccess_()).InSequence(this->writeSeq_);
 
-  EXPECT_CALL(cb1, writeErr_(kPartialWriteThreshold, _)).InSequence(writeSeq_);
-  EXPECT_CALL(cb2, writeErr_(0, _)).InSequence(writeSeq_);
+  this->writeChain(&cb2, getBuf('b', 200));
 
-  wcb->writeErr(kPartialWriteThreshold, ase_);
+  wcb->writeSuccess();
 }
 
-TEST_F(AsyncFizzBaseTest, TestWriteBufferingMixedSuccessError) {
+TYPED_TEST(AsyncFizzBaseTest, TestWriteBufferingError) {
+  AsyncTransportWrapper::WriteCallback* wcb;
+  StrictMock<folly::test::MockWriteCallback> cb1;
+  StrictMock<folly::test::MockWriteCallback> cb2;
+
+  this->expectWrite('a', kPartialWriteThreshold, &wcb);
+  auto buf = getBuf('a', kPartialWriteThreshold * 3);
+  this->writeChain(&cb1, buf->clone());
+
+  this->writeChain(&cb2, getBuf('b', 100));
+
+  EXPECT_CALL(cb1, writeErr_(kPartialWriteThreshold, _))
+      .InSequence(this->writeSeq_);
+  EXPECT_CALL(cb2, writeErr_(0, _)).InSequence(this->writeSeq_);
+
+  wcb->writeErr(kPartialWriteThreshold, this->ase_);
+}
+
+TYPED_TEST(AsyncFizzBaseTest, TestWriteBufferingMixedSuccessError) {
   AsyncTransportWrapper::WriteCallback* wcb;
   AsyncTransportWrapper::WriteCallback* wcb2;
   StrictMock<folly::test::MockWriteCallback> cb1;
   StrictMock<folly::test::MockWriteCallback> cb2;
 
-  expectWrite('a', kPartialWriteThreshold, &wcb);
+  this->expectWrite('a', kPartialWriteThreshold, &wcb);
   auto buf = getBuf('a', kPartialWriteThreshold * 3);
-  writeChain(&cb1, buf->clone());
+  this->writeChain(&cb1, buf->clone());
 
-  expectWrite('a', kPartialWriteThreshold);
-  expectWrite('a', kPartialWriteThreshold);
-  EXPECT_CALL(cb1, writeSuccess_()).InSequence(writeSeq_);
+  this->expectWrite('a', kPartialWriteThreshold);
+  this->expectWrite('a', kPartialWriteThreshold);
+  EXPECT_CALL(cb1, writeSuccess_()).InSequence(this->writeSeq_);
 
   auto buf2 = getBuf('b', kPartialWriteThreshold * 3);
-  writeChain(&cb2, buf2->clone());
+  this->writeChain(&cb2, buf2->clone());
 
-  expectWrite('b', kPartialWriteThreshold);
-  expectWrite('b', kPartialWriteThreshold, &wcb2);
+  this->expectWrite('b', kPartialWriteThreshold);
+  this->expectWrite('b', kPartialWriteThreshold, &wcb2);
 
   wcb->writeSuccess();
 
   EXPECT_CALL(cb2, writeErr_(kPartialWriteThreshold * 2, _))
-      .InSequence(writeSeq_);
-  wcb2->writeErr(kPartialWriteThreshold, ase_);
+      .InSequence(this->writeSeq_);
+  wcb2->writeErr(kPartialWriteThreshold, this->ase_);
 }
 
-TEST_F(AsyncFizzBaseTest, TestWriteBufferingCork) {
+TYPED_TEST(AsyncFizzBaseTest, TestWriteBufferingCork) {
   EXPECT_CALL(*this, writeAppDataInternal(_, _, _))
-      .InSequence(writeSeq_)
+      .InSequence(this->writeSeq_)
       .WillOnce(Invoke([](folly::AsyncTransportWrapper::WriteCallback* callback,
                           std::shared_ptr<folly::IOBuf> buf,
                           folly::WriteFlags flags) {
@@ -812,7 +879,7 @@ TEST_F(AsyncFizzBaseTest, TestWriteBufferingCork) {
       }));
 
   EXPECT_CALL(*this, writeAppDataInternal(_, _, _))
-      .InSequence(writeSeq_)
+      .InSequence(this->writeSeq_)
       .WillOnce(Invoke([](folly::AsyncTransportWrapper::WriteCallback* callback,
                           std::shared_ptr<folly::IOBuf> buf,
                           folly::WriteFlags flags) {
@@ -822,23 +889,23 @@ TEST_F(AsyncFizzBaseTest, TestWriteBufferingCork) {
       }));
 
   auto buf = getBuf('a', kPartialWriteThreshold + 1);
-  writeChain(nullptr, buf->clone());
+  this->writeChain(nullptr, buf->clone());
 }
 
-TEST_F(AsyncFizzBaseTest, TestWriteBufferingWriteInCallback) {
+TYPED_TEST(AsyncFizzBaseTest, TestWriteBufferingWriteInCallback) {
   AsyncTransportWrapper::WriteCallback* wcb;
   StrictMock<folly::test::MockWriteCallback> cb;
 
-  expectWrite('a', kPartialWriteThreshold, &wcb);
+  this->expectWrite('a', kPartialWriteThreshold, &wcb);
   auto buf = getBuf('a', kPartialWriteThreshold + 1);
-  writeChain(&cb, buf->clone());
+  this->writeChain(&cb, buf->clone());
 
-  expectWrite('a', 1);
+  this->expectWrite('a', 1);
   EXPECT_CALL(cb, writeSuccess_())
-      .InSequence(writeSeq_)
+      .InSequence(this->writeSeq_)
       .WillOnce(Invoke([this]() {
-        expectWrite('b', 200);
-        writeChain(nullptr, getBuf('b', 200));
+        this->expectWrite('b', 200);
+        this->writeChain(nullptr, getBuf('b', 200));
       }));
 
   wcb->writeSuccess();
