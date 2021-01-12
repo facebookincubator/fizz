@@ -296,7 +296,7 @@ class Connection : public AsyncSocket::ConnectCallback,
     LOG(INFO) << "  Certificate Chain:";
     auto certs = verifier_->getCerts();
     for (size_t i = 0; i < certs.size(); i++) {
-      auto x509Cert = certs[i]->getX509().get();
+      auto x509Cert = certs[i]->getX509();
       LOG(INFO) << "   " << i
                 << " s:" << OpenSSLCertUtils::getSubject(*x509Cert).value();
       LOG(INFO) << "     i:" << OpenSSLCertUtils::getIssuer(*x509Cert).value();
