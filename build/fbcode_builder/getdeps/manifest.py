@@ -13,6 +13,7 @@ from .builder import (
     Boost,
     CargoBuilder,
     CMakeBuilder,
+    BistroBuilder,
     Iproute2Builder,
     MakeBuilder,
     NinjaBootstrap,
@@ -420,6 +421,7 @@ class ManifestParser(object):
         ctx,
         loader,
         final_install_prefix=None,
+        extra_cmake_defines=None,
     ):
         builder = self.get("build", "builder", ctx=ctx)
         if not builder:
@@ -461,6 +463,16 @@ class ManifestParser(object):
             args = self.get_section_as_args("b2.args", ctx)
             return Boost(build_options, ctx, self, src_dir, build_dir, inst_dir, args)
 
+        if builder == "bistro":
+            return BistroBuilder(
+                build_options,
+                ctx,
+                self,
+                src_dir,
+                build_dir,
+                inst_dir,
+            )
+
         if builder == "cmake":
             defines = self.get_section_as_dict("cmake.defines", ctx)
             return CMakeBuilder(
@@ -472,6 +484,7 @@ class ManifestParser(object):
                 inst_dir,
                 defines,
                 final_install_prefix,
+                extra_cmake_defines,
             )
 
         if builder == "python-wheel":

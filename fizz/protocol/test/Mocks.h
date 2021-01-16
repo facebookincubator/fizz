@@ -281,8 +281,10 @@ class MockCertificateCompressor : public CertificateCompressor {
 class MockAsyncFizzBase : public AsyncFizzBase {
  public:
   MockAsyncFizzBase()
-      : AsyncFizzBase(folly::AsyncTransport::UniquePtr(
-            new folly::test::MockAsyncTransport())) {}
+      : AsyncFizzBase(
+            folly::AsyncTransport::UniquePtr(
+                new folly::test::MockAsyncTransport()),
+            AsyncFizzBase::TransportOptions()) {}
   MOCK_CONST_METHOD0(good, bool());
   MOCK_CONST_METHOD0(readable, bool());
   MOCK_CONST_METHOD0(connecting, bool());

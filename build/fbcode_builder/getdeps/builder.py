@@ -263,6 +263,44 @@ class Iproute2Builder(BuilderBase):
         self._run_cmd(install_cmd, env=env)
 
 
+class BistroBuilder(BuilderBase):
+    def _build(self, install_dirs, reconfigure):
+        p = os.path.join(self.src_dir, "bistro", "bistro")
+        env = self._compute_env(install_dirs)
+        env["PATH"] = env["PATH"] + ":" + os.path.join(p, "bin")
+        env["TEMPLATES_PATH"] = os.path.join(p, "include", "thrift", "templates")
+        self._run_cmd(
+            [
+                os.path.join(".", "cmake", "run-cmake.sh"),
+                "Release",
+                "-DCMAKE_INSTALL_PREFIX=" + self.inst_dir,
+            ],
+            cwd=p,
+            env=env,
+        )
+        self._run_cmd(
+            [
+                "make",
+                "install",
+                "-j",
+                str(self.build_opts.num_jobs),
+            ],
+            cwd=os.path.join(p, "cmake", "Release"),
+            env=env,
+        )
+
+    def run_tests(
+        self, install_dirs, schedule_type, owner, test_filter, retry, no_testpilot
+    ):
+        env = self._compute_env(install_dirs)
+        build_dir = os.path.join(self.src_dir, "bistro", "bistro", "cmake", "Release")
+        self._run_cmd(
+            ["ctest", build_dir],
+            cwd=build_dir,
+            env=env,
+        )
+
+
 class CMakeBuilder(BuilderBase):
     MANUAL_BUILD_SCRIPT = """\
 #!{sys.executable}
@@ -387,6 +425,7 @@ if __name__ == "__main__":
         inst_dir,
         defines,
         final_install_prefix=None,
+        extra_cmake_defines=None,
     ):
         super(CMakeBuilder, self).__init__(
             build_opts,
@@ -398,6 +437,8 @@ if __name__ == "__main__":
             final_install_prefix=final_install_prefix,
         )
         self.defines = defines or {}
+        if extra_cmake_defines:
+            self.defines.update(extra_cmake_defines)
 
     def _invalidate_cache(self):
         for name in [

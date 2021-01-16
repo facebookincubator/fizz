@@ -25,7 +25,8 @@ using Cert = folly::AsyncTransportCertificate;
 class AsyncFizzBase : public folly::WriteChainAsyncTransportWrapper<
                           folly::AsyncTransportWrapper>,
                       protected folly::AsyncTransportWrapper::WriteCallback,
-                      protected folly::AsyncTransportWrapper::ReadCallback {
+                      protected folly::AsyncTransportWrapper::ReadCallback,
+                      protected folly::EventRecvmsgCallback {
  public:
   using UniquePtr =
       std::unique_ptr<AsyncFizzBase, folly::DelayedDestruction::Destructor>;
@@ -82,7 +83,17 @@ class AsyncFizzBase : public folly::WriteChainAsyncTransportWrapper<
           std::unique_ptr<folly::IOBuf> endOfData) = 0;
   };
 
-  explicit AsyncFizzBase(folly::AsyncTransportWrapper::UniquePtr transport);
+  struct TransportOptions {
+    /**
+     * Controls whether or not the async recv callback should be registered
+     * (for io_uring)
+     */
+    bool registerEventCallback{false};
+  };
+
+  explicit AsyncFizzBase(
+      folly::AsyncTransportWrapper::UniquePtr transport,
+      TransportOptions options);
 
   ~AsyncFizzBase() override;
 
@@ -173,6 +184,7 @@ class AsyncFizzBase : public folly::WriteChainAsyncTransportWrapper<
   }
   void detachEventBase() override {
     handshakeTimeout_.detachEventBase();
+    transport_->setEventCallback(nullptr);
     transport_->setReadCB(nullptr);
     transport_->detachEventBase();
   }
@@ -305,6 +317,14 @@ class AsyncFizzBase : public folly::WriteChainAsyncTransportWrapper<
     QueuedWriteRequest* next_{nullptr};
   };
 
+  class FizzMsgHdr;
+
+  /**
+   * EventRecvmsgCallback implementation
+   */
+  folly::EventRecvmsgCallback::MsgHdr* allocateData() override;
+  void eventRecvmsgCallback(FizzMsgHdr* msgHdr, int res);
+
   /**
    * ReadCallback implementation.
    */
@@ -340,5 +360,8 @@ class AsyncFizzBase : public folly::WriteChainAsyncTransportWrapper<
 
   SecretCallback* secretCallback_{nullptr};
   EndOfTLSCallback* endOfTLSCallback_{nullptr};
+
+  TransportOptions transportOptions_;
+  std::unique_ptr<FizzMsgHdr> msgHdr_;
 };
 } // namespace fizz
