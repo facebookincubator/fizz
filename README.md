@@ -13,7 +13,7 @@ final specification), and 23. All major handshake modes are supported, including
 PSK resumption, early data, client authentication, and HelloRetryRequest.
 
 More background and details are available on the
-[Facebook Code Blog](https://code.fb.com/networking-traffic/deploying-tls-1-3-at-scale-with-fizz-a-performant-open-source-tls-library/).
+[Facebook Code Blog](https://engineering.fb.com/2018/08/06/security/fizz/).
 
 ## Dependencies
 
@@ -198,5 +198,3 @@ https://www.facebook.com/whitehat
 
 Facebook's security team will triage your report and determine whether or not is
 it eligible for a bounty under our program.
-
-
