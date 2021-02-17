@@ -6,12 +6,12 @@
  *  LICENSE file in the root directory of this source tree.
  */
 
-#include <gtest/gtest.h>
-#include <fizz/crypto/hpke/Hpke.h>
 #include <fizz/crypto/Sha256.h>
+#include <fizz/crypto/hpke/Hpke.h>
 #include <fizz/crypto/hpke/Utils.h>
 #include <fizz/crypto/hpke/test/Mocks.h>
 #include <fizz/crypto/test/TestUtil.h>
+#include <gtest/gtest.h>
 
 using namespace fizz::test;
 
@@ -45,16 +45,22 @@ struct Params {
   std::array<std::string, 5> exportValues;
 };
 
-
-void testExportValues(HpkeContext context, const std::array<std::string, 5> &exportValues) {
+void testExportValues(
+    HpkeContext context,
+    const std::array<std::string, 5>& exportValues) {
   const size_t exportLength = 32;
   std::array<std::string, 5> testExportContexts = {
-    "436f6e746578742d30", "436f6e746578742d31", "436f6e746578742d32", "436f6e746578742d33", "436f6e746578742d34"
-  };
+      "436f6e746578742d30",
+      "436f6e746578742d31",
+      "436f6e746578742d32",
+      "436f6e746578742d33",
+      "436f6e746578742d34"};
 
   for (int testNum = 0; testNum < 5; ++testNum) {
-    std::unique_ptr<folly::IOBuf> exporterContext = toIOBuf(testExportContexts.at(testNum));
-    auto secret = context.exportSecret(std::move(exporterContext), exportLength);
+    std::unique_ptr<folly::IOBuf> exporterContext =
+        toIOBuf(testExportContexts.at(testNum));
+    auto secret =
+        context.exportSecret(std::move(exporterContext), exportLength);
     auto expectedSecret = toIOBuf(exportValues.at(testNum));
 
     EXPECT_TRUE(folly::IOBufEqualTo()(secret, expectedSecret));
@@ -62,27 +68,39 @@ void testExportValues(HpkeContext context, const std::array<std::string, 5> &exp
 }
 
 MATCHER_P(TrafficKeyMatcher, expectedKey, "") {
-	return folly::IOBufEqualTo()(expectedKey->iv, arg->iv) &&
-    folly::IOBufEqualTo()(expectedKey->key, arg->key);
+  return folly::IOBufEqualTo()(expectedKey->iv, arg->iv) &&
+      folly::IOBufEqualTo()(expectedKey->key, arg->key);
 }
 
-class HpkeMockX25519KeyExchange  : public X25519KeyExchange {
-  public:
-    MOCK_METHOD0(generateKeyPair, void());
+class HpkeMockX25519KeyExchange : public X25519KeyExchange {
+ public:
+  MOCK_METHOD0(generateKeyPair, void());
 };
 
-SetupParam getSetupParam(std::unique_ptr<X25519KeyExchange> kex, CipherSuite suite, std::string privateKey, std::string publicKey, std::unique_ptr<MockAeadCipher> cipher) {
+SetupParam getSetupParam(
+    std::unique_ptr<X25519KeyExchange> kex,
+    CipherSuite suite,
+    std::string privateKey,
+    std::string publicKey,
+    std::unique_ptr<MockAeadCipher> cipher) {
   auto group = NamedGroup::x25519;
   kex->setKeyPair(toIOBuf(privateKey), toIOBuf(publicKey));
 
-  std::unique_ptr<folly::IOBuf> suiteId = generateHpkeSuiteId(group, HashFunction::Sha256, suite);
+  std::unique_ptr<folly::IOBuf> suiteId =
+      generateHpkeSuiteId(group, HashFunction::Sha256, suite);
 
   return SetupParam{
-    std::make_unique<DHKEM>(std::move(kex), group, std::make_unique<fizz::hpke::Hkdf>(folly::IOBuf::copyBuffer("HPKE-05 "),
-      std::make_unique<HkdfImpl>(HkdfImpl::create<Sha256>()))),
-    std::move(cipher),
-    std::make_unique<fizz::hpke::Hkdf>(folly::IOBuf::copyBuffer("HPKE-05 "), std::make_unique<HkdfImpl>(HkdfImpl::create<Sha256>())),
-    std::move(suiteId),
+      std::make_unique<DHKEM>(
+          std::move(kex),
+          group,
+          std::make_unique<fizz::hpke::Hkdf>(
+              folly::IOBuf::copyBuffer("HPKE-05 "),
+              std::make_unique<HkdfImpl>(HkdfImpl::create<Sha256>()))),
+      std::move(cipher),
+      std::make_unique<fizz::hpke::Hkdf>(
+          folly::IOBuf::copyBuffer("HPKE-05 "),
+          std::make_unique<HkdfImpl>(HkdfImpl::create<Sha256>())),
+      std::move(suiteId),
   };
 }
 
@@ -93,29 +111,56 @@ TEST_P(HpkeTest, TestSetup) {
   auto pkR = toIOBuf(testParam.pkR);
   auto info = toIOBuf(testParam.info);
 
-  auto encapCipher = std::make_unique<MockAeadCipher>(getCipher(testParam.suite));
-  TrafficKey encapExpectedTrafficKey{toIOBuf(testParam.key), toIOBuf(testParam.iv)};
-  EXPECT_CALL(*encapCipher, _setKey(TrafficKeyMatcher(&encapExpectedTrafficKey))).Times(1);
+  auto encapCipher =
+      std::make_unique<MockAeadCipher>(getCipher(testParam.suite));
+  TrafficKey encapExpectedTrafficKey{
+      toIOBuf(testParam.key), toIOBuf(testParam.iv)};
+  EXPECT_CALL(
+      *encapCipher, _setKey(TrafficKeyMatcher(&encapExpectedTrafficKey)))
+      .Times(1);
   auto encapKex = std::make_unique<HpkeMockX25519KeyExchange>();
   EXPECT_CALL(*encapKex, generateKeyPair()).Times(1);
 
-  SetupResult setupResult = setupWithEncap(testParam.mode, pkR->coalesce(), info->clone(),
-    PskInputs(testParam.mode, toIOBuf(testParam.psk), toIOBuf(testParam.pskId)),
-    getSetupParam(std::move(encapKex), testParam.suite, testParam.skE, testParam.pkE, std::move(encapCipher)));
-  HpkeContext encryptContext =  std::move(setupResult.context);
+  SetupResult setupResult = setupWithEncap(
+      testParam.mode,
+      pkR->coalesce(),
+      info->clone(),
+      PskInputs(
+          testParam.mode, toIOBuf(testParam.psk), toIOBuf(testParam.pskId)),
+      getSetupParam(
+          std::move(encapKex),
+          testParam.suite,
+          testParam.skE,
+          testParam.pkE,
+          std::move(encapCipher)));
+  HpkeContext encryptContext = std::move(setupResult.context);
 
   auto enc = std::move(setupResult.enc);
-  auto decapCipher = std::make_unique<MockAeadCipher>(getCipher(testParam.suite));
-  TrafficKey decapExpectedTrafficKey{toIOBuf(testParam.key), toIOBuf(testParam.iv)};
-  EXPECT_CALL(*decapCipher, _setKey(TrafficKeyMatcher(&decapExpectedTrafficKey))).Times(1);
+  auto decapCipher =
+      std::make_unique<MockAeadCipher>(getCipher(testParam.suite));
+  TrafficKey decapExpectedTrafficKey{
+      toIOBuf(testParam.key), toIOBuf(testParam.iv)};
+  EXPECT_CALL(
+      *decapCipher, _setKey(TrafficKeyMatcher(&decapExpectedTrafficKey)))
+      .Times(1);
 
-  HpkeContext decryptContext = setupWithDecap(testParam.mode, enc->coalesce(), std::move(info),
-    PskInputs(testParam.mode, toIOBuf(testParam.psk), toIOBuf(testParam.pskId)),
-    getSetupParam(std::make_unique<X25519KeyExchange>(), testParam.suite, testParam.skR, testParam.pkR, std::move(decapCipher)));
+  HpkeContext decryptContext = setupWithDecap(
+      testParam.mode,
+      enc->coalesce(),
+      std::move(info),
+      PskInputs(
+          testParam.mode, toIOBuf(testParam.psk), toIOBuf(testParam.pskId)),
+      getSetupParam(
+          std::make_unique<X25519KeyExchange>(),
+          testParam.suite,
+          testParam.skR,
+          testParam.pkR,
+          std::move(decapCipher)));
 
   // Test encrypt/decrypt
   std::unique_ptr<folly::IOBuf> aad = toIOBuf("436f756e742d30");
-  std::unique_ptr<folly::IOBuf> plaintext = toIOBuf("4265617574792069732074727574682c20747275746820626561757479");
+  std::unique_ptr<folly::IOBuf> plaintext =
+      toIOBuf("4265617574792069732074727574682c20747275746820626561757479");
 
   auto ciphertext = encryptContext.seal(aad.get(), plaintext->clone());
   auto expectedCiphertext = testParam.ciphertext;
@@ -128,32 +173,44 @@ TEST_P(HpkeTest, TestSetup) {
   auto gotExporterSecretE = encryptContext.getExporterSecret();
   auto gotExporterSecretD = decryptContext.getExporterSecret();
   auto expectedExporterSecret = toIOBuf(testParam.exporterSecret);
-  EXPECT_TRUE(folly::IOBufEqualTo()(gotExporterSecretE, expectedExporterSecret));
-  EXPECT_TRUE(folly::IOBufEqualTo()(gotExporterSecretD, expectedExporterSecret));
+  EXPECT_TRUE(
+      folly::IOBufEqualTo()(gotExporterSecretE, expectedExporterSecret));
+  EXPECT_TRUE(
+      folly::IOBufEqualTo()(gotExporterSecretD, expectedExporterSecret));
 
   // Test export values
   testExportValues(std::move(encryptContext), testParam.exportValues);
   testExportValues(std::move(decryptContext), testParam.exportValues);
 }
 
-
 TEST_P(HpkeTest, TestKeySchedule) {
   const std::string kPrefix = "HPKE-05 ";
   std::unique_ptr<fizz::hpke::Hkdf> hkdf = std::make_unique<fizz::hpke::Hkdf>(
-    folly::IOBuf::copyBuffer(kPrefix), std::make_unique<HkdfImpl>(HkdfImpl::create<Sha256>()));
+      folly::IOBuf::copyBuffer(kPrefix),
+      std::make_unique<HkdfImpl>(HkdfImpl::create<Sha256>()));
 
   auto testParam = GetParam();
 
-  std::unique_ptr<MockAeadCipher> cipher = std::make_unique<MockAeadCipher>(getCipher(testParam.suite));
-  std::unique_ptr<folly::IOBuf> suiteId = generateHpkeSuiteId(testParam.group, HashFunction::Sha256, testParam.suite);
+  std::unique_ptr<MockAeadCipher> cipher =
+      std::make_unique<MockAeadCipher>(getCipher(testParam.suite));
+  std::unique_ptr<folly::IOBuf> suiteId = generateHpkeSuiteId(
+      testParam.group, HashFunction::Sha256, testParam.suite);
   TrafficKey expectedTrafficKey{toIOBuf(testParam.key), toIOBuf(testParam.iv)};
-  EXPECT_CALL(*cipher, _setKey(TrafficKeyMatcher(&expectedTrafficKey))).Times(1);
+  EXPECT_CALL(*cipher, _setKey(TrafficKeyMatcher(&expectedTrafficKey)))
+      .Times(1);
 
-  struct KeyScheduleParams keyScheduleParams{testParam.mode, toIOBuf(testParam.sharedSecret), toIOBuf(testParam.info),
-    PskInputs(testParam.mode, toIOBuf(testParam.psk), toIOBuf(testParam.pskId)), std::move(cipher), std::move(hkdf), std::move(suiteId)};
+  struct KeyScheduleParams keyScheduleParams {
+    testParam.mode, toIOBuf(testParam.sharedSecret), toIOBuf(testParam.info),
+        PskInputs(
+            testParam.mode,
+            toIOBuf(testParam.psk),
+            toIOBuf(testParam.pskId)),
+        std::move(cipher), std::move(hkdf), std::move(suiteId)
+  };
   auto context = keySchedule(std::move(keyScheduleParams));
 
-  EXPECT_TRUE(folly::IOBufEqualTo()(context.getExporterSecret(), toIOBuf(testParam.exporterSecret)));
+  EXPECT_TRUE(folly::IOBufEqualTo()(
+      context.getExporterSecret(), toIOBuf(testParam.exporterSecret)));
 }
 
 /***

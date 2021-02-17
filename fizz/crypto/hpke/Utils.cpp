@@ -8,19 +8,20 @@
 
 #include <fizz/crypto/hpke/Utils.h>
 
+#include <fizz/crypto/Sha256.h>
+#include <fizz/crypto/Sha384.h>
 #include <fizz/crypto/aead/AESGCM128.h>
 #include <fizz/crypto/aead/AESGCM256.h>
 #include <fizz/crypto/aead/ChaCha20Poly1305.h>
 #include <fizz/crypto/aead/OpenSSLEVPCipher.h>
 #include <fizz/crypto/exchange/ECCurveKeyExchange.h>
 #include <fizz/crypto/exchange/X25519.h>
-#include <fizz/crypto/Sha256.h>
-#include <fizz/crypto/Sha384.h>
 
 namespace fizz {
 namespace hpke {
 
-HpkeSuiteId generateHpkeSuiteId(NamedGroup group, HashFunction hash, CipherSuite suite) {
+HpkeSuiteId
+generateHpkeSuiteId(NamedGroup group, HashFunction hash, CipherSuite suite) {
   std::unique_ptr<folly::IOBuf> suiteId = folly::IOBuf::copyBuffer("HPKE");
   folly::io::Appender appender(suiteId.get(), 6);
   detail::write(getKEMId(group), appender);
@@ -96,7 +97,7 @@ HashFunction getHashFunction(KDFId kdfId) {
 }
 
 CipherSuite getCipherSuite(AeadId aeadId) {
-    switch (aeadId) {
+  switch (aeadId) {
     case AeadId::TLS_AES_128_GCM_SHA256:
       return CipherSuite::TLS_AES_128_GCM_SHA256;
     case AeadId::TLS_AES_256_GCM_SHA384:
@@ -108,12 +109,18 @@ CipherSuite getCipherSuite(AeadId aeadId) {
   }
 }
 
-std::unique_ptr<Hkdf> makeHpkeHkdf(std::unique_ptr<folly::IOBuf> prefix, KDFId kdfId) {
+std::unique_ptr<Hkdf> makeHpkeHkdf(
+    std::unique_ptr<folly::IOBuf> prefix,
+    KDFId kdfId) {
   switch (kdfId) {
     case KDFId::Sha256:
-      return std::make_unique<Hkdf>(std::move(prefix), std::make_unique<HkdfImpl>(HkdfImpl::create<Sha256>()));
+      return std::make_unique<Hkdf>(
+          std::move(prefix),
+          std::make_unique<HkdfImpl>(HkdfImpl::create<Sha256>()));
     case KDFId::Sha384:
-      return std::make_unique<Hkdf>(std::move(prefix), std::make_unique<HkdfImpl>(HkdfImpl::create<Sha384>()));
+      return std::make_unique<Hkdf>(
+          std::move(prefix),
+          std::make_unique<HkdfImpl>(HkdfImpl::create<Sha384>()));
     default:
       throw std::runtime_error("hkdf: not implemented");
   }

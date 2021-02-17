@@ -6,9 +6,9 @@
  *  LICENSE file in the root directory of this source tree.
  */
 
-#include <fizz/experimental/server/BatchSignatureAsyncSelfCert.h>
 #include <fizz/crypto/test/TestUtil.h>
 #include <fizz/experimental/batcher/Batcher.h>
+#include <fizz/experimental/server/BatchSignatureAsyncSelfCert.h>
 #include <fizz/protocol/test/Mocks.h>
 #include <fizz/server/test/Mocks.h>
 #include <folly/portability/GTest.h>
@@ -76,7 +76,8 @@ TEST(BatchSignatureAsyncSelfCertTest, TestDecoratorLogicWithMockCert) {
       SignatureScheme::ecdsa_secp256r1_sha256,
       CertificateVerifyContext::Server,
       folly::range(folly::StringPiece("hello")));
-  EXPECT_EQ(sig2.value().value()->moveToFbString(), folly::fbstring("mockSignature"));
+  EXPECT_EQ(
+      sig2.value().value()->moveToFbString(), folly::fbstring("mockSignature"));
   // sign with batch scheme
   // expect call of base certificate's sign but with batch scheme
   batchCert.sign(

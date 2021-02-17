@@ -46,7 +46,8 @@ TEST(X25519KeyExchange, KeyExchangeClone) {
 
   // Copy current key exchange
   auto kexCopy = kex.clone();
-  auto sharedSecretOfCopy = kexCopy->generateSharedSecret(folly::range(keyShare));
+  auto sharedSecretOfCopy =
+      kexCopy->generateSharedSecret(folly::range(keyShare));
 
   EXPECT_TRUE(folly::IOBufEqualTo()(sharedSecret, sharedSecretOfCopy));
 }

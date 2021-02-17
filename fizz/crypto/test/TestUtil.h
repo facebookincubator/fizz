@@ -369,7 +369,6 @@ osLtL9tFEp8IrKHnoNVDuMPaZPM=
 -----END PRIVATE KEY-----
 )";
 
-
 std::unique_ptr<folly::IOBuf> toIOBuf(folly::StringPiece hexData);
 
 folly::ssl::EvpPkeyUniquePtr getPrivateKey(folly::StringPiece key);

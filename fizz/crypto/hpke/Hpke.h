@@ -16,37 +16,38 @@ namespace fizz {
 namespace hpke {
 
 struct PskInputs {
-    Mode mode;
-    std::unique_ptr<folly::IOBuf> psk;
-    std::unique_ptr<folly::IOBuf> id;
+  Mode mode;
+  std::unique_ptr<folly::IOBuf> psk;
+  std::unique_ptr<folly::IOBuf> id;
 
-   PskInputs(Mode givenMode, std::unique_ptr<folly::IOBuf> givenPsk, std::unique_ptr<folly::IOBuf> givenId):
-    mode(givenMode), psk(std::move(givenPsk)), id(std::move(givenId)) {
+  PskInputs(
+      Mode givenMode,
+      std::unique_ptr<folly::IOBuf> givenPsk,
+      std::unique_ptr<folly::IOBuf> givenId)
+      : mode(givenMode), psk(std::move(givenPsk)), id(std::move(givenId)) {
     bool gotPsk = folly::IOBufNotEqualTo()(psk, getDefaultPsk());
     bool gotPskId = folly::IOBufNotEqualTo()(id, getDefaultId());
 
     if (gotPsk != gotPskId) {
       throw std::runtime_error("Inconsistent PSK inputs");
-      }
-
-      if (gotPsk && (mode == Mode::Base ||
-        mode == Mode::Auth)) {
-        throw std::runtime_error("PSK input provided when not needed");
-      }
-
-      if (!gotPsk && (mode == Mode::Psk ||
-        mode == Mode::AuthPsk)) {
-        throw std::runtime_error("Missing required PSK input");
-      }
     }
 
-    static std::unique_ptr<folly::IOBuf> getDefaultPsk() {
-      return folly::IOBuf::copyBuffer("");
+    if (gotPsk && (mode == Mode::Base || mode == Mode::Auth)) {
+      throw std::runtime_error("PSK input provided when not needed");
     }
 
-    static std::unique_ptr<folly::IOBuf> getDefaultId() {
-      return folly::IOBuf::copyBuffer("");
+    if (!gotPsk && (mode == Mode::Psk || mode == Mode::AuthPsk)) {
+      throw std::runtime_error("Missing required PSK input");
     }
+  }
+
+  static std::unique_ptr<folly::IOBuf> getDefaultPsk() {
+    return folly::IOBuf::copyBuffer("");
+  }
+
+  static std::unique_ptr<folly::IOBuf> getDefaultId() {
+    return folly::IOBuf::copyBuffer("");
+  }
 };
 
 struct KeyScheduleParams {
@@ -73,9 +74,19 @@ struct SetupParam {
   std::unique_ptr<folly::IOBuf> suiteId;
 };
 
-SetupResult setupWithEncap(Mode mode, folly::ByteRange pkR, std::unique_ptr<folly::IOBuf> info, folly::Optional<PskInputs> pskInputs, SetupParam param);
+SetupResult setupWithEncap(
+    Mode mode,
+    folly::ByteRange pkR,
+    std::unique_ptr<folly::IOBuf> info,
+    folly::Optional<PskInputs> pskInputs,
+    SetupParam param);
 
-HpkeContext setupWithDecap(Mode mode, folly::ByteRange enc, std::unique_ptr<folly::IOBuf> info, folly::Optional<PskInputs> pskInputs, SetupParam param);
+HpkeContext setupWithDecap(
+    Mode mode,
+    folly::ByteRange enc,
+    std::unique_ptr<folly::IOBuf> info,
+    folly::Optional<PskInputs> pskInputs,
+    SetupParam param);
 
 } // namespace hpke
 } // namespace fizz

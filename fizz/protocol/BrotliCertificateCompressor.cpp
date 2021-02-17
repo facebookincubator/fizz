@@ -6,8 +6,8 @@
  *  LICENSE file in the root directory of this source tree.
  */
 
-#include <fizz/protocol/BrotliCertificateCompressor.h>
 #include <brotli/encode.h>
+#include <fizz/protocol/BrotliCertificateCompressor.h>
 
 using namespace folly;
 

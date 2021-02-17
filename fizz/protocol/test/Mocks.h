@@ -64,8 +64,8 @@ class MockKeyScheduler : public KeyScheduler {
   void setDefaults() {
     ON_CALL(*this, getTrafficKey(_, _, _))
         .WillByDefault(InvokeWithoutArgs([]() {
-          return TrafficKey{folly::IOBuf::copyBuffer("key"),
-                            folly::IOBuf::copyBuffer("iv")};
+          return TrafficKey{
+              folly::IOBuf::copyBuffer("key"), folly::IOBuf::copyBuffer("iv")};
         }));
     ON_CALL(*this, getResumptionSecret(_, _))
         .WillByDefault(InvokeWithoutArgs(

@@ -6,8 +6,8 @@
  *  LICENSE file in the root directory of this source tree.
  */
 
-#include <fizz/util/KeyLogWriter.h>
 #include <fizz/crypto/RandomGenerator.h>
+#include <fizz/util/KeyLogWriter.h>
 #include <folly/portability/GTest.h>
 
 namespace fizz {

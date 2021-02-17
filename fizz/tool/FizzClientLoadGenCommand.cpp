@@ -109,9 +109,8 @@ class ClientTask : public AsyncSocket::ConnectCallback,
     endTask();
   }
 
-  void fizzHandshakeError(
-      AsyncFizzClient*,
-      exception_wrapper ex) noexcept override {
+  void fizzHandshakeError(AsyncFizzClient*, exception_wrapper ex) noexcept
+      override {
     VLOG(1) << "Error: " << ex.what();
     endTask();
   }

@@ -57,7 +57,8 @@ SlidingBloomReplayCache::SlidingBloomReplayCache(
     size_t requestsPerSecond,
     double acceptableFPR,
     folly::EventBase* evb)
-    : folly::AsyncTimeout(evb), executor_{folly::Executor::getKeepAliveToken(evb)} {
+    : folly::AsyncTimeout(evb),
+      executor_{folly::Executor::getKeepAliveToken(evb)} {
   if (acceptableFPR <= 0.0 || acceptableFPR >= 1.0) {
     throw std::runtime_error("false positive rate must lie between 0 and 1");
   }
@@ -94,10 +95,7 @@ SlidingBloomReplayCache::SlidingBloomReplayCache(
   // Schedule reaping function (if evb given)
   if (executor_) {
     folly::via(
-      executor_,
-      [this]() {
-        scheduleTimeout(bucketWidthInMs_.count());
-    });
+        executor_, [this]() { scheduleTimeout(bucketWidthInMs_.count()); });
   } else {
     VLOG(8) << "Started replay cache without reaping";
   }
@@ -105,12 +103,7 @@ SlidingBloomReplayCache::SlidingBloomReplayCache(
 
 SlidingBloomReplayCache::~SlidingBloomReplayCache() {
   if (executor_) {
-    folly::via(
-      executor_,
-      [this]() {
-        cancelTimeout();
-      }
-    ).get();
+    folly::via(executor_, [this]() { cancelTimeout(); }).get();
   }
 }
 
@@ -164,13 +157,11 @@ bool SlidingBloomReplayCache::testAndSet(folly::ByteRange query) {
 
 folly::Future<ReplayCacheResult> SlidingBloomReplayCache::check(
     folly::ByteRange query) {
-  return folly::via(
-    executor_,
-    [this, query]() {
-      const auto result = testAndSet(query) ? ReplayCacheResult::MaybeReplay
-                                      : ReplayCacheResult::NotReplay;
-      return result;
-    });
+  return folly::via(executor_, [this, query]() {
+    const auto result = testAndSet(query) ? ReplayCacheResult::MaybeReplay
+                                          : ReplayCacheResult::NotReplay;
+    return result;
+  });
 }
 
 void SlidingBloomReplayCache::clearBucket(size_t bucket) {

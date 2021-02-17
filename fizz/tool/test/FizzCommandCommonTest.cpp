@@ -176,9 +176,9 @@ TEST(FizzCommandCommonTest, TestParseECHConfigsJsonExceptions) {
 
   // Test an exception is thrown on an invalid Aead id.
   auto wrongAeadIdJson = testJson;
-  wrongAeadIdJson["echconfigs"][0]["cipher_suites"][0]["aead_id"] = "TLS_AES_something";
+  wrongAeadIdJson["echconfigs"][0]["cipher_suites"][0]["aead_id"] =
+      "TLS_AES_something";
   ASSERT_THROW(parseECHConfigs(wrongAeadIdJson), std::runtime_error);
-
 
   // Test an exception is thrown on an invalid KEM id.
   auto wrongKEMJson = testJson;

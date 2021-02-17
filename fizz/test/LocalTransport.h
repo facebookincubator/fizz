@@ -99,7 +99,6 @@ class LocalTransport : public folly::AsyncTransportWrapper {
     peer_ = nullptr;
   }
 
-
   bool connecting() const override {
     return false;
   }

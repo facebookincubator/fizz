@@ -6,8 +6,8 @@
  *  LICENSE file in the root directory of this source tree.
  */
 
-#include <fizz/experimental/batcher/Batcher.h>
 #include <fizz/crypto/test/TestUtil.h>
+#include <fizz/experimental/batcher/Batcher.h>
 #include <fizz/experimental/client/BatchSignaturePeerCert.h>
 #include <fizz/experimental/server/BatchSignatureAsyncSelfCert.h>
 #include <fizz/server/State.h>
@@ -23,7 +23,8 @@ TEST(BatchSignatureTest, TestWhenSignerIsAsync) {
   auto mockBaseCert = std::make_shared<server::test::MockAsyncSelfCert>();
   auto batcher = std::make_shared<SynchronizedBatcher<Sha256>>(
       1, mockBaseCert, CertificateVerifyContext::Server);
-  auto [promise, semiFuture] = folly::makePromiseContract<folly::Optional<Buf>>();
+  auto [promise, semiFuture] =
+      folly::makePromiseContract<folly::Optional<Buf>>();
   auto future = std::move(semiFuture).toUnsafeFuture();
   EXPECT_CALL(*mockBaseCert, signFuture(_, _, _))
       .Times(1)

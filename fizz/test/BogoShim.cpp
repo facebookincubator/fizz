@@ -31,11 +31,12 @@ DEFINE_int32(resume_count, 0, "number of additional connections to open");
 
 static constexpr int kUnimplemented = 89;
 
-static std::vector<std::string> kKnownFlags{"port",
-                                            "server",
-                                            "key_file",
-                                            "cert_file",
-                                            "resume_count"};
+static std::vector<std::string> kKnownFlags{
+    "port",
+    "server",
+    "key_file",
+    "cert_file",
+    "resume_count"};
 
 class BogoTestServer : public AsyncSocket::ConnectCallback,
                        public AsyncFizzServer::HandshakeCallback,

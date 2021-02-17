@@ -6,8 +6,8 @@
  *  LICENSE file in the root directory of this source tree.
  */
 
-#include <fizz/crypto/signature/Signature.h>
 #include <fizz/crypto/openssl/OpenSSLKeyUtils.h>
+#include <fizz/crypto/signature/Signature.h>
 #include <openssl/crypto.h>
 
 #include <folly/Conv.h>

@@ -31,7 +31,8 @@ inline void detail::write<ech::ECHConfig>(
 
 template <>
 inline void detail::write<ech::ECHCipherSuite>(
-  const ech::ECHCipherSuite& suite, folly::io::Appender& out) {
+    const ech::ECHCipherSuite& suite,
+    folly::io::Appender& out) {
   detail::write(suite.kdf_id, out);
   detail::write(suite.aead_id, out);
 }
@@ -56,7 +57,8 @@ template <>
 struct detail::Reader<ech::ECHCipherSuite> {
   template <class T>
   size_t read(ech::ECHCipherSuite& suite, folly::io::Cursor& cursor) {
-    size_t len = detail::read(suite.kdf_id, cursor) + detail::read(suite.aead_id, cursor);
+    size_t len = detail::read(suite.kdf_id, cursor) +
+        detail::read(suite.aead_id, cursor);
     return len;
   }
 };
@@ -83,14 +85,13 @@ struct detail::Reader<std::array<uint8_t, 16>> {
 };
 
 template <>
-inline Buf encode<ech::ECHConfigContentDraft>(ech::ECHConfigContentDraft&& ech) {
+inline Buf encode<ech::ECHConfigContentDraft>(
+    ech::ECHConfigContentDraft&& ech) {
   auto buf = folly::IOBuf::create(
-    detail::getBufSize<uint16_t>(ech.public_name)
-    + detail::getBufSize<uint16_t>(ech.public_key)
-    + sizeof(uint16_t)
-    + sizeof(ech::ECHCipherSuite) * ech.cipher_suites.size()
-    + sizeof(uint16_t)
-    + 20);
+      detail::getBufSize<uint16_t>(ech.public_name) +
+      detail::getBufSize<uint16_t>(ech.public_key) + sizeof(uint16_t) +
+      sizeof(ech::ECHCipherSuite) * ech.cipher_suites.size() +
+      sizeof(uint16_t) + 20);
 
   folly::io::Appender appender(buf.get(), 20);
   detail::writeBuf<uint16_t>(ech.public_name, appender);
@@ -105,9 +106,8 @@ inline Buf encode<ech::ECHConfigContentDraft>(ech::ECHConfigContentDraft&& ech) 
 template <>
 inline Buf encode<const ech::ECHConfig&>(const ech::ECHConfig& echConfig) {
   auto buf = folly::IOBuf::create(
-    sizeof(uint16_t)
-    + sizeof(uint16_t)
-    + detail::getBufSize<uint16_t>(echConfig.ech_config_content));
+      sizeof(uint16_t) + sizeof(uint16_t) +
+      detail::getBufSize<uint16_t>(echConfig.ech_config_content));
 
   folly::io::Appender appender(buf.get(), 20);
   detail::write(echConfig.version, appender);

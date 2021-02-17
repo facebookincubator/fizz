@@ -8,12 +8,12 @@
 
 #pragma once
 
-#include <vector>
 #include <fizz/record/Types.h>
+#include <vector>
 
 namespace fizz {
 template <>
-inline Extension encodeExtension(const ech::EncryptedClientHello &ech) {
+inline Extension encodeExtension(const ech::EncryptedClientHello& ech) {
   Extension ext;
   ext.extension_type = ExtensionType::encrypted_client_hello;
   ext.extension_data = folly::IOBuf::create(0);
@@ -28,7 +28,7 @@ inline Extension encodeExtension(const ech::EncryptedClientHello &ech) {
 }
 
 template <>
-inline Extension encodeExtension(const ech::ECHNonce &echNonce) {
+inline Extension encodeExtension(const ech::ECHNonce& echNonce) {
   Extension ext;
   ext.extension_type = ExtensionType::ech_nonce;
   ext.extension_data = folly::IOBuf::create(16);
@@ -39,7 +39,7 @@ inline Extension encodeExtension(const ech::ECHNonce &echNonce) {
   return ext;
 }
 
-template<>
+template <>
 inline Extension encodeExtension(const ech::ClientECH& clientECH) {
   Extension ext;
   ext.extension_type = ExtensionType::encrypted_client_hello;
@@ -82,4 +82,4 @@ inline ech::ClientECH getExtension(folly::io::Cursor& cs) {
 
   return clientECH;
 }
-} // namespace ech
+} // namespace fizz

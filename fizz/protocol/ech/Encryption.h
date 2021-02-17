@@ -10,9 +10,9 @@
 
 #include <fizz/crypto/exchange/KeyExchange.h>
 #include <fizz/crypto/hpke/Hpke.h>
-#include <fizz/protocol/ech/Types.h>
-#include <fizz/protocol/ech/ECHExtensions.h>
 #include <fizz/protocol/Factory.h>
+#include <fizz/protocol/ech/ECHExtensions.h>
+#include <fizz/protocol/ech/Types.h>
 
 namespace fizz {
 namespace ech {
@@ -27,8 +27,7 @@ folly::Optional<SupportedECHConfig> selectECHConfig(
     std::vector<hpke::KEMId> supportedKEMs,
     std::vector<hpke::AeadId> supportedAeads);
 
-ech::ECHNonce createNonceExtension(
-    const hpke::HpkeContext& context);
+ech::ECHNonce createNonceExtension(const hpke::HpkeContext& context);
 
 hpke::SetupResult constructHpkeSetupResult(
     std::unique_ptr<KeyExchange> kex,

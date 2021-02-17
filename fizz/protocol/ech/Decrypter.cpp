@@ -18,7 +18,6 @@ folly::Optional<ClientHello> tryToDecodeECH(
     const Extension& encodedECHExtension,
     const std::vector<DecrypterParams>& decrypterParams) {
   for (const auto& param : decrypterParams) {
-
     folly::io::Cursor cursor(encodedECHExtension.extension_data.get());
     folly::Optional<ClientHello> decryptionResult;
     switch (param.echConfig.version) {
@@ -34,33 +33,33 @@ folly::Optional<ClientHello> tryToDecodeECH(
 
         // Decrypt client hello
         decryptionResult = tryToDecryptECH(
-          clientHelloOuter,
-          param.echConfig,
-          echExtension.suite,
-          echExtension.enc->clone(),
-          echExtension.encrypted_ch->clone(),
-          param.kex->clone(),
-          ECHVersion::V7);
+            clientHelloOuter,
+            param.echConfig,
+            echExtension.suite,
+            echExtension.enc->clone(),
+            echExtension.encrypted_ch->clone(),
+            param.kex->clone(),
+            ECHVersion::V7);
         break;
       }
       case ECHVersion::V8: {
         auto echExtension = getExtension<ech::ClientECH>(cursor);
         auto echConfig = param.echConfig;
-        const auto& currentConfigId = constructConfigId(
-            echExtension.cipher_suite.kdf_id, echConfig);
+        const auto& currentConfigId =
+            constructConfigId(echExtension.cipher_suite.kdf_id, echConfig);
         if (!folly::IOBufEqualTo()(currentConfigId, echExtension.config_id)) {
           continue;
         }
 
         // Decrypt client hello
         decryptionResult = tryToDecryptECH(
-          clientHelloOuter,
-          param.echConfig,
-          echExtension.cipher_suite,
-          echExtension.enc->clone(),
-          echExtension.payload->clone(),
-          param.kex->clone(),
-          ECHVersion::V8);
+            clientHelloOuter,
+            param.echConfig,
+            echExtension.cipher_suite,
+            echExtension.enc->clone(),
+            echExtension.payload->clone(),
+            param.kex->clone(),
+            ECHVersion::V8);
 
         break;
       }
@@ -77,7 +76,8 @@ folly::Optional<ClientHello> tryToDecodeECH(
     } else if (param.echConfig.version == ECHVersion::V7) {
       // Decryption unsuccessful, abort the connection.
       throw FizzException(
-          "unable to successfully decrypt ECH", AlertDescription::decrypt_error);
+          "unable to successfully decrypt ECH",
+          AlertDescription::decrypt_error);
     }
   }
   return folly::none;

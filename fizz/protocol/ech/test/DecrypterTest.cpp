@@ -57,14 +57,13 @@ void checkDecryptionResult(
 
 } // namespace
 
-
 TEST(DecrypterTest, TestDecodeSuccess) {
   auto getClientHelloOuter = [](std::unique_ptr<KeyExchange> kex) {
     // Setup ECH extension
     auto supportedECHConfig = SupportedECHConfig{
         constructECHConfigV7(),
-        ECHCipherSuite{hpke::KDFId::Sha256,
-                        hpke::AeadId::TLS_AES_128_GCM_SHA256}};
+        ECHCipherSuite{
+            hpke::KDFId::Sha256, hpke::AeadId::TLS_AES_128_GCM_SHA256}};
     auto setupResult =
         constructHpkeSetupResult(std::move(kex), supportedECHConfig);
 
@@ -88,11 +87,13 @@ TEST(DecrypterTest, TestDecodeSuccess) {
   kex->setPrivateKey(getPrivateKey(kP256Key));
 
   ECHConfigManager decrypter;
-  decrypter.addDecryptionConfig(DecrypterParams{constructECHConfigV7(), kex->clone()});
+  decrypter.addDecryptionConfig(
+      DecrypterParams{constructECHConfigV7(), kex->clone()});
   auto chloOuter = getClientHelloOuter(kex->clone());
   auto gotChlo = decrypter.decryptClientHello(chloOuter);
 
-  checkDecryptionResult(std::move(gotChlo), encodeHandshake(chloOuter), ECHVersion::V7);
+  checkDecryptionResult(
+      std::move(gotChlo), encodeHandshake(chloOuter), ECHVersion::V7);
 }
 
 TEST(DecrypterTest, TestDecodeSuccessV8) {
@@ -100,8 +101,8 @@ TEST(DecrypterTest, TestDecodeSuccessV8) {
     // Setup ECH extension
     auto supportedECHConfig = SupportedECHConfig{
         getECHConfigV8(),
-        ECHCipherSuite{hpke::KDFId::Sha256,
-                        hpke::AeadId::TLS_AES_128_GCM_SHA256}};
+        ECHCipherSuite{
+            hpke::KDFId::Sha256, hpke::AeadId::TLS_AES_128_GCM_SHA256}};
     auto setupResult =
         constructHpkeSetupResult(std::move(kex), supportedECHConfig);
 
@@ -115,10 +116,7 @@ TEST(DecrypterTest, TestDecodeSuccessV8) {
     chloOuter.legacy_session_id = folly::IOBuf::create(0);
 
     ClientECH echExt = encryptClientHelloV8(
-        supportedECHConfig,
-        chloInner,
-        chloOuter,
-        std::move(setupResult));
+        supportedECHConfig, chloInner, chloOuter, std::move(setupResult));
 
     // Add ECH extension
     chloOuter.extensions.push_back(encodeExtension(echExt));
@@ -130,11 +128,13 @@ TEST(DecrypterTest, TestDecodeSuccessV8) {
   kex->setPrivateKey(getPrivateKey(kP256Key));
 
   ECHConfigManager decrypter;
-  decrypter.addDecryptionConfig(DecrypterParams{getECHConfigV8(), kex->clone()});
+  decrypter.addDecryptionConfig(
+      DecrypterParams{getECHConfigV8(), kex->clone()});
   auto chloOuter = getChloOuterWithExt(kex->clone());
   auto gotChlo = decrypter.decryptClientHello(chloOuter);
 
-  checkDecryptionResult(std::move(gotChlo), encodeHandshake(chloOuter), ECHVersion::V8);
+  checkDecryptionResult(
+      std::move(gotChlo), encodeHandshake(chloOuter), ECHVersion::V8);
 }
 
 void testFailure(ECHConfig echConfig) {
@@ -142,7 +142,8 @@ void testFailure(ECHConfig echConfig) {
   kex->setPrivateKey(getPrivateKey(kP256Key));
 
   ECHConfigManager decrypter;
-  decrypter.addDecryptionConfig(DecrypterParams{std::move(echConfig), kex->clone()});
+  decrypter.addDecryptionConfig(
+      DecrypterParams{std::move(echConfig), kex->clone()});
   auto gotChlo = decrypter.decryptClientHello(TestMessages::clientHello());
 
   EXPECT_FALSE(gotChlo.has_value());

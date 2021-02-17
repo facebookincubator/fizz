@@ -22,7 +22,8 @@ struct DecrypterParams {
 class Decrypter {
  public:
   virtual ~Decrypter() = default;
-  virtual folly::Optional<ClientHello> decryptClientHello(const ClientHello& chlo) = 0;
+  virtual folly::Optional<ClientHello> decryptClientHello(
+      const ClientHello& chlo) = 0;
 };
 
 class ECHConfigManager : public Decrypter {

@@ -8,8 +8,8 @@
 
 #pragma once
 
-#include <vector>
 #include <cstdint>
+#include <vector>
 
 #include <fizz/protocol/ech/Types.h>
 #include <fizz/record/Types.h>
@@ -32,7 +32,7 @@ struct EncryptedClientHello {
   Buf encrypted_ch;
 
   static constexpr ExtensionType extension_type =
-    ExtensionType::encrypted_client_hello;
+      ExtensionType::encrypted_client_hello;
 };
 
 struct ClientECH {
@@ -56,15 +56,14 @@ struct ClientECH {
   Buf payload;
 
   static constexpr ExtensionType extension_type =
-    ExtensionType::encrypted_client_hello;
+      ExtensionType::encrypted_client_hello;
 };
 
 struct ECHNonce {
   // A 16-byte nonce exported from the HPKE encryption context.
   HpkeNonce nonce;
 
-  static constexpr ExtensionType extension_type =
-    ExtensionType::ech_nonce;
+  static constexpr ExtensionType extension_type = ExtensionType::ech_nonce;
 };
 } // namespace ech
 } // namespace fizz

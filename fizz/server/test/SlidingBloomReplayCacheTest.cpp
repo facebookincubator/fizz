@@ -11,8 +11,8 @@
 
 #include <fizz/server/SlidingBloomReplayCache.h>
 
-#include <folly/io/async/ScopedEventBaseThread.h>
 #include <folly/Random.h>
+#include <folly/io/async/ScopedEventBaseThread.h>
 
 #include <unordered_set>
 
@@ -104,45 +104,40 @@ TEST(SlidingBloomReplayCacheTest, TestCacheErrorRate) {
 TEST(SlidingBloomReplayCacheTest, TestTimeBucketing) {
   const int numTries = 1 << 14;
   folly::ScopedEventBaseThread evbThread_;
-  SlidingBloomReplayCache cache(12, numTries, 0.0005, evbThread_.getEventBase());
+  SlidingBloomReplayCache cache(
+      12, numTries, 0.0005, evbThread_.getEventBase());
 
   std::vector<std::string> history(numTries);
-  folly::via(
-    evbThread_.getEventBase(),
-    [&]() {
-      for (size_t i = 0; i < numTries; i++) {
-        history[i] = generateRandomString(8, 64);
-        cache.set(toRange(history[i]));
-      }
-    }).get();
+  folly::via(evbThread_.getEventBase(), [&]() {
+    for (size_t i = 0; i < numTries; i++) {
+      history[i] = generateRandomString(8, 64);
+      cache.set(toRange(history[i]));
+    }
+  }).get();
 
   folly::EventBase evb;
   // 6 seconds in, all values should still be set
   evb.scheduleAt(
-    [&] {
-        folly::via(
-          evbThread_.getEventBase(),
-          [&]() {
-            for (int i = 0; i < numTries; ++i) {
-              EXPECT_TRUE(cache.test(toRange(history[i])));
-            }
+      [&] {
+        folly::via(evbThread_.getEventBase(), [&]() {
+          for (int i = 0; i < numTries; ++i) {
+            EXPECT_TRUE(cache.test(toRange(history[i])));
+          }
         }).get();
-    },
-    evb.now() + std::chrono::seconds(6));
+      },
+      evb.now() + std::chrono::seconds(6));
 
   // 13 seconds in, all should be gone.
   evb.scheduleAt(
-    [&] {
-        folly::via(
-          evbThread_.getEventBase(),
-          [&]() {
-            for (int i = 0; i < numTries; ++i) {
-              EXPECT_FALSE(cache.test(toRange(history[i])));
-            }
+      [&] {
+        folly::via(evbThread_.getEventBase(), [&]() {
+          for (int i = 0; i < numTries; ++i) {
+            EXPECT_FALSE(cache.test(toRange(history[i])));
+          }
         }).get();
-      evb.terminateLoopSoon();
-    },
-    evb.now() + std::chrono::seconds(13));
+        evb.terminateLoopSoon();
+      },
+      evb.now() + std::chrono::seconds(13));
   evb.loop();
 }
 } // namespace test

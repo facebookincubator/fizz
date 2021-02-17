@@ -6,9 +6,9 @@
  *  LICENSE file in the root directory of this source tree.
  */
 
-#include <fizz/experimental/client/BatchSignaturePeerCert.h>
 #include <fizz/crypto/test/TestUtil.h>
 #include <fizz/experimental/batcher/Batcher.h>
+#include <fizz/experimental/client/BatchSignaturePeerCert.h>
 #include <fizz/experimental/server/BatchSignatureAsyncSelfCert.h>
 #include <fizz/protocol/test/Mocks.h>
 #include <folly/executors/ManualExecutor.h>
@@ -161,8 +161,9 @@ TEST(BatchSignaturePeerCertTest, TestWrongBatchSignature) {
   folly::io::Cursor cursor(signatureBuf.get());
   auto decodedSig = BatchSignature::decode(cursor);
   LOG(INFO) << decodedSig.getIndex();
-  MerkleTreePath newPath{.index = std::numeric_limits<uint32_t>::max(),
-                         .path = decodedSig.getPath()};
+  MerkleTreePath newPath{
+      .index = std::numeric_limits<uint32_t>::max(),
+      .path = decodedSig.getPath()};
   BatchSignature newSig1(std::move(newPath), decodedSig.getSignature());
   EXPECT_THROW(
       batchPeerCert.verify(
@@ -173,8 +174,8 @@ TEST(BatchSignaturePeerCertTest, TestWrongBatchSignature) {
       std::runtime_error);
 
   // throw when signature's path length is larger than Sha256::HashLen * 32
-  MerkleTreePath newPath2{.index =
-                              static_cast<uint32_t>(decodedSig.getIndex())};
+  MerkleTreePath newPath2{
+      .index = static_cast<uint32_t>(decodedSig.getIndex())};
   size_t badLength = Sha256::HashLen * 33;
   newPath2.path = folly::IOBuf::create(badLength);
   newPath2.path->append(badLength);

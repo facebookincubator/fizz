@@ -983,7 +983,9 @@ static Buf getCertificateRequest(
   return encodedCertificateRequest;
 }
 
-static void updateClientHelloIfECH(std::shared_ptr<ech::Decrypter> decrypter, ClientHello& chlo) {
+static void updateClientHelloIfECH(
+    std::shared_ptr<ech::Decrypter> decrypter,
+    ClientHello& chlo) {
   if (decrypter) {
     auto gotChlo = decrypter->decryptClientHello(chlo);
     if (gotChlo.has_value()) {
@@ -998,7 +1000,7 @@ EventHandler<ServerTypes, StateEnum::ExpectingClientHello, Event::ClientHello>::
   ClientHello chlo = std::move(*param.asClientHello());
 
   // Update the client hello if we are using ECH
-  updateClientHelloIfECH(state.context()->getECHDecrypter(),chlo);
+  updateClientHelloIfECH(state.context()->getECHDecrypter(), chlo);
 
   addHandshakeLogging(state, chlo);
 

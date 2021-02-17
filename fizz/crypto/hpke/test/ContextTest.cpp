@@ -8,10 +8,10 @@
 
 #include <gtest/gtest.h>
 
-#include <fizz/crypto/hpke/Context.h>
-#include <fizz/crypto/hpke/Utils.h>
 #include <fizz/crypto/Sha256.h>
 #include <fizz/crypto/aead/test/TestUtil.h>
+#include <fizz/crypto/hpke/Context.h>
+#include <fizz/crypto/hpke/Utils.h>
 #include <fizz/crypto/hpke/test/Mocks.h>
 #include <fizz/crypto/test/TestUtil.h>
 #include <fizz/protocol/Types.h>
@@ -23,7 +23,8 @@ namespace fizz {
 namespace hpke {
 namespace test {
 
-const std::string kExportSecret = "60f5fe76e2699f98c19eab82fecf330b990ac32694a8e40e598e2326d0e29150";
+const std::string kExportSecret =
+    "60f5fe76e2699f98c19eab82fecf330b990ac32694a8e40e598e2326d0e29150";
 const std::string kPrefix = "HPKE-05 ";
 
 struct Params {
@@ -42,49 +43,81 @@ class HpkeContextTest : public ::testing::TestWithParam<Params> {};
 
 TEST_P(HpkeContextTest, TestContext) {
   auto testParam = GetParam();
-  auto suiteId = generateHpkeSuiteId(NamedGroup::secp256r1, HashFunction::Sha256, testParam.cipher);
+  auto suiteId = generateHpkeSuiteId(
+      NamedGroup::secp256r1, HashFunction::Sha256, testParam.cipher);
   auto encryptCipher = getCipher(testParam.cipher);
-  encryptCipher->setKey(TrafficKey{toIOBuf(testParam.key), toIOBuf(testParam.iv)});
+  encryptCipher->setKey(
+      TrafficKey{toIOBuf(testParam.key), toIOBuf(testParam.iv)});
 
-  HpkeContext encryptContext(std::move(encryptCipher), toIOBuf(kExportSecret),
-    std::make_unique<fizz::hpke::Hkdf>(folly::IOBuf::copyBuffer(kPrefix), std::make_unique<HkdfImpl>(HkdfImpl::create<Sha256>())),
-    suiteId->clone());
-  auto gotCiphertext = encryptContext.seal(toIOBuf(testParam.aad).get(), toIOBuf(testParam.plaintext));
-  EXPECT_TRUE(folly::IOBufEqualTo()(gotCiphertext, toIOBuf(testParam.ciphertext)));
+  HpkeContext encryptContext(
+      std::move(encryptCipher),
+      toIOBuf(kExportSecret),
+      std::make_unique<fizz::hpke::Hkdf>(
+          folly::IOBuf::copyBuffer(kPrefix),
+          std::make_unique<HkdfImpl>(HkdfImpl::create<Sha256>())),
+      suiteId->clone());
+  auto gotCiphertext = encryptContext.seal(
+      toIOBuf(testParam.aad).get(), toIOBuf(testParam.plaintext));
+  EXPECT_TRUE(
+      folly::IOBufEqualTo()(gotCiphertext, toIOBuf(testParam.ciphertext)));
 
   auto decryptCipher = getCipher(testParam.cipher);
-  decryptCipher->setKey(TrafficKey{toIOBuf(testParam.key), toIOBuf(testParam.iv)});
-  HpkeContext decryptContext(std::move(decryptCipher), toIOBuf(kExportSecret),
-    std::make_unique<fizz::hpke::Hkdf>(folly::IOBuf::copyBuffer(kPrefix), std::make_unique<HkdfImpl>(HkdfImpl::create<Sha256>())),
-    std::move(suiteId));
-  auto gotPlaintext = decryptContext.open(toIOBuf(testParam.aad).get(), std::move(gotCiphertext));
-  EXPECT_TRUE(folly::IOBufEqualTo()(gotPlaintext, toIOBuf(testParam.plaintext)));
+  decryptCipher->setKey(
+      TrafficKey{toIOBuf(testParam.key), toIOBuf(testParam.iv)});
+  HpkeContext decryptContext(
+      std::move(decryptCipher),
+      toIOBuf(kExportSecret),
+      std::make_unique<fizz::hpke::Hkdf>(
+          folly::IOBuf::copyBuffer(kPrefix),
+          std::make_unique<HkdfImpl>(HkdfImpl::create<Sha256>())),
+      std::move(suiteId));
+  auto gotPlaintext = decryptContext.open(
+      toIOBuf(testParam.aad).get(), std::move(gotCiphertext));
+  EXPECT_TRUE(
+      folly::IOBufEqualTo()(gotPlaintext, toIOBuf(testParam.plaintext)));
 }
 
 TEST_P(HpkeContextTest, TestExportSecret) {
   auto testParam = GetParam();
   auto exporterContext = toIOBuf(testParam.exportContext);
 
-  auto suiteId = generateHpkeSuiteId(NamedGroup::x25519, HashFunction::Sha256, CipherSuite::TLS_AES_128_GCM_SHA256);
-  HpkeContext context(OpenSSLEVPCipher::makeCipher<AESGCM128>(), toIOBuf(testParam.exporterSecret),
-    std::make_unique<fizz::hpke::Hkdf>(folly::IOBuf::copyBuffer(kPrefix), std::make_unique<HkdfImpl>(HkdfImpl::create<Sha256>())),
-    std::move(suiteId));
+  auto suiteId = generateHpkeSuiteId(
+      NamedGroup::x25519,
+      HashFunction::Sha256,
+      CipherSuite::TLS_AES_128_GCM_SHA256);
+  HpkeContext context(
+      OpenSSLEVPCipher::makeCipher<AESGCM128>(),
+      toIOBuf(testParam.exporterSecret),
+      std::make_unique<fizz::hpke::Hkdf>(
+          folly::IOBuf::copyBuffer(kPrefix),
+          std::make_unique<HkdfImpl>(HkdfImpl::create<Sha256>())),
+      std::move(suiteId));
   auto secret = context.exportSecret(std::move(exporterContext), 32);
 
   auto expectedValue = folly::unhexlify(testParam.expectedExportValue);
-  EXPECT_TRUE(folly::IOBufEqualTo()(secret, folly::IOBuf::copyBuffer(expectedValue)));
+  EXPECT_TRUE(
+      folly::IOBufEqualTo()(secret, folly::IOBuf::copyBuffer(expectedValue)));
 }
 
 TEST_P(HpkeContextTest, TestExportSecretThrow) {
   auto testParam = GetParam();
   auto exporterContext = toIOBuf(testParam.exportContext);
 
-  auto suiteId = generateHpkeSuiteId(NamedGroup::x25519, HashFunction::Sha256, CipherSuite::TLS_AES_128_GCM_SHA256);
-  HpkeContext context(OpenSSLEVPCipher::makeCipher<AESGCM128>(), toIOBuf(testParam.exporterSecret),
-    std::make_unique<fizz::hpke::Hkdf>(folly::IOBuf::copyBuffer(kPrefix), std::make_unique<HkdfImpl>(HkdfImpl::create<Sha256>())),
-    std::move(suiteId));
+  auto suiteId = generateHpkeSuiteId(
+      NamedGroup::x25519,
+      HashFunction::Sha256,
+      CipherSuite::TLS_AES_128_GCM_SHA256);
+  HpkeContext context(
+      OpenSSLEVPCipher::makeCipher<AESGCM128>(),
+      toIOBuf(testParam.exporterSecret),
+      std::make_unique<fizz::hpke::Hkdf>(
+          folly::IOBuf::copyBuffer(kPrefix),
+          std::make_unique<HkdfImpl>(HkdfImpl::create<Sha256>())),
+      std::move(suiteId));
 
-  EXPECT_THROW(context.exportSecret(std::move(exporterContext), SIZE_MAX), std::runtime_error);
+  EXPECT_THROW(
+      context.exportSecret(std::move(exporterContext), SIZE_MAX),
+      std::runtime_error);
 }
 
 /***

@@ -30,9 +30,9 @@
 #include <folly/io/async/AsyncSSLSocket.h>
 #include <folly/io/async/AsyncServerSocket.h>
 
+#include <fstream>
 #include <string>
 #include <vector>
-#include <fstream>
 
 using namespace fizz::server;
 using namespace folly;
@@ -339,17 +339,18 @@ class FizzExampleServer : public AsyncFizzServer::HandshakeCallback,
     auto serverCert = sslSocket_->getSelfCertificate();
     auto clientCert = sslSocket_->getPeerCertificate();
     auto ssl = sslSocket_->getSSL();
-    return {folly::to<std::string>("  TLS Version: ", SSL_get_version(ssl)),
-            folly::to<std::string>(
-                "  Cipher:  ", sslSocket_->getNegotiatedCipherName()),
-            folly::to<std::string>(
-                "  Signature Algorithm: ", sslSocket_->getSSLCertSigAlgName()),
-            folly::to<std::string>(
-                "  Server identity: ",
-                (serverCert ? serverCert->getIdentity() : "(none)")),
-            folly::to<std::string>(
-                "  Client Identity: ",
-                (clientCert ? clientCert->getIdentity() : "(none)"))};
+    return {
+        folly::to<std::string>("  TLS Version: ", SSL_get_version(ssl)),
+        folly::to<std::string>(
+            "  Cipher:  ", sslSocket_->getNegotiatedCipherName()),
+        folly::to<std::string>(
+            "  Signature Algorithm: ", sslSocket_->getSSLCertSigAlgName()),
+        folly::to<std::string>(
+            "  Server identity: ",
+            (serverCert ? serverCert->getIdentity() : "(none)")),
+        folly::to<std::string>(
+            "  Client Identity: ",
+            (clientCert ? clientCert->getIdentity() : "(none)"))};
   }
 
   void printHandshakeSuccess() {
@@ -485,7 +486,10 @@ void FizzServerAcceptor::connectionAccepted(
   transportOpts.registerEventCallback = registerEventCallback_;
   std::shared_ptr<AsyncFizzServer> transport =
       AsyncFizzServer::UniquePtr(new AsyncFizzServer(
-          AsyncSocket::UniquePtr(sock), ctx_, nullptr, std::move(transportOpts)));
+          AsyncSocket::UniquePtr(sock),
+          ctx_,
+          nullptr,
+          std::move(transportOpts)));
   socket_->pauseAccepting();
   auto serverCb = http_
       ? std::make_unique<FizzHTTPServer>(transport, this, sslCtx_)
@@ -569,7 +573,9 @@ std::unique_ptr<KeyExchange> createKeyExchange(
   return nullptr;
 }
 
-std::shared_ptr<ech::Decrypter> setupDecrypterFromInputs(std::string echConfigsFile, std::string echPrivateKeyFile) {
+std::shared_ptr<ech::Decrypter> setupDecrypterFromInputs(
+    std::string echConfigsFile,
+    std::string echPrivateKeyFile) {
   // Get the ECH config that corresponds to the client setup.
   auto echConfigsJson = readECHConfigsJson(echConfigsFile);
   if (!echConfigsJson.has_value()) {
@@ -590,19 +596,20 @@ std::shared_ptr<ech::Decrypter> setupDecrypterFromInputs(std::string echConfigsF
 
   // If more that 1 ECH config is provided, we use the first one.
   ech::ECHConfig gotConfig = gotECHConfigs.value()[0];
-  auto kemId = getKEMId((*echConfigsJson)["echconfigs"][0]["kem_id"].asString());
+  auto kemId =
+      getKEMId((*echConfigsJson)["echconfigs"][0]["kem_id"].asString());
 
   // Create a key exchange and set the private key
   auto kexWithPrivateKey = createKeyExchange(kemId, echPrivateKeyFile);
   if (!kexWithPrivateKey) {
-    LOG(ERROR) << "Unable to create a key exchange and set a private key for it.";
+    LOG(ERROR)
+        << "Unable to create a key exchange and set a private key for it.";
     return nullptr;
   }
 
   // Configure ECH decrpyter to be used server side.
   decrypter->addDecryptionConfig(
       ech::DecrypterParams{gotConfig, std::move(kexWithPrivateKey)});
-
 
   return decrypter;
 }
@@ -824,10 +831,13 @@ int fizzServerCommand(const std::vector<std::string>& args) {
   }
 
   // ECH is implicitly enabled if ECH configs and a private key are provided.
-  // Note that if there are ECH configs provided, there must be an associated key file.
+  // Note that if there are ECH configs provided, there must be an associated
+  // key file.
   if (!echConfigsFile.empty()) {
-    // Setup ECH decrypting tools based on user provided ECH configs and private key.
-    auto decrypter = setupDecrypterFromInputs(echConfigsFile, echPrivateKeyFile);
+    // Setup ECH decrypting tools based on user provided ECH configs and private
+    // key.
+    auto decrypter =
+        setupDecrypterFromInputs(echConfigsFile, echPrivateKeyFile);
     if (!decrypter) {
       LOG(ERROR) << "Unable to setup decrypter.";
       return 1;
@@ -906,9 +916,9 @@ int fizzServerCommand(const std::vector<std::string>& args) {
         return 1;
       }
       std::vector<Extension> credVec;
-      credVec.emplace_back(
-          Extension{ExtensionType::delegated_credential,
-                    folly::IOBuf::copyBuffer(std::move(credData))});
+      credVec.emplace_back(Extension{
+          ExtensionType::delegated_credential,
+          folly::IOBuf::copyBuffer(std::move(credData))});
 
       auto certs = folly::ssl::OpenSSLCertUtils::readCertsFromBuffer(
           folly::StringPiece(certData));

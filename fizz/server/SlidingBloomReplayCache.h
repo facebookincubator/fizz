@@ -44,7 +44,6 @@ class SlidingBloomReplayCache : public ReplayCache,
       folly::EventBase* evb);
   ~SlidingBloomReplayCache() override;
 
-
   // Note: Do not use outside of a test environmemt.
   // When using, these functions must be called from the
   // event base thread (if it's not null).

@@ -8,8 +8,8 @@
 
 #pragma once
 
-#include <fizz/experimental/protocol/BatchSignatureTypes.h>
 #include <fizz/experimental/crypto/BatchSignature.h>
+#include <fizz/experimental/protocol/BatchSignatureTypes.h>
 #include <fizz/protocol/Certificate.h>
 
 namespace fizz {

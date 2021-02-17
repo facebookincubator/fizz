@@ -18,7 +18,8 @@
 namespace fizz {
 namespace hpke {
 
-HpkeSuiteId generateHpkeSuiteId(NamedGroup group, HashFunction hash, CipherSuite suite);
+HpkeSuiteId
+generateHpkeSuiteId(NamedGroup group, HashFunction hash, CipherSuite suite);
 KEMId getKEMId(NamedGroup group);
 KDFId getKDFId(HashFunction hash);
 AeadId getAeadId(CipherSuite suite);
@@ -27,7 +28,9 @@ NamedGroup getKexGroup(KEMId kemId);
 HashFunction getHashFunction(KDFId kdfId);
 CipherSuite getCipherSuite(AeadId aeadId);
 
-std::unique_ptr<Hkdf> makeHpkeHkdf(std::unique_ptr<folly::IOBuf> prefix, KDFId kdfId);
+std::unique_ptr<Hkdf> makeHpkeHkdf(
+    std::unique_ptr<folly::IOBuf> prefix,
+    KDFId kdfId);
 std::unique_ptr<KeyExchange> makeKeyExchange(KEMId kemId);
 std::unique_ptr<Aead> makeCipher(AeadId aeadId);
 

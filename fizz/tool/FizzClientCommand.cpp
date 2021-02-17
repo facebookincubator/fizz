@@ -157,15 +157,13 @@ class Connection : public AsyncSocket::ConnectCallback,
     AsyncFizzBase::TransportOptions transportOpts;
     transportOpts.registerEventCallback = registerEventCallback_;
     transport_ = AsyncFizzClient::UniquePtr(new AsyncFizzClient(
-        std::move(sock_), clientContext_, extensions_, std::move(transportOpts)));
+        std::move(sock_),
+        clientContext_,
+        extensions_,
+        std::move(transportOpts)));
     transport_->setSecretCallback(this);
     auto echConfigs = echConfigs_;
-    transport_->connect(
-        this,
-        verifier_,
-        sni_,
-        sni_,
-        std::move(echConfigs));
+    transport_->connect(this, verifier_, sni_, sni_, std::move(echConfigs));
   }
 
   void fizzHandshakeSuccess(AsyncFizzClient* /*client*/) noexcept override {
@@ -417,7 +415,6 @@ class Connection : public AsyncSocket::ConnectCallback,
               << toString(getKexGroup(echConfigContent.kem_id));
     LOG(INFO) << "    Fake SNI Used: "
               << echConfigContent.public_name->clone()->moveToFbString();
-
   }
 
   EventBase* evb_;

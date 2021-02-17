@@ -107,7 +107,8 @@ class BatchSignatureAsyncSelfCert : public AsyncSelfCert {
           BatchSignature sig(
               signedTree.tree_->getPath(index),
               folly::IOBuf::wrapBuffer(
-                  signedTree.signature_->data(), signedTree.signature_->size()));
+                  signedTree.signature_->data(),
+                  signedTree.signature_->size()));
           return sig.encode();
         });
   }

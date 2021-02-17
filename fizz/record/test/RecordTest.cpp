@@ -123,8 +123,8 @@ TEST_F(RecordTest, TestHandshakeFragmentedDelayed) {
 
 TEST_F(RecordTest, TestHandshakeCoalesced) {
   EXPECT_CALL(read_, read(_)).WillOnce(InvokeWithoutArgs([]() {
-    return TLSMessage{ContentType::handshake,
-                      getBuf("14000002aabb14000002ccdd")};
+    return TLSMessage{
+        ContentType::handshake, getBuf("14000002aabb14000002ccdd")};
   }));
   auto param = read_.readEvent(queue_);
   auto& finished = *param->asFinished();
@@ -142,8 +142,8 @@ TEST_F(RecordTest, TestHandshakeSpliced) {
         return TLSMessage{ContentType::handshake, getBuf("01000010abcd")};
       }))
       .WillOnce(InvokeWithoutArgs([]() {
-        return TLSMessage{ContentType::application_data,
-                          IOBuf::copyBuffer("hi")};
+        return TLSMessage{
+            ContentType::application_data, IOBuf::copyBuffer("hi")};
       }));
   EXPECT_ANY_THROW(read_.readEvent(queue_));
 }
@@ -151,8 +151,8 @@ TEST_F(RecordTest, TestHandshakeSpliced) {
 TEST_F(RecordTest, TestMultipleHandshakeMessages) {
   EXPECT_CALL(read_, read(_))
       .WillOnce(InvokeWithoutArgs([]() {
-        return TLSMessage{ContentType::handshake,
-                          getBuf("14000002aabb14000002")};
+        return TLSMessage{
+            ContentType::handshake, getBuf("14000002aabb14000002")};
       }))
       .WillOnce(InvokeWithoutArgs([]() {
         // Really large message to force the record layer to

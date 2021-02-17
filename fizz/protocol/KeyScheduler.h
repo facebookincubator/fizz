@@ -188,7 +188,9 @@ class KeyScheduler {
   F(HandshakeSecret, __VA_ARGS__)         \
   F(MasterSecret, __VA_ARGS__)
 
-  FIZZ_DECLARE_COPYABLE_VARIANT_TYPE(KeySchedulerSecret, FIZZ_KEYSCHEDULER_SECRETS)
+  FIZZ_DECLARE_COPYABLE_VARIANT_TYPE(
+      KeySchedulerSecret,
+      FIZZ_KEYSCHEDULER_SECRETS)
 #undef FIZZ_KEYSCHEDULER_SECRETS
 
   KeyScheduler(

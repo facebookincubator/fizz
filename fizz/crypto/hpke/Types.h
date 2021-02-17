@@ -16,30 +16,30 @@ namespace hpke {
 using HpkeSuiteId = std::unique_ptr<folly::IOBuf>;
 
 enum class KEMId : uint16_t {
-    secp256r1 = 0x0010,
-    secp384r1 = 0x0011,
-    secp521r1 = 0x0012,
-    x25519 = 0x0020,
-    x448 = 0x0021,
+  secp256r1 = 0x0010,
+  secp384r1 = 0x0011,
+  secp521r1 = 0x0012,
+  x25519 = 0x0020,
+  x448 = 0x0021,
 };
 
 enum class KDFId : uint16_t {
-    Sha256 = 0x0001,
-    Sha384 = 0x0002,
-    Sha512 = 0x0003,
+  Sha256 = 0x0001,
+  Sha384 = 0x0002,
+  Sha512 = 0x0003,
 };
 
 enum class AeadId : uint16_t {
-    TLS_AES_128_GCM_SHA256 = 0x0001,
-    TLS_AES_256_GCM_SHA384 = 0x0002,
-    TLS_CHACHA20_POLY1305_SHA256 = 0x0003,
+  TLS_AES_128_GCM_SHA256 = 0x0001,
+  TLS_AES_256_GCM_SHA384 = 0x0002,
+  TLS_CHACHA20_POLY1305_SHA256 = 0x0003,
 };
 
 enum class Mode : uint8_t {
-    Base = 0x00,
-    Psk = 0x01,
-    Auth = 0x02,
-    AuthPsk = 0x03,
+  Base = 0x00,
+  Psk = 0x01,
+  Auth = 0x02,
+  AuthPsk = 0x03,
 };
 
 } // namespace hpke

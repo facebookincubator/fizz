@@ -8,10 +8,10 @@
 
 #pragma once
 
-#include <vector>
-#include <cstdint>
-#include <fizz/record/Extensions.h>
 #include <fizz/crypto/hpke/Types.h>
+#include <fizz/record/Extensions.h>
+#include <cstdint>
+#include <vector>
 
 namespace fizz {
 namespace ech {
@@ -20,26 +20,26 @@ using Buf = std::unique_ptr<folly::IOBuf>;
 using HpkePublicKey = Buf;
 using HpkeNonce = std::array<uint8_t, 16>;
 
-enum class ECHVersion: uint16_t {
-    V7 = 0xff07,
-    V8 = 0xfe08,
+enum class ECHVersion : uint16_t {
+  V7 = 0xff07,
+  V8 = 0xfe08,
 };
 
 struct ECHCipherSuite {
-    hpke::KDFId kdf_id;
-    hpke::AeadId aead_id;
-    bool operator==(const ECHCipherSuite& other) const {
+  hpke::KDFId kdf_id;
+  hpke::AeadId aead_id;
+  bool operator==(const ECHCipherSuite& other) const {
     return kdf_id == other.kdf_id && aead_id == other.aead_id;
   }
 };
 
 struct ECHConfigContentDraft {
-    Buf public_name;
-    HpkePublicKey public_key;
-    hpke::KEMId kem_id;
-    std::vector<ECHCipherSuite> cipher_suites;
-    uint16_t maximum_name_length;
-    std::vector<Extension> extensions;
+  Buf public_name;
+  HpkePublicKey public_key;
+  hpke::KEMId kem_id;
+  std::vector<ECHCipherSuite> cipher_suites;
+  uint16_t maximum_name_length;
+  std::vector<Extension> extensions;
 };
 
 struct ECHConfig {

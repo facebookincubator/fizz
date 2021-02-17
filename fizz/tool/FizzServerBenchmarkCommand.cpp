@@ -88,9 +88,8 @@ class ServerTask : public AsyncFizzServer::HandshakeCallback {
     endTask();
   }
 
-  void fizzHandshakeError(
-      AsyncFizzServer*,
-      exception_wrapper ex) noexcept override {
+  void fizzHandshakeError(AsyncFizzServer*, exception_wrapper ex) noexcept
+      override {
     VLOG(1) << "Error: " << ex.what();
     endTask();
   }
@@ -159,8 +158,8 @@ int fizzServerBenchmarkCommand(const std::vector<std::string>& args) {
   size_t backlog = 100;
   std::vector<std::vector<CipherSuite>> ciphers{
       {CipherSuite::TLS_AES_128_GCM_SHA256}};
-  std::vector<ProtocolVersion> versions{ProtocolVersion::tls_1_3,
-                                        ProtocolVersion::tls_1_3_28};
+  std::vector<ProtocolVersion> versions{
+      ProtocolVersion::tls_1_3, ProtocolVersion::tls_1_3_28};
   bool enableBatch = false;
   size_t batchNumMsgThreshold = 0;
   std::shared_ptr<SynchronizedBatcher<Sha256>> batcher;

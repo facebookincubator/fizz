@@ -5,8 +5,8 @@
  *  This source code is licensed under the BSD-style license found in the
  *  LICENSE file in the root directory of this source tree.
  */
-#include <fizz/util/FizzUtil.h>
 #include <fizz/server/TicketTypes.h>
+#include <fizz/util/FizzUtil.h>
 
 #include <folly/FileUtil.h>
 #include <folly/Format.h>

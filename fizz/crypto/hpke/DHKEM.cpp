@@ -37,9 +37,7 @@ DHKEM::DHKEM(
     std::unique_ptr<KeyExchange> kex,
     NamedGroup group,
     std::unique_ptr<fizz::hpke::Hkdf> hkdf)
-    : kex_(std::move(kex)),
-      group_(group),
-      hkdf_(std::move(hkdf)) {}
+    : kex_(std::move(kex)), group_(group), hkdf_(std::move(hkdf)) {}
 
 std::unique_ptr<folly::IOBuf> DHKEM::extractAndExpand(
     std::unique_ptr<folly::IOBuf> dh,

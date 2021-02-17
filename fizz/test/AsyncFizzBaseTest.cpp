@@ -117,7 +117,8 @@ class AsyncFizzBaseTest : public testing::Test, public AsyncFizzBase {
   }
 
   void checkCallbackConsistency() {
-    if (T::Options.registerEventCallback && (transportReadCallback_ || transportRecvCallback_)) {
+    if (T::Options.registerEventCallback &&
+        (transportReadCallback_ || transportRecvCallback_)) {
       EXPECT_EQ(
           dynamic_cast<AsyncFizzBaseTest<T>*>(transportReadCallback_),
           dynamic_cast<AsyncFizzBaseTest<T>*>(transportRecvCallback_));
@@ -249,13 +250,13 @@ MATCHER_P(BufMatches, expected, "") {
 
 struct ReadCB {
   constexpr static AsyncFizzBase::TransportOptions Options = {
-    false,  // registerEventCallback
+      false, // registerEventCallback
   };
 };
 
 struct RecvCB {
   constexpr static AsyncFizzBase::TransportOptions Options = {
-    true,  // registerEventCallback
+      true, // registerEventCallback
   };
 };
 

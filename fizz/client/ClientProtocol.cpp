@@ -12,10 +12,10 @@
 #include <fizz/client/State.h>
 #include <fizz/crypto/Utils.h>
 #include <fizz/crypto/hpke/Utils.h>
-#include <fizz/protocol/ech/Encryption.h>
 #include <fizz/protocol/CertificateVerifier.h>
 #include <fizz/protocol/Protocol.h>
 #include <fizz/protocol/StateMachine.h>
+#include <fizz/protocol/ech/Encryption.h>
 #include <fizz/record/Extensions.h>
 
 using folly::Optional;
@@ -504,7 +504,8 @@ static ClientHello getClientHello(
   }
 
   if (echNonceExtension.has_value()) {
-    chlo.extensions.push_back(encodeExtension(std::move(echNonceExtension.value())));
+    chlo.extensions.push_back(
+        encodeExtension(std::move(echNonceExtension.value())));
   }
 
   if (encodedECHExtension.has_value()) {
@@ -647,12 +648,12 @@ static ech::SupportedECHConfig getSupportedECHConfig(
 }
 
 namespace {
-  struct ECHParams {
-    hpke::SetupResult setupResult;
-    ech::SupportedECHConfig supportedECHConfig;
-    Buf fakeSni;
-  };
-}
+struct ECHParams {
+  hpke::SetupResult setupResult;
+  ech::SupportedECHConfig supportedECHConfig;
+  Buf fakeSni;
+};
+} // namespace
 
 static folly::Optional<ECHParams> setupECH(
     const folly::Optional<std::vector<ech::ECHConfig>>& echConfigs,
@@ -674,9 +675,10 @@ static folly::Optional<ECHParams> setupECH(
   auto setupResult =
       constructHpkeSetupResult(std::move(kex), supportedECHConfig);
 
-  return ECHParams{std::move(setupResult),
-                   std::move(supportedECHConfig),
-                   std::move(fakeSni)};
+  return ECHParams{
+      std::move(setupResult),
+      std::move(supportedECHConfig),
+      std::move(fakeSni)};
 }
 
 Actions
@@ -731,11 +733,12 @@ EventHandler<ClientTypes, StateEnum::Uninitialized, Event::Connect>::handle(
       *context->getFactory());
 
   // Create ECH nonce extension, if we're constructing an ECH V7.
-  auto echNonceExt = (echParams.has_value() && (
-    echParams.value().supportedECHConfig.config.version == ech::ECHVersion::V7))
-    ? folly::Optional<ech::ECHNonce>(
-          ech::createNonceExtension(echParams->setupResult.context))
-    : folly::none;
+  auto echNonceExt = (echParams.has_value() &&
+                      (echParams.value().supportedECHConfig.config.version ==
+                       ech::ECHVersion::V7))
+      ? folly::Optional<ech::ECHNonce>(
+            ech::createNonceExtension(echParams->setupResult.context))
+      : folly::none;
 
   auto encodedEmptyECHExt = Optional<Extension>(folly::none);
   if (echParams.has_value() &&
@@ -749,22 +752,22 @@ EventHandler<ClientTypes, StateEnum::Uninitialized, Event::Connect>::handle(
   }
 
   auto chlo = getClientHello(
-    *context->getFactory(),
-    random,
-    context->getSupportedCiphers(),
-    context->getSupportedVersions(),
-    context->getSupportedGroups(),
-    keyExchangers,
-    context->getSupportedSigSchemes(),
-    context->getSupportedPskModes(),
-    connect.sni,
-    context->getSupportedAlpns(),
-    context->getSupportedCertDecompressionAlgorithms(),
-    earlyDataParams,
-    legacySessionId,
-    connect.extensions.get(),
-    echNonceExt,
-    std::move(encodedEmptyECHExt));
+      *context->getFactory(),
+      random,
+      context->getSupportedCiphers(),
+      context->getSupportedVersions(),
+      context->getSupportedGroups(),
+      keyExchangers,
+      context->getSupportedSigSchemes(),
+      context->getSupportedPskModes(),
+      connect.sni,
+      context->getSupportedAlpns(),
+      context->getSupportedCertDecompressionAlgorithms(),
+      earlyDataParams,
+      legacySessionId,
+      connect.extensions.get(),
+      echNonceExt,
+      std::move(encodedEmptyECHExt));
 
   std::vector<ExtensionType> requestedExtensions;
   for (const auto& extension : chlo.extensions) {
@@ -782,11 +785,7 @@ EventHandler<ClientTypes, StateEnum::Uninitialized, Event::Connect>::handle(
         context->getFactory()->makeHandshakeContext(psk->cipher);
 
     encodedClientHello = encodeAndAddBinders(
-        chlo,
-        *psk,
-        *keyScheduler,
-        *handshakeContext,
-        *context->getClock());
+        chlo, *psk, *keyScheduler, *handshakeContext, *context->getClock());
 
     if (earlyDataParams) {
       auto earlyWriteSecret = keyScheduler->getSecret(
@@ -830,11 +829,13 @@ EventHandler<ClientTypes, StateEnum::Uninitialized, Event::Connect>::handle(
     // Create the encrypted client hello inner extension.
     switch (echParams->supportedECHConfig.config.version) {
       case (ech::ECHVersion::V7): {
-        ech::EncryptedClientHello innerClientHelloExtension = encryptClientHello(
-          echParams->supportedECHConfig,
-          std::move(chlo),
-          std::move(echParams->setupResult));
-        encodedECHExtension = encodeExtension(std::move(innerClientHelloExtension));
+        ech::EncryptedClientHello innerClientHelloExtension =
+            encryptClientHello(
+                echParams->supportedECHConfig,
+                std::move(chlo),
+                std::move(echParams->setupResult));
+        encodedECHExtension =
+            encodeExtension(std::move(innerClientHelloExtension));
         break;
       }
       case (ech::ECHVersion::V8): {
@@ -867,28 +868,29 @@ EventHandler<ClientTypes, StateEnum::Uninitialized, Event::Connect>::handle(
       }
     }
 
-    // Set client hello outer with ECH extension to be the client hello that is sent
+    // Set client hello outer with ECH extension to be the client hello that is
+    // sent
     chlo = getClientHello(
-            *context->getFactory(),
-            newFakeRandom,
-            context->getSupportedCiphers(),
-            context->getSupportedVersions(),
-            context->getSupportedGroups(),
-            keyExchangers,
-            context->getSupportedSigSchemes(),
-            context->getSupportedPskModes(),
-            newFakeSni,
-            context->getSupportedAlpns(),
-            context->getSupportedCertDecompressionAlgorithms(),
-            earlyDataParams,
-            // The legacy_session_id field MUST be copied from the client hello inner (chlo).
-            // This allows the server to echo the correct session ID for TLS
-            // 1.3's compatibility mode (see Appendix D.4 of [RFC8446]) when ECH
-            // is negotiated.
-            legacySessionId,
-            connect.extensions.get(),
-            Optional<ech::ECHNonce>(folly::none),
-            std::move(encodedECHExtension));
+        *context->getFactory(),
+        newFakeRandom,
+        context->getSupportedCiphers(),
+        context->getSupportedVersions(),
+        context->getSupportedGroups(),
+        keyExchangers,
+        context->getSupportedSigSchemes(),
+        context->getSupportedPskModes(),
+        newFakeSni,
+        context->getSupportedAlpns(),
+        context->getSupportedCertDecompressionAlgorithms(),
+        earlyDataParams,
+        // The legacy_session_id field MUST be copied from the client hello
+        // inner (chlo). This allows the server to echo the correct session ID
+        // for TLS 1.3's compatibility mode (see Appendix D.4 of [RFC8446]) when
+        // ECH is negotiated.
+        legacySessionId,
+        connect.extensions.get(),
+        Optional<ech::ECHNonce>(folly::none),
+        std::move(encodedECHExtension));
 
     // Save client hello inner
     encodedECH = std::move(encodedClientHello);
@@ -1127,7 +1129,8 @@ EventHandler<ClientTypes, StateEnum::ExpectingServerHello, Event::ServerHello>::
 
   ProtocolVersion version;
   CipherSuite cipher;
-  // GCC up to 10.2.1 does not realize exchange is actually being initialized below
+  // GCC up to 10.2.1 does not realize exchange is actually being initialized
+  // below
   FOLLY_PUSH_WARNING
   FOLLY_GCC_DISABLE_WARNING("-Wmaybe-uninitialized")
   Optional<std::tuple<NamedGroup, Buf, const KeyExchange*>> exchange;
@@ -1190,7 +1193,8 @@ EventHandler<ClientTypes, StateEnum::ExpectingServerHello, Event::ServerHello>::
       keyExchangeType = KeyExchangeType::OneRtt;
     }
 
-    // GCC up to 10.2.1 does not realize serverShare is actually being initialized below
+    // GCC up to 10.2.1 does not realize serverShare is actually being
+    // initialized below
     FOLLY_PUSH_WARNING
     FOLLY_GCC_DISABLE_WARNING("-Wmaybe-uninitialized")
     Buf serverShare;
@@ -1425,11 +1429,11 @@ Actions EventHandler<
     auto keyScheduler = state.context()->getFactory()->makeKeyScheduler(cipher);
 
     encodedClientHello = encodeAndAddBinders(
-      chlo,
-      *attemptedPsk,
-      *keyScheduler,
-      *handshakeContext,
-      *state.context()->getClock());
+        chlo,
+        *attemptedPsk,
+        *keyScheduler,
+        *handshakeContext,
+        *state.context()->getClock());
   } else {
     encodedClientHello = encodeHandshake(std::move(chlo));
     handshakeContext->appendToTranscript(encodedClientHello);

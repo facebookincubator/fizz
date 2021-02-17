@@ -6,10 +6,10 @@
  *  LICENSE file in the root directory of this source tree.
  */
 
-#include <fizz/server/AeadTokenCipher.h>
 #include <fizz/crypto/RandomGenerator.h>
 #include <fizz/crypto/Utils.h>
 #include <fizz/crypto/aead/Aead.h>
+#include <fizz/server/AeadTokenCipher.h>
 
 namespace fizz {
 namespace server {

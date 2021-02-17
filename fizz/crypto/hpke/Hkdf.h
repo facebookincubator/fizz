@@ -16,16 +16,22 @@ namespace hpke {
 class Hkdf {
  public:
   Hkdf(std::unique_ptr<folly::IOBuf> prefix, std::unique_ptr<fizz::Hkdf> hkdf);
-  std::vector<uint8_t>  labeledExtract(std::unique_ptr<folly::IOBuf> salt, folly::ByteRange label,
-    std::unique_ptr<folly::IOBuf>  ikm, std::unique_ptr<folly::IOBuf> suiteId);
-  std::unique_ptr<folly::IOBuf> labeledExpand(folly::ByteRange prk, folly::ByteRange label,
-    std::unique_ptr<folly::IOBuf> info, size_t L, std::unique_ptr<folly::IOBuf> suiteId);
+  std::vector<uint8_t> labeledExtract(
+      std::unique_ptr<folly::IOBuf> salt,
+      folly::ByteRange label,
+      std::unique_ptr<folly::IOBuf> ikm,
+      std::unique_ptr<folly::IOBuf> suiteId);
+  std::unique_ptr<folly::IOBuf> labeledExpand(
+      folly::ByteRange prk,
+      folly::ByteRange label,
+      std::unique_ptr<folly::IOBuf> info,
+      size_t L,
+      std::unique_ptr<folly::IOBuf> suiteId);
   size_t hashLength();
 
  private:
   std::unique_ptr<folly::IOBuf> prefix_;
   std::unique_ptr<fizz::Hkdf> hkdf_;
-
 };
 } // namespace hpke
 } // namespace fizz

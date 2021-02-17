@@ -46,7 +46,8 @@ class AsyncFizzClientT : public AsyncFizzBase,
       folly::AsyncTransportWrapper::UniquePtr socket,
       std::shared_ptr<const FizzClientContext> fizzContext,
       const std::shared_ptr<ClientExtensions>& extensions = nullptr,
-      AsyncFizzBase::TransportOptions transportOptions = AsyncFizzBase::TransportOptions());
+      AsyncFizzBase::TransportOptions transportOptions =
+          AsyncFizzBase::TransportOptions());
 
   /**
    * Creates an AsyncFizzClient using an event base. This will open the socket
@@ -57,7 +58,8 @@ class AsyncFizzClientT : public AsyncFizzBase,
       folly::EventBase* eventBase,
       std::shared_ptr<const FizzClientContext> fizzContext,
       const std::shared_ptr<ClientExtensions>& extensions = nullptr,
-      AsyncFizzBase::TransportOptions transportOptions = AsyncFizzBase::TransportOptions());
+      AsyncFizzBase::TransportOptions transportOptions =
+          AsyncFizzBase::TransportOptions());
 
   /**
    * Performs a TLS handshake using the open socket passed into the constructor.

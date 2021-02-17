@@ -49,8 +49,9 @@ struct TLSMessage {
   Buf fragment;
 };
 
-constexpr folly::StringPiece FakeChangeCipherSpec{"\x14\x03\x03\x00\x01\x01",
-                                                  6};
+constexpr folly::StringPiece FakeChangeCipherSpec{
+    "\x14\x03\x03\x00\x01\x01",
+    6};
 
 enum class HandshakeType : uint8_t {
   client_hello = 1,
@@ -213,7 +214,7 @@ struct ClientHello
     clone.cipher_suites = this->cipher_suites;
     clone.legacy_compression_methods = this->legacy_compression_methods;
 
-    for (const auto& ext: this->extensions) {
+    for (const auto& ext : this->extensions) {
       clone.extensions.push_back(ext.clone());
     }
 

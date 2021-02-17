@@ -10,21 +10,23 @@
 
 #include <fizz/crypto/Sha256.h>
 #include <fizz/crypto/Sha384.h>
+#include <fizz/crypto/hpke/Utils.h>
 #include <fizz/protocol/ech/ECHExtensions.h>
 #include <fizz/protocol/ech/Types.h>
-#include <fizz/crypto/hpke/Utils.h>
 
 namespace fizz {
 namespace ech {
 
 namespace {
 
-std::unique_ptr<folly::IOBuf> makeClientHelloOuterAad(const ClientHello& clientHelloOuter) {
+std::unique_ptr<folly::IOBuf> makeClientHelloOuterAad(
+    const ClientHello& clientHelloOuter) {
   // Copy client hello outer
   ClientHello chloCopy = clientHelloOuter.clone();
 
   // Remove ech extension from the copy
-  auto it = findExtension(chloCopy.extensions, ExtensionType::encrypted_client_hello);
+  auto it =
+      findExtension(chloCopy.extensions, ExtensionType::encrypted_client_hello);
   chloCopy.extensions.erase(it);
 
   // Get the serialized version of the client hello outer
@@ -47,7 +49,8 @@ std::unique_ptr<folly::IOBuf> extractEncodedClientHelloInner(
     }
     case ECHVersion::V8: {
       auto chloOuterAad = makeClientHelloOuterAad(clientHelloOuter);
-      encodedClientHelloInner = context.open(chloOuterAad.get(), std::move(encryptedCh));
+      encodedClientHelloInner =
+          context.open(chloOuterAad.get(), std::move(encryptedCh));
       break;
     }
   }
@@ -118,7 +121,8 @@ std::unique_ptr<folly::IOBuf> constructConfigId(
   }
 
   auto extractedChlo = hkdf->extract(
-      folly::IOBuf::copyBuffer("")->coalesce(), encode(std::move(echConfig))->coalesce());
+      folly::IOBuf::copyBuffer("")->coalesce(),
+      encode(std::move(echConfig))->coalesce());
   return hkdf->expand(
       extractedChlo, *folly::IOBuf::copyBuffer("tls ech config id"), hashLen);
 }
@@ -174,10 +178,11 @@ static hpke::SetupParam getSetupParam(
 
   auto hkdf = hpke::makeHpkeHkdf(std::move(prefix), cipherSuite.kdf_id);
 
-  return hpke::SetupParam{std::move(dhkem),
-                          makeCipher(cipherSuite.aead_id),
-                          std::move(hkdf),
-                          std::move(suiteId)};
+  return hpke::SetupParam{
+      std::move(dhkem),
+      makeCipher(cipherSuite.aead_id),
+      std::move(hkdf),
+      std::move(suiteId)};
 }
 
 std::unique_ptr<folly::IOBuf> getRecordDigest(
@@ -203,8 +208,7 @@ std::unique_ptr<folly::IOBuf> getRecordDigest(
   }
 }
 
-ech::ECHNonce createNonceExtension(
-    const hpke::HpkeContext& context) {
+ech::ECHNonce createNonceExtension(const hpke::HpkeContext& context) {
   std::array<uint8_t, 16> nonceValueArr;
 
   // Generate nonce value
@@ -241,15 +245,16 @@ hpke::SetupResult constructHpkeSetupResult(
       std::move(kex), getKexGroup(config.kem_id), std::move(hkdf));
 
   // Get context
-  std::unique_ptr<folly::IOBuf> info = makeHpkeContextInfoParam(supportedConfig.config);
+  std::unique_ptr<folly::IOBuf> info =
+      makeHpkeContextInfoParam(supportedConfig.config);
 
   return setupWithEncap(
-    hpke::Mode::Base,
-    config.public_key->clone()->coalesce(),
-    std::move(info),
-    folly::none,
-    getSetupParam(
-        std::move(dhkem), prefix->clone(), config.kem_id, cipherSuite));
+      hpke::Mode::Base,
+      config.public_key->clone()->coalesce(),
+      std::move(info),
+      folly::none,
+      getSetupParam(
+          std::move(dhkem), prefix->clone(), config.kem_id, cipherSuite));
 }
 
 ClientECH encryptClientHelloV8(
@@ -292,7 +297,7 @@ EncryptedClientHello encryptClientHello(
       getRecordDigest(supportedConfig.config, cipherSuite.kdf_id);
   clientHelloOuter.enc = std::move(setupResult.enc);
 
-    // Create client hello inner
+  // Create client hello inner
   clientHelloOuter.encrypted_ch = setupResult.context.seal(
       folly::IOBuf::copyBuffer("").get(), encode(clientHello));
 
@@ -325,13 +330,13 @@ folly::Optional<ClientHello> tryToDecryptECH(
     auto suiteId = hpke::generateHpkeSuiteId(
         group, hpke::getHashFunction(kdfId), hpke::getCipherSuite(aeadId));
 
-    hpke::SetupParam setupParam{std::move(dhkem),
-                                makeCipher(aeadId),
-                                hpke::makeHpkeHkdf(prefix->clone(), kdfId),
-                                std::move(suiteId)};
+    hpke::SetupParam setupParam{
+        std::move(dhkem),
+        makeCipher(aeadId),
+        hpke::makeHpkeHkdf(prefix->clone(), kdfId),
+        std::move(suiteId)};
 
-    std::unique_ptr<folly::IOBuf> info =
-        makeHpkeContextInfoParam(echConfig);
+    std::unique_ptr<folly::IOBuf> info = makeHpkeContextInfoParam(echConfig);
     auto context = hpke::setupWithDecap(
         hpke::Mode::Base,
         encapsulatedKey->coalesce(),
@@ -340,7 +345,7 @@ folly::Optional<ClientHello> tryToDecryptECH(
         std::move(setupParam));
 
     auto encodedClientHelloInner = extractEncodedClientHelloInner(
-      version, std::move(encryptedCh), context, clientHelloOuter);
+        version, std::move(encryptedCh), context, clientHelloOuter);
 
     // Set actual client hello, ECH acceptance
     folly::io::Cursor encodedECHInnerCursor(encodedClientHelloInner.get());
@@ -349,12 +354,12 @@ folly::Optional<ClientHello> tryToDecryptECH(
 
     if (version == ECHVersion::V8) {
       // Replace legacy_session_id that got removed during encryption
-      decodedChlo.legacy_session_id = clientHelloOuter.legacy_session_id->clone();
+      decodedChlo.legacy_session_id =
+          clientHelloOuter.legacy_session_id->clone();
     }
 
     // Check ECH nonce if V7
-    if (version == ECHVersion::V7 &&
-        !isNonceValueEqual(context, decodedChlo)) {
+    if (version == ECHVersion::V7 && !isNonceValueEqual(context, decodedChlo)) {
       return folly::none;
     }
 

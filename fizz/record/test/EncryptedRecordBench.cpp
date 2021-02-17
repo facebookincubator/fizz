@@ -30,17 +30,17 @@ std::unique_ptr<folly::IOBuf> makeRandomOne(size_t n) {
 
 std::unique_ptr<folly::IOBuf> makeRandom(size_t n, size_t num = 1) {
   std::unique_ptr<folly::IOBuf> ret;
-  size_t one = n/num;
+  size_t one = n / num;
   if (!one) {
     one = 1;
   }
 
   while (n) {
-    size_t curr = (n > one)?one:n;
+    size_t curr = (n > one) ? one : n;
     auto buf = makeRandomOne(curr);
     if (!ret) {
       ret = std::move(buf);
-    }else {
+    } else {
       ret->prependChain(std::move(buf));
     }
 

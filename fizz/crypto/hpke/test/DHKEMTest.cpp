@@ -9,41 +9,39 @@
 #include <memory>
 #include <tuple>
 
+#include <fizz/crypto/Sha256.h>
 #include <fizz/crypto/exchange/KeyExchange.h>
 #include <fizz/crypto/exchange/OpenSSLKeyExchange.h>
-#include <fizz/crypto/Sha256.h>
-#include <fizz/crypto/test/TestUtil.h>
 #include <fizz/crypto/hpke/DHKEM.h>
+#include <fizz/crypto/test/TestUtil.h>
 #include <fizz/record/Types.h>
 #include <folly/portability/GTest.h>
-
 
 namespace fizz {
 namespace test {
 
+class MockKeyExchange : public KeyExchange {
+ public:
+  explicit MockKeyExchange(std::unique_ptr<KeyExchange> actualKex)
+      : actualKex_(std::move(actualKex)) {}
+  void generateKeyPair() override {}
 
-class MockKeyExchange  : public KeyExchange {
-  public:
-    explicit MockKeyExchange(std::unique_ptr<KeyExchange> actualKex): actualKex_(std::move(actualKex)) {}
-    void generateKeyPair() override {
-    }
+  std::unique_ptr<folly::IOBuf> getKeyShare() const override {
+    return actualKex_->getKeyShare();
+  }
 
-    std::unique_ptr<folly::IOBuf> getKeyShare() const override {
-        return actualKex_->getKeyShare();
-    }
+  std::unique_ptr<folly::IOBuf> generateSharedSecret(
+      folly::ByteRange keyShare) const override {
+    return actualKex_->generateSharedSecret(keyShare);
+  }
 
-    std::unique_ptr<folly::IOBuf> generateSharedSecret(
-      folly::ByteRange keyShare) const override  {
-        return actualKex_->generateSharedSecret(keyShare);
-    }
+  std::unique_ptr<KeyExchange> clone() const override {
+    return nullptr;
+  }
 
-    std::unique_ptr<KeyExchange> clone() const override {
-      return nullptr;
-    }
-
-  private:
-    std::unique_ptr<KeyExchange> actualKex_;
-    folly::ssl::EvpPkeyUniquePtr privateKey_;
+ private:
+  std::unique_ptr<KeyExchange> actualKex_;
+  folly::ssl::EvpPkeyUniquePtr privateKey_;
 };
 
 std::tuple<std::unique_ptr<folly::IOBuf>, std::unique_ptr<folly::IOBuf>>
@@ -52,15 +50,22 @@ testEncapDecap(DHKEM dhkem, std::unique_ptr<folly::IOBuf> publicKey) {
   DHKEM::EncapResult encapResult = dhkem.encap(publicKey->coalesce());
 
   // Recover the DHKEM shared secret from its encapsulated representation "enc"
-  std::unique_ptr<folly::IOBuf> gotSharedKey = dhkem.decap(encapResult.enc->coalesce());
+  std::unique_ptr<folly::IOBuf> gotSharedKey =
+      dhkem.decap(encapResult.enc->coalesce());
 
-  return std::make_tuple(std::move(encapResult.sharedSecret), std::move(gotSharedKey));
+  return std::make_tuple(
+      std::move(encapResult.sharedSecret), std::move(gotSharedKey));
 }
 
 DHKEM getDHKEM(std::unique_ptr<KeyExchange> actualKex, NamedGroup group) {
   auto prefix = "HPKE-05 ";
-  auto hkdf = std::make_unique<fizz::hpke::Hkdf>(folly::IOBuf::copyBuffer(prefix), std::make_unique<HkdfImpl>(HkdfImpl::create<Sha256>()));
-  return DHKEM(std::make_unique<MockKeyExchange>(std::move(actualKex)), group, std::move(hkdf));
+  auto hkdf = std::make_unique<fizz::hpke::Hkdf>(
+      folly::IOBuf::copyBuffer(prefix),
+      std::make_unique<HkdfImpl>(HkdfImpl::create<Sha256>()));
+  return DHKEM(
+      std::make_unique<MockKeyExchange>(std::move(actualKex)),
+      group,
+      std::move(hkdf));
 }
 
 TEST(DHKEMTest, TestP256EncapDecapEqual) {
@@ -72,7 +77,8 @@ TEST(DHKEMTest, TestP256EncapDecapEqual) {
   auto publicKey = detail::encodeECPublicKey(getPublicKey(kP256PublicKey));
   std::unique_ptr<folly::IOBuf> sharedKey;
   std::unique_ptr<folly::IOBuf> gotSharedKey;
-  std::tie(sharedKey, gotSharedKey) = testEncapDecap(std::move(dhkem), std::move(publicKey));
+  std::tie(sharedKey, gotSharedKey) =
+      testEncapDecap(std::move(dhkem), std::move(publicKey));
 
   EXPECT_TRUE(folly::IOBufEqualTo()(sharedKey, gotSharedKey));
 }
@@ -91,12 +97,13 @@ TEST(DHKEMTest, TestP256EncapDecapNotEqual) {
       "a5c3c464c46f5ba06338b24ea96ce442a4d13356"
       "902dfcd1e9";
   std::string out = unhexlify(encodedShare);
-  std::unique_ptr<folly::IOBuf> publicKey = folly::IOBuf::wrapBuffer(folly::StringPiece(out));
-
+  std::unique_ptr<folly::IOBuf> publicKey =
+      folly::IOBuf::wrapBuffer(folly::StringPiece(out));
 
   std::unique_ptr<folly::IOBuf> sharedKey;
   std::unique_ptr<folly::IOBuf> gotSharedKey;
-  std::tie(sharedKey, gotSharedKey) = testEncapDecap(std::move(dhkem), std::move(publicKey));
+  std::tie(sharedKey, gotSharedKey) =
+      testEncapDecap(std::move(dhkem), std::move(publicKey));
 
   EXPECT_FALSE(folly::IOBufEqualTo()(sharedKey, gotSharedKey));
 }
@@ -107,11 +114,11 @@ TEST(DHKEMTest, TestP384EncapDecapEqual) {
   actualKex->setPrivateKey(std::move(privateKey));
   auto dhkem = getDHKEM(std::move(actualKex), NamedGroup::secp384r1);
 
-
   auto publicKey = detail::encodeECPublicKey(getPublicKey(kP384PublicKey));
   std::unique_ptr<folly::IOBuf> sharedKey;
   std::unique_ptr<folly::IOBuf> gotSharedKey;
-  std::tie(sharedKey, gotSharedKey) = testEncapDecap(std::move(dhkem), std::move(publicKey));
+  std::tie(sharedKey, gotSharedKey) =
+      testEncapDecap(std::move(dhkem), std::move(publicKey));
 
   EXPECT_TRUE(folly::IOBufEqualTo()(sharedKey, gotSharedKey));
 }

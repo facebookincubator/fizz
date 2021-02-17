@@ -278,8 +278,8 @@ class ServerProtocolTest : public ProtocolTest<ServerTypes, Actions> {
     state_.serverCert() = cert_;
     clientIntCert_ = std::make_shared<MockPeerCert>();
     clientLeafCert_ = std::make_shared<MockPeerCert>();
-    std::vector<std::shared_ptr<const PeerCert>> clientCerts = {clientLeafCert_,
-                                                                clientIntCert_};
+    std::vector<std::shared_ptr<const PeerCert>> clientCerts = {
+        clientLeafCert_, clientIntCert_};
     state_.unverifiedCertChain() = std::move(clientCerts);
     state_.pskType() = PskType::NotAttempted;
     state_.alpn() = "h2";
@@ -323,10 +323,11 @@ class ServerProtocolTest : public ProtocolTest<ServerTypes, Actions> {
   ClientHello setupClientHelloOuter() {
     ClientHello testChlo = TestMessages::clientHello();
     // Set fake SNI
-    ::fizz::test::TestMessages::removeExtension(testChlo, ExtensionType::server_name);
+    ::fizz::test::TestMessages::removeExtension(
+        testChlo, ExtensionType::server_name);
     ServerNameList sni;
     ServerName sn;
-    sn.hostname =  folly::IOBuf::copyBuffer("wwww.fakehostname.com");
+    sn.hostname = folly::IOBuf::copyBuffer("wwww.fakehostname.com");
     sni.server_name_list.push_back(std::move(sn));
     testChlo.extensions.push_back(encodeExtension(std::move(sni)));
 
@@ -591,13 +592,13 @@ TEST_F(ServerProtocolTest, TestClientHelloFullHandshakeFlow) {
       }));
   EXPECT_CALL(*mockKeyScheduler_, getTrafficKey(RangeMatches("sht"), _, _))
       .WillOnce(InvokeWithoutArgs([]() {
-        return TrafficKey{IOBuf::copyBuffer("serverkey"),
-                          IOBuf::copyBuffer("serveriv")};
+        return TrafficKey{
+            IOBuf::copyBuffer("serverkey"), IOBuf::copyBuffer("serveriv")};
       }));
   EXPECT_CALL(*mockKeyScheduler_, getTrafficKey(RangeMatches("cht"), _, _))
       .WillOnce(InvokeWithoutArgs([]() {
-        return TrafficKey{IOBuf::copyBuffer("clientkey"),
-                          IOBuf::copyBuffer("clientiv")};
+        return TrafficKey{
+            IOBuf::copyBuffer("clientkey"), IOBuf::copyBuffer("clientiv")};
       }));
   EXPECT_CALL(*extensions_, getExtensions(_)).WillOnce(InvokeWithoutArgs([]() {
     Extension ext;
@@ -614,9 +615,10 @@ TEST_F(ServerProtocolTest, TestClientHelloFullHandshakeFlow) {
   MockEncryptedReadRecordLayer* rrl;
   MockEncryptedWriteRecordLayer* wrl;
   MockEncryptedWriteRecordLayer* appwrl;
-  expectAeadCreation({{"clientkey", &raead},
-                      {"serverkey", &waead},
-                      {"serverappkey", &appwaead}});
+  expectAeadCreation(
+      {{"clientkey", &raead},
+       {"serverkey", &waead},
+       {"serverappkey", &appwaead}});
   expectEncryptedReadRecordLayerCreation(
       &rrl, &raead, StringPiece("cht"), false);
   Sequence recSeq;
@@ -716,8 +718,9 @@ TEST_F(ServerProtocolTest, TestClientHelloFullHandshakeFlow) {
       }));
   EXPECT_CALL(*mockKeyScheduler_, getTrafficKey(RangeMatches("sat"), _, _))
       .WillOnce(InvokeWithoutArgs([]() {
-        return TrafficKey{IOBuf::copyBuffer("serverappkey"),
-                          IOBuf::copyBuffer("serverappiv")};
+        return TrafficKey{
+            IOBuf::copyBuffer("serverappkey"),
+            IOBuf::copyBuffer("serverappiv")};
       }));
 
   auto actions =
@@ -849,13 +852,13 @@ TEST_F(ServerProtocolTest, TestClientHelloCompressedCertFlow) {
       }));
   EXPECT_CALL(*mockKeyScheduler_, getTrafficKey(RangeMatches("sht"), _, _))
       .WillOnce(InvokeWithoutArgs([]() {
-        return TrafficKey{IOBuf::copyBuffer("serverkey"),
-                          IOBuf::copyBuffer("serveriv")};
+        return TrafficKey{
+            IOBuf::copyBuffer("serverkey"), IOBuf::copyBuffer("serveriv")};
       }));
   EXPECT_CALL(*mockKeyScheduler_, getTrafficKey(RangeMatches("cht"), _, _))
       .WillOnce(InvokeWithoutArgs([]() {
-        return TrafficKey{IOBuf::copyBuffer("clientkey"),
-                          IOBuf::copyBuffer("clientiv")};
+        return TrafficKey{
+            IOBuf::copyBuffer("clientkey"), IOBuf::copyBuffer("clientiv")};
       }));
   EXPECT_CALL(*extensions_, getExtensions(_)).WillOnce(InvokeWithoutArgs([]() {
     Extension ext;
@@ -872,9 +875,10 @@ TEST_F(ServerProtocolTest, TestClientHelloCompressedCertFlow) {
   MockEncryptedReadRecordLayer* rrl;
   MockEncryptedWriteRecordLayer* wrl;
   MockEncryptedWriteRecordLayer* appwrl;
-  expectAeadCreation({{"clientkey", &raead},
-                      {"serverkey", &waead},
-                      {"serverappkey", &appwaead}});
+  expectAeadCreation(
+      {{"clientkey", &raead},
+       {"serverkey", &waead},
+       {"serverappkey", &appwaead}});
   expectEncryptedReadRecordLayerCreation(
       &rrl, &raead, StringPiece("cht"), false);
   Sequence recSeq;
@@ -978,8 +982,9 @@ TEST_F(ServerProtocolTest, TestClientHelloCompressedCertFlow) {
       }));
   EXPECT_CALL(*mockKeyScheduler_, getTrafficKey(RangeMatches("sat"), _, _))
       .WillOnce(InvokeWithoutArgs([]() {
-        return TrafficKey{IOBuf::copyBuffer("serverappkey"),
-                          IOBuf::copyBuffer("serverappiv")};
+        return TrafficKey{
+            IOBuf::copyBuffer("serverappkey"),
+            IOBuf::copyBuffer("serverappiv")};
       }));
 
   auto chlo = TestMessages::clientHello();
@@ -1100,13 +1105,13 @@ TEST_F(ServerProtocolTest, TestECHDecryptionSuccess) {
       }));
   EXPECT_CALL(*mockKeyScheduler_, getTrafficKey(RangeMatches("sht"), _, _))
       .WillOnce(InvokeWithoutArgs([]() {
-        return TrafficKey{IOBuf::copyBuffer("serverkey"),
-                          IOBuf::copyBuffer("serveriv")};
+        return TrafficKey{
+            IOBuf::copyBuffer("serverkey"), IOBuf::copyBuffer("serveriv")};
       }));
   EXPECT_CALL(*mockKeyScheduler_, getTrafficKey(RangeMatches("cht"), _, _))
       .WillOnce(InvokeWithoutArgs([]() {
-        return TrafficKey{IOBuf::copyBuffer("clientkey"),
-                          IOBuf::copyBuffer("clientiv")};
+        return TrafficKey{
+            IOBuf::copyBuffer("clientkey"), IOBuf::copyBuffer("clientiv")};
       }));
   EXPECT_CALL(*extensions_, getExtensions(_)).WillOnce(InvokeWithoutArgs([]() {
     Extension ext;
@@ -1124,18 +1129,19 @@ TEST_F(ServerProtocolTest, TestECHDecryptionSuccess) {
   MockEncryptedWriteRecordLayer* wrl;
   MockEncryptedWriteRecordLayer* appwrl;
 
-  std::map<std::string, MockAead**> keys = {{"clientkey", &raead},
-                      {"serverkey", &waead},
-                      {"serverappkey", &appwaead}};
+  std::map<std::string, MockAead**> keys = {
+      {"clientkey", &raead},
+      {"serverkey", &waead},
+      {"serverappkey", &appwaead}};
 
   EXPECT_CALL(*factory_, makeAead(_)).WillRepeatedly(InvokeWithoutArgs([=]() {
-      auto ret = std::make_unique<MockAead>();
-      EXPECT_CALL(*ret, _setKey(_))
-          .WillOnce(Invoke([keys, ptr = ret.get()](TrafficKey& key) {
-            *keys.at(key.key->clone()->moveToFbString().toStdString()) = ptr;
-          }));
-      return ret;
-    }));
+    auto ret = std::make_unique<MockAead>();
+    EXPECT_CALL(*ret, _setKey(_))
+        .WillOnce(Invoke([keys, ptr = ret.get()](TrafficKey& key) {
+          *keys.at(key.key->clone()->moveToFbString().toStdString()) = ptr;
+        }));
+    return ret;
+  }));
 
   expectEncryptedReadRecordLayerCreation(
       &rrl, &raead, StringPiece("cht"), false);
@@ -1238,24 +1244,26 @@ TEST_F(ServerProtocolTest, TestECHDecryptionSuccess) {
       }));
   EXPECT_CALL(*mockKeyScheduler_, getTrafficKey(RangeMatches("sat"), _, _))
       .WillOnce(InvokeWithoutArgs([]() {
-        return TrafficKey{IOBuf::copyBuffer("serverappkey"),
-                          IOBuf::copyBuffer("serverappiv")};
+        return TrafficKey{
+            IOBuf::copyBuffer("serverappkey"),
+            IOBuf::copyBuffer("serverappiv")};
       }));
 
-  EXPECT_CALL(*factory_, makeKeyExchange(_)).WillRepeatedly(InvokeWithoutArgs([]() {
-    auto ret = std::make_unique<MockKeyExchange>();
-    EXPECT_CALL(*ret, generateKeyPair());
-    EXPECT_CALL(*ret, generateSharedSecret(RangeMatches("keyshare")))
-        .WillOnce(InvokeWithoutArgs(
-            []() { return IOBuf::copyBuffer("sharedsecret"); }));
-    EXPECT_CALL(*ret, getKeyShare()).WillOnce(InvokeWithoutArgs([]() {
-      return IOBuf::copyBuffer("servershare");
-    }));
-    return ret;
-  }));
+  EXPECT_CALL(*factory_, makeKeyExchange(_))
+      .WillRepeatedly(InvokeWithoutArgs([]() {
+        auto ret = std::make_unique<MockKeyExchange>();
+        EXPECT_CALL(*ret, generateKeyPair());
+        EXPECT_CALL(*ret, generateSharedSecret(RangeMatches("keyshare")))
+            .WillOnce(InvokeWithoutArgs(
+                []() { return IOBuf::copyBuffer("sharedsecret"); }));
+        EXPECT_CALL(*ret, getKeyShare()).WillOnce(InvokeWithoutArgs([]() {
+          return IOBuf::copyBuffer("servershare");
+        }));
+        return ret;
+      }));
 
-  auto actions = getActions(detail::processEvent(
-      state_, setupClientHelloOuter()));
+  auto actions =
+      getActions(detail::processEvent(state_, setupClientHelloOuter()));
 
   expectActions<MutateState, WriteToSocket, SecretAvailable>(actions);
   auto write = expectAction<WriteToSocket>(actions);
@@ -1307,8 +1315,7 @@ TEST_F(ServerProtocolTest, TestECHDecryptionFailure) {
 
   auto decrypter = std::make_shared<MockDecrypter>();
   EXPECT_CALL(*decrypter, decryptClientHello(_))
-      .WillOnce(
-          InvokeWithoutArgs([=]() { return folly::none; }));
+      .WillOnce(InvokeWithoutArgs([=]() { return folly::none; }));
   context_->setECHDecrypter(decrypter);
 
   mockKeyScheduler_ = new MockKeyScheduler();
@@ -1367,13 +1374,13 @@ TEST_F(ServerProtocolTest, TestECHDecryptionFailure) {
       }));
   EXPECT_CALL(*mockKeyScheduler_, getTrafficKey(RangeMatches("sht"), _, _))
       .WillOnce(InvokeWithoutArgs([]() {
-        return TrafficKey{IOBuf::copyBuffer("serverkey"),
-                          IOBuf::copyBuffer("serveriv")};
+        return TrafficKey{
+            IOBuf::copyBuffer("serverkey"), IOBuf::copyBuffer("serveriv")};
       }));
   EXPECT_CALL(*mockKeyScheduler_, getTrafficKey(RangeMatches("cht"), _, _))
       .WillOnce(InvokeWithoutArgs([]() {
-        return TrafficKey{IOBuf::copyBuffer("clientkey"),
-                          IOBuf::copyBuffer("clientiv")};
+        return TrafficKey{
+            IOBuf::copyBuffer("clientkey"), IOBuf::copyBuffer("clientiv")};
       }));
   EXPECT_CALL(*extensions_, getExtensions(_)).WillOnce(InvokeWithoutArgs([]() {
     Extension ext;
@@ -1391,18 +1398,19 @@ TEST_F(ServerProtocolTest, TestECHDecryptionFailure) {
   MockEncryptedWriteRecordLayer* wrl;
   MockEncryptedWriteRecordLayer* appwrl;
 
-  std::map<std::string, MockAead**> keys = {{"clientkey", &raead},
-                      {"serverkey", &waead},
-                      {"serverappkey", &appwaead}};
+  std::map<std::string, MockAead**> keys = {
+      {"clientkey", &raead},
+      {"serverkey", &waead},
+      {"serverappkey", &appwaead}};
 
   EXPECT_CALL(*factory_, makeAead(_)).WillRepeatedly(InvokeWithoutArgs([=]() {
-      auto ret = std::make_unique<MockAead>();
-      EXPECT_CALL(*ret, _setKey(_))
-          .WillOnce(Invoke([keys, ptr = ret.get()](TrafficKey& key) {
-            *keys.at(key.key->clone()->moveToFbString().toStdString()) = ptr;
-          }));
-      return ret;
-    }));
+    auto ret = std::make_unique<MockAead>();
+    EXPECT_CALL(*ret, _setKey(_))
+        .WillOnce(Invoke([keys, ptr = ret.get()](TrafficKey& key) {
+          *keys.at(key.key->clone()->moveToFbString().toStdString()) = ptr;
+        }));
+    return ret;
+  }));
 
   expectEncryptedReadRecordLayerCreation(
       &rrl, &raead, StringPiece("cht"), false);
@@ -1505,24 +1513,26 @@ TEST_F(ServerProtocolTest, TestECHDecryptionFailure) {
       }));
   EXPECT_CALL(*mockKeyScheduler_, getTrafficKey(RangeMatches("sat"), _, _))
       .WillOnce(InvokeWithoutArgs([]() {
-        return TrafficKey{IOBuf::copyBuffer("serverappkey"),
-                          IOBuf::copyBuffer("serverappiv")};
+        return TrafficKey{
+            IOBuf::copyBuffer("serverappkey"),
+            IOBuf::copyBuffer("serverappiv")};
       }));
 
-  EXPECT_CALL(*factory_, makeKeyExchange(_)).WillRepeatedly(InvokeWithoutArgs([]() {
-    auto ret = std::make_unique<MockKeyExchange>();
-    EXPECT_CALL(*ret, generateKeyPair());
-    EXPECT_CALL(*ret, generateSharedSecret(RangeMatches("keyshare")))
-        .WillOnce(InvokeWithoutArgs(
-            []() { return IOBuf::copyBuffer("sharedsecret"); }));
-    EXPECT_CALL(*ret, getKeyShare()).WillOnce(InvokeWithoutArgs([]() {
-      return IOBuf::copyBuffer("servershare");
-    }));
-    return ret;
-  }));
+  EXPECT_CALL(*factory_, makeKeyExchange(_))
+      .WillRepeatedly(InvokeWithoutArgs([]() {
+        auto ret = std::make_unique<MockKeyExchange>();
+        EXPECT_CALL(*ret, generateKeyPair());
+        EXPECT_CALL(*ret, generateSharedSecret(RangeMatches("keyshare")))
+            .WillOnce(InvokeWithoutArgs(
+                []() { return IOBuf::copyBuffer("sharedsecret"); }));
+        EXPECT_CALL(*ret, getKeyShare()).WillOnce(InvokeWithoutArgs([]() {
+          return IOBuf::copyBuffer("servershare");
+        }));
+        return ret;
+      }));
 
-  auto actions = getActions(detail::processEvent(
-      state_, setupClientHelloOuter()));
+  auto actions =
+      getActions(detail::processEvent(state_, setupClientHelloOuter()));
 
   expectActions<MutateState, WriteToSocket, SecretAvailable>(actions);
   auto write = expectAction<WriteToSocket>(actions);
@@ -1639,13 +1649,13 @@ TEST_F(ServerProtocolTest, TestClientHelloCertRequestFlow) {
       }));
   EXPECT_CALL(*mockKeyScheduler_, getTrafficKey(RangeMatches("sht"), _, _))
       .WillOnce(InvokeWithoutArgs([]() {
-        return TrafficKey{IOBuf::copyBuffer("serverkey"),
-                          IOBuf::copyBuffer("serveriv")};
+        return TrafficKey{
+            IOBuf::copyBuffer("serverkey"), IOBuf::copyBuffer("serveriv")};
       }));
   EXPECT_CALL(*mockKeyScheduler_, getTrafficKey(RangeMatches("cht"), _, _))
       .WillOnce(InvokeWithoutArgs([]() {
-        return TrafficKey{IOBuf::copyBuffer("clientkey"),
-                          IOBuf::copyBuffer("clientiv")};
+        return TrafficKey{
+            IOBuf::copyBuffer("clientkey"), IOBuf::copyBuffer("clientiv")};
       }));
   EXPECT_CALL(*extensions_, getExtensions(_)).WillOnce(InvokeWithoutArgs([]() {
     Extension ext;
@@ -1662,9 +1672,10 @@ TEST_F(ServerProtocolTest, TestClientHelloCertRequestFlow) {
   MockEncryptedReadRecordLayer* rrl;
   MockEncryptedWriteRecordLayer* wrl;
   MockEncryptedWriteRecordLayer* appwrl;
-  expectAeadCreation({{"clientkey", &raead},
-                      {"serverkey", &waead},
-                      {"serverappkey", &appwaead}});
+  expectAeadCreation(
+      {{"clientkey", &raead},
+       {"serverkey", &waead},
+       {"serverappkey", &appwaead}});
   expectEncryptedReadRecordLayerCreation(
       &rrl, &raead, StringPiece("cht"), false);
   Sequence recSeq;
@@ -1766,8 +1777,9 @@ TEST_F(ServerProtocolTest, TestClientHelloCertRequestFlow) {
       }));
   EXPECT_CALL(*mockKeyScheduler_, getTrafficKey(RangeMatches("sat"), _, _))
       .WillOnce(InvokeWithoutArgs([]() {
-        return TrafficKey{IOBuf::copyBuffer("serverappkey"),
-                          IOBuf::copyBuffer("serverappiv")};
+        return TrafficKey{
+            IOBuf::copyBuffer("serverappkey"),
+            IOBuf::copyBuffer("serverappiv")};
       }));
 
   auto actions =
@@ -1905,13 +1917,13 @@ TEST_F(ServerProtocolTest, TestClientHelloPskFlow) {
       }));
   EXPECT_CALL(*mockKeyScheduler_, getTrafficKey(RangeMatches("sht"), _, _))
       .WillOnce(InvokeWithoutArgs([]() {
-        return TrafficKey{IOBuf::copyBuffer("serverkey"),
-                          IOBuf::copyBuffer("serveriv")};
+        return TrafficKey{
+            IOBuf::copyBuffer("serverkey"), IOBuf::copyBuffer("serveriv")};
       }));
   EXPECT_CALL(*mockKeyScheduler_, getTrafficKey(RangeMatches("cht"), _, _))
       .WillOnce(InvokeWithoutArgs([]() {
-        return TrafficKey{IOBuf::copyBuffer("clientkey"),
-                          IOBuf::copyBuffer("clientiv")};
+        return TrafficKey{
+            IOBuf::copyBuffer("clientkey"), IOBuf::copyBuffer("clientiv")};
       }));
   MockAead* raead;
   MockAead* waead;
@@ -1919,9 +1931,10 @@ TEST_F(ServerProtocolTest, TestClientHelloPskFlow) {
   MockEncryptedReadRecordLayer* rrl;
   MockEncryptedWriteRecordLayer* wrl;
   MockEncryptedWriteRecordLayer* appwrl;
-  expectAeadCreation({{"clientkey", &raead},
-                      {"serverkey", &waead},
-                      {"serverappkey", &appwaead}});
+  expectAeadCreation(
+      {{"clientkey", &raead},
+       {"serverkey", &waead},
+       {"serverappkey", &appwaead}});
   expectEncryptedReadRecordLayerCreation(
       &rrl, &raead, StringPiece("cht"), false);
   Sequence recSeq;
@@ -1977,8 +1990,9 @@ TEST_F(ServerProtocolTest, TestClientHelloPskFlow) {
       }));
   EXPECT_CALL(*mockKeyScheduler_, getTrafficKey(RangeMatches("sat"), _, _))
       .WillOnce(InvokeWithoutArgs([]() {
-        return TrafficKey{IOBuf::copyBuffer("serverappkey"),
-                          IOBuf::copyBuffer("serverappiv")};
+        return TrafficKey{
+            IOBuf::copyBuffer("serverappkey"),
+            IOBuf::copyBuffer("serverappiv")};
       }));
 
   auto actions =
@@ -2134,13 +2148,13 @@ TEST_F(ServerProtocolTest, TestClientHelloPskDheFlow) {
       }));
   EXPECT_CALL(*mockKeyScheduler_, getTrafficKey(RangeMatches("sht"), _, _))
       .WillOnce(InvokeWithoutArgs([]() {
-        return TrafficKey{IOBuf::copyBuffer("serverkey"),
-                          IOBuf::copyBuffer("serveriv")};
+        return TrafficKey{
+            IOBuf::copyBuffer("serverkey"), IOBuf::copyBuffer("serveriv")};
       }));
   EXPECT_CALL(*mockKeyScheduler_, getTrafficKey(RangeMatches("cht"), _, _))
       .WillOnce(InvokeWithoutArgs([]() {
-        return TrafficKey{IOBuf::copyBuffer("clientkey"),
-                          IOBuf::copyBuffer("clientiv")};
+        return TrafficKey{
+            IOBuf::copyBuffer("clientkey"), IOBuf::copyBuffer("clientiv")};
       }));
   MockAead* raead;
   MockAead* waead;
@@ -2148,9 +2162,10 @@ TEST_F(ServerProtocolTest, TestClientHelloPskDheFlow) {
   MockEncryptedReadRecordLayer* rrl;
   MockEncryptedWriteRecordLayer* wrl;
   MockEncryptedWriteRecordLayer* appwrl;
-  expectAeadCreation({{"clientkey", &raead},
-                      {"serverkey", &waead},
-                      {"serverappkey", &appwaead}});
+  expectAeadCreation(
+      {{"clientkey", &raead},
+       {"serverkey", &waead},
+       {"serverappkey", &appwaead}});
   expectEncryptedReadRecordLayerCreation(
       &rrl, &raead, StringPiece("cht"), false);
   Sequence recSeq;
@@ -2206,8 +2221,9 @@ TEST_F(ServerProtocolTest, TestClientHelloPskDheFlow) {
       }));
   EXPECT_CALL(*mockKeyScheduler_, getTrafficKey(RangeMatches("sat"), _, _))
       .WillOnce(InvokeWithoutArgs([]() {
-        return TrafficKey{IOBuf::copyBuffer("serverappkey"),
-                          IOBuf::copyBuffer("serverappiv")};
+        return TrafficKey{
+            IOBuf::copyBuffer("serverappkey"),
+            IOBuf::copyBuffer("serverappiv")};
       }));
 
   auto actions =
@@ -2401,13 +2417,13 @@ TEST_F(ServerProtocolTest, TestRetryClientHelloFullHandshakeFlow) {
       }));
   EXPECT_CALL(*mockKeyScheduler_, getTrafficKey(RangeMatches("sht"), _, _))
       .WillOnce(InvokeWithoutArgs([]() {
-        return TrafficKey{IOBuf::copyBuffer("serverkey"),
-                          IOBuf::copyBuffer("serveriv")};
+        return TrafficKey{
+            IOBuf::copyBuffer("serverkey"), IOBuf::copyBuffer("serveriv")};
       }));
   EXPECT_CALL(*mockKeyScheduler_, getTrafficKey(RangeMatches("cht"), _, _))
       .WillOnce(InvokeWithoutArgs([]() {
-        return TrafficKey{IOBuf::copyBuffer("clientkey"),
-                          IOBuf::copyBuffer("clientiv")};
+        return TrafficKey{
+            IOBuf::copyBuffer("clientkey"), IOBuf::copyBuffer("clientiv")};
       }));
   MockAead* raead;
   MockAead* waead;
@@ -2415,9 +2431,10 @@ TEST_F(ServerProtocolTest, TestRetryClientHelloFullHandshakeFlow) {
   MockEncryptedReadRecordLayer* rrl;
   MockEncryptedWriteRecordLayer* wrl;
   MockEncryptedWriteRecordLayer* appwrl;
-  expectAeadCreation({{"clientkey", &raead},
-                      {"serverkey", &waead},
-                      {"serverappkey", &appwaead}});
+  expectAeadCreation(
+      {{"clientkey", &raead},
+       {"serverkey", &waead},
+       {"serverappkey", &appwaead}});
   expectEncryptedReadRecordLayerCreation(
       &rrl, &raead, StringPiece("cht"), false);
   Sequence recSeq;
@@ -2511,8 +2528,9 @@ TEST_F(ServerProtocolTest, TestRetryClientHelloFullHandshakeFlow) {
       }));
   EXPECT_CALL(*mockKeyScheduler_, getTrafficKey(RangeMatches("sat"), _, _))
       .WillOnce(InvokeWithoutArgs([]() {
-        return TrafficKey{IOBuf::copyBuffer("serverappkey"),
-                          IOBuf::copyBuffer("serverappiv")};
+        return TrafficKey{
+            IOBuf::copyBuffer("serverappkey"),
+            IOBuf::copyBuffer("serverappiv")};
       }));
 
   auto actions =
@@ -2660,13 +2678,13 @@ TEST_F(ServerProtocolTest, TestRetryClientHelloPskDheFlow) {
       }));
   EXPECT_CALL(*mockKeyScheduler_, getTrafficKey(RangeMatches("sht"), _, _))
       .WillOnce(InvokeWithoutArgs([]() {
-        return TrafficKey{IOBuf::copyBuffer("serverkey"),
-                          IOBuf::copyBuffer("serveriv")};
+        return TrafficKey{
+            IOBuf::copyBuffer("serverkey"), IOBuf::copyBuffer("serveriv")};
       }));
   EXPECT_CALL(*mockKeyScheduler_, getTrafficKey(RangeMatches("cht"), _, _))
       .WillOnce(InvokeWithoutArgs([]() {
-        return TrafficKey{IOBuf::copyBuffer("clientkey"),
-                          IOBuf::copyBuffer("clientiv")};
+        return TrafficKey{
+            IOBuf::copyBuffer("clientkey"), IOBuf::copyBuffer("clientiv")};
       }));
   MockAead* raead;
   MockAead* waead;
@@ -2674,9 +2692,10 @@ TEST_F(ServerProtocolTest, TestRetryClientHelloPskDheFlow) {
   MockEncryptedReadRecordLayer* rrl;
   MockEncryptedWriteRecordLayer* wrl;
   MockEncryptedWriteRecordLayer* appwrl;
-  expectAeadCreation({{"clientkey", &raead},
-                      {"serverkey", &waead},
-                      {"serverappkey", &appwaead}});
+  expectAeadCreation(
+      {{"clientkey", &raead},
+       {"serverkey", &waead},
+       {"serverappkey", &appwaead}});
   expectEncryptedReadRecordLayerCreation(
       &rrl, &raead, StringPiece("cht"), false);
   Sequence recSeq;
@@ -2732,8 +2751,9 @@ TEST_F(ServerProtocolTest, TestRetryClientHelloPskDheFlow) {
       }));
   EXPECT_CALL(*mockKeyScheduler_, getTrafficKey(RangeMatches("sat"), _, _))
       .WillOnce(InvokeWithoutArgs([]() {
-        return TrafficKey{IOBuf::copyBuffer("serverappkey"),
-                          IOBuf::copyBuffer("serverappiv")};
+        return TrafficKey{
+            IOBuf::copyBuffer("serverappkey"),
+            IOBuf::copyBuffer("serverappiv")};
       }));
 
   auto actions =
@@ -2905,18 +2925,18 @@ TEST_F(ServerProtocolTest, TestClientHelloPskDheEarlyFlow) {
       }));
   EXPECT_CALL(*mockKeyScheduler_, getTrafficKey(RangeMatches("cet"), _, _))
       .WillOnce(InvokeWithoutArgs([]() {
-        return TrafficKey{IOBuf::copyBuffer("earlykey"),
-                          IOBuf::copyBuffer("earlyiv")};
+        return TrafficKey{
+            IOBuf::copyBuffer("earlykey"), IOBuf::copyBuffer("earlyiv")};
       }));
   EXPECT_CALL(*mockKeyScheduler_, getTrafficKey(RangeMatches("sht"), _, _))
       .WillOnce(InvokeWithoutArgs([]() {
-        return TrafficKey{IOBuf::copyBuffer("serverkey"),
-                          IOBuf::copyBuffer("serveriv")};
+        return TrafficKey{
+            IOBuf::copyBuffer("serverkey"), IOBuf::copyBuffer("serveriv")};
       }));
   EXPECT_CALL(*mockKeyScheduler_, getTrafficKey(RangeMatches("cht"), _, _))
       .WillOnce(InvokeWithoutArgs([]() {
-        return TrafficKey{IOBuf::copyBuffer("clientkey"),
-                          IOBuf::copyBuffer("clientiv")};
+        return TrafficKey{
+            IOBuf::copyBuffer("clientkey"), IOBuf::copyBuffer("clientiv")};
       }));
   MockAead* earlyaead;
   MockAead* raead;
@@ -2926,10 +2946,11 @@ TEST_F(ServerProtocolTest, TestClientHelloPskDheEarlyFlow) {
   MockEncryptedReadRecordLayer* handshakerrl;
   MockEncryptedWriteRecordLayer* wrl;
   MockEncryptedWriteRecordLayer* appwrl;
-  expectAeadCreation({{"earlykey", &earlyaead},
-                      {"clientkey", &raead},
-                      {"serverkey", &waead},
-                      {"serverappkey", &appwaead}});
+  expectAeadCreation(
+      {{"earlykey", &earlyaead},
+       {"clientkey", &raead},
+       {"serverkey", &waead},
+       {"serverappkey", &appwaead}});
   Sequence readRecSeq;
   expectEncryptedReadRecordLayerCreation(
       &earlyrrl, &earlyaead, StringPiece("cet"), folly::none, &readRecSeq);
@@ -2988,8 +3009,9 @@ TEST_F(ServerProtocolTest, TestClientHelloPskDheEarlyFlow) {
       }));
   EXPECT_CALL(*mockKeyScheduler_, getTrafficKey(RangeMatches("sat"), _, _))
       .WillOnce(InvokeWithoutArgs([]() {
-        return TrafficKey{IOBuf::copyBuffer("serverappkey"),
-                          IOBuf::copyBuffer("serverappiv")};
+        return TrafficKey{
+            IOBuf::copyBuffer("serverappkey"),
+            IOBuf::copyBuffer("serverappiv")};
       }));
 
   std::chrono::milliseconds age =
@@ -3168,18 +3190,18 @@ TEST_F(ServerProtocolTest, TestClientHelloPskEarlyFlow) {
       }));
   EXPECT_CALL(*mockKeyScheduler_, getTrafficKey(RangeMatches("cet"), _, _))
       .WillOnce(InvokeWithoutArgs([]() {
-        return TrafficKey{IOBuf::copyBuffer("earlykey"),
-                          IOBuf::copyBuffer("earlyiv")};
+        return TrafficKey{
+            IOBuf::copyBuffer("earlykey"), IOBuf::copyBuffer("earlyiv")};
       }));
   EXPECT_CALL(*mockKeyScheduler_, getTrafficKey(RangeMatches("sht"), _, _))
       .WillOnce(InvokeWithoutArgs([]() {
-        return TrafficKey{IOBuf::copyBuffer("serverkey"),
-                          IOBuf::copyBuffer("serveriv")};
+        return TrafficKey{
+            IOBuf::copyBuffer("serverkey"), IOBuf::copyBuffer("serveriv")};
       }));
   EXPECT_CALL(*mockKeyScheduler_, getTrafficKey(RangeMatches("cht"), _, _))
       .WillOnce(InvokeWithoutArgs([]() {
-        return TrafficKey{IOBuf::copyBuffer("clientkey"),
-                          IOBuf::copyBuffer("clientiv")};
+        return TrafficKey{
+            IOBuf::copyBuffer("clientkey"), IOBuf::copyBuffer("clientiv")};
       }));
   MockAead* earlyaead;
   MockAead* raead;
@@ -3189,10 +3211,11 @@ TEST_F(ServerProtocolTest, TestClientHelloPskEarlyFlow) {
   MockEncryptedReadRecordLayer* handshakerrl;
   MockEncryptedWriteRecordLayer* wrl;
   MockEncryptedWriteRecordLayer* appwrl;
-  expectAeadCreation({{"earlykey", &earlyaead},
-                      {"clientkey", &raead},
-                      {"serverkey", &waead},
-                      {"serverappkey", &appwaead}});
+  expectAeadCreation(
+      {{"earlykey", &earlyaead},
+       {"clientkey", &raead},
+       {"serverkey", &waead},
+       {"serverappkey", &appwaead}});
   Sequence readRecSeq;
   expectEncryptedReadRecordLayerCreation(
       &earlyrrl, &earlyaead, StringPiece("cet"), folly::none, &readRecSeq);
@@ -3251,8 +3274,9 @@ TEST_F(ServerProtocolTest, TestClientHelloPskEarlyFlow) {
       }));
   EXPECT_CALL(*mockKeyScheduler_, getTrafficKey(RangeMatches("sat"), _, _))
       .WillOnce(InvokeWithoutArgs([]() {
-        return TrafficKey{IOBuf::copyBuffer("serverappkey"),
-                          IOBuf::copyBuffer("serverappiv")};
+        return TrafficKey{
+            IOBuf::copyBuffer("serverappkey"),
+            IOBuf::copyBuffer("serverappiv")};
       }));
 
   std::chrono::milliseconds age =
@@ -4127,8 +4151,9 @@ TEST_F(ServerProtocolTest, TestClientHelloHandshakeLogging) {
       std::vector<ProtocolVersion>({TestProtocolVersion}));
   EXPECT_EQ(
       state_.handshakeLogging()->clientCiphers,
-      std::vector<CipherSuite>({CipherSuite::TLS_AES_128_GCM_SHA256,
-                                CipherSuite::TLS_AES_256_GCM_SHA384}));
+      std::vector<CipherSuite>(
+          {CipherSuite::TLS_AES_128_GCM_SHA256,
+           CipherSuite::TLS_AES_256_GCM_SHA384}));
   EXPECT_EQ(
       state_.handshakeLogging()->clientExtensions,
       std::vector<ExtensionType>(
@@ -4141,8 +4166,9 @@ TEST_F(ServerProtocolTest, TestClientHelloHandshakeLogging) {
            ExtensionType::psk_key_exchange_modes}));
   EXPECT_EQ(
       state_.handshakeLogging()->clientSignatureAlgorithms,
-      std::vector<SignatureScheme>({SignatureScheme::ecdsa_secp256r1_sha256,
-                                    SignatureScheme::rsa_pss_sha256}));
+      std::vector<SignatureScheme>(
+          {SignatureScheme::ecdsa_secp256r1_sha256,
+           SignatureScheme::rsa_pss_sha256}));
   EXPECT_EQ(*state_.handshakeLogging()->clientSessionIdSent, false);
   EXPECT_TRUE(state_.handshakeLogging()->clientRandom.has_value());
 }
@@ -4153,8 +4179,9 @@ TEST_F(ServerProtocolTest, TestClientHelloTestByte) {
 
   auto chlo = TestMessages::clientHello();
   auto testExtensionByte = static_cast<uint8_t>(0);
-  chlo.extensions.push_back({ExtensionType::test_extension,
-                             folly::IOBuf::copyBuffer(&testExtensionByte, 1)});
+  chlo.extensions.push_back(
+      {ExtensionType::test_extension,
+       folly::IOBuf::copyBuffer(&testExtensionByte, 1)});
   auto actions = getActions(detail::processEvent(state_, std::move(chlo)));
   processStateMutations(actions);
 
@@ -4574,8 +4601,8 @@ TEST_F(ServerProtocolTest, TestFullHandshakeFinished) {
       }));
   EXPECT_CALL(*mockKeyScheduler_, getTrafficKey(RangeMatches("cat"), _, _))
       .WillOnce(InvokeWithoutArgs([]() {
-        return TrafficKey{IOBuf::copyBuffer("clientkey"),
-                          IOBuf::copyBuffer("clientiv")};
+        return TrafficKey{
+            IOBuf::copyBuffer("clientkey"), IOBuf::copyBuffer("clientiv")};
       }));
   EXPECT_CALL(
       *mockKeyScheduler_,
@@ -4959,8 +4986,8 @@ TEST_F(ServerProtocolTest, TestKeyUpdateNotRequested) {
 
   EXPECT_CALL(*mockKeyScheduler_, getTrafficKey(RangeMatches("cat"), _, _))
       .WillOnce(InvokeWithoutArgs([]() {
-        return TrafficKey{IOBuf::copyBuffer("clientkey"),
-                          IOBuf::copyBuffer("clientiv")};
+        return TrafficKey{
+            IOBuf::copyBuffer("clientkey"), IOBuf::copyBuffer("clientiv")};
       }));
 
   MockAead* raead;
@@ -5027,14 +5054,14 @@ TEST_F(ServerProtocolTest, TestKeyUpdateRequest) {
 
   EXPECT_CALL(*mockKeyScheduler_, getTrafficKey(RangeMatches("cat"), _, _))
       .WillOnce(InvokeWithoutArgs([]() {
-        return TrafficKey{IOBuf::copyBuffer("clientkey"),
-                          IOBuf::copyBuffer("clientiv")};
+        return TrafficKey{
+            IOBuf::copyBuffer("clientkey"), IOBuf::copyBuffer("clientiv")};
       }));
 
   EXPECT_CALL(*mockKeyScheduler_, getTrafficKey(RangeMatches("sat"), _, _))
       .WillOnce(InvokeWithoutArgs([]() {
-        return TrafficKey{IOBuf::copyBuffer("serverkey"),
-                          IOBuf::copyBuffer("serveriv")};
+        return TrafficKey{
+            IOBuf::copyBuffer("serverkey"), IOBuf::copyBuffer("serveriv")};
       }));
 
   MockAead* raead;
@@ -5379,7 +5406,7 @@ TEST_F(ServerProtocolTest, TestEarlyWriteError) {
 TEST_F(ServerProtocolTest, TestDecodeErrorAlert) {
   setUpAcceptingData();
   EXPECT_CALL(*appRead_, read(_))
-      .WillOnce(Invoke([](auto &&) -> folly::Optional<TLSMessage> {
+      .WillOnce(Invoke([](auto&&) -> folly::Optional<TLSMessage> {
         throw std::runtime_error("read record layer error");
       }));
   folly::IOBufQueue buf;
@@ -5395,7 +5422,7 @@ TEST_F(ServerProtocolTest, TestDecodeErrorAlert) {
 TEST_F(ServerProtocolTest, TestSocketDataFizzExceptionAlert) {
   setUpAcceptingData();
   EXPECT_CALL(*appRead_, read(_))
-      .WillOnce(Invoke([](auto &&) -> folly::Optional<TLSMessage> {
+      .WillOnce(Invoke([](auto&&) -> folly::Optional<TLSMessage> {
         throw FizzException(
             "arbitrary fizzexception with alert",
             AlertDescription::internal_error);
@@ -5415,7 +5442,7 @@ TEST_F(ServerProtocolTest, TestSocketDataFizzExceptionAlert) {
 TEST_F(ServerProtocolTest, TestSocketDataFizzExceptionNoAlert) {
   setUpAcceptingData();
   EXPECT_CALL(*appRead_, read(_))
-      .WillOnce(Invoke([](auto &&) -> folly::Optional<TLSMessage> {
+      .WillOnce(Invoke([](auto&&) -> folly::Optional<TLSMessage> {
         throw FizzException(
             "arbitrary fizzexception without alert", folly::none);
       }));

@@ -277,8 +277,9 @@ class FizzClientContext {
   std::vector<SignatureScheme> supportedSigSchemes_ = {
       SignatureScheme::ecdsa_secp256r1_sha256,
       SignatureScheme::rsa_pss_sha256};
-  std::vector<NamedGroup> supportedGroups_ = {NamedGroup::x25519,
-                                              NamedGroup::secp256r1};
+  std::vector<NamedGroup> supportedGroups_ = {
+      NamedGroup::x25519,
+      NamedGroup::secp256r1};
   std::vector<NamedGroup> defaultShares_ = {NamedGroup::x25519};
   std::vector<PskKeyExchangeMode> supportedPskModes_ = {
       PskKeyExchangeMode::psk_dhe_ke,

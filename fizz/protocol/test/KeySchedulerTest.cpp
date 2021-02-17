@@ -191,10 +191,14 @@ TEST_F(KeySchedulerTest, TestClonability) {
   EXPECT_CALL(*kd_, deriveSecret(_, _, Eq(folly::ByteRange(transcript1))))
       .Times(2);
 
-  auto t1sh = ks_->getSecret(HandshakeSecrets::ServerHandshakeTraffic, transcript1);
-  auto t1ch = ks_->getSecret(HandshakeSecrets::ClientHandshakeTraffic, transcript1);
-  auto t2sh = cloned->getSecret(HandshakeSecrets::ServerHandshakeTraffic, transcript2);
-  auto t2ch = cloned->getSecret(HandshakeSecrets::ClientHandshakeTraffic, transcript2);
+  auto t1sh =
+      ks_->getSecret(HandshakeSecrets::ServerHandshakeTraffic, transcript1);
+  auto t1ch =
+      ks_->getSecret(HandshakeSecrets::ClientHandshakeTraffic, transcript1);
+  auto t2sh =
+      cloned->getSecret(HandshakeSecrets::ServerHandshakeTraffic, transcript2);
+  auto t2ch =
+      cloned->getSecret(HandshakeSecrets::ClientHandshakeTraffic, transcript2);
   EXPECT_EQ(t1sh, t2sh);
   EXPECT_EQ(t2ch, t2ch);
 }

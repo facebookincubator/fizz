@@ -8,9 +8,9 @@
 
 #pragma once
 
-#include <fizz/protocol/ech/Types.h>
-#include <fizz/protocol/ech/ECHExtensions.h>
 #include <fizz/crypto/exchange/KeyExchange.h>
+#include <fizz/protocol/ech/ECHExtensions.h>
+#include <fizz/protocol/ech/Types.h>
 
 namespace fizz {
 namespace ech {

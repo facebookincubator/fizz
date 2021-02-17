@@ -6,8 +6,8 @@
  *  LICENSE file in the root directory of this source tree.
  */
 
-#include <fizz/server/AeadCookieCipher.h>
 #include <fizz/record/Extensions.h>
+#include <fizz/server/AeadCookieCipher.h>
 
 namespace fizz {
 namespace server {

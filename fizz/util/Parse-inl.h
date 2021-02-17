@@ -65,9 +65,10 @@ inline NamedGroup parse(folly::StringPiece s) {
 template <>
 inline CertificateCompressionAlgorithm parse(folly::StringPiece s) {
   static const std::map<folly::StringPiece, CertificateCompressionAlgorithm>
-      stringToAlgos = {{"zlib", CertificateCompressionAlgorithm::zlib},
-                       {"brotli", CertificateCompressionAlgorithm::brotli},
-                       {"zstd", CertificateCompressionAlgorithm::zstd}};
+      stringToAlgos = {
+          {"zlib", CertificateCompressionAlgorithm::zlib},
+          {"brotli", CertificateCompressionAlgorithm::brotli},
+          {"zstd", CertificateCompressionAlgorithm::zstd}};
 
   auto location = stringToAlgos.find(s);
   if (location != stringToAlgos.end()) {

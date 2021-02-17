@@ -22,22 +22,24 @@ int fizzGenerateDelegatedCredentialCommand(
     const std::vector<std::string>& args);
 int fizzClientLoadGenCommand(const std::vector<std::string>& args);
 int fizzServerBenchmarkCommand(const std::vector<std::string>& args);
-const std::vector<std::string> utilityNames = {"client",
-                                               "s_client",
-                                               "server",
-                                               "s_server",
-                                               "gendc",
-                                               "client_loadgen",
-                                               "server_benchmark"};
+const std::vector<std::string> utilityNames = {
+    "client",
+    "s_client",
+    "server",
+    "s_server",
+    "gendc",
+    "client_loadgen",
+    "server_benchmark"};
 
 const std::map<std::string, std::function<int(const std::vector<std::string>&)>>
-    fizzUtilities = {{"client", &fizzClientCommand},
-                     {"s_client", &fizzClientCommand},
-                     {"server", &fizzServerCommand},
-                     {"s_server", &fizzServerCommand},
-                     {"gendc", &fizzGenerateDelegatedCredentialCommand},
-                     {"client_loadgen", &fizzClientLoadGenCommand},
-                     {"server_benchmark", &fizzServerBenchmarkCommand}};
+    fizzUtilities = {
+        {"client", &fizzClientCommand},
+        {"s_client", &fizzClientCommand},
+        {"server", &fizzServerCommand},
+        {"s_server", &fizzServerCommand},
+        {"gendc", &fizzGenerateDelegatedCredentialCommand},
+        {"client_loadgen", &fizzClientLoadGenCommand},
+        {"server_benchmark", &fizzServerBenchmarkCommand}};
 
 const std::map<std::string, std::string> utilityDescriptions = {
     {"client", "TLS 1.3 client"},

@@ -6,9 +6,9 @@
  *  LICENSE file in the root directory of this source tree.
  */
 
-#include <fizz/protocol/ech/test/TestUtil.h>
 #include <fizz/crypto/test/TestUtil.h>
 #include <fizz/protocol/ech/Encryption.h>
+#include <fizz/protocol/ech/test/TestUtil.h>
 
 namespace fizz {
 namespace ech {
@@ -26,7 +26,8 @@ std::vector<Extension> getExtensions(folly::StringPiece hex) {
 }
 
 ECHConfigContentDraft getECHConfigContent() {
-  ECHCipherSuite suite{hpke::KDFId::Sha256, hpke::AeadId::TLS_AES_128_GCM_SHA256};
+  ECHCipherSuite suite{
+      hpke::KDFId::Sha256, hpke::AeadId::TLS_AES_128_GCM_SHA256};
   ECHConfigContentDraft echConfigContent;
   echConfigContent.public_name = folly::IOBuf::copyBuffer("publicname");
   echConfigContent.public_key = folly::IOBuf::copyBuffer("public key");
@@ -51,14 +52,16 @@ ECHConfig getECHConfigV8() {
   config.version = ECHVersion::V8;
   auto testConfigContent = getECHConfigContent();
   testConfigContent.public_name = folly::IOBuf::copyBuffer("v8 publicname");
-  testConfigContent.public_key =
-      detail::encodeECPublicKey(::fizz::test::getPublicKey(::fizz::test::kP256PublicKey));
+  testConfigContent.public_key = detail::encodeECPublicKey(
+      ::fizz::test::getPublicKey(::fizz::test::kP256PublicKey));
   config.ech_config_content = encode(std::move(testConfigContent));
   config.length = config.ech_config_content->computeChainDataLength();
   return config;
 }
 
-EncryptedClientHello getECH(ClientHello chlo, std::unique_ptr<KeyExchange> kex) {
+EncryptedClientHello getECH(
+    ClientHello chlo,
+    std::unique_ptr<KeyExchange> kex) {
   auto echConfigContent = getECHConfigContent();
   auto cipherSuite = echConfigContent.cipher_suites[0];
   auto supportedECHConfig = SupportedECHConfig{getECHConfig(), cipherSuite};
@@ -71,7 +74,8 @@ EncryptedClientHello getECH(ClientHello chlo, std::unique_ptr<KeyExchange> kex) 
 ClientHello getClientHelloOuter() {
   // Create fake client hello outer
   ClientHello chloOuter;
-  chloOuter.legacy_session_id = folly::IOBuf::copyBuffer("test legacy session id");
+  chloOuter.legacy_session_id =
+      folly::IOBuf::copyBuffer("test legacy session id");
 
   // Set fake server name
   ServerNameList sni;

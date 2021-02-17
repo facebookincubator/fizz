@@ -76,11 +76,11 @@ class AsyncFizzBase : public folly::WriteChainAsyncTransportWrapper<
   };
 
   class EndOfTLSCallback {
-    public:
-      virtual ~EndOfTLSCallback() = default;
-      virtual void endOfTLS(
-          AsyncFizzBase* transport,
-          std::unique_ptr<folly::IOBuf> endOfData) = 0;
+   public:
+    virtual ~EndOfTLSCallback() = default;
+    virtual void endOfTLS(
+        AsyncFizzBase* transport,
+        std::unique_ptr<folly::IOBuf> endOfData) = 0;
   };
 
   struct TransportOptions {

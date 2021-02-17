@@ -6,8 +6,8 @@
  *  LICENSE file in the root directory of this source tree.
  */
 
-#include <fizz/tool/FizzCommandCommon.h>
 #include <fizz/protocol/ech/Types.h>
+#include <fizz/tool/FizzCommandCommon.h>
 #include <folly/FileUtil.h>
 #include <folly/String.h>
 
@@ -205,7 +205,7 @@ folly::Optional<std::vector<ech::ECHConfig>> parseECHConfigs(
     // Get ciphersuites.
     auto ciphersuites = std::vector<ech::ECHCipherSuite>();
     for (size_t suiteIndex = 0; suiteIndex < config["cipher_suites"].size();
-          ++suiteIndex) {
+         ++suiteIndex) {
       const auto& suite = config["cipher_suites"][suiteIndex];
 
       ech::ECHCipherSuite parsedSuite;
@@ -222,7 +222,8 @@ folly::Optional<std::vector<ech::ECHConfig>> parseECHConfigs(
     ech::ECHConfig parsedConfig;
     parsedConfig.version = echVersion;
     parsedConfig.ech_config_content = encode(std::move(configContent));
-    parsedConfig.length = parsedConfig.ech_config_content->computeChainDataLength();
+    parsedConfig.length =
+        parsedConfig.ech_config_content->computeChainDataLength();
     echConfigs.push_back(parsedConfig);
   }
   return std::move(echConfigs);
@@ -264,7 +265,6 @@ std::vector<ech::ECHConfig> getDefaultECHConfigs() {
 
   return configs;
 }
-
 
 } // namespace tool
 } // namespace fizz

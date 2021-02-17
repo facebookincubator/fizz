@@ -15,27 +15,39 @@ using namespace fizz::detail;
 namespace fizz {
 namespace hpke {
 
-Hkdf::Hkdf(std::unique_ptr<folly::IOBuf> prefix, std::unique_ptr<fizz::Hkdf> hkdf): prefix_(std::move(prefix)), hkdf_(std::move(hkdf)) {}
+Hkdf::Hkdf(
+    std::unique_ptr<folly::IOBuf> prefix,
+    std::unique_ptr<fizz::Hkdf> hkdf)
+    : prefix_(std::move(prefix)), hkdf_(std::move(hkdf)) {}
 
-std::vector<uint8_t>  Hkdf::labeledExtract(Buf salt, folly::ByteRange label, Buf ikm,
+std::vector<uint8_t> Hkdf::labeledExtract(
+    Buf salt,
+    folly::ByteRange label,
+    Buf ikm,
     std::unique_ptr<folly::IOBuf> suiteId) {
-  Buf labeledIkm = folly::IOBuf::create(prefix_->computeChainDataLength() + suiteId->computeChainDataLength()
-    + label.size() + ikm->computeChainDataLength());
+  Buf labeledIkm = folly::IOBuf::create(
+      prefix_->computeChainDataLength() + suiteId->computeChainDataLength() +
+      label.size() + ikm->computeChainDataLength());
   folly::io::Appender appender(labeledIkm.get(), 0);
 
   writeBufWithoutLength(prefix_, appender);
   writeBufWithoutLength(suiteId, appender);
-  writeBufWithoutLength(
-    folly::IOBuf::wrapBuffer(label), appender);
+  writeBufWithoutLength(folly::IOBuf::wrapBuffer(label), appender);
   writeBufWithoutLength(ikm, appender);
 
   return hkdf_->extract(salt->coalesce(), labeledIkm->coalesce());
 }
 
-std::unique_ptr<folly::IOBuf> Hkdf::labeledExpand(folly::ByteRange prk, folly::ByteRange label,
-  Buf info, size_t L, std::unique_ptr<folly::IOBuf> suiteId) {
-  Buf labeledInfo = folly::IOBuf::create(2 + prefix_->computeChainDataLength() + suiteId->computeChainDataLength()
-    + label.size() + info->computeChainDataLength());
+std::unique_ptr<folly::IOBuf> Hkdf::labeledExpand(
+    folly::ByteRange prk,
+    folly::ByteRange label,
+    Buf info,
+    size_t L,
+    std::unique_ptr<folly::IOBuf> suiteId) {
+  Buf labeledInfo = folly::IOBuf::create(
+      2 + prefix_->computeChainDataLength() +
+      suiteId->computeChainDataLength() + label.size() +
+      info->computeChainDataLength());
   folly::io::Appender appender(labeledInfo.get(), 0);
 
   if (L > (1 << 16) - 1) {
@@ -44,8 +56,7 @@ std::unique_ptr<folly::IOBuf> Hkdf::labeledExpand(folly::ByteRange prk, folly::B
   appender.writeBE<uint16_t>(L);
   writeBufWithoutLength(prefix_, appender);
   writeBufWithoutLength(suiteId, appender);
-  writeBufWithoutLength(
-    folly::IOBuf::wrapBuffer(label), appender);
+  writeBufWithoutLength(folly::IOBuf::wrapBuffer(label), appender);
   writeBufWithoutLength(info, appender);
 
   return hkdf_->expand(prk, *labeledInfo, L);

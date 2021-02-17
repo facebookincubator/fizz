@@ -71,8 +71,7 @@ const folly::ssl::EvpPkeyUniquePtr& OpenSSLECKeyExchange<T>::getPrivateKey()
 }
 
 template <class T>
-std::unique_ptr<KeyExchange> OpenSSLECKeyExchange<T>::clone()
-    const {
+std::unique_ptr<KeyExchange> OpenSSLECKeyExchange<T>::clone() const {
   if (!key_) {
     throw std::runtime_error("Key not initialized");
   }

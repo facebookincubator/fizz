@@ -6,8 +6,8 @@
  *  LICENSE file in the root directory of this source tree.
  */
 
-#include <fizz/record/EncryptedRecordLayer.h>
 #include <fizz/crypto/aead/IOBufUtil.h>
+#include <fizz/record/EncryptedRecordLayer.h>
 
 namespace fizz {
 
