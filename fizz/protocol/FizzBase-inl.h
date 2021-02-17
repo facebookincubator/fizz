@@ -80,6 +80,17 @@ void FizzBase<Derived, ActionMoveVisitor, StateMachine>::moveToErrorState(
 }
 
 template <typename Derived, typename ActionMoveVisitor, typename StateMachine>
+void FizzBase<Derived, ActionMoveVisitor, StateMachine>::pause() {
+  paused_ = true;
+}
+
+template <typename Derived, typename ActionMoveVisitor, typename StateMachine>
+void FizzBase<Derived, ActionMoveVisitor, StateMachine>::resume() {
+  paused_ = false;
+  processPendingEvents();
+}
+
+template <typename Derived, typename ActionMoveVisitor, typename StateMachine>
 bool FizzBase<Derived, ActionMoveVisitor, StateMachine>::inErrorState() const {
   return state_.state() == decltype(state_.state())::Error;
 }
@@ -135,7 +146,7 @@ void FizzBase<Derived, ActionMoveVisitor, StateMachine>::
     inProcessPendingEvents_ = false;
   };
 
-  while (!actionGuard_ && !inTerminalState()) {
+  while (!actionGuard_ && !inTerminalState() && !paused_) {
     folly::Optional<typename StateMachine::ProcessingActions> actions;
     actionGuard_ = folly::DelayedDestruction::DestructorGuard(owner_);
     if (!waitForData_) {

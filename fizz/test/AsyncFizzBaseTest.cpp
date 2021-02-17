@@ -85,6 +85,8 @@ class AsyncFizzBaseTest : public testing::Test, public AsyncFizzBase {
 
   MOCK_METHOD1(transportError, void(const folly::AsyncSocketException&));
   MOCK_METHOD0(transportDataAvailable, void());
+  MOCK_METHOD0(pauseEvents, void());
+  MOCK_METHOD0(resumeEvents, void());
 
   MOCK_CONST_METHOD0(getClientRandom, folly::Optional<Random>());
   MOCK_METHOD0(tlsShutdown, void());
@@ -612,9 +614,11 @@ TYPED_TEST(AsyncFizzBaseTest, TestAttachEventBase) {
   EXPECT_CALL(*this->socket_, setEventCallback(nullptr)).InSequence(s);
   EXPECT_CALL(*this->socket_, setReadCB(nullptr)).InSequence(s);
   EXPECT_CALL(*this->socket_, detachEventBase()).InSequence(s);
+  EXPECT_CALL(*this, pauseEvents()).InSequence(s);
   this->detachEventBase();
 
   EXPECT_CALL(*this->socket_, attachEventBase(&evb)).InSequence(s);
+  EXPECT_CALL(*this, resumeEvents()).InSequence(s);
   if (TypeParam::Options.registerEventCallback) {
     EXPECT_CALL(*this->socket_, setEventCallback(this->transportRecvCallback_))
         .InSequence(s);
@@ -635,11 +639,13 @@ TYPED_TEST(AsyncFizzBaseTest, TestAttachEventBaseWithReadCb) {
   EXPECT_CALL(*this->socket_, setEventCallback(nullptr)).InSequence(s);
   EXPECT_CALL(*this->socket_, setReadCB(nullptr)).InSequence(s);
   EXPECT_CALL(*this->socket_, detachEventBase()).InSequence(s);
+  EXPECT_CALL(*this, pauseEvents()).InSequence(s);
   this->detachEventBase();
 
   this->expectTransportReadCallback();
   this->setReadCB(&this->readCallback_);
   EXPECT_CALL(*this->socket_, attachEventBase(&evb)).InSequence(s);
+  EXPECT_CALL(*this, resumeEvents()).InSequence(s);
   if (TypeParam::Options.registerEventCallback) {
     EXPECT_CALL(*this->socket_, setEventCallback(this->transportRecvCallback_))
         .InSequence(s);

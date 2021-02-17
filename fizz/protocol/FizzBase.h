@@ -85,6 +85,17 @@ class FizzBase {
   void moveToErrorState(const folly::AsyncSocketException& ex);
 
   /**
+   * Pause the state machine from processing further events. Note that any event
+   * currently being processed will continue.
+   */
+  void pause();
+
+  /**
+   * Resume processing events.
+   */
+  void resume();
+
+  /**
    * Returns true if in error state where no further events will be processed.
    */
   bool inErrorState() const;
@@ -143,6 +154,7 @@ class FizzBase {
   folly::Optional<folly::DelayedDestruction::DestructorGuard> actionGuard_;
   bool inProcessPendingEvents_{false};
   bool externalError_{false};
+  bool paused_{false};
 };
 } // namespace fizz
 

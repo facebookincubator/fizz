@@ -460,6 +460,30 @@ TEST_F(FizzBaseTest, TestStopOnError) {
   EXPECT_TRUE(testFizz_->inErrorState());
 }
 
+TEST_F(FizzBaseTest, TestPause) {
+  EXPECT_CALL(*TestStateMachine::instance, processSocketData(_, _))
+      .InSequence(s_)
+      .WillOnce(InvokeWithoutArgs([]() {
+        Actions actions;
+        actions.push_back(A1());
+        return actions;
+      }));
+  EXPECT_CALL(testFizz_->visitor_, a1())
+      .InSequence(s_)
+      .WillOnce(Invoke([this]() {
+        testFizz_->appWrite(appWrite("write1"));
+        testFizz_->pause();
+        testFizz_->waitForData();
+      }));
+  testFizz_->newTransportData();
+
+  EXPECT_CALL(
+      *TestStateMachine::instance, processAppWrite_(_, WriteMatches("write1")))
+      .InSequence(s_)
+      .WillOnce(InvokeWithoutArgs([]() { return Actions{}; }));
+  testFizz_->resume();
+}
+
 TEST_F(FizzBaseTest, TestAsyncAction) {
   Promise<Actions> p;
   EXPECT_CALL(

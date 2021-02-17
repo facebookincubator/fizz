@@ -211,6 +211,16 @@ void AsyncFizzServerT<SM>::transportDataAvailable() {
 }
 
 template <typename SM>
+void AsyncFizzServerT<SM>::pauseEvents() {
+  fizzServer_.pause();
+}
+
+template <typename SM>
+void AsyncFizzServerT<SM>::resumeEvents() {
+  fizzServer_.resume();
+}
+
+template <typename SM>
 void AsyncFizzServerT<SM>::deliverAllErrors(
     const folly::AsyncSocketException& ex,
     bool closeTransport) {

@@ -176,6 +176,8 @@ class AsyncFizzBase : public folly::WriteChainAsyncTransportWrapper<
   void attachEventBase(folly::EventBase* eventBase) override {
     handshakeTimeout_.attachEventBase(eventBase);
     transport_->attachEventBase(eventBase);
+    resumeEvents();
+
     // we want to avoid setting a read cb on a bad transport (i.e. closed or
     // disconnected) unless we have a read callback we can pass the errors to.
     if (transport_->good() || readCallback_) {
@@ -187,6 +189,7 @@ class AsyncFizzBase : public folly::WriteChainAsyncTransportWrapper<
     transport_->setEventCallback(nullptr);
     transport_->setReadCB(nullptr);
     transport_->detachEventBase();
+    pauseEvents();
   }
   bool isDetachable() const override {
     return !handshakeTimeout_.isScheduled() && transport_->isDetachable();
@@ -263,6 +266,7 @@ class AsyncFizzBase : public folly::WriteChainAsyncTransportWrapper<
    * Alert the derived class that a transport error occured.
    */
   virtual void transportError(const folly::AsyncSocketException& ex) = 0;
+
   /**
    * Alert the derived class that additional data is available in
    * transportReadBuf_.
@@ -270,11 +274,17 @@ class AsyncFizzBase : public folly::WriteChainAsyncTransportWrapper<
   virtual void transportDataAvailable() = 0;
 
   /**
+   * Alert the derived class that new event processing should be paused/resumed.
+   */
+  virtual void pauseEvents() = 0;
+  virtual void resumeEvents() = 0;
+
+  /**
    * Allows the derived class to give a derived secret to the secret callback.
    */
   virtual void secretAvailable(const DerivedSecret& secret) noexcept;
 
-  /*
+  /**
    * Signal end of tls connection by a graceful shutdown.
    */
   virtual void endOfTLS(std::unique_ptr<folly::IOBuf> endOfData) noexcept;

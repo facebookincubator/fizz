@@ -157,6 +157,10 @@ class AsyncFizzClientT : public AsyncFizzBase,
 
   void transportDataAvailable() override;
 
+  void pauseEvents() override;
+
+  void resumeEvents() override;
+
  private:
   void deliverAllErrors(
       const folly::AsyncSocketException& ex,

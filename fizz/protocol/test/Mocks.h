@@ -327,6 +327,8 @@ class MockAsyncFizzBase : public AsyncFizzBase {
   MOCK_METHOD1(transportError, void(const folly::AsyncSocketException&));
 
   MOCK_METHOD0(transportDataAvailable, void());
+  MOCK_METHOD0(pauseEvents, void());
+  MOCK_METHOD0(resumeEvents, void());
 };
 
 } // namespace test
