@@ -110,7 +110,7 @@ class FizzServerAcceptor : AsyncServerSocket::AcceptCallback {
       folly::NetworkSocket fdNetworkSocket,
       const SocketAddress& clientAddr) noexcept override;
 
-  void acceptError(const std::exception& ex) noexcept override;
+  void acceptError(folly::exception_wrapper ex) noexcept override;
   void done();
   void setHttpEnabled(bool enabled) {
     http_ = enabled;
@@ -503,8 +503,8 @@ void FizzServerAcceptor::connectionAccepted(
   transport->accept(cb_.get());
 }
 
-void FizzServerAcceptor::acceptError(const std::exception& ex) noexcept {
-  LOG(ERROR) << "Failed to accept connection: " << ex.what();
+void FizzServerAcceptor::acceptError(folly::exception_wrapper ex) noexcept {
+  LOG(ERROR) << "Failed to accept connection: " << ex;
   if (!loop_) {
     evb_->terminateLoopSoon();
   }

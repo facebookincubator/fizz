@@ -53,8 +53,8 @@ class FizzTestServer : public folly::AsyncServerSocket::AcceptCallback {
     ctx_ = ctx;
   }
 
-  void acceptError(const std::exception& ex) noexcept override {
-    LOG(ERROR) << "Accept error: " << ex.what();
+  void acceptError(folly::exception_wrapper ex) noexcept override {
+    LOG(ERROR) << "Accept error: " << ex;
   }
 
   void connectionAccepted(

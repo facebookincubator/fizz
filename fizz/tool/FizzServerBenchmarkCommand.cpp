@@ -135,8 +135,8 @@ class FizzServerAcceptor : AsyncServerSocket::AcceptCallback {
     });
   }
 
-  void acceptError(const std::exception& ex) noexcept override {
-    LOG(ERROR) << "Failed to accept connection: " << ex.what();
+  void acceptError(folly::exception_wrapper ex) noexcept override {
+    LOG(ERROR) << "Failed to accept connection: " << ex;
   }
 
  private:
