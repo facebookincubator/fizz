@@ -249,16 +249,20 @@ int fizzClientLoadGenCommand(const std::vector<std::string>& args) {
          SignatureScheme::ecdsa_secp256r1_sha256_batch});
   }
 
-  // Initialize CA store and the verifier for server certificate verification
-  folly::ssl::X509StoreUniquePtr storePtr;
-  storePtr.reset(X509_STORE_new());
-  if (X509_STORE_load_locations(
-          storePtr.get(), config.caFile.c_str(), nullptr) == 0) {
-    VLOG(1) << "Failed to load CA certificates";
-    return 1;
+  std::shared_ptr<const CertificateVerifier> verifier;
+
+  if (!config.caFile.empty()) {
+    // Initialize CA store and the verifier for server certificate verification
+    folly::ssl::X509StoreUniquePtr storePtr;
+    storePtr.reset(X509_STORE_new());
+    if (X509_STORE_load_locations(
+            storePtr.get(), config.caFile.c_str(), nullptr) == 0) {
+      VLOG(1) << "Failed to load CA certificates";
+      return 1;
+    }
+    verifier = std::make_shared<const DefaultCertificateVerifier>(
+        VerificationContext::Client, std::move(storePtr));
   }
-  auto verifier = std::make_shared<const DefaultCertificateVerifier>(
-      VerificationContext::Client, std::move(storePtr));
 
   // Start creating clients and connecting
   std::vector<std::chrono::microseconds> stats;
