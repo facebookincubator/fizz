@@ -21,7 +21,8 @@ class EncryptedReadRecordLayer : public ReadRecordLayer {
  public:
   ~EncryptedReadRecordLayer() override = default;
 
-  explicit EncryptedReadRecordLayer(EncryptionLevel encryptionLevel);
+  explicit EncryptedReadRecordLayer(EncryptionLevel encryptionLevel)
+      : encryptionLevel_(encryptionLevel) {}
 
   folly::Optional<TLSMessage> read(folly::IOBufQueue& buf) override;
 
@@ -36,6 +37,10 @@ class EncryptedReadRecordLayer : public ReadRecordLayer {
 
   virtual void setSkipFailedDecryption(bool enabled) {
     skipFailedDecryption_ = enabled;
+  }
+
+  void setSequenceNumber(uint64_t seq) {
+    seqNum_ = seq;
   }
 
   void setProtocolVersion(ProtocolVersion version) {
@@ -54,18 +59,18 @@ class EncryptedReadRecordLayer : public ReadRecordLayer {
 
   EncryptionLevel encryptionLevel_;
   std::unique_ptr<Aead> aead_;
-  bool skipFailedDecryption_{false};
-
-  bool useAdditionalData_{true};
-
   mutable uint64_t seqNum_{0};
+
+  bool skipFailedDecryption_{false};
+  bool useAdditionalData_{true};
 };
 
 class EncryptedWriteRecordLayer : public WriteRecordLayer {
  public:
   ~EncryptedWriteRecordLayer() override = default;
 
-  explicit EncryptedWriteRecordLayer(EncryptionLevel encryptionLevel);
+  explicit EncryptedWriteRecordLayer(EncryptionLevel encryptionLevel)
+      : encryptionLevel_(encryptionLevel) {}
 
   TLSContent write(TLSMessage&& msg) const override;
 
@@ -92,17 +97,20 @@ class EncryptedWriteRecordLayer : public WriteRecordLayer {
     desiredMinRecord_ = size;
   }
 
+  void setSequenceNumber(uint64_t seq) {
+    seqNum_ = seq;
+  }
+
   EncryptionLevel getEncryptionLevel() const override;
 
  private:
   Buf getBufToEncrypt(folly::IOBufQueue& queue) const;
 
+  EncryptionLevel encryptionLevel_;
   std::unique_ptr<Aead> aead_;
+  mutable uint64_t seqNum_{0};
 
   uint16_t maxRecord_{kMaxPlaintextRecordSize};
   uint16_t desiredMinRecord_{kMinSuggestedRecordSize};
-
-  mutable uint64_t seqNum_{0};
-  EncryptionLevel encryptionLevel_;
 };
 } // namespace fizz

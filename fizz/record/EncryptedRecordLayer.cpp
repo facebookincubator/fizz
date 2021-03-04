@@ -19,10 +19,6 @@ static constexpr uint16_t kMaxEncryptedRecordSize = 0x4000 + 256; // 16k + 256
 static constexpr size_t kEncryptedHeaderSize =
     sizeof(ContentType) + sizeof(ProtocolVersion) + sizeof(uint16_t);
 
-EncryptedReadRecordLayer::EncryptedReadRecordLayer(
-    EncryptionLevel encryptionLevel)
-    : encryptionLevel_(encryptionLevel) {}
-
 folly::Optional<Buf> EncryptedReadRecordLayer::getDecryptedBuf(
     folly::IOBufQueue& buf) {
   while (true) {
@@ -161,10 +157,6 @@ folly::Optional<TLSMessage> EncryptedReadRecordLayer::read(
 EncryptionLevel EncryptedReadRecordLayer::getEncryptionLevel() const {
   return encryptionLevel_;
 }
-
-EncryptedWriteRecordLayer::EncryptedWriteRecordLayer(
-    EncryptionLevel encryptionLevel)
-    : encryptionLevel_(encryptionLevel) {}
 
 TLSContent EncryptedWriteRecordLayer::write(TLSMessage&& msg) const {
   folly::IOBufQueue queue;
