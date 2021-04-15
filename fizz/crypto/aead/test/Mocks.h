@@ -81,6 +81,8 @@ class MockAead : public Aead {
     return _tryDecrypt(ciphertext, associatedData, seqNum);
   }
 
+  MOCK_CONST_METHOD0(getKey, folly::Optional<TrafficKey>());
+
   void setDefaults() {
     ON_CALL(*this, _encrypt(_, _, _)).WillByDefault(InvokeWithoutArgs([]() {
       return folly::IOBuf::copyBuffer("ciphertext");

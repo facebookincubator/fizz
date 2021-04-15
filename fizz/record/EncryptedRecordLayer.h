@@ -54,6 +54,19 @@ class EncryptedReadRecordLayer : public ReadRecordLayer {
 
   EncryptionLevel getEncryptionLevel() const override;
 
+  RecordLayerState getRecordLayerState() const override {
+    auto key = [&]() -> folly::Optional<TrafficKey> {
+      if (!aead_) {
+        return folly::none;
+      }
+      return aead_->getKey();
+    }();
+
+    auto sequence = seqNum_;
+
+    return RecordLayerState{std::move(key), sequence};
+  }
+
  private:
   folly::Optional<Buf> getDecryptedBuf(folly::IOBufQueue& buf);
 
@@ -102,6 +115,19 @@ class EncryptedWriteRecordLayer : public WriteRecordLayer {
   }
 
   EncryptionLevel getEncryptionLevel() const override;
+
+  RecordLayerState getRecordLayerState() const override {
+    auto key = [&]() -> folly::Optional<TrafficKey> {
+      if (!aead_) {
+        return folly::none;
+      }
+      return aead_->getKey();
+    }();
+
+    auto sequence = seqNum_;
+
+    return RecordLayerState{std::move(key), sequence};
+  }
 
  private:
   Buf getBufToEncrypt(folly::IOBufQueue& queue) const;

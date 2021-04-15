@@ -55,6 +55,8 @@ TEST_F(RecordTest, TestNoData) {
     return none;
   }));
   EXPECT_FALSE(read_.readEvent(queue_).has_value());
+  EXPECT_FALSE(read_.getRecordLayerState().key.has_value());
+  EXPECT_FALSE(read_.getRecordLayerState().sequence.has_value());
 }
 
 TEST_F(RecordTest, TestReadAppData) {

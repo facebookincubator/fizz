@@ -8,6 +8,7 @@
 
 #pragma once
 
+#include <fizz/crypto/aead/Aead.h>
 #include <fizz/protocol/Params.h>
 #include <fizz/record/Types.h>
 #include <folly/Optional.h>
@@ -19,6 +20,16 @@ struct TLSContent {
   Buf data;
   ContentType contentType;
   EncryptionLevel encryptionLevel;
+};
+
+/**
+ * RecordLayerState contains the state of the record layer -- all data
+ * that is needed in order to decrypt/encrypt the _next_ record from the wire/
+ * from the application.
+ */
+struct RecordLayerState {
+  folly::Optional<TrafficKey> key;
+  folly::Optional<uint64_t> sequence;
 };
 
 class ReadRecordLayer {
@@ -48,6 +59,19 @@ class ReadRecordLayer {
    * can process.
    */
   virtual EncryptionLevel getEncryptionLevel() const = 0;
+
+  /**
+   * Returns a snapshot of the state of the record layer.
+   *
+   * `key`, if set, indicates the keying parameters for the AEAD associated
+   * with this ReadRecordLayer.
+   *
+   * `sequence`, if set, indicates the sequence number of the next expected
+   * record to be read.
+   */
+  virtual RecordLayerState getRecordLayerState() const {
+    return RecordLayerState{};
+  }
 
   static folly::Optional<Param> decodeHandshakeMessage(folly::IOBufQueue& buf);
 
@@ -91,6 +115,19 @@ class WriteRecordLayer {
    * layer writes at.
    */
   virtual EncryptionLevel getEncryptionLevel() const = 0;
+
+  /**
+   * Returns a snapshot of the state of the record layer.
+   *
+   * `key`, if set, indicates the keying parameters for the AEAD associated
+   * with this WriteRecordLayer.
+   *
+   * `sequence`, if set, indicates the sequence number of the next expected
+   * record to be written.
+   */
+  virtual RecordLayerState getRecordLayerState() const {
+    return RecordLayerState{};
+  }
 
  protected:
   mutable bool useAdditionalData_{true};

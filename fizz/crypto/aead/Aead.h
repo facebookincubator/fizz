@@ -16,6 +16,10 @@ namespace fizz {
 struct TrafficKey {
   std::unique_ptr<folly::IOBuf> key;
   std::unique_ptr<folly::IOBuf> iv;
+
+  TrafficKey clone() const {
+    return TrafficKey{key->clone(), iv->clone()};
+  }
 };
 
 /**
@@ -40,6 +44,12 @@ class Aead {
    * keyLength() and ivLength().
    */
   virtual void setKey(TrafficKey key) = 0;
+
+  /**
+   * Retrieves a shallow copy (IOBuf cloned) version of the TrafficKey
+   * corresponding to this AEAD, if set. Otherwise, returns none.
+   */
+  virtual folly::Optional<TrafficKey> getKey() const = 0;
 
   /**
    * Encrypts plaintext. Will throw on error.

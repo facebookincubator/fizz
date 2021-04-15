@@ -50,6 +50,7 @@ class OpenSSLEVPCipher : public Aead {
   OpenSSLEVPCipher& operator=(OpenSSLEVPCipher&& other) = default;
 
   void setKey(TrafficKey trafficKey) override;
+  folly::Optional<TrafficKey> getKey() const override;
 
   size_t keyLength() const override {
     return keyLength_;

@@ -397,5 +397,33 @@ TEST_F(EncryptedRecordTest, TestWriteMinSize) {
       }));
   write_.write(std::move(msg));
 }
+
+TEST_F(EncryptedRecordTest, TestRecordState) {
+  // Encrypted record layers keep track of sequence numbers
+  auto testImpl = [](auto&& rlayer, auto&& aead) {
+    auto state = rlayer.getRecordLayerState();
+    EXPECT_FALSE(state.key.has_value());
+    EXPECT_EQ(state.sequence.value(), 0);
+
+    TrafficKey key;
+    key.key = IOBuf::copyBuffer("key");
+    key.iv = IOBuf::copyBuffer("iv");
+
+    EXPECT_CALL(aead, getKey()).WillOnce(InvokeWithoutArgs([&] {
+      return key.clone();
+    }));
+    rlayer.setSequenceNumber(10);
+
+    state = rlayer.getRecordLayerState();
+    EXPECT_TRUE(state.key.has_value());
+    EXPECT_TRUE(
+        folly::IOBufEqualTo{}(state.key->key, IOBuf::copyBuffer("key")));
+    EXPECT_TRUE(folly::IOBufEqualTo{}(state.key->iv, IOBuf::copyBuffer("iv")));
+    EXPECT_EQ(state.sequence.value(), 10);
+  };
+
+  testImpl(read_, *readAead_);
+  testImpl(write_, *writeAead_);
+}
 } // namespace test
 } // namespace fizz

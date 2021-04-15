@@ -413,6 +413,13 @@ void OpenSSLEVPCipher::setKey(TrafficKey trafficKey) {
   }
 }
 
+folly::Optional<TrafficKey> OpenSSLEVPCipher::getKey() const {
+  if (!trafficKey_.key || !trafficKey_.iv) {
+    return folly::none;
+  }
+  return trafficKey_.clone();
+}
+
 std::unique_ptr<folly::IOBuf> OpenSSLEVPCipher::encrypt(
     std::unique_ptr<folly::IOBuf>&& plaintext,
     const folly::IOBuf* associatedData,
