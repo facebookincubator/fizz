@@ -15,8 +15,13 @@ using namespace folly;
 namespace fizz {
 namespace test {
 
+std::unique_ptr<folly::IOBuf> createBufExact(size_t len) {
+  return IOBuf::takeOwnership(malloc(len), len, (size_t)0);
+}
+
 std::unique_ptr<folly::IOBuf> defaultCreator(size_t len, size_t) {
-  return IOBuf::create(len);
+  // Manual allocation to control exact sizing
+  return createBufExact(len);
 }
 
 // Converts the hex encoded string to an IOBuf.
@@ -24,7 +29,14 @@ std::unique_ptr<folly::IOBuf>
 toIOBuf(std::string hexData, size_t headroom, size_t tailroom) {
   std::string out;
   CHECK(folly::unhexlify(hexData, out));
-  return folly::IOBuf::copyBuffer(out, headroom, tailroom);
+  // Manually allocate it to control exact sizing
+  size_t bufSize = out.size() + headroom + tailroom;
+  char* buf = static_cast<char*>(malloc(bufSize));
+  memcpy(buf + headroom, out.data(), out.size());
+  auto ret = folly::IOBuf::takeOwnership(buf, bufSize);
+  ret->trimStart(headroom);
+  ret->trimEnd(tailroom);
+  return ret;
 }
 
 std::unique_ptr<IOBuf>

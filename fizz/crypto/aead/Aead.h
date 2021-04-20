@@ -27,6 +27,23 @@ struct TrafficKey {
  */
 class Aead {
  public:
+  enum class BufferOption {
+    RespectSharedPolicy, // Assume shared = no in-place
+    AllowInPlace, // Assume in-place editing is safe
+    AllowFullModification, // Assume in-place editing and growing into
+                           // head/tailroom are safe.
+  };
+
+  enum class AllocationOption {
+    Allow, // Allow allocating new buffers
+    Deny, // Disallow allocating new buffers
+  };
+
+  struct AeadOptions {
+    BufferOption bufferOpt = BufferOption::RespectSharedPolicy;
+    AllocationOption allocOpt = AllocationOption::Allow;
+  };
+
   virtual ~Aead() = default;
 
   /**
@@ -53,15 +70,33 @@ class Aead {
 
   /**
    * Encrypts plaintext. Will throw on error.
+   *
+   * Uses BufferOption::RespectSharedPolicy and AllocationOption::Allow by
+   * default.
    */
+  std::unique_ptr<folly::IOBuf> encrypt(
+      std::unique_ptr<folly::IOBuf>&& plaintext,
+      const folly::IOBuf* associatedData,
+      uint64_t seqNum) const {
+    return encrypt(
+        std::forward<std::unique_ptr<folly::IOBuf>>(plaintext),
+        associatedData,
+        seqNum,
+        {BufferOption::RespectSharedPolicy, AllocationOption::Allow});
+  }
+
   virtual std::unique_ptr<folly::IOBuf> encrypt(
       std::unique_ptr<folly::IOBuf>&& plaintext,
       const folly::IOBuf* associatedData,
-      uint64_t seqNum) const = 0;
+      uint64_t seqNum,
+      AeadOptions options) const = 0;
 
   /**
    * Version of encrypt which is guaranteed to be inplace. Will throw an
    * exception if the inplace encryption cannot be done.
+   *
+   * Equivalent of calling encrypt() with BufferOption::AllowFullModification
+   * and AllocationOption::Deny.
    */
   virtual std::unique_ptr<folly::IOBuf> inplaceEncrypt(
       std::unique_ptr<folly::IOBuf>&& plaintext,
@@ -78,15 +113,31 @@ class Aead {
   /**
    * Decrypt ciphertext. Will throw if the ciphertext does not decrypt
    * successfully.
+   *
+   * Uses BufferOption::RespectSharedPolicy and AllocationOption::Allow by
+   * default.
    */
-  virtual std::unique_ptr<folly::IOBuf> decrypt(
+  std::unique_ptr<folly::IOBuf> decrypt(
       std::unique_ptr<folly::IOBuf>&& ciphertext,
       const folly::IOBuf* associatedData,
       uint64_t seqNum) const {
+    return decrypt(
+        std::forward<std::unique_ptr<folly::IOBuf>>(ciphertext),
+        associatedData,
+        seqNum,
+        {BufferOption::RespectSharedPolicy, AllocationOption::Allow});
+  }
+
+  virtual std::unique_ptr<folly::IOBuf> decrypt(
+      std::unique_ptr<folly::IOBuf>&& ciphertext,
+      const folly::IOBuf* associatedData,
+      uint64_t seqNum,
+      AeadOptions options) const {
     auto plaintext = tryDecrypt(
         std::forward<std::unique_ptr<folly::IOBuf>>(ciphertext),
         associatedData,
-        seqNum);
+        seqNum,
+        options);
     if (!plaintext) {
       throw std::runtime_error("decryption failed");
     }
@@ -96,11 +147,26 @@ class Aead {
   /**
    * Decrypt ciphertext. Will return none if the ciphertext does not decrypt
    * successfully. May still throw from errors unrelated to ciphertext.
+   *
+   * Uses BufferOption::RespectSharedPolicy and AllocationOption::Allow by
+   * default.
    */
+  folly::Optional<std::unique_ptr<folly::IOBuf>> tryDecrypt(
+      std::unique_ptr<folly::IOBuf>&& ciphertext,
+      const folly::IOBuf* associatedData,
+      uint64_t seqNum) const {
+    return tryDecrypt(
+        std::forward<std::unique_ptr<folly::IOBuf>>(ciphertext),
+        associatedData,
+        seqNum,
+        {BufferOption::RespectSharedPolicy, AllocationOption::Allow});
+  }
+
   virtual folly::Optional<std::unique_ptr<folly::IOBuf>> tryDecrypt(
       std::unique_ptr<folly::IOBuf>&& ciphertext,
       const folly::IOBuf* associatedData,
-      uint64_t seqNum) const = 0;
+      uint64_t seqNum,
+      AeadOptions options) const = 0;
 
   /**
    * Returns the number of bytes the aead will add to the plaintext (size of

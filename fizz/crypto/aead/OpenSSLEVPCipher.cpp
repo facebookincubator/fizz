@@ -196,21 +196,43 @@ std::unique_ptr<folly::IOBuf> evpEncrypt(
     bool useBlockOps,
     size_t headroom,
     EVP_CIPHER_CTX* encryptCtx,
-    bool forceInplace) {
+    Aead::AeadOptions options) {
   auto inputLength = plaintext->computeChainDataLength();
+  const auto& bufOption = options.bufferOpt;
+  const auto& allocOption = options.allocOpt;
   // Setup input and output buffers.
   std::unique_ptr<folly::IOBuf> output;
   folly::IOBuf* input;
 
-  if (!forceInplace && plaintext->isShared()) {
+  // Whether to allow modifying buffer contents directly
+  bool allowInplaceEdit = !plaintext->isShared() ||
+      bufOption != Aead::BufferOption::RespectSharedPolicy;
+
+  // Whether to allow growing tailRoom
+  bool allowGrowth =
+      (bufOption ==
+           Aead::BufferOption::AllowFullModification || // When explicitly
+                                                        // requested
+       !plaintext->isShared() || // When plaintext is unique
+       !allowInplaceEdit); // When not in-place (new buffer)
+
+  // Whether to allow memory allocations (throws if needs more memory)
+  bool allowAlloc = allocOption == Aead::AllocationOption::Allow;
+
+  if (!allowInplaceEdit && !allowAlloc) {
+    throw std::runtime_error(
+        "Cannot decrypt (must be in-place or allow allocation)");
+  }
+
+  if (allowInplaceEdit) {
+    output = std::move(plaintext);
+    input = output.get();
+  } else {
     // create enough to also fit the tag and headroom
     output = folly::IOBuf::create(headroom + inputLength + tagLen);
     output->advance(headroom);
     output->append(inputLength);
     input = plaintext.get();
-  } else {
-    output = std::move(plaintext);
-    input = output.get();
   }
 
   if (EVP_EncryptInit_ex(encryptCtx, nullptr, nullptr, nullptr, iv.data()) !=
@@ -243,9 +265,9 @@ std::unique_ptr<folly::IOBuf> evpEncrypt(
 
   // output is always something we can modify
   auto tailRoom = output->prev()->tailroom();
-  if (tailRoom < tagLen) {
-    if (forceInplace) {
-      throw std::runtime_error("Cannot encrypt inplace.");
+  if (tailRoom < tagLen || !allowGrowth) {
+    if (!allowAlloc) {
+      throw std::runtime_error("Cannot encrypt (insufficient space for tag)");
     }
     std::unique_ptr<folly::IOBuf> tag = folly::IOBuf::create(tagLen);
     tag->append(tagLen);
@@ -276,24 +298,18 @@ folly::Optional<std::unique_ptr<folly::IOBuf>> evpDecrypt(
     folly::ByteRange iv,
     folly::MutableByteRange tagOut,
     bool useBlockOps,
-    EVP_CIPHER_CTX* decryptCtx) {
-  auto tagLen = tagOut.size();
+    EVP_CIPHER_CTX* decryptCtx,
+    bool inPlace) {
   auto inputLength = ciphertext->computeChainDataLength();
-  if (inputLength < tagLen) {
-    return folly::none;
-  }
-  inputLength -= tagLen;
 
   folly::IOBuf* input;
   std::unique_ptr<folly::IOBuf> output;
-  trimBytes(*ciphertext, tagOut);
-  if (ciphertext->isShared()) {
-    // If in is shared, then we have to make a copy of it.
+  // If not in-place, allocate buffers. Otherwise in and out are same.
+  if (!inPlace) {
     output = folly::IOBuf::create(inputLength);
     output->append(inputLength);
     input = ciphertext.get();
   } else {
-    // If in is not shared we can do decryption in-place.
     output = std::move(ciphertext);
     input = output.get();
   }
@@ -423,7 +439,8 @@ folly::Optional<TrafficKey> OpenSSLEVPCipher::getKey() const {
 std::unique_ptr<folly::IOBuf> OpenSSLEVPCipher::encrypt(
     std::unique_ptr<folly::IOBuf>&& plaintext,
     const folly::IOBuf* associatedData,
-    uint64_t seqNum) const {
+    uint64_t seqNum,
+    Aead::AeadOptions options) const {
   auto iv = createIV(seqNum);
   return detail::evpEncrypt(
       std::move(plaintext),
@@ -433,7 +450,7 @@ std::unique_ptr<folly::IOBuf> OpenSSLEVPCipher::encrypt(
       operatesInBlocks_,
       headroom_,
       encryptCtx_.get(),
-      false /*forceInplace*/);
+      options);
 }
 
 std::unique_ptr<folly::IOBuf> OpenSSLEVPCipher::inplaceEncrypt(
@@ -449,24 +466,66 @@ std::unique_ptr<folly::IOBuf> OpenSSLEVPCipher::inplaceEncrypt(
       operatesInBlocks_,
       headroom_,
       encryptCtx_.get(),
-      true /*forceInplace*/);
+      {Aead::BufferOption::AllowFullModification,
+       Aead::AllocationOption::Deny});
 }
 
 folly::Optional<std::unique_ptr<folly::IOBuf>> OpenSSLEVPCipher::tryDecrypt(
     std::unique_ptr<folly::IOBuf>&& ciphertext,
     const folly::IOBuf* associatedData,
-    uint64_t seqNum) const {
+    uint64_t seqNum,
+    Aead::AeadOptions options) const {
+  // Check that there's enough data to decrypt
+  if (tagLength_ > ciphertext->computeChainDataLength()) {
+    return folly::none;
+  }
+
   auto iv = createIV(seqNum);
-  std::array<uint8_t, kMaxTagLength> tag;
-  // buffer to copy the tag into when we decrypt
-  folly::MutableByteRange tagOut{tag.data(), tagLength_};
-  return detail::evpDecrypt(
-      std::move(ciphertext),
-      associatedData,
-      folly::ByteRange(iv.data(), ivLength_),
-      tagOut,
-      operatesInBlocks_,
-      decryptCtx_.get());
+  auto inPlace =
+      (!ciphertext->isShared() ||
+       options.bufferOpt != Aead::BufferOption::RespectSharedPolicy);
+
+  if (!inPlace && options.allocOpt == Aead::AllocationOption::Deny) {
+    throw std::runtime_error("Unable to decrypt (no-alloc requires in-place)");
+  }
+
+  // Set up the tag buffer now
+  const auto& lastBuf = ciphertext->prev();
+  if (lastBuf->length() >= tagLength_) {
+    // We can directly carve out this buffer from the last IOBuf
+    auto tagBuf = lastBuf->cloneOne();
+    // Adjust buffer sizes
+    lastBuf->trimEnd(tagLength_);
+    tagBuf->trimStart(lastBuf->length());
+
+    folly::MutableByteRange tagOut{tagBuf->writableData(), tagLength_};
+    return detail::evpDecrypt(
+        std::move(ciphertext),
+        associatedData,
+        folly::ByteRange(iv.data(), ivLength_),
+        tagOut,
+        operatesInBlocks_,
+        decryptCtx_.get(),
+        inPlace);
+  } else {
+    // Tag is fragmented so we need to copy it out.
+    if (options.allocOpt == Aead::AllocationOption::Deny) {
+      throw std::runtime_error(
+          "Unable to decrypt (tag is fragmented and no allocation allowed)");
+    }
+    std::array<uint8_t, kMaxTagLength> tag;
+    // buffer to copy the tag into when we decrypt
+    folly::MutableByteRange tagOut{tag.data(), tagLength_};
+    trimBytes(*ciphertext, tagOut);
+    return detail::evpDecrypt(
+        std::move(ciphertext),
+        associatedData,
+        folly::ByteRange(iv.data(), ivLength_),
+        tagOut,
+        operatesInBlocks_,
+        decryptCtx_.get(),
+        inPlace);
+  }
 }
 
 size_t OpenSSLEVPCipher::getCipherOverhead() const {

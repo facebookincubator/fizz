@@ -29,17 +29,19 @@ class MockAead : public Aead {
     return _setKey(key);
   }
 
-  MOCK_CONST_METHOD3(
+  MOCK_CONST_METHOD4(
       _encrypt,
       std::unique_ptr<folly::IOBuf>(
           std::unique_ptr<folly::IOBuf>& plaintext,
           const folly::IOBuf* associatedData,
-          uint64_t seqNum));
+          uint64_t seqNum,
+          Aead::AeadOptions options));
   std::unique_ptr<folly::IOBuf> encrypt(
       std::unique_ptr<folly::IOBuf>&& plaintext,
       const folly::IOBuf* associatedData,
-      uint64_t seqNum) const override {
-    return _encrypt(plaintext, associatedData, seqNum);
+      uint64_t seqNum,
+      Aead::AeadOptions options) const override {
+    return _encrypt(plaintext, associatedData, seqNum, options);
   }
 
   MOCK_CONST_METHOD3(
@@ -55,44 +57,48 @@ class MockAead : public Aead {
     return _inplaceEncrypt(plaintext, associatedData, seqNum);
   }
 
-  MOCK_CONST_METHOD3(
+  MOCK_CONST_METHOD4(
       _decrypt,
       std::unique_ptr<folly::IOBuf>(
           std::unique_ptr<folly::IOBuf>& ciphertext,
           const folly::IOBuf* associatedData,
-          uint64_t seqNum));
+          uint64_t seqNum,
+          Aead::AeadOptions options));
   std::unique_ptr<folly::IOBuf> decrypt(
       std::unique_ptr<folly::IOBuf>&& ciphertext,
       const folly::IOBuf* associatedData,
-      uint64_t seqNum) const override {
-    return _decrypt(ciphertext, associatedData, seqNum);
+      uint64_t seqNum,
+      Aead::AeadOptions options) const override {
+    return _decrypt(ciphertext, associatedData, seqNum, options);
   }
 
-  MOCK_CONST_METHOD3(
+  MOCK_CONST_METHOD4(
       _tryDecrypt,
       folly::Optional<std::unique_ptr<folly::IOBuf>>(
           std::unique_ptr<folly::IOBuf>& ciphertext,
           const folly::IOBuf* associatedData,
-          uint64_t seqNum));
+          uint64_t seqNum,
+          Aead::AeadOptions options));
   folly::Optional<std::unique_ptr<folly::IOBuf>> tryDecrypt(
       std::unique_ptr<folly::IOBuf>&& ciphertext,
       const folly::IOBuf* associatedData,
-      uint64_t seqNum) const override {
-    return _tryDecrypt(ciphertext, associatedData, seqNum);
+      uint64_t seqNum,
+      Aead::AeadOptions options) const override {
+    return _tryDecrypt(ciphertext, associatedData, seqNum, options);
   }
 
   MOCK_CONST_METHOD0(getKey, folly::Optional<TrafficKey>());
 
   void setDefaults() {
-    ON_CALL(*this, _encrypt(_, _, _)).WillByDefault(InvokeWithoutArgs([]() {
+    ON_CALL(*this, _encrypt(_, _, _, _)).WillByDefault(InvokeWithoutArgs([]() {
       return folly::IOBuf::copyBuffer("ciphertext");
     }));
-    ON_CALL(*this, _decrypt(_, _, _)).WillByDefault(InvokeWithoutArgs([]() {
+    ON_CALL(*this, _decrypt(_, _, _, _)).WillByDefault(InvokeWithoutArgs([]() {
       return folly::IOBuf::copyBuffer("plaintext");
     }));
-    ON_CALL(*this, _tryDecrypt(_, _, _)).WillByDefault(InvokeWithoutArgs([]() {
-      return folly::IOBuf::copyBuffer("plaintext");
-    }));
+    ON_CALL(*this, _tryDecrypt(_, _, _, _))
+        .WillByDefault(InvokeWithoutArgs(
+            []() { return folly::IOBuf::copyBuffer("plaintext"); }));
   }
 };
 } // namespace test

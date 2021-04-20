@@ -44,7 +44,7 @@ class OpenSSLEVPCipher : public Aead {
   static constexpr size_t kMaxTagLength = 20;
 
   template <class EVPImpl>
-  static std::unique_ptr<OpenSSLEVPCipher> makeCipher();
+  static std::unique_ptr<Aead> makeCipher();
 
   OpenSSLEVPCipher(OpenSSLEVPCipher&& other) = default;
   OpenSSLEVPCipher& operator=(OpenSSLEVPCipher&& other) = default;
@@ -67,7 +67,8 @@ class OpenSSLEVPCipher : public Aead {
   std::unique_ptr<folly::IOBuf> encrypt(
       std::unique_ptr<folly::IOBuf>&& plaintext,
       const folly::IOBuf* associatedData,
-      uint64_t seqNum) const override;
+      uint64_t seqNum,
+      Aead::AeadOptions options) const override;
 
   // The same as encrypt(), except always do an inplace encrypt if possible,
   // even if the IOBuf is shared. If there is not enough room for the tag,
@@ -80,7 +81,8 @@ class OpenSSLEVPCipher : public Aead {
   folly::Optional<std::unique_ptr<folly::IOBuf>> tryDecrypt(
       std::unique_ptr<folly::IOBuf>&& ciphertext,
       const folly::IOBuf* associatedData,
-      uint64_t seqNum) const override;
+      uint64_t seqNum,
+      Aead::AeadOptions options) const override;
 
   size_t getCipherOverhead() const override;
 

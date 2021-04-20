@@ -101,8 +101,7 @@ folly::Optional<Buf> Aead128GCMTokenCipher::decrypt(Buf token) const {
   return folly::none;
 }
 
-std::unique_ptr<Aead128GCMTokenCipher::AeadType>
-Aead128GCMTokenCipher::createAead(
+std::unique_ptr<Aead> Aead128GCMTokenCipher::createAead(
     folly::ByteRange secret,
     folly::ByteRange salt) const {
   auto aead = AeadType::makeCipher<CipherType>();

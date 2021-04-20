@@ -117,7 +117,7 @@ void decryptGCMNoRecord(uint32_t n, size_t size) {
   std::vector<std::unique_ptr<folly::IOBuf>> contents;
   auto aad = folly::IOBuf::copyBuffer("aad");
   BENCHMARK_SUSPEND {
-    auto writeAead = OpenSSLEVPCipher::makeCipher<AESGCM128>();
+    std::unique_ptr<Aead> writeAead = OpenSSLEVPCipher::makeCipher<AESGCM128>();
     readAead = OpenSSLEVPCipher::makeCipher<AESGCM128>();
     writeAead->setKey(getKey());
     readAead->setKey(getKey());

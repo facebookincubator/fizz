@@ -14,7 +14,8 @@ folly::Optional<std::unique_ptr<folly::IOBuf>> evpDecrypt(
     folly::ByteRange iv,
     folly::MutableByteRange tag,
     bool useBlockOps,
-    EVP_CIPHER_CTX* decryptCtx);
+    EVP_CIPHER_CTX* decryptCtx,
+    Aead::AeadOptions options);
 
 std::unique_ptr<folly::IOBuf> evpEncrypt(
     std::unique_ptr<folly::IOBuf>&& plaintext,
@@ -24,15 +25,15 @@ std::unique_ptr<folly::IOBuf> evpEncrypt(
     bool useBlockOps,
     size_t headroom,
     EVP_CIPHER_CTX* encryptCtx,
-    bool forceInplace);
+    bool inPlace);
 } // namespace detail
 
 template <typename EVPImpl>
-std::unique_ptr<OpenSSLEVPCipher> OpenSSLEVPCipher::makeCipher() {
+std::unique_ptr<Aead> OpenSSLEVPCipher::makeCipher() {
   static_assert(EVPImpl::kIVLength >= sizeof(uint64_t), "iv too small");
   static_assert(EVPImpl::kIVLength < kMaxIVLength, "iv too large");
   static_assert(EVPImpl::kTagLength < kMaxTagLength, "tag too large");
-  return std::unique_ptr<OpenSSLEVPCipher>(new OpenSSLEVPCipher(
+  return std::unique_ptr<Aead>(new OpenSSLEVPCipher(
       EVPImpl::kKeyLength,
       EVPImpl::kIVLength,
       EVPImpl::kTagLength,

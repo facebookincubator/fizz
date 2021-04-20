@@ -20,6 +20,8 @@
 #include <folly/ExceptionWrapper.h>
 #include <folly/String.h>
 
+#include <list>
+
 using namespace folly;
 
 namespace fizz {
@@ -50,13 +52,15 @@ std::unique_ptr<Aead> getTestCipher(const CipherParams& params) {
   return cipher;
 }
 
-std::unique_ptr<IOBuf> copyBuffer(const folly::IOBuf& buf) {
-  std::unique_ptr<IOBuf> out;
-  for (auto r : buf) {
-    if (out) {
-      out->prependChain(IOBuf::copyBuffer(r));
-    } else {
-      out = IOBuf::copyBuffer(r);
+std::list<Aead::AeadOptions> getOptionPairs() {
+  std::list<Aead::AeadOptions> out;
+  for (auto aOpt :
+       {Aead::AllocationOption::Allow, Aead::AllocationOption::Deny}) {
+    for (auto bOpt :
+         {Aead::BufferOption::RespectSharedPolicy,
+          Aead::BufferOption::AllowInPlace,
+          Aead::BufferOption::AllowFullModification}) {
+      out.push_back({bOpt, aOpt});
     }
   }
   return out;
@@ -65,40 +69,36 @@ std::unique_ptr<IOBuf> copyBuffer(const folly::IOBuf& buf) {
 std::unique_ptr<folly::IOBuf> callEncrypt(
     std::unique_ptr<Aead>& cipher,
     const CipherParams& params,
-    std::unique_ptr<IOBuf> plaintext = nullptr,
+    std::unique_ptr<IOBuf> plaintext,
+    Aead::BufferOption buffOption = Aead::BufferOption::RespectSharedPolicy,
+    Aead::AllocationOption allocOption = Aead::AllocationOption::Allow,
     std::unique_ptr<IOBuf> aad = nullptr) {
-  if (!plaintext) {
-    plaintext = toIOBuf(params.plaintext);
-  }
-
   if (!aad && !params.aad.empty()) {
     aad = toIOBuf(params.aad);
   }
-  auto ptCopy = copyBuffer(*plaintext);
-  // Make two versions, one for each encrypt API.
-  auto ptInplace = copyBuffer(*plaintext);
-  auto ptInplaceShared = ptInplace->cloneAsValue();
-  ptInplace->prependChain(folly::IOBuf::create(cipher->getCipherOverhead()));
-  EXPECT_TRUE(ptInplace->isShared());
-  auto inplaceData = ptInplace->data();
-  auto out = cipher->encrypt(std::move(plaintext), aad.get(), params.seqNum);
-  auto inplaceOut =
-      cipher->inplaceEncrypt(std::move(ptInplace), aad.get(), params.seqNum);
-  EXPECT_EQ(inplaceOut->data(), inplaceData);
-  EXPECT_TRUE(IOBufEqualTo()(out, inplaceOut));
+
+  auto origLength = plaintext->computeChainDataLength();
+
+  auto out = cipher->encrypt(
+      std::move(plaintext),
+      aad.get(),
+      params.seqNum,
+      {buffOption, allocOption});
   bool valid = IOBufEqualTo()(toIOBuf(params.ciphertext), out);
 
   EXPECT_EQ(valid, params.valid);
   EXPECT_EQ(
-      out->computeChainDataLength(),
-      ptCopy->computeChainDataLength() + cipher->getCipherOverhead());
+      out->computeChainDataLength(), origLength + cipher->getCipherOverhead());
   return out;
 }
 
-void callDecrypt(
+std::unique_ptr<IOBuf> callDecrypt(
     std::unique_ptr<Aead>& cipher,
     const CipherParams& params,
     std::unique_ptr<IOBuf> ciphertext = nullptr,
+    Aead::BufferOption buffOption = Aead::BufferOption::RespectSharedPolicy,
+    Aead::AllocationOption allocOption = Aead::AllocationOption::Allow,
+    bool throwExceptions = false,
     std::unique_ptr<IOBuf> aad = nullptr) {
   if (!ciphertext) {
     ciphertext = toIOBuf(params.ciphertext);
@@ -106,178 +106,639 @@ void callDecrypt(
   if (!aad && !params.aad.empty()) {
     aad = toIOBuf(params.aad);
   }
-  auto ctCopy = copyBuffer(*ciphertext);
   try {
-    auto out = cipher->decrypt(std::move(ciphertext), aad.get(), params.seqNum);
+    auto origLength = ciphertext->computeChainDataLength();
+    auto out = cipher->decrypt(
+        std::move(ciphertext),
+        aad.get(),
+        params.seqNum,
+        {buffOption, allocOption});
     EXPECT_TRUE(params.valid);
     EXPECT_TRUE(IOBufEqualTo()(toIOBuf(params.plaintext), out));
-
     EXPECT_EQ(
         out->computeChainDataLength(),
-        ctCopy->computeChainDataLength() - cipher->getCipherOverhead());
+        origLength - cipher->getCipherOverhead());
+    return out;
   } catch (const std::runtime_error&) {
-    EXPECT_FALSE(params.valid);
+    if (throwExceptions) {
+      // Indicates test case wants to receive any exceptions thrown
+      throw;
+    } else {
+      EXPECT_FALSE(params.valid);
+    }
+    return nullptr;
   }
 }
 
 TEST_P(OpenSSLEVPCipherTest, TestEncrypt) {
-  auto cipher = getTestCipher(GetParam());
-  auto out = callEncrypt(cipher, GetParam());
-  EXPECT_EQ(out->headroom(), 0);
+  for (auto opts : getOptionPairs()) {
+    auto cipher = getTestCipher(GetParam());
+    auto plaintext = toIOBuf(GetParam().plaintext);
+    if (opts.allocOpt == Aead::AllocationOption::Deny) {
+      EXPECT_THROW(
+          callEncrypt(
+              cipher,
+              GetParam(),
+              std::move(plaintext),
+              opts.bufferOpt,
+              opts.allocOpt),
+          std::runtime_error);
+    } else {
+      // Buffer isn't shared, so all buffer option cases should be equal
+      auto out = callEncrypt(
+          cipher,
+          GetParam(),
+          std::move(plaintext),
+          opts.bufferOpt,
+          opts.allocOpt);
+      EXPECT_EQ(out->headroom(), 0);
+    }
+  }
 }
 
 TEST_P(OpenSSLEVPCipherTest, TestEncryptWithTagRoom) {
-  auto cipher = getTestCipher(GetParam());
-  auto input = toIOBuf(GetParam().plaintext, 0, cipher->getCipherOverhead());
-  auto out = callEncrypt(cipher, GetParam(), std::move(input));
-  EXPECT_FALSE(out->isChained());
+  for (auto opts : getOptionPairs()) {
+    // Behavior should be identical for all, as buffer is unshared with enough
+    // room
+    auto cipher = getTestCipher(GetParam());
+    auto input = toIOBuf(GetParam().plaintext, 0, cipher->getCipherOverhead());
+    auto out = callEncrypt(
+        cipher, GetParam(), std::move(input), opts.bufferOpt, opts.allocOpt);
+    EXPECT_FALSE(out->isChained());
+  }
 }
 
 TEST_P(OpenSSLEVPCipherTest, TestEncryptReusedCipher) {
-  auto cipher = getTestCipher(GetParam());
-  auto params = GetParam();
-  callEncrypt(cipher, params);
-  callEncrypt(cipher, GetParam());
+  for (auto opts : getOptionPairs()) {
+    auto cipher = getTestCipher(GetParam());
+    auto params = GetParam();
+    if (opts.allocOpt == Aead::AllocationOption::Deny) {
+      // Again, no tag room, so we expect these to throw
+      EXPECT_THROW(
+          callEncrypt(
+              cipher,
+              params,
+              toIOBuf(params.plaintext),
+              opts.bufferOpt,
+              opts.allocOpt),
+          std::runtime_error);
+      EXPECT_THROW(
+          callEncrypt(
+              cipher,
+              GetParam(),
+              toIOBuf(params.plaintext),
+              opts.bufferOpt,
+              opts.allocOpt),
+          std::runtime_error);
+    } else {
+      callEncrypt(
+          cipher,
+          params,
+          toIOBuf(params.plaintext),
+          opts.bufferOpt,
+          opts.allocOpt);
+      callEncrypt(
+          cipher,
+          GetParam(),
+          toIOBuf(params.plaintext),
+          opts.bufferOpt,
+          opts.allocOpt);
+    }
+  }
+}
+
+TEST_P(OpenSSLEVPCipherTest, TestEncryptReusedCipherWithTagRoom) {
+  for (auto opts : getOptionPairs()) {
+    auto cipher = getTestCipher(GetParam());
+    auto params = GetParam();
+    callEncrypt(
+        cipher,
+        params,
+        toIOBuf(params.plaintext, 0, cipher->getCipherOverhead()),
+        opts.bufferOpt,
+        opts.allocOpt);
+    callEncrypt(
+        cipher,
+        GetParam(),
+        toIOBuf(params.plaintext, 0, cipher->getCipherOverhead()),
+        opts.bufferOpt,
+        opts.allocOpt);
+  }
 }
 
 TEST_P(OpenSSLEVPCipherTest, TestEncryptChunkedInput) {
-  auto cipher = getTestCipher(GetParam());
-  auto input = toIOBuf(GetParam().plaintext);
-  auto chunkedInput = chunkIOBuf(std::move(input), 3);
-  callEncrypt(cipher, GetParam(), std::move(chunkedInput));
+  for (auto opts : getOptionPairs()) {
+    auto cipher = getTestCipher(GetParam());
+    auto input = toIOBuf(GetParam().plaintext);
+    auto chunkedInput = chunkIOBuf(std::move(input), 3);
+    if (opts.allocOpt == Aead::AllocationOption::Deny) {
+      // No tag room
+      EXPECT_THROW(
+          callEncrypt(
+              cipher,
+              GetParam(),
+              std::move(chunkedInput),
+              opts.bufferOpt,
+              opts.allocOpt),
+          std::runtime_error);
+    } else {
+      callEncrypt(
+          cipher,
+          GetParam(),
+          std::move(chunkedInput),
+          opts.bufferOpt,
+          opts.allocOpt);
+    }
+  }
 }
 
 TEST_P(OpenSSLEVPCipherTest, TestEncryptChunkedInputWithEmpty) {
-  auto cipher = getTestCipher(GetParam());
-  auto input = toIOBuf(GetParam().plaintext);
-  auto chunkedInput = chunkIOBuf(std::move(input), 3);
-  // add a zero length for the second node
-  chunkedInput->appendChain(IOBuf::create(0));
-  EXPECT_EQ(4, chunkedInput->countChainElements());
-  callEncrypt(cipher, GetParam(), std::move(chunkedInput));
+  for (auto opts : getOptionPairs()) {
+    auto cipher = getTestCipher(GetParam());
+    auto input = toIOBuf(GetParam().plaintext);
+    auto chunkedInput = chunkIOBuf(std::move(input), 3);
+    // add a zero length for the second node
+    chunkedInput->appendChain(IOBuf::create(0));
+    EXPECT_EQ(4, chunkedInput->countChainElements());
+    if (opts.allocOpt == Aead::AllocationOption::Deny) {
+      // no tag room
+      EXPECT_THROW(
+          callEncrypt(
+              cipher,
+              GetParam(),
+              std::move(chunkedInput),
+              opts.bufferOpt,
+              opts.allocOpt),
+          std::runtime_error);
+    } else {
+      callEncrypt(
+          cipher,
+          GetParam(),
+          std::move(chunkedInput),
+          opts.bufferOpt,
+          opts.allocOpt);
+    }
+  }
 }
 
 TEST_P(OpenSSLEVPCipherTest, TestEncryptChunkedInputWithTagRoomHead) {
-  auto cipher = getTestCipher(GetParam());
-  auto input = toIOBuf(GetParam().plaintext);
-  auto overhead = cipher->getCipherOverhead();
-  auto creator = [overhead](size_t len, size_t num) {
-    if (num == 0) {
-      // create a buffer w/ room for the tag
-      auto result = IOBuf::create(len + overhead);
-      result->reserve(0, overhead);
-      return result;
+  for (auto opts : getOptionPairs()) {
+    auto cipher = getTestCipher(GetParam());
+    auto input = toIOBuf(GetParam().plaintext);
+    auto overhead = cipher->getCipherOverhead();
+    auto creator = [overhead](size_t len, size_t num) {
+      if (num == 0) {
+        // create a buffer w/ room for the tag
+        auto result = createBufExact(len + overhead);
+        result->reserve(0, overhead);
+        return result;
+      }
+      return createBufExact(len);
+    };
+    auto chunkedInput = chunkIOBuf(std::move(input), 3, creator);
+    // even though the head element has tailroom, we don't use it since it's
+    // the last element that needs to have it for copying tag in directly
+    if (opts.allocOpt == Aead::AllocationOption::Deny) {
+      // Since we can't allocate room for the tag where we need it, expect to
+      // throw
+      EXPECT_THROW(
+          callEncrypt(
+              cipher,
+              GetParam(),
+              std::move(chunkedInput),
+              opts.bufferOpt,
+              opts.allocOpt),
+          std::runtime_error);
+    } else {
+      auto out = callEncrypt(
+          cipher,
+          GetParam(),
+          std::move(chunkedInput),
+          opts.bufferOpt,
+          opts.allocOpt);
+      // We expect the first buffer to have the tailroom unused
+      EXPECT_GE(out->tailroom(), overhead);
     }
-    return IOBuf::create(len);
-  };
-  auto chunkedInput = chunkIOBuf(std::move(input), 3, creator);
-  auto out = callEncrypt(cipher, GetParam(), std::move(chunkedInput));
-  // even though the head element has tailroom, we don't use it since it's
-  // the last element that needs to have it for copying tag in directly
-  EXPECT_GE(out->tailroom(), overhead);
+  }
 }
 
 TEST_P(OpenSSLEVPCipherTest, TestEncryptChunkedInputWithTagRoomLast) {
-  auto cipher = getTestCipher(GetParam());
-  auto input = toIOBuf(GetParam().plaintext);
-  auto overhead = cipher->getCipherOverhead();
-  size_t chunks = 3;
-  auto creator = [=](size_t len, size_t num) {
-    if (num == chunks - 1) {
-      // create a buffer w/ room for the tag
-      auto result = IOBuf::create(len + overhead);
-      result->reserve(0, overhead);
-      return result;
-    }
-    return IOBuf::create(len);
-  };
-  auto chunkedInput = chunkIOBuf(std::move(input), chunks, creator);
-  auto lastTailRoom = chunkedInput->prev()->tailroom();
-  auto numElements = chunkedInput->countChainElements();
-  auto out = callEncrypt(cipher, GetParam(), std::move(chunkedInput));
-  // we expect the last element in the chain to have tailroom - overhead
-  // left
-  EXPECT_EQ(out->prev()->tailroom(), lastTailRoom - overhead);
-  EXPECT_EQ(out->countChainElements(), numElements);
+  for (auto opts : getOptionPairs()) {
+    auto cipher = getTestCipher(GetParam());
+    auto input = toIOBuf(GetParam().plaintext);
+    auto overhead = cipher->getCipherOverhead();
+    size_t chunks = 3;
+    auto creator = [=](size_t len, size_t num) {
+      if (num == chunks - 1) {
+        // create a buffer w/ room for the tag
+        auto result = createBufExact(len + overhead);
+        result->reserve(0, overhead);
+        return result;
+      }
+      return createBufExact(len);
+    };
+    auto chunkedInput = chunkIOBuf(std::move(input), chunks, creator);
+    auto lastTailRoom = chunkedInput->prev()->tailroom();
+    auto numElements = chunkedInput->countChainElements();
+    auto out = callEncrypt(
+        cipher,
+        GetParam(),
+        std::move(chunkedInput),
+        opts.bufferOpt,
+        opts.allocOpt);
+    // we expect the last element in the chain to have tailroom - overhead
+    // left
+    EXPECT_EQ(out->prev()->tailroom(), lastTailRoom - overhead);
+    EXPECT_EQ(out->countChainElements(), numElements);
+  }
 }
 
 TEST_P(OpenSSLEVPCipherTest, TestEncryptChunkedSharedInput) {
-  auto cipher = getTestCipher(GetParam());
-  auto input = toIOBuf(GetParam().plaintext);
-  auto chunkedInput = chunkIOBuf(std::move(input), 3);
-  auto out = callEncrypt(cipher, GetParam(), chunkedInput->clone());
-  // we expect headroom of record size and a single buffer in the
-  // the chain
-  EXPECT_EQ(out->headroom(), kHeadroom);
-  EXPECT_FALSE(out->isChained());
+  for (auto opts : getOptionPairs()) {
+    auto cipher = getTestCipher(GetParam());
+    auto input = toIOBuf(GetParam().plaintext);
+    auto chunkedInput = chunkIOBuf(std::move(input), 3);
+    if (opts.allocOpt == Aead::AllocationOption::Deny) {
+      // They'll all fail for lack of tag room
+      EXPECT_THROW(
+          callEncrypt(
+              cipher,
+              GetParam(),
+              chunkedInput->clone(),
+              opts.bufferOpt,
+              opts.allocOpt),
+          std::runtime_error);
+    } else {
+      auto originalHeadroom = chunkedInput->headroom();
+      auto out = callEncrypt(
+          cipher,
+          GetParam(),
+          chunkedInput->clone(),
+          opts.bufferOpt,
+          opts.allocOpt);
+      if (opts.bufferOpt == Aead::BufferOption::RespectSharedPolicy) {
+        // we expect headroom of record size and a single buffer in the
+        // the chain. as it should be a new buffer, it should be unshared.
+        EXPECT_EQ(out->headroom(), kHeadroom);
+        EXPECT_FALSE(out->isChained());
+        EXPECT_FALSE(out->isShared());
+      } else {
+        // We explicitly supported in-place edits. Since there isn't tailroom,
+        // we expect identical behavior (new tag buffer)
+        EXPECT_EQ(out->headroom(), originalHeadroom);
+        EXPECT_TRUE(out->isChained());
+        EXPECT_TRUE(out->isShared());
+        EXPECT_EQ(
+            out->countChainElements(), chunkedInput->countChainElements() + 1);
+      }
+    }
+  }
+}
+
+TEST_P(OpenSSLEVPCipherTest, TestEncryptChunkedSharedInputWithTagRoom) {
+  for (auto opts : getOptionPairs()) {
+    auto cipher = getTestCipher(GetParam());
+    auto input = toIOBuf(GetParam().plaintext);
+    auto overhead = cipher->getCipherOverhead();
+    size_t chunks = 3;
+    auto creator = [=](size_t len, size_t num) {
+      if (num == chunks - 1) {
+        // create a buffer w/ room for the tag
+        auto result = createBufExact(len + overhead);
+        result->reserve(0, overhead);
+        return result;
+      }
+      return createBufExact(len);
+    };
+    auto chunkedInput = chunkIOBuf(std::move(input), chunks, creator);
+    if (opts.allocOpt == Aead::AllocationOption::Deny) {
+      if (opts.bufferOpt != Aead::BufferOption::AllowFullModification) {
+        // When denying allocation, edits must allow for growth
+        EXPECT_THROW(
+            callEncrypt(
+                cipher,
+                GetParam(),
+                chunkedInput->clone(),
+                opts.bufferOpt,
+                opts.allocOpt),
+            std::runtime_error);
+      } else {
+        auto originalHeadroom = chunkedInput->headroom();
+        auto out = callEncrypt(
+            cipher,
+            GetParam(),
+            chunkedInput->clone(),
+            opts.bufferOpt,
+            opts.allocOpt);
+        // We expect that it edited in-place and grew the last buffer.
+        EXPECT_EQ(out->headroom(), originalHeadroom);
+        EXPECT_TRUE(out->isChained());
+        EXPECT_TRUE(out->isShared());
+        EXPECT_EQ(
+            out->countChainElements(), chunkedInput->countChainElements());
+        EXPECT_EQ(
+            out->prev()->length(), chunkedInput->prev()->length() + overhead);
+      }
+    } else {
+      auto originalHeadroom = chunkedInput->headroom();
+      auto out = callEncrypt(
+          cipher,
+          GetParam(),
+          chunkedInput->clone(),
+          opts.bufferOpt,
+          opts.allocOpt);
+      if (opts.bufferOpt == Aead::BufferOption::RespectSharedPolicy) {
+        // we expect headroom of record size and a single buffer in the
+        // the chain. as it should be a new buffer, it should be unshared.
+        EXPECT_EQ(out->headroom(), kHeadroom);
+        EXPECT_FALSE(out->isChained());
+        EXPECT_FALSE(out->isShared());
+      } else if (opts.bufferOpt == Aead::BufferOption::AllowInPlace) {
+        // We explicitly supported in-place edits, but not growth.
+        // There should be a new buffer with the tag.
+        EXPECT_EQ(out->headroom(), originalHeadroom);
+        EXPECT_TRUE(out->isChained());
+        EXPECT_TRUE(out->isShared());
+        EXPECT_EQ(
+            out->countChainElements(), chunkedInput->countChainElements() + 1);
+        EXPECT_EQ(out->prev()->length(), overhead);
+      } else {
+        // Should be able to do it entirely in-place, growing the last buffer.
+        EXPECT_EQ(out->headroom(), originalHeadroom);
+        EXPECT_TRUE(out->isChained());
+        EXPECT_TRUE(out->isShared());
+        EXPECT_EQ(
+            out->countChainElements(), chunkedInput->countChainElements());
+        EXPECT_EQ(
+            out->prev()->length(), chunkedInput->prev()->length() + overhead);
+      }
+    }
+  }
 }
 
 TEST_P(OpenSSLEVPCipherTest, TestEncryptChunkedAad) {
-  auto cipher = getTestCipher(GetParam());
-  auto aad = toIOBuf(GetParam().aad);
-  auto chunkedAad = chunkIOBuf(std::move(aad), 3);
-  callEncrypt(cipher, GetParam(), nullptr, std::move(chunkedAad));
+  for (auto opts : getOptionPairs()) {
+    auto cipher = getTestCipher(GetParam());
+    auto aad = toIOBuf(GetParam().aad);
+    auto chunkedAad = chunkIOBuf(std::move(aad), 3);
+    if (opts.allocOpt == Aead::AllocationOption::Deny) {
+      // No tag room
+      EXPECT_THROW(
+          callEncrypt(
+              cipher,
+              GetParam(),
+              toIOBuf(GetParam().plaintext),
+              opts.bufferOpt,
+              opts.allocOpt,
+              std::move(chunkedAad)),
+          std::runtime_error);
+    } else {
+      callEncrypt(
+          cipher,
+          GetParam(),
+          toIOBuf(GetParam().plaintext),
+          opts.bufferOpt,
+          opts.allocOpt,
+          std::move(chunkedAad));
+    }
+  }
+}
+
+TEST_P(OpenSSLEVPCipherTest, TestEncryptChunkedAadWithTagRoom) {
+  for (auto opts : getOptionPairs()) {
+    // Unique input with room for growth, should always succeed.
+    auto cipher = getTestCipher(GetParam());
+    auto aad = toIOBuf(GetParam().aad);
+    auto chunkedAad = chunkIOBuf(std::move(aad), 3);
+    callEncrypt(
+        cipher,
+        GetParam(),
+        toIOBuf(GetParam().plaintext, 0, cipher->getCipherOverhead()),
+        opts.bufferOpt,
+        opts.allocOpt,
+        std::move(chunkedAad));
+  }
 }
 
 TEST_P(OpenSSLEVPCipherTest, TestDecrypt) {
-  auto cipher = getTestCipher(GetParam());
-  callDecrypt(cipher, GetParam());
+  for (auto opts : getOptionPairs()) {
+    // Should work for all modes (contiguous unshared buf)
+    auto cipher = getTestCipher(GetParam());
+    auto output = toIOBuf(GetParam().ciphertext);
+    auto cipherLen = output->length();
+    auto out =
+        callDecrypt(cipher, GetParam(), nullptr, opts.bufferOpt, opts.allocOpt);
+    if (out) {
+      EXPECT_FALSE(out->isChained());
+      EXPECT_FALSE(out->isShared());
+      EXPECT_EQ(out->length(), cipherLen - cipher->getCipherOverhead());
+    }
+  }
 }
 
 TEST_P(OpenSSLEVPCipherTest, TestDecryptReusedCipher) {
-  auto cipher = getTestCipher(GetParam());
-  auto params = GetParam();
-  callDecrypt(cipher, params);
-  callDecrypt(cipher, GetParam());
+  for (auto opts : getOptionPairs()) {
+    // Same as before
+    auto cipher = getTestCipher(GetParam());
+    auto params = GetParam();
+    callDecrypt(cipher, params, nullptr, opts.bufferOpt, opts.allocOpt);
+    callDecrypt(cipher, GetParam(), nullptr, opts.bufferOpt, opts.allocOpt);
+  }
 }
 
 TEST_P(OpenSSLEVPCipherTest, TestDecryptInputTooSmall) {
-  auto cipher = getTestCipher(GetParam());
-  auto in = IOBuf::copyBuffer("in");
-  auto paramsCopy = GetParam();
-  paramsCopy.valid = false;
-  callDecrypt(cipher, paramsCopy, std::move(in));
+  for (auto opts : getOptionPairs()) {
+    // This should behave identically (the input size check comes early)
+    auto cipher = getTestCipher(GetParam());
+    auto in = IOBuf::copyBuffer("in");
+    auto paramsCopy = GetParam();
+    paramsCopy.valid = false;
+    callDecrypt(
+        cipher, paramsCopy, std::move(in), opts.bufferOpt, opts.allocOpt);
+  }
 }
 
 TEST_P(OpenSSLEVPCipherTest, TestDecryptWithChunkedInput) {
-  auto cipher = getTestCipher(GetParam());
-  auto output = toIOBuf(GetParam().ciphertext);
-  auto chunkedOutput = chunkIOBuf(std::move(output), 3);
-  callDecrypt(cipher, GetParam(), std::move(chunkedOutput));
+  for (auto opts : getOptionPairs()) {
+    auto cipher = getTestCipher(GetParam());
+    auto output = toIOBuf(GetParam().ciphertext);
+    auto chunkedOutput = chunkIOBuf(std::move(output), 3);
+    auto lastBufLength = chunkedOutput->prev()->length();
+    if (opts.allocOpt == Aead::AllocationOption::Deny &&
+        lastBufLength < cipher->getCipherOverhead()) {
+      // If the last buf isn't big enough to hold the entire tag and allocation
+      // isn't allowed, decrypt will fail
+      EXPECT_THROW(
+          callDecrypt(
+              cipher,
+              GetParam(),
+              std::move(chunkedOutput),
+              opts.bufferOpt,
+              opts.allocOpt,
+              true),
+          std::runtime_error);
+    } else {
+      // In all other cases this should always succeed
+      callDecrypt(
+          cipher,
+          GetParam(),
+          std::move(chunkedOutput),
+          opts.bufferOpt,
+          opts.allocOpt);
+    }
+  }
 }
 
 TEST_P(OpenSSLEVPCipherTest, TestDecryptWithChunkedSharedInput) {
-  auto cipher = getTestCipher(GetParam());
-  auto output = toIOBuf(GetParam().ciphertext);
-  auto chunkedOutput = chunkIOBuf(std::move(output), 3);
-  callDecrypt(cipher, GetParam(), chunkedOutput->clone());
+  for (auto opts : getOptionPairs()) {
+    auto cipher = getTestCipher(GetParam());
+    auto output = toIOBuf(GetParam().ciphertext);
+    auto chunkedOutput = chunkIOBuf(std::move(output), 3);
+    auto lastBufLength = chunkedOutput->prev()->length();
+    if (opts.allocOpt == Aead::AllocationOption::Deny &&
+        (lastBufLength < cipher->getCipherOverhead() ||
+         opts.bufferOpt == Aead::BufferOption::RespectSharedPolicy)) {
+      EXPECT_THROW(
+          callDecrypt(
+              cipher,
+              GetParam(),
+              chunkedOutput->clone(),
+              opts.bufferOpt,
+              opts.allocOpt,
+              true),
+          std::runtime_error);
+    } else {
+      auto out = callDecrypt(
+          cipher,
+          GetParam(),
+          chunkedOutput->clone(),
+          opts.bufferOpt,
+          opts.allocOpt);
+      if (out) {
+        // for valid cases:
+        EXPECT_EQ(
+            out->computeChainDataLength(),
+            chunkedOutput->computeChainDataLength() -
+                cipher->getCipherOverhead());
+        if (opts.bufferOpt != Aead::BufferOption::RespectSharedPolicy) {
+          // In-place edit
+          EXPECT_EQ(chunkedOutput->data(), out->data());
+          EXPECT_TRUE(out->isChained());
+          EXPECT_TRUE(out->isShared());
+          EXPECT_EQ(
+              out->countChainElements(), chunkedOutput->countChainElements());
+        } else {
+          // New buffer.
+          EXPECT_NE(chunkedOutput->data(), out->data());
+          EXPECT_FALSE(out->isChained());
+          EXPECT_FALSE(out->isShared());
+        }
+      }
+    }
+  }
 }
 
 TEST_P(OpenSSLEVPCipherTest, TestDecryptWithVeryChunkedInput) {
-  auto cipher = getTestCipher(GetParam());
-  auto output = toIOBuf(GetParam().ciphertext);
-  auto chunkedOutput = chunkIOBuf(std::move(output), 30);
-  callDecrypt(cipher, GetParam(), std::move(chunkedOutput));
+  for (auto opts : getOptionPairs()) {
+    auto cipher = getTestCipher(GetParam());
+    auto output = toIOBuf(GetParam().ciphertext);
+    auto chunkedOutput = chunkIOBuf(std::move(output), 30);
+    auto lastBufLength = chunkedOutput->prev()->length();
+    if (opts.allocOpt == Aead::AllocationOption::Deny &&
+        lastBufLength < cipher->getCipherOverhead()) {
+      // Basically the same as the regular chunked test, just far more likely
+      // here
+      EXPECT_THROW(
+          callDecrypt(
+              cipher,
+              GetParam(),
+              std::move(chunkedOutput),
+              opts.bufferOpt,
+              opts.allocOpt,
+              true),
+          std::runtime_error);
+    } else {
+      callDecrypt(
+          cipher,
+          GetParam(),
+          std::move(chunkedOutput),
+          opts.bufferOpt,
+          opts.allocOpt);
+    }
+  }
+}
+
+TEST_P(OpenSSLEVPCipherTest, TestDecryptWithFragmentedTag) {
+  // This is to explicitly test the one scenario where in-place edits require
+  // allocation
+  for (auto opts : getOptionPairs()) {
+    auto cipher = getTestCipher(GetParam());
+    auto output = toIOBuf(GetParam().ciphertext);
+    if (output->length() < cipher->getCipherOverhead()) {
+      // These are invalid cases anyway, ignore them
+      continue;
+    }
+
+    // Copy the end of the tag to a new buffer, explicitly fragmenting it.
+    size_t lastLen = cipher->getCipherOverhead() / 2;
+    ASSERT_TRUE(lastLen > 0);
+    auto tagBuf = IOBuf::create(lastLen);
+    tagBuf->append(lastLen);
+    output->trimEnd(lastLen);
+    memcpy(tagBuf->writableData(), output->tail(), lastLen);
+    output->prependChain(std::move(tagBuf));
+
+    if (opts.allocOpt == Aead::AllocationOption::Deny) {
+      // A fragmented tag explicitly requires an allocation to copy it out.
+      EXPECT_THROW(
+          callDecrypt(
+              cipher,
+              GetParam(),
+              std::move(output),
+              opts.bufferOpt,
+              opts.allocOpt,
+              true),
+          std::runtime_error);
+    } else {
+      // In all other cases this should always succeed
+      callDecrypt(
+          cipher, GetParam(), std::move(output), opts.bufferOpt, opts.allocOpt);
+    }
+  }
 }
 
 TEST_P(OpenSSLEVPCipherTest, TestDecryptWithChunkedAad) {
-  auto cipher = getTestCipher(GetParam());
-  auto aad = toIOBuf(GetParam().aad);
-  auto chunkedAad = chunkIOBuf(std::move(aad), 3);
-  callDecrypt(cipher, GetParam(), nullptr, std::move(chunkedAad));
+  for (auto opts : getOptionPairs()) {
+    // Behaviorally same as the regular decrypt test wrt variations
+    auto cipher = getTestCipher(GetParam());
+    auto aad = toIOBuf(GetParam().aad);
+    auto chunkedAad = chunkIOBuf(std::move(aad), 3);
+    callDecrypt(
+        cipher,
+        GetParam(),
+        nullptr,
+        opts.bufferOpt,
+        opts.allocOpt,
+        false,
+        std::move(chunkedAad));
+  }
 }
 
 TEST_P(OpenSSLEVPCipherTest, TestTryDecrypt) {
-  auto cipher = getTestCipher(GetParam());
-  auto out = cipher->tryDecrypt(
-      toIOBuf(GetParam().ciphertext),
-      toIOBuf(GetParam().aad).get(),
-      GetParam().seqNum);
-  if (out) {
-    EXPECT_TRUE(GetParam().valid);
-    EXPECT_TRUE(IOBufEqualTo()(toIOBuf(GetParam().plaintext), *out));
-  } else {
-    EXPECT_FALSE(GetParam().valid);
+  for (auto opts : getOptionPairs()) {
+    // Should all behave identically, as ciphertext is unshared and contiguous
+    auto cipher = getTestCipher(GetParam());
+    auto out = cipher->tryDecrypt(
+        toIOBuf(GetParam().ciphertext),
+        toIOBuf(GetParam().aad).get(),
+        GetParam().seqNum,
+        std::move(opts));
+    if (out) {
+      EXPECT_TRUE(GetParam().valid);
+      EXPECT_TRUE(IOBufEqualTo()(toIOBuf(GetParam().plaintext), *out));
+    } else {
+      EXPECT_FALSE(GetParam().valid);
+    }
   }
 }
 

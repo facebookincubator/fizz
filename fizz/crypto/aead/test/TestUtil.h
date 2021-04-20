@@ -19,6 +19,10 @@ namespace test {
 using BufCreator =
     std::function<std::unique_ptr<folly::IOBuf>(size_t len, size_t bufNum)>;
 
+// Creates an IOBuf using an exact size (rather than the built in size
+// heuristic) Useful for specifying exact sizes for tests.
+std::unique_ptr<folly::IOBuf> createBufExact(size_t len);
+
 // Converts the hex encoded string to an IOBuf.
 std::unique_ptr<folly::IOBuf>
 toIOBuf(std::string hexData, size_t headroom = 0, size_t tailroom = 0);

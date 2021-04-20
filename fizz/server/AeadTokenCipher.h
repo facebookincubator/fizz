@@ -60,7 +60,7 @@ class Aead128GCMTokenCipher {
   using SeqNum = uint32_t;
   static constexpr size_t kTokenHeaderLength = kSaltLength + sizeof(SeqNum);
 
-  std::unique_ptr<AeadType> createAead(
+  std::unique_ptr<Aead> createAead(
       folly::ByteRange secret,
       folly::ByteRange salt) const;
 
