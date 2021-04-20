@@ -176,7 +176,8 @@ Actions ClientStateMachine::processConnect(
 
 Actions ClientStateMachine::processSocketData(
     const State& state,
-    folly::IOBufQueue& buf) {
+    folly::IOBufQueue& buf,
+    Aead::AeadOptions options) {
   try {
     if (!state.readRecordLayer()) {
       return detail::handleError(
@@ -184,7 +185,7 @@ Actions ClientStateMachine::processSocketData(
           ReportError("attempting to process data without record layer"),
           folly::none);
     }
-    auto param = state.readRecordLayer()->readEvent(buf);
+    auto param = state.readRecordLayer()->readEvent(buf, std::move(options));
     if (!param.has_value()) {
       return actions(WaitForData());
     }

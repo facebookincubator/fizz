@@ -73,7 +73,9 @@ class TestStateMachine {
     instance = this;
   }
 
-  MOCK_METHOD2(processSocketData, Future<Actions>(const State&, IOBufQueue&));
+  MOCK_METHOD3(
+      processSocketData,
+      Future<Actions>(const State&, IOBufQueue&, Aead::AeadOptions));
 
   Future<Actions> processAppWrite(const State& state, AppWrite&& write) {
     return processAppWrite_(state, write);
@@ -125,6 +127,8 @@ class TestFizzBase
       : FizzBase<TestFizzBase, ActionMoveVisitor, TestStateMachine>(
             state_,
             queue_,
+            {Aead::BufferOption::RespectSharedPolicy,
+             Aead::AllocationOption::Allow},
             visitor_,
             this) {}
 
@@ -168,7 +172,7 @@ class FizzBaseTest : public Test {
 };
 
 TEST_F(FizzBaseTest, TestReadSingle) {
-  EXPECT_CALL(*TestStateMachine::instance, processSocketData(_, _))
+  EXPECT_CALL(*TestStateMachine::instance, processSocketData(_, _, _))
       .WillOnce(InvokeWithoutArgs([]() {
         Actions actions;
         actions.push_back(A1());
@@ -181,7 +185,7 @@ TEST_F(FizzBaseTest, TestReadSingle) {
 }
 
 TEST_F(FizzBaseTest, TestReadMulti) {
-  EXPECT_CALL(*TestStateMachine::instance, processSocketData(_, _))
+  EXPECT_CALL(*TestStateMachine::instance, processSocketData(_, _, _))
       .InSequence(s_)
       .WillOnce(InvokeWithoutArgs([]() {
         Actions actions;
@@ -193,7 +197,7 @@ TEST_F(FizzBaseTest, TestReadMulti) {
   EXPECT_CALL(testFizz_->visitor_, a1()).InSequence(s_);
   EXPECT_CALL(testFizz_->visitor_, a2()).InSequence(s_);
   EXPECT_CALL(testFizz_->visitor_, a1()).InSequence(s_);
-  EXPECT_CALL(*TestStateMachine::instance, processSocketData(_, _))
+  EXPECT_CALL(*TestStateMachine::instance, processSocketData(_, _, _))
       .InSequence(s_)
       .WillOnce(InvokeWithoutArgs([]() {
         Actions actions;
@@ -201,7 +205,7 @@ TEST_F(FizzBaseTest, TestReadMulti) {
         return actions;
       }));
   EXPECT_CALL(testFizz_->visitor_, a2()).InSequence(s_);
-  EXPECT_CALL(*TestStateMachine::instance, processSocketData(_, _))
+  EXPECT_CALL(*TestStateMachine::instance, processSocketData(_, _, _))
       .InSequence(s_)
       .WillOnce(InvokeWithoutArgs([]() {
         Actions actions;
@@ -215,10 +219,10 @@ TEST_F(FizzBaseTest, TestReadMulti) {
 }
 
 TEST_F(FizzBaseTest, TestReadNoActions) {
-  EXPECT_CALL(*TestStateMachine::instance, processSocketData(_, _))
+  EXPECT_CALL(*TestStateMachine::instance, processSocketData(_, _, _))
       .InSequence(s_)
       .WillOnce(InvokeWithoutArgs([]() { return Actions{}; }));
-  EXPECT_CALL(*TestStateMachine::instance, processSocketData(_, _))
+  EXPECT_CALL(*TestStateMachine::instance, processSocketData(_, _, _))
       .InSequence(s_)
       .WillOnce(InvokeWithoutArgs([]() {
         Actions actions;
@@ -297,7 +301,7 @@ TEST_F(FizzBaseTest, TestAppClose) {
 }
 
 TEST_F(FizzBaseTest, TestWriteNewSessionTicketInCallback) {
-  EXPECT_CALL(*TestStateMachine::instance, processSocketData(_, _))
+  EXPECT_CALL(*TestStateMachine::instance, processSocketData(_, _, _))
       .InSequence(s_)
       .WillOnce(InvokeWithoutArgs([]() {
         Actions actions;
@@ -368,7 +372,7 @@ TEST_F(FizzBaseTest, TestWriteInCallback) {
 }
 
 TEST_F(FizzBaseTest, TestAppCloseInCallback) {
-  EXPECT_CALL(*TestStateMachine::instance, processSocketData(_, _))
+  EXPECT_CALL(*TestStateMachine::instance, processSocketData(_, _, _))
       .InSequence(s_)
       .WillOnce(InvokeWithoutArgs([]() {
         Actions actions;
@@ -378,7 +382,7 @@ TEST_F(FizzBaseTest, TestAppCloseInCallback) {
   EXPECT_CALL(testFizz_->visitor_, a1())
       .InSequence(s_)
       .WillOnce(Invoke([this]() { testFizz_->appClose(); }));
-  EXPECT_CALL(*TestStateMachine::instance, processSocketData(_, _))
+  EXPECT_CALL(*TestStateMachine::instance, processSocketData(_, _, _))
       .InSequence(s_)
       .WillOnce(InvokeWithoutArgs([]() {
         Actions actions;
@@ -420,7 +424,7 @@ TEST_F(FizzBaseTest, TestWriteThenCloseInCallback) {
 }
 
 TEST_F(FizzBaseTest, TestDeleteInCallback) {
-  EXPECT_CALL(*TestStateMachine::instance, processSocketData(_, _))
+  EXPECT_CALL(*TestStateMachine::instance, processSocketData(_, _, _))
       .InSequence(s_)
       .WillOnce(InvokeWithoutArgs([]() {
         Actions actions;
@@ -430,7 +434,7 @@ TEST_F(FizzBaseTest, TestDeleteInCallback) {
   EXPECT_CALL(testFizz_->visitor_, a1())
       .InSequence(s_)
       .WillOnce(Invoke([this]() { testFizz_.reset(); }));
-  EXPECT_CALL(*TestStateMachine::instance, processSocketData(_, _))
+  EXPECT_CALL(*TestStateMachine::instance, processSocketData(_, _, _))
       .InSequence(s_)
       .WillOnce(InvokeWithoutArgs([]() {
         Actions actions;
@@ -444,7 +448,7 @@ TEST_F(FizzBaseTest, TestDeleteInCallback) {
 }
 
 TEST_F(FizzBaseTest, TestStopOnError) {
-  EXPECT_CALL(*TestStateMachine::instance, processSocketData(_, _))
+  EXPECT_CALL(*TestStateMachine::instance, processSocketData(_, _, _))
       .InSequence(s_)
       .WillOnce(InvokeWithoutArgs([]() {
         Actions actions;
@@ -461,7 +465,7 @@ TEST_F(FizzBaseTest, TestStopOnError) {
 }
 
 TEST_F(FizzBaseTest, TestPause) {
-  EXPECT_CALL(*TestStateMachine::instance, processSocketData(_, _))
+  EXPECT_CALL(*TestStateMachine::instance, processSocketData(_, _, _))
       .InSequence(s_)
       .WillOnce(InvokeWithoutArgs([]() {
         Actions actions;
@@ -572,7 +576,7 @@ TEST_F(FizzBaseTest, TestErrorPendingEvents) {
 }
 
 TEST_F(FizzBaseTest, EventAfterErrorState) {
-  EXPECT_CALL(*TestStateMachine::instance, processSocketData(_, _))
+  EXPECT_CALL(*TestStateMachine::instance, processSocketData(_, _, _))
       .WillOnce(InvokeWithoutArgs([this]() {
         testFizz_->moveToErrorState(
             AsyncSocketException{AsyncSocketException::UNKNOWN, "unit test"});
@@ -587,7 +591,7 @@ TEST_F(FizzBaseTest, EventAfterErrorState) {
 
 TEST_F(FizzBaseTest, TestManyActions) {
   size_t i = 0;
-  EXPECT_CALL(*TestStateMachine::instance, processSocketData(_, _))
+  EXPECT_CALL(*TestStateMachine::instance, processSocketData(_, _, _))
       .WillRepeatedly(InvokeWithoutArgs([this, &i]() {
         if (++i == 10000) {
           testFizz_->waitForData();
@@ -598,7 +602,7 @@ TEST_F(FizzBaseTest, TestManyActions) {
 }
 
 TEST_F(FizzBaseTest, TestMoveToErrorStateOnVisit) {
-  EXPECT_CALL(*TestStateMachine::instance, processSocketData(_, _))
+  EXPECT_CALL(*TestStateMachine::instance, processSocketData(_, _, _))
       .WillOnce(InvokeWithoutArgs([]() {
         Actions actions;
         actions.push_back(A1());
@@ -616,7 +620,7 @@ TEST_F(FizzBaseTest, TestMoveToErrorStateOnVisit) {
 TEST_F(FizzBaseTest, TestActionProcessedAfterError) {
   EXPECT_CALL(testFizz_->visitor_, a1());
   EXPECT_CALL(testFizz_->visitor_, a2());
-  EXPECT_CALL(*TestStateMachine::instance, processSocketData(_, _))
+  EXPECT_CALL(*TestStateMachine::instance, processSocketData(_, _, _))
       .WillOnce(InvokeWithoutArgs([&]() {
         testFizz_->state_.state_ = StateEnum::Error;
         Actions actions;
