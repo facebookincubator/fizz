@@ -237,13 +237,14 @@ void AsyncFizzBase::deliverAppData(std::unique_ptr<folly::IOBuf> data) {
     data = std::move(appDataBuf_);
   }
 
-  if (readCallback_ && data) {
+  while (readCallback_ && data) {
     if (readCallback_->isBufferMovable()) {
       return readCallback_->readBufferAvailable(std::move(data));
     } else {
       folly::io::Cursor cursor(data.get());
       size_t available = 0;
-      while ((available = cursor.totalLength()) != 0 && readCallback_) {
+      while ((available = cursor.totalLength()) != 0 && readCallback_ &&
+             !readCallback_->isBufferMovable()) {
         void* buf = nullptr;
         size_t buflen = 0;
         try {
@@ -272,11 +273,21 @@ void AsyncFizzBase::deliverAppData(std::unique_ptr<folly::IOBuf> data) {
         cursor.pull(buf, bytesToRead);
         readCallback_->readDataAvailable(bytesToRead);
       }
+
+      // If we have data left, it means the read callback changed and we need
+      // to save the remaining data (if any)
       if (available != 0) {
-        cursor.clone(appDataBuf_, available);
+        std::unique_ptr<folly::IOBuf> remainingData;
+        cursor.clone(remainingData, available);
+        data = std::move(remainingData);
+      } else {
+        // Out of data. Reset the data pointer to end the loop
+        data.reset();
       }
     }
-  } else if (data) {
+  }
+
+  if (data) {
     appDataBuf_ = std::move(data);
   }
 

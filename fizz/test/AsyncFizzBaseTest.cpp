@@ -467,6 +467,51 @@ TYPED_TEST(AsyncFizzBaseTest, TestReadBufferPause) {
   this->setReadCB(&this->readCallback_);
 }
 
+TYPED_TEST(AsyncFizzBaseTest, TestReadBufferSwitchToNewMovable) {
+  StrictMock<folly::test::MockReadCallback> movableCallback;
+  EXPECT_CALL(this->readCallback_, isBufferMovable_())
+      .WillRepeatedly(Return(false));
+  EXPECT_CALL(movableCallback, isBufferMovable_()).WillRepeatedly(Return(true));
+
+  this->setReadCB(&this->readCallback_);
+
+  auto buf = IOBuf::copyBuffer("hello, world!");
+  auto secondBuf = IOBuf::copyBuffer("lo, world!");
+  this->expectReadBufRequest(3);
+  EXPECT_CALL(this->readCallback_, readDataAvailable_(3))
+      .InSequence(this->readBufSeq_)
+      .WillOnce(Invoke([this, &movableCallback](size_t len) {
+        EXPECT_TRUE(std::memcmp(this->readBuf_.data(), "hel", len) == 0);
+        this->setReadCB(&movableCallback);
+      }));
+  EXPECT_CALL(
+      movableCallback, readBufferAvailable_(BufMatches(secondBuf.get())))
+      .InSequence(this->readBufSeq_);
+  this->deliverAppData(std::move(buf));
+}
+
+TYPED_TEST(AsyncFizzBaseTest, TestReadBufferSwitchToMovableBehavior) {
+  this->setReadCB(&this->readCallback_);
+
+  auto buf = IOBuf::copyBuffer("hello, world!");
+  auto secondBuf = IOBuf::copyBuffer("lo, world!");
+  bool movable = false;
+
+  EXPECT_CALL(this->readCallback_, isBufferMovable_())
+      .WillRepeatedly(Invoke([&movable]() { return movable; }));
+  this->expectReadBufRequest(3);
+  EXPECT_CALL(this->readCallback_, readDataAvailable_(3))
+      .InSequence(this->readBufSeq_)
+      .WillOnce(Invoke([this, &movable](size_t len) {
+        EXPECT_TRUE(std::memcmp(this->readBuf_.data(), "hel", len) == 0);
+        movable = true;
+      }));
+  EXPECT_CALL(
+      this->readCallback_, readBufferAvailable_(BufMatches(secondBuf.get())))
+      .InSequence(this->readBufSeq_);
+  this->deliverAppData(std::move(buf));
+}
+
 TYPED_TEST(AsyncFizzBaseTest, TestTransportReadBufMovable) {
   this->expectTransportReadCallback();
   this->startTransportReads();
