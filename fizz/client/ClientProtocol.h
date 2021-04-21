@@ -35,8 +35,7 @@ class ClientStateMachine {
       const std::shared_ptr<ClientExtensions>& extensions,
       folly::Optional<std::vector<ech::ECHConfig>> echConfigs);
 
-  virtual Actions
-  processSocketData(const State&, folly::IOBufQueue&, Aead::AeadOptions);
+  virtual Actions processSocketData(const State&, folly::IOBufQueue&);
 
   virtual Actions processWriteNewSessionTicket(
       const State&,

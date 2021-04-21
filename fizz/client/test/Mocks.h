@@ -41,17 +41,12 @@ class MockClientStateMachine : public ClientStateMachine {
         state, context, verifier, host, cachedPsk, extensions, echConfigs);
   }
 
-  MOCK_METHOD3(
+  MOCK_METHOD2(
       _processSocketData,
-      folly::Optional<Actions>(
-          const State&,
-          folly::IOBufQueue&,
-          Aead::AeadOptions));
-  Actions processSocketData(
-      const State& state,
-      folly::IOBufQueue& queue,
-      Aead::AeadOptions options) override {
-    return *_processSocketData(state, queue, options);
+      folly::Optional<Actions>(const State&, folly::IOBufQueue&));
+  Actions processSocketData(const State& state, folly::IOBufQueue& queue)
+      override {
+    return *_processSocketData(state, queue);
   }
 
   MOCK_METHOD2(

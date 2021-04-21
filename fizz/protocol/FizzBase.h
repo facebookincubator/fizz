@@ -18,11 +18,10 @@ namespace fizz {
  * FizzBase defines an async method of communicating with the fizz state
  * machine. Given a const reference to state, and a reference to
  * transportReadBuf, FizzBase will consume the transportReadBuf and process
- * events as applicable. The buffer and allocation options given will be passed
- * to the record layer to dictate its behavior. visitor is variant visitor that
- * is expected to process Actions as they are received. A DestructorGuard on
- * owner will be taken when async actions are in flight, during which time this
- * class must not be deleted.
+ * events as applicable. visitor is variant visitor that is expected to process
+ * Actions as they are received. A DestructorGuard on owner will be taken when
+ * async actions are in flight, during which time this class must not be
+ * deleted.
  */
 template <typename Derived, typename ActionMoveVisitor, typename StateMachine>
 class FizzBase {
@@ -30,12 +29,10 @@ class FizzBase {
   FizzBase(
       const typename StateMachine::StateType& state,
       folly::IOBufQueue& transportReadBuf,
-      Aead::AeadOptions aeadOptions,
       ActionMoveVisitor& visitor,
       folly::DelayedDestructionBase* owner)
       : state_(state),
         transportReadBuf_(transportReadBuf),
-        aeadOptions_(aeadOptions),
         visitor_(visitor),
         owner_(owner) {}
   virtual ~FizzBase() = default;
@@ -136,7 +133,6 @@ class FizzBase {
   StateMachine machine_;
   const typename StateMachine::StateType& state_;
   folly::IOBufQueue& transportReadBuf_;
-  Aead::AeadOptions aeadOptions_;
 
   ActionMoveVisitor& visitor_;
 

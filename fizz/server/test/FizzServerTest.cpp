@@ -41,8 +41,7 @@ class ActionMoveVisitor {
 
 class TestFizzServer : public DelayedDestruction {
  public:
-  TestFizzServer()
-      : fizzServer_(state_, queue_, Aead::AeadOptions(), visitor_, this) {}
+  TestFizzServer() : fizzServer_(state_, queue_, visitor_, this) {}
 
   State state_;
   IOBufQueue queue_;
@@ -94,7 +93,7 @@ TEST_F(FizzServerTest, TestSSLV2NoVersionFallback) {
   accept();
   fizzServer_->queue_.append(getV2ClientHello());
   EXPECT_CALL(
-      *MockServerStateMachineInstance::instance, _processSocketData(_, _, _))
+      *MockServerStateMachineInstance::instance, _processSocketData(_, _))
       .WillOnce(InvokeWithoutArgs([this]() {
         fizzServer_->fizzServer_.waitForData();
         return AsyncActions(Actions());
@@ -107,7 +106,7 @@ TEST_F(FizzServerTest, TestNotSSLV2) {
   accept();
   fizzServer_->queue_.append(IOBuf::copyBuffer("ClientHello"));
   EXPECT_CALL(
-      *MockServerStateMachineInstance::instance, _processSocketData(_, _, _))
+      *MockServerStateMachineInstance::instance, _processSocketData(_, _))
       .WillOnce(InvokeWithoutArgs([this]() {
         fizzServer_->fizzServer_.waitForData();
         return AsyncActions(Actions());
@@ -120,7 +119,7 @@ TEST_F(FizzServerTest, TestSSLV2AfterData) {
   accept();
   fizzServer_->queue_.append(IOBuf::copyBuffer("ClientHello"));
   EXPECT_CALL(
-      *MockServerStateMachineInstance::instance, _processSocketData(_, _, _))
+      *MockServerStateMachineInstance::instance, _processSocketData(_, _))
       .WillOnce(InvokeWithoutArgs([this]() {
         fizzServer_->fizzServer_.waitForData();
         return AsyncActions(Actions());
@@ -129,7 +128,7 @@ TEST_F(FizzServerTest, TestSSLV2AfterData) {
   fizzServer_->queue_.clear();
   fizzServer_->queue_.append(getV2ClientHello());
   EXPECT_CALL(
-      *MockServerStateMachineInstance::instance, _processSocketData(_, _, _))
+      *MockServerStateMachineInstance::instance, _processSocketData(_, _))
       .WillOnce(InvokeWithoutArgs([this]() {
         fizzServer_->fizzServer_.waitForData();
         return AsyncActions(Actions());

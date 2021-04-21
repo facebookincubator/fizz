@@ -21,12 +21,7 @@ AsyncFizzServerT<SM>::AsyncFizzServerT(
       fizzContext_(fizzContext),
       extensions_(extensions),
       visitor_(*this),
-      fizzServer_(
-          state_,
-          transportReadBuf_,
-          {Aead::BufferOption::AllowInPlace, Aead::AllocationOption::Allow},
-          visitor_,
-          this) {}
+      fizzServer_(state_, transportReadBuf_, visitor_, this) {}
 
 template <typename SM>
 void AsyncFizzServerT<SM>::accept(HandshakeCallback* callback) {

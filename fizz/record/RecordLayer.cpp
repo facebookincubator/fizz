@@ -16,8 +16,7 @@ static constexpr size_t kHandshakeHeaderSize =
     sizeof(HandshakeType) + detail::bits24::size;
 
 folly::Optional<Param> ReadRecordLayer::readEvent(
-    folly::IOBufQueue& socketBuf,
-    Aead::AeadOptions options) {
+    folly::IOBufQueue& socketBuf) {
   if (!unparsedHandshakeData_.empty()) {
     auto param = decodeHandshakeMessage(unparsedHandshakeData_);
     if (param) {
@@ -30,7 +29,7 @@ folly::Optional<Param> ReadRecordLayer::readEvent(
   while (true) {
     // Read one record. We read one record at a time since records could cause
     // a change in the record layer.
-    auto message = read(socketBuf, options);
+    auto message = read(socketBuf);
     if (!message) {
       return folly::none;
     }

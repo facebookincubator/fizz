@@ -64,7 +64,7 @@ boost::variant<AppToken, StatelessHelloRetryRequest>
 AeadCookieCipher::getTokenOrRetry(Buf clientHello, Buf appToken) const {
   folly::IOBufQueue queue{folly::IOBufQueue::cacheChainLength()};
   queue.append(std::move(clientHello));
-  auto msg = PlaintextReadRecordLayer().readEvent(queue, Aead::AeadOptions());
+  auto msg = PlaintextReadRecordLayer().readEvent(queue);
   if (!msg) {
     throw std::runtime_error("no TLS message in initial");
   }

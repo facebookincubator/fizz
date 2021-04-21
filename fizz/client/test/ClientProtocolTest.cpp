@@ -4011,8 +4011,7 @@ TEST_F(ClientProtocolTest, TestEstablishedAppClose) {
 
   mockRead_->useMockReadEvent(true);
   folly::IOBufQueue queue;
-  actions = ClientStateMachine().processSocketData(
-      state_, queue, Aead::AeadOptions());
+  actions = ClientStateMachine().processSocketData(state_, queue);
   expectActions<MutateState, EndOfData>(actions);
   processStateMutations(actions);
   expectAction<EndOfData>(actions);
@@ -4042,13 +4041,12 @@ TEST_F(ClientProtocolTest, TestEstablishedAppCloseImmediate) {
 
 TEST_F(ClientProtocolTest, TestDecodeErrorAlert) {
   setupAcceptingData();
-  EXPECT_CALL(*mockRead_, read(_, _))
-      .WillOnce(InvokeWithoutArgs([]() -> folly::Optional<TLSMessage> {
+  EXPECT_CALL(*mockRead_, read(_))
+      .WillOnce(Invoke([](auto&&) -> folly::Optional<TLSMessage> {
         throw std::runtime_error("read record layer error");
       }));
   folly::IOBufQueue buf;
-  auto actions =
-      ClientStateMachine().processSocketData(state_, buf, Aead::AeadOptions());
+  auto actions = ClientStateMachine().processSocketData(state_, buf);
   auto exc = expectError<FizzException>(
       actions, AlertDescription::decode_error, "read record layer error");
 
@@ -4058,15 +4056,14 @@ TEST_F(ClientProtocolTest, TestDecodeErrorAlert) {
 
 TEST_F(ClientProtocolTest, TestSocketDataFizzExceptionAlert) {
   setupAcceptingData();
-  EXPECT_CALL(*mockRead_, read(_, _))
-      .WillOnce(InvokeWithoutArgs([]() -> folly::Optional<TLSMessage> {
+  EXPECT_CALL(*mockRead_, read(_))
+      .WillOnce(Invoke([](auto&&) -> folly::Optional<TLSMessage> {
         throw FizzException(
             "arbitrary fizzexception with alert",
             AlertDescription::internal_error);
       }));
   folly::IOBufQueue buf;
-  auto actions =
-      ClientStateMachine().processSocketData(state_, buf, Aead::AeadOptions());
+  auto actions = ClientStateMachine().processSocketData(state_, buf);
   auto exc = expectError<FizzException>(
       actions,
       AlertDescription::internal_error,
@@ -4078,14 +4075,13 @@ TEST_F(ClientProtocolTest, TestSocketDataFizzExceptionAlert) {
 
 TEST_F(ClientProtocolTest, TestSocketDataFizzExceptionNoAlert) {
   setupAcceptingData();
-  EXPECT_CALL(*mockRead_, read(_, _))
-      .WillOnce(InvokeWithoutArgs([]() -> folly::Optional<TLSMessage> {
+  EXPECT_CALL(*mockRead_, read(_))
+      .WillOnce(Invoke([](auto&&) -> folly::Optional<TLSMessage> {
         throw FizzException(
             "arbitrary fizzexception without alert", folly::none);
       }));
   folly::IOBufQueue buf;
-  auto actions =
-      ClientStateMachine().processSocketData(state_, buf, Aead::AeadOptions());
+  auto actions = ClientStateMachine().processSocketData(state_, buf);
   auto exc = expectError<FizzException>(
       actions, folly::none, "arbitrary fizzexception without alert");
 

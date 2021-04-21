@@ -102,7 +102,7 @@ class AsyncFizzServerTest : public Test {
   void fullHandshakeSuccess(
       std::shared_ptr<const Cert> clientCert = nullptr,
       std::shared_ptr<const Cert> serverCert = nullptr) {
-    EXPECT_CALL(*machine_, _processSocketData(_, _, _))
+    EXPECT_CALL(*machine_, _processSocketData(_, _))
         .WillOnce(InvokeWithoutArgs([clientCert,
                                      serverCert,
                                      cipher = negotiatedCipher_,
@@ -154,14 +154,14 @@ TEST_F(AsyncFizzServerTest, TestAccept) {
 
 TEST_F(AsyncFizzServerTest, TestReadSingle) {
   accept();
-  EXPECT_CALL(*machine_, _processSocketData(_, _, _))
+  EXPECT_CALL(*machine_, _processSocketData(_, _))
       .WillOnce(InvokeWithoutArgs([]() { return actions(WaitForData()); }));
   socketReadCallback_->readBufferAvailable(IOBuf::copyBuffer("ClientHello"));
 }
 
 TEST_F(AsyncFizzServerTest, TestReadMulti) {
   accept();
-  EXPECT_CALL(*machine_, _processSocketData(_, _, _))
+  EXPECT_CALL(*machine_, _processSocketData(_, _))
       .WillOnce(InvokeWithoutArgs([]() { return actions(); }))
       .WillOnce(InvokeWithoutArgs([]() { return actions(WaitForData()); }));
   socketReadCallback_->readBufferAvailable(IOBuf::copyBuffer("ClientHello"));
@@ -215,7 +215,7 @@ TEST_F(AsyncFizzServerTest, TestExporterAPIIncompleteHandshake) {
 
 TEST_F(AsyncFizzServerTest, TestHandshakeError) {
   accept();
-  EXPECT_CALL(*machine_, _processSocketData(_, _, _))
+  EXPECT_CALL(*machine_, _processSocketData(_, _))
       .WillOnce(InvokeWithoutArgs(
           []() { return actions(ReportError("unit test"), WaitForData()); }));
   EXPECT_CALL(handshakeCallback_, _fizzHandshakeError(_));
@@ -225,7 +225,7 @@ TEST_F(AsyncFizzServerTest, TestHandshakeError) {
 TEST_F(AsyncFizzServerTest, TestDeliverAppData) {
   completeHandshake();
   server_->setReadCB(&readCallback_);
-  EXPECT_CALL(*machine_, _processSocketData(_, _, _))
+  EXPECT_CALL(*machine_, _processSocketData(_, _))
       .WillOnce(InvokeWithoutArgs([]() {
         return actions(DeliverAppData{IOBuf::copyBuffer("HI")}, WaitForData());
       }));
@@ -252,7 +252,7 @@ TEST_F(AsyncFizzServerTest, TestSendTicketWithAppToken) {
 TEST_F(AsyncFizzServerTest, TestWriteToSocket) {
   completeHandshake();
   server_->setReadCB(&readCallback_);
-  EXPECT_CALL(*machine_, _processSocketData(_, _, _))
+  EXPECT_CALL(*machine_, _processSocketData(_, _))
       .WillOnce(InvokeWithoutArgs([]() {
         WriteToSocket write;
         TLSContent record;
@@ -270,7 +270,7 @@ TEST_F(AsyncFizzServerTest, TestMutateState) {
   completeHandshake();
   server_->setReadCB(&readCallback_);
   uint32_t numTimesRun = 0;
-  EXPECT_CALL(*machine_, _processSocketData(_, _, _))
+  EXPECT_CALL(*machine_, _processSocketData(_, _))
       .WillOnce(InvokeWithoutArgs([&numTimesRun]() {
         return actions(
             MutateState([&numTimesRun](State& newState) {
@@ -286,7 +286,7 @@ TEST_F(AsyncFizzServerTest, TestMutateState) {
 
 TEST_F(AsyncFizzServerTest, TestAttemptVersionFallback) {
   accept();
-  EXPECT_CALL(*machine_, _processSocketData(_, _, _))
+  EXPECT_CALL(*machine_, _processSocketData(_, _))
       .WillOnce(InvokeWithoutArgs([]() {
         return actions(
             MutateState(
@@ -307,13 +307,13 @@ TEST_F(AsyncFizzServerTest, TestAttemptVersionFallback) {
 TEST_F(AsyncFizzServerTest, TestDeleteAsyncEvent) {
   accept();
   Promise<Actions> p1;
-  EXPECT_CALL(*machine_, _processSocketData(_, _, _))
+  EXPECT_CALL(*machine_, _processSocketData(_, _))
       .WillOnce(
           InvokeWithoutArgs([&p1]() { return AsyncActions(p1.getFuture()); }));
   socketReadCallback_->readBufferAvailable(IOBuf::copyBuffer("ClientHello"));
   server_.reset();
   Promise<Actions> p2;
-  EXPECT_CALL(*machine_, _processSocketData(_, _, _))
+  EXPECT_CALL(*machine_, _processSocketData(_, _))
       .WillOnce(
           InvokeWithoutArgs([&p2]() { return AsyncActions(p2.getFuture()); }));
   p1.setValue(detail::actions());
@@ -339,7 +339,7 @@ TEST_F(AsyncFizzServerTest, TestCloseNowInFlightAction) {
   completeHandshake();
   server_->setReadCB(&readCallback_);
   Promise<Actions> p;
-  EXPECT_CALL(*machine_, _processSocketData(_, _, _))
+  EXPECT_CALL(*machine_, _processSocketData(_, _))
       .WillOnce(
           InvokeWithoutArgs([&p]() { return AsyncActions(p.getFuture()); }));
   socketReadCallback_->readBufferAvailable(IOBuf::copyBuffer("Data"));
@@ -355,7 +355,7 @@ TEST_F(AsyncFizzServerTest, TestCloseInFlightAction) {
   completeHandshake();
   server_->setReadCB(&readCallback_);
   Promise<Actions> p;
-  EXPECT_CALL(*machine_, _processSocketData(_, _, _))
+  EXPECT_CALL(*machine_, _processSocketData(_, _))
       .WillOnce(
           InvokeWithoutArgs([&p]() { return AsyncActions(p.getFuture()); }));
   socketReadCallback_->readBufferAvailable(IOBuf::copyBuffer("Data"));
@@ -377,7 +377,7 @@ TEST_F(AsyncFizzServerTest, TestIsDetachable) {
   EXPECT_TRUE(server_->isDetachable());
   Promise<Actions> p;
 
-  EXPECT_CALL(*machine_, _processSocketData(_, _, _))
+  EXPECT_CALL(*machine_, _processSocketData(_, _))
       .WillOnce(
           InvokeWithoutArgs([&p]() { return AsyncActions(p.getFuture()); }));
   socket_->setReadCB(readCb);
@@ -393,7 +393,7 @@ TEST_F(AsyncFizzServerTest, TestConnecting) {
   ON_CALL(*socket_, connecting()).WillByDefault(Return(false));
   accept();
   EXPECT_TRUE(server_->connecting());
-  EXPECT_CALL(*machine_, _processSocketData(_, _, _))
+  EXPECT_CALL(*machine_, _processSocketData(_, _))
       .WillOnce(InvokeWithoutArgs(
           []() { return actions(ReportHandshakeSuccess(), WaitForData()); }));
   EXPECT_CALL(handshakeCallback_, _fizzHandshakeSuccess());
@@ -413,7 +413,7 @@ TEST_F(AsyncFizzServerTest, TestGoodState) {
   completeHandshake();
   ON_CALL(*socket_, good()).WillByDefault(Return(true));
   EXPECT_TRUE(server_->good());
-  EXPECT_CALL(*machine_, _processSocketData(_, _, _))
+  EXPECT_CALL(*machine_, _processSocketData(_, _))
       .WillOnce(InvokeWithoutArgs([]() {
         return actions(MutateState(
             [](State& newState) { newState.state() = StateEnum::Error; }));
@@ -424,7 +424,7 @@ TEST_F(AsyncFizzServerTest, TestGoodState) {
 
 TEST_F(AsyncFizzServerTest, TestEarlySuccess) {
   accept();
-  EXPECT_CALL(*machine_, _processSocketData(_, _, _))
+  EXPECT_CALL(*machine_, _processSocketData(_, _))
       .WillOnce(InvokeWithoutArgs([]() {
         return actions(ReportEarlyHandshakeSuccess(), WaitForData());
       }));
@@ -437,7 +437,7 @@ TEST_F(AsyncFizzServerTest, TestEarlySuccess) {
 TEST_F(AsyncFizzServerTest, TestErrorStopsActions) {
   completeHandshake();
   server_->setReadCB(&readCallback_);
-  EXPECT_CALL(*machine_, _processSocketData(_, _, _))
+  EXPECT_CALL(*machine_, _processSocketData(_, _))
       .WillOnce(InvokeWithoutArgs([]() {
         return actions(
             MutateState(
@@ -454,7 +454,7 @@ TEST_F(AsyncFizzServerTest, TestErrorStopsActions) {
 TEST_F(AsyncFizzServerTest, TestTransportError) {
   completeHandshake();
   server_->setReadCB(&readCallback_);
-  EXPECT_CALL(*machine_, _processSocketData(_, _, _)).Times(0);
+  EXPECT_CALL(*machine_, _processSocketData(_, _)).Times(0);
   EXPECT_FALSE(server_->error());
   EXPECT_TRUE(server_->good());
   ON_CALL(*socket_, error()).WillByDefault(Return(true));
@@ -470,7 +470,7 @@ TEST_F(AsyncFizzServerTest, TestTransportError) {
 TEST_F(AsyncFizzServerTest, TestTransportEof) {
   completeHandshake();
   server_->setReadCB(&readCallback_);
-  EXPECT_CALL(*machine_, _processSocketData(_, _, _)).Times(0);
+  EXPECT_CALL(*machine_, _processSocketData(_, _)).Times(0);
   EXPECT_FALSE(server_->error());
   EXPECT_TRUE(server_->good());
   ON_CALL(*socket_, good()).WillByDefault(Return(false));
@@ -501,7 +501,7 @@ TEST_F(AsyncFizzServerTest, TestGetCerts) {
 TEST_F(AsyncFizzServerTest, TestTransportNotGoodOnSuccess) {
   accept();
   EXPECT_CALL(handshakeCallback_, _fizzHandshakeError(_));
-  EXPECT_CALL(*machine_, _processSocketData(_, _, _))
+  EXPECT_CALL(*machine_, _processSocketData(_, _))
       .WillOnce(InvokeWithoutArgs([&]() {
         // Make the socket return not good
         EXPECT_CALL(*socket_, good()).WillOnce(Return(false));
@@ -514,7 +514,7 @@ TEST_F(AsyncFizzServerTest, TestTransportNotGoodOnSuccess) {
 TEST_F(AsyncFizzServerTest, TestTransportNotGoodOnEarlySuccess) {
   accept();
   EXPECT_CALL(handshakeCallback_, _fizzHandshakeError(_));
-  EXPECT_CALL(*machine_, _processSocketData(_, _, _))
+  EXPECT_CALL(*machine_, _processSocketData(_, _))
       .WillOnce(InvokeWithoutArgs([&]() {
         // Make the socket return not good
         EXPECT_CALL(*socket_, good()).WillOnce(Return(false));
@@ -528,7 +528,7 @@ TEST_F(AsyncFizzServerTest, TestRemoteClosed) {
   completeHandshake();
   server_->setReadCB(&readCallback_);
   EXPECT_CALL(readCallback_, readEOF_());
-  EXPECT_CALL(*machine_, _processSocketData(_, _, _))
+  EXPECT_CALL(*machine_, _processSocketData(_, _))
       .WillOnce(InvokeWithoutArgs([]() {
         return actions(
             MutateState([](State& s) { s.state() = StateEnum::Closed; }),

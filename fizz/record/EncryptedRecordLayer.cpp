@@ -20,8 +20,7 @@ static constexpr size_t kEncryptedHeaderSize =
     sizeof(ContentType) + sizeof(ProtocolVersion) + sizeof(uint16_t);
 
 folly::Optional<Buf> EncryptedReadRecordLayer::getDecryptedBuf(
-    folly::IOBufQueue& buf,
-    Aead::AeadOptions options) {
+    folly::IOBufQueue& buf) {
   while (true) {
     // Cache the front buffer, calling front may invoke and update
     // of the tail cache.
@@ -86,10 +85,7 @@ folly::Optional<Buf> EncryptedReadRecordLayer::getDecryptedBuf(
     }
     if (skipFailedDecryption_) {
       auto decryptAttempt = aead_->tryDecrypt(
-          std::move(encrypted),
-          useAdditionalData_ ? &adBuf : nullptr,
-          seqNum_,
-          options);
+          std::move(encrypted), useAdditionalData_ ? &adBuf : nullptr, seqNum_);
       if (decryptAttempt) {
         seqNum_++;
         skipFailedDecryption_ = false;
@@ -101,16 +97,14 @@ folly::Optional<Buf> EncryptedReadRecordLayer::getDecryptedBuf(
       return aead_->decrypt(
           std::move(encrypted),
           useAdditionalData_ ? &adBuf : nullptr,
-          seqNum_++,
-          options);
+          seqNum_++);
     }
   }
 }
 
 folly::Optional<TLSMessage> EncryptedReadRecordLayer::read(
-    folly::IOBufQueue& buf,
-    Aead::AeadOptions options) {
-  auto decryptedBuf = getDecryptedBuf(buf, std::move(options));
+    folly::IOBufQueue& buf) {
+  auto decryptedBuf = getDecryptedBuf(buf);
   if (!decryptedBuf) {
     return folly::none;
   }
