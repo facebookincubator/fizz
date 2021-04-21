@@ -187,6 +187,8 @@ set(FIZZ_SOURCES
   protocol/Params.cpp
   protocol/ZlibCertificateCompressor.cpp
   protocol/ZlibCertificateDecompressor.cpp
+  protocol/ZstdCertificateCompressor.cpp
+  protocol/ZstdCertificateDecompressor.cpp
   protocol/clock/SystemClock.cpp
   protocol/ech/Decrypter.cpp
   protocol/ech/Encryption.cpp
