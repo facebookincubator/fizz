@@ -83,13 +83,13 @@ supported by Fizz. The binary is called `fizz` and it has similar usage to the
 `openssl` or `bssl` commands.
 
 For example, to start a TLS server on port 443 with a specified cert:
-```
+```sh
 fizz server -accept 443 -cert foo.pem -key foo.key
 ```
 
 Then, on the same host, you can connect with:
 
-```
+```sh
 fizz client -connect localhost:443
 ```
 
@@ -106,7 +106,7 @@ To begin, you should install the dependencies we need for build. This largely
 consists of [folly](https://github.com/facebook/folly)'s dependencies, as well as
 [libsodium](https://github.com/jedisct1/libsodium).
 
-```
+```sh
 sudo apt-get install \
     g++ \
     cmake \
@@ -130,7 +130,7 @@ sudo apt-get install \
 
 Then, build and install folly:
 
-```
+```sh
 git clone https://github.com/facebook/folly
 mkdir folly/build_ && cd folly/build_
 cmake ..
@@ -140,7 +140,7 @@ sudo make install
 
 And lastly, build and install fizz.
 
-```
+```sh
 cd ../..
 git clone https://github.com/facebookincubator/fizz
 mkdir fizz/build_ && cd fizz/build_
@@ -162,7 +162,7 @@ the homebrew [website](https://brew.sh/).
 It will install and link the required dependencies and also build folly.
 This may take several minutes the first time.
 
-```
+```sh
 cd fizz
 ./mac-build.sh
 ```
@@ -174,7 +174,7 @@ Running it again will be faster and only rebuild `fizz`.
 You can also install both `fizz` as well as `folly` to a custom directory
 using the build script, by supplying an `INSTALL_PREFIX` env var.
 
-```
+```sh
 INSTALL_PREFIX=/usr/local ./mac-build.sh
 ```
 
