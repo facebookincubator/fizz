@@ -36,7 +36,8 @@ class ServerStateMachine {
       std::shared_ptr<const FizzServerContext> context,
       const std::shared_ptr<ServerExtensions>& extensions);
 
-  virtual AsyncActions processSocketData(const State&, folly::IOBufQueue&);
+  virtual AsyncActions
+  processSocketData(const State&, folly::IOBufQueue&, Aead::AeadOptions);
 
   virtual AsyncActions processWriteNewSessionTicket(
       const State&,

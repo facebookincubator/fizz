@@ -37,7 +37,8 @@ class ActionMoveVisitor {
 
 class TestFizzClient : public DelayedDestruction {
  public:
-  TestFizzClient() : fizzClient_(state_, queue_, visitor_, this) {}
+  TestFizzClient()
+      : fizzClient_(state_, queue_, Aead::AeadOptions(), visitor_, this) {}
 
   State state_;
   IOBufQueue queue_;

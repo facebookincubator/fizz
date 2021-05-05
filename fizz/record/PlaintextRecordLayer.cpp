@@ -21,7 +21,8 @@ static constexpr size_t kPlaintextHeaderSize =
     sizeof(ContentType) + sizeof(ProtocolVersion) + sizeof(uint16_t);
 
 folly::Optional<TLSMessage> PlaintextReadRecordLayer::read(
-    folly::IOBufQueue& buf) {
+    folly::IOBufQueue& buf,
+    Aead::AeadOptions) {
   while (true) {
     folly::io::Cursor cursor(buf.front());
 

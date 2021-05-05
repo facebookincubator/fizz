@@ -47,12 +47,17 @@ class MockServerStateMachine : public ServerStateMachine {
     return *_processAccept(state, executor, std::move(context), extensions);
   }
 
-  MOCK_METHOD2(
+  MOCK_METHOD3(
       _processSocketData,
-      folly::Optional<AsyncActions>(const State&, folly::IOBufQueue&));
-  AsyncActions processSocketData(const State& state, folly::IOBufQueue& queue)
-      override {
-    return *_processSocketData(state, queue);
+      folly::Optional<AsyncActions>(
+          const State&,
+          folly::IOBufQueue&,
+          Aead::AeadOptions));
+  AsyncActions processSocketData(
+      const State& state,
+      folly::IOBufQueue& queue,
+      Aead::AeadOptions options) override {
+    return *_processSocketData(state, queue, options);
   }
 
   MOCK_METHOD2(

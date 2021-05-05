@@ -150,7 +150,8 @@ void FizzBase<Derived, ActionMoveVisitor, StateMachine>::
     folly::Optional<typename StateMachine::ProcessingActions> actions;
     actionGuard_ = folly::DelayedDestruction::DestructorGuard(owner_);
     if (!waitForData_) {
-      actions.emplace(machine_.processSocketData(state_, transportReadBuf_));
+      actions.emplace(
+          machine_.processSocketData(state_, transportReadBuf_, aeadOptions_));
     } else if (!pendingEvents_.empty()) {
       auto event = std::move(pendingEvents_.front());
       pendingEvents_.pop_front();

@@ -19,7 +19,13 @@ AsyncFizzClientT<SM>::AsyncFizzClientT(
       fizzContext_(std::move(fizzContext)),
       extensions_(extensions),
       visitor_(*this),
-      fizzClient_(state_, transportReadBuf_, visitor_, this) {}
+      fizzClient_(
+          state_,
+          transportReadBuf_,
+          {Aead::BufferOption::RespectSharedPolicy,
+           Aead::AllocationOption::Allow},
+          visitor_,
+          this) {}
 
 template <typename SM>
 AsyncFizzClientT<SM>::AsyncFizzClientT(
@@ -33,7 +39,13 @@ AsyncFizzClientT<SM>::AsyncFizzClientT(
       fizzContext_(std::move(fizzContext)),
       extensions_(extensions),
       visitor_(*this),
-      fizzClient_(state_, transportReadBuf_, visitor_, this) {}
+      fizzClient_(
+          state_,
+          transportReadBuf_,
+          {Aead::BufferOption::RespectSharedPolicy,
+           Aead::AllocationOption::Allow},
+          visitor_,
+          this) {}
 
 template <typename SM>
 void AsyncFizzClientT<SM>::connect(
