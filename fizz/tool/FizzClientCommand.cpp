@@ -66,6 +66,7 @@ void printUsage() {
     << " -alpn alpn1:...          (colon-separated list of ALPNs to send. Default: none)\n"
     << " -ciphers c1:...          (colon-separated list of ciphers in preference order. Default:\n"
     << "                           TLS_AES_128_GCM_SHA256,TLS_AES_256_GCM_SHA384,TLS_CHACHA20_POLY1305_SHA256)\n"
+    << " -sigschemes s1:...       (colon-separated list of signature schemes in preference order.\n"
     << " -certcompression a1:...  (enables certificate compression support for given algorithms. Default: None)\n"
     << " -early                   (enables sending early data during resumption. Default: false)\n"
     << " -quiet                   (hide informational logging. Default: false)\n"
@@ -514,6 +515,10 @@ int fizzClientCommand(const std::vector<std::string>& args) {
         CipherSuite::TLS_CHACHA20_POLY1305_SHA256,
 #endif
   };
+  std::vector<SignatureScheme> sigSchemes{
+      SignatureScheme::ecdsa_secp256r1_sha256,
+      SignatureScheme::rsa_pss_sha256,
+  };
   bool delegatedCredentials = false;
   bool ech = false;
   std::string echConfigsFile;
@@ -575,6 +580,9 @@ int fizzClientCommand(const std::vector<std::string>& args) {
     }}},
     {"-ciphers", {true, [&ciphers](const std::string& arg) {
         ciphers = splitParse<CipherSuite>(arg);
+    }}},
+    {"-sigschemes", {true, [&sigSchemes](const std::string& arg) {
+        sigSchemes = splitParse<SignatureScheme>(arg);
     }}},
     {"-delegatedcred", {false, [&delegatedCredentials](const std::string&) {
         delegatedCredentials = true;
@@ -643,7 +651,8 @@ int fizzClientCommand(const std::vector<std::string>& args) {
     clientContext->setSupportedAlpns(std::move(alpns));
   }
 
-  clientContext->setSupportedCiphers(std::move(ciphers));
+  clientContext->setSupportedCiphers(ciphers);
+  clientContext->setSupportedSigSchemes(sigSchemes);
 
   clientContext->setSupportedVersions(
       {ProtocolVersion::tls_1_3, ProtocolVersion::tls_1_3_28});
