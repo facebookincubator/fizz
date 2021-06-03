@@ -87,6 +87,8 @@ else()
   list(APPEND CMAKE_REQUIRED_INCLUDES ${LIBGFLAGS_INCLUDE_DIR})
 endif()
 
+find_package(ZLIB REQUIRED)
+
 find_package(Libevent CONFIG QUIET)
 if(TARGET event)
   message(STATUS "Found libevent from package config")
@@ -246,6 +248,7 @@ target_link_libraries(fizz
     ${OPENSSL_LIBRARIES}
     sodium
     Threads::Threads
+    ZLIB::ZLIB
   PRIVATE
     ${GLOG_LIBRARIES}
     ${GFLAGS_LIBRARIES}
