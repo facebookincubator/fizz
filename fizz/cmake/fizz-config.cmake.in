@@ -25,7 +25,10 @@ endif()
 
 set(FIZZ_LIBRARIES fizz::fizz)
 
+include(CMakeFindDependencyMacro)
 find_dependency(Sodium)
+find_dependency(folly CONFIG)
+find_dependency(ZLIB)
 
 if (NOT fizz_FIND_QUIETLY)
   message(STATUS "Found fizz: ${PACKAGE_PREFIX_DIR}")
