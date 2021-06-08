@@ -139,7 +139,7 @@ TEST_F(PlaintextRecordTest, TestSkipAndRead) {
 
 TEST_F(PlaintextRecordTest, TestWriteHandshake) {
   TLSMessage msg{ContentType::handshake, getBuf("1234567890")};
-  auto buf = write_.write(std::move(msg));
+  auto buf = write_.write(std::move(msg), Aead::AeadOptions());
   expectSame(buf.data, "16030300051234567890");
 }
 
@@ -150,7 +150,7 @@ TEST_F(PlaintextRecordTest, TestWriteClientHello) {
 
 TEST_F(PlaintextRecordTest, TestWriteAppData) {
   TLSMessage msg{ContentType::application_data};
-  EXPECT_ANY_THROW(write_.write(std::move(msg)));
+  EXPECT_ANY_THROW(write_.write(std::move(msg), Aead::AeadOptions()));
 }
 
 TEST_F(PlaintextRecordTest, TestFragmentedWrite) {
@@ -159,21 +159,21 @@ TEST_F(PlaintextRecordTest, TestFragmentedWrite) {
   buf->append(0x4010);
   memset(buf->writableData(), 0x1, buf->length());
   msg.fragment->prependChain(std::move(buf));
-  auto write = write_.write(std::move(msg));
+  auto write = write_.write(std::move(msg), Aead::AeadOptions());
 
   TLSMessage msg1{ContentType::handshake, IOBuf::create(0)};
   buf = IOBuf::create(0x4000);
   buf->append(0x4000);
   memset(buf->writableData(), 0x1, buf->length());
   msg1.fragment->prependChain(std::move(buf));
-  auto write1 = write_.write(std::move(msg1));
+  auto write1 = write_.write(std::move(msg1), Aead::AeadOptions());
 
   TLSMessage msg2{ContentType::handshake, IOBuf::create(0)};
   buf = IOBuf::create(0x10);
   buf->append(0x10);
   memset(buf->writableData(), 0x1, buf->length());
   msg2.fragment->prependChain(std::move(buf));
-  auto write2 = write_.write(std::move(msg2));
+  auto write2 = write_.write(std::move(msg2), Aead::AeadOptions());
 
   write1.data->prependChain(std::move(write2.data));
   IOBufEqualTo eq;

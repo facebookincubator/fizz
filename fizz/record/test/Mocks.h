@@ -21,25 +21,26 @@ using namespace testing;
 
 template <typename T>
 void setWriteDefaults(T* obj) {
-  ON_CALL(*obj, _write(_)).WillByDefault(Invoke([obj](TLSMessage& msg) {
-    TLSContent content;
-    content.contentType = msg.type;
-    content.encryptionLevel = obj->getEncryptionLevel();
+  ON_CALL(*obj, _write(_, _))
+      .WillByDefault(Invoke([obj](TLSMessage& msg, Aead::AeadOptions) {
+        TLSContent content;
+        content.contentType = msg.type;
+        content.encryptionLevel = obj->getEncryptionLevel();
 
-    if (msg.type == ContentType::application_data) {
-      content.data = folly::IOBuf::copyBuffer("appdata");
-    } else if (msg.type == ContentType::handshake) {
-      content.data = folly::IOBuf::copyBuffer("handshake");
-    } else if (msg.type == ContentType::alert) {
-      auto buf = folly::IOBuf::copyBuffer("alert");
-      buf->prependChain(std::move(msg.fragment));
-      buf->coalesce();
-      content.data = std::move(buf);
-    } else {
-      content.data = std::unique_ptr<folly::IOBuf>();
-    }
-    return content;
-  }));
+        if (msg.type == ContentType::application_data) {
+          content.data = folly::IOBuf::copyBuffer("appdata");
+        } else if (msg.type == ContentType::handshake) {
+          content.data = folly::IOBuf::copyBuffer("handshake");
+        } else if (msg.type == ContentType::alert) {
+          auto buf = folly::IOBuf::copyBuffer("alert");
+          buf->prependChain(std::move(msg.fragment));
+          buf->coalesce();
+          content.data = std::move(buf);
+        } else {
+          content.data = std::unique_ptr<folly::IOBuf>();
+        }
+        return content;
+      }));
 }
 
 class MockPlaintextReadRecordLayer : public PlaintextReadRecordLayer {
@@ -110,9 +111,11 @@ class MockEncryptedReadRecordLayer : public EncryptedReadRecordLayer {
 
 class MockPlaintextWriteRecordLayer : public PlaintextWriteRecordLayer {
  public:
-  MOCK_CONST_METHOD1(_write, TLSContent(TLSMessage& msg));
-  TLSContent write(TLSMessage&& msg) const override {
-    return _write(msg);
+  MOCK_CONST_METHOD2(
+      _write,
+      TLSContent(TLSMessage& msg, Aead::AeadOptions options));
+  TLSContent write(TLSMessage&& msg, Aead::AeadOptions options) const override {
+    return _write(msg, options);
   }
 
   MOCK_CONST_METHOD1(_writeInitialClientHello, TLSContent(Buf&));
@@ -138,9 +141,11 @@ class MockEncryptedWriteRecordLayer : public EncryptedWriteRecordLayer {
   MockEncryptedWriteRecordLayer(EncryptionLevel encryptionLevel)
       : EncryptedWriteRecordLayer(encryptionLevel) {}
 
-  MOCK_CONST_METHOD1(_write, TLSContent(TLSMessage& msg));
-  TLSContent write(TLSMessage&& msg) const override {
-    return _write(msg);
+  MOCK_CONST_METHOD2(
+      _write,
+      TLSContent(TLSMessage& msg, Aead::AeadOptions options));
+  TLSContent write(TLSMessage&& msg, Aead::AeadOptions options) const override {
+    return _write(msg, options);
   }
 
   MOCK_METHOD2(_setAead, void(folly::ByteRange, Aead*));

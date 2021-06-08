@@ -97,7 +97,9 @@ EncryptionLevel PlaintextReadRecordLayer::getEncryptionLevel() const {
   return EncryptionLevel::Plaintext;
 }
 
-TLSContent PlaintextWriteRecordLayer::write(TLSMessage&& msg) const {
+TLSContent PlaintextWriteRecordLayer::write(
+    TLSMessage&& msg,
+    Aead::AeadOptions /*options*/) const {
   return write(std::move(msg), ProtocolVersion::tls_1_2);
 }
 

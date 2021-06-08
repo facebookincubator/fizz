@@ -28,9 +28,11 @@ class ConcreteReadRecordLayer : public PlaintextReadRecordLayer {
 
 class ConcreteWriteRecordLayer : public PlaintextWriteRecordLayer {
  public:
-  MOCK_CONST_METHOD1(_write, TLSContent(TLSMessage& msg));
-  TLSContent write(TLSMessage&& msg) const override {
-    return _write(msg);
+  MOCK_CONST_METHOD2(
+      _write,
+      TLSContent(TLSMessage& msg, Aead::AeadOptions options));
+  TLSContent write(TLSMessage&& msg, Aead::AeadOptions options) const override {
+    return _write(msg, options);
   }
 };
 
@@ -182,38 +184,41 @@ TEST_F(RecordTest, TestMultipleHandshakeMessages) {
 }
 
 TEST_F(RecordTest, TestWriteAppData) {
-  EXPECT_CALL(write_, _write(_)).WillOnce(Invoke([&](TLSMessage& msg) {
-    TLSContent content;
-    content.contentType = msg.type;
-    content.encryptionLevel = write_.getEncryptionLevel();
-    content.data = nullptr;
-    EXPECT_EQ(msg.type, ContentType::application_data);
-    return content;
-  }));
-  write_.writeAppData(IOBuf::copyBuffer("hi"));
+  EXPECT_CALL(write_, _write(_, _))
+      .WillOnce(Invoke([&](TLSMessage& msg, Aead::AeadOptions) {
+        TLSContent content;
+        content.contentType = msg.type;
+        content.encryptionLevel = write_.getEncryptionLevel();
+        content.data = nullptr;
+        EXPECT_EQ(msg.type, ContentType::application_data);
+        return content;
+      }));
+  write_.writeAppData(IOBuf::copyBuffer("hi"), Aead::AeadOptions());
 }
 
 TEST_F(RecordTest, TestWriteAlert) {
-  EXPECT_CALL(write_, _write(_)).WillOnce(Invoke([&](TLSMessage& msg) {
-    EXPECT_EQ(msg.type, ContentType::alert);
-    TLSContent content;
-    content.contentType = msg.type;
-    content.encryptionLevel = write_.getEncryptionLevel();
-    content.data = nullptr;
-    return content;
-  }));
+  EXPECT_CALL(write_, _write(_, _))
+      .WillOnce(Invoke([&](TLSMessage& msg, Aead::AeadOptions) {
+        EXPECT_EQ(msg.type, ContentType::alert);
+        TLSContent content;
+        content.contentType = msg.type;
+        content.encryptionLevel = write_.getEncryptionLevel();
+        content.data = nullptr;
+        return content;
+      }));
   write_.writeAlert(Alert());
 }
 
 TEST_F(RecordTest, TestWriteHandshake) {
-  EXPECT_CALL(write_, _write(_)).WillOnce(Invoke([&](TLSMessage& msg) {
-    EXPECT_EQ(msg.type, ContentType::handshake);
-    TLSContent content;
-    content.contentType = msg.type;
-    content.encryptionLevel = write_.getEncryptionLevel();
-    content.data = nullptr;
-    return content;
-  }));
+  EXPECT_CALL(write_, _write(_, _))
+      .WillOnce(Invoke([&](TLSMessage& msg, Aead::AeadOptions) {
+        EXPECT_EQ(msg.type, ContentType::handshake);
+        TLSContent content;
+        content.contentType = msg.type;
+        content.encryptionLevel = write_.getEncryptionLevel();
+        content.data = nullptr;
+        return content;
+      }));
   write_.writeHandshake(IOBuf::copyBuffer("msg1"), IOBuf::copyBuffer("msg2"));
 }
 

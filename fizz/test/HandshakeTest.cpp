@@ -56,6 +56,38 @@ TEST_F(HandshakeTest, BasicHandshakeInplaceDecrypt) {
   serverWrite("serverdata");
 }
 
+TEST_F(HandshakeTest, BasicHandshakeInplaceEncryptDisabled) {
+  client_->setEncryptInplace(false);
+  server_->setEncryptInplace(false);
+  expectSuccess();
+  doHandshake();
+  verifyParameters();
+  expectClientRead("serverdata");
+  expectServerRead("clientdata");
+  auto clientSendBuf = IOBuf::copyBuffer("clientdata");
+  auto serverSendBuf = IOBuf::copyBuffer("serverdata");
+  client_->writeChain(nullptr, clientSendBuf->clone());
+  server_->writeChain(nullptr, serverSendBuf->clone());
+  EXPECT_TRUE(IOBufEqualTo()(clientSendBuf, IOBuf::copyBuffer("clientdata")));
+  EXPECT_TRUE(IOBufEqualTo()(serverSendBuf, IOBuf::copyBuffer("serverdata")));
+}
+
+TEST_F(HandshakeTest, BasicHandshakeInplaceEncryptEnabled) {
+  client_->setEncryptInplace(true);
+  server_->setEncryptInplace(true);
+  expectSuccess();
+  doHandshake();
+  verifyParameters();
+  expectClientRead("serverdata");
+  expectServerRead("clientdata");
+  auto clientSendBuf = IOBuf::copyBuffer("clientdata");
+  auto serverSendBuf = IOBuf::copyBuffer("serverdata");
+  client_->writeChain(nullptr, clientSendBuf->clone());
+  server_->writeChain(nullptr, serverSendBuf->clone());
+  EXPECT_FALSE(IOBufEqualTo()(clientSendBuf, IOBuf::copyBuffer("clientdata")));
+  EXPECT_FALSE(IOBufEqualTo()(serverSendBuf, IOBuf::copyBuffer("serverdata")));
+}
+
 TEST_F(HandshakeTest, BasicHandshakeSharedDecrypt) {
   // Same as before, but now we ask it to respect shared policy.
   // Because of setTrickle trimming the incoming packet, we expect

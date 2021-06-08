@@ -10,6 +10,7 @@
 
 #include <fizz/client/ClientExtensions.h>
 #include <fizz/client/PskCache.h>
+#include <fizz/crypto/aead/Aead.h>
 #include <fizz/protocol/Events.h>
 #include <fizz/protocol/ech/Types.h>
 #include <fizz/record/Types.h>
@@ -49,12 +50,14 @@ struct EarlyAppWrite : EventType<Event::EarlyAppWrite> {
   folly::AsyncTransportWrapper::WriteCallback* callback{nullptr};
   std::unique_ptr<folly::IOBuf> data;
   folly::WriteFlags flags;
+  Aead::AeadOptions aeadOptions;
 };
 
 struct AppWrite : EventType<Event::AppWrite> {
   folly::AsyncTransportWrapper::WriteCallback* callback{nullptr};
   std::unique_ptr<folly::IOBuf> data;
   folly::WriteFlags flags;
+  Aead::AeadOptions aeadOptions;
 };
 
 struct AppData : EventType<Event::AppData> {

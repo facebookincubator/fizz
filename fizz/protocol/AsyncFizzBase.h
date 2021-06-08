@@ -240,6 +240,27 @@ class AsyncFizzBase : public folly::WriteChainAsyncTransportWrapper<
         : Aead::BufferOption::RespectSharedPolicy;
   }
 
+  /*
+   * This sets whether or not to always perform encryption in-place, using the
+   * same buffers passed in for writing to hold the encrypted data. The code
+   * will do this opportunistically in certain cases (unique buffer passed in
+   * and not split into records), but by setting this to true you can indicate
+   * that the buffers passed in can always be used for in-place encryption
+   * safely. This is not enabled by default (for safety).
+   *
+   * If you pass in unshared IOBufs for writing, you can set this to true.
+   * Otherwise, if you have a shared buffer, its contents will be overwritten
+   * (without throwing an error), affecting the other IOBufs sharing the
+   * underlying buffer. Thus, in many cases it's not appropriate to set this to
+   * true when passing in shared buffers, as the original plaintext in the
+   * buffer will be lost.
+   */
+  void setEncryptInplace(bool inPlace) {
+    writeAeadOptions_.bufferOpt = inPlace
+        ? Aead::BufferOption::AllowInPlace
+        : Aead::BufferOption::RespectSharedPolicy;
+  }
+
  protected:
   /**
    * Start reading raw data from the transport.
@@ -302,6 +323,7 @@ class AsyncFizzBase : public folly::WriteChainAsyncTransportWrapper<
 
   folly::IOBufQueue transportReadBuf_{folly::IOBufQueue::cacheChainLength()};
   Aead::AeadOptions readAeadOptions_;
+  Aead::AeadOptions writeAeadOptions_;
 
  private:
   class QueuedWriteRequest

@@ -188,10 +188,11 @@ class ProtocolTest : public testing::Test {
                 EXPECT_EQ(aead, *writeAead);
               }));
           if (expectedWrite) {
-            EXPECT_CALL(*ret, _write(_))
+            EXPECT_CALL(*ret, _write(_, _))
                 .WillOnce(
                     Invoke([writeFunc = std::move(expectedWrite),
-                            writeRecord = *recordLayer](auto& msg) mutable {
+                            writeRecord = *recordLayer](
+                               TLSMessage& msg, Aead::AeadOptions) mutable {
                       return writeFunc(msg, writeRecord);
                     }));
           }

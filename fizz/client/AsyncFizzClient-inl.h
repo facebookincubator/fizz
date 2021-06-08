@@ -294,6 +294,7 @@ void AsyncFizzClientT<SM>::writeAppData(
       w.callback = callback;
       w.data = std::move(buf);
       w.flags = flags;
+      w.aeadOptions = writeAeadOptions_;
 
       earlyDataState_->remainingEarlyData = 0;
       earlyDataState_->pendingAppWrites.push_back(std::move(w));
@@ -302,6 +303,7 @@ void AsyncFizzClientT<SM>::writeAppData(
       w.callback = callback;
       w.data = std::move(buf);
       w.flags = flags;
+      w.aeadOptions = writeAeadOptions_;
 
       if (earlyDataRejectionPolicy_ ==
           EarlyDataRejectionPolicy::AutomaticResend) {
@@ -323,6 +325,7 @@ void AsyncFizzClientT<SM>::writeAppData(
     w.callback = callback;
     w.data = std::move(buf);
     w.flags = flags;
+    w.aeadOptions = writeAeadOptions_;
 
     // Instead of dealing with the ordering of all 3 potential queues (early
     // data resend buffer, early data pending writes, and pending handshake

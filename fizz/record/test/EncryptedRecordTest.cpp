@@ -291,7 +291,7 @@ TEST_F(EncryptedRecordTest, TestWriteHandshake) {
         expectSame(buf, "123456789016");
         return getBuf("abcd1234abcd");
       }));
-  auto buf = write_.write(std::move(msg));
+  auto buf = write_.write(std::move(msg), Aead::AeadOptions());
   expectSame(buf.data, "1703030006abcd1234abcd");
 }
 
@@ -305,7 +305,7 @@ TEST_F(EncryptedRecordTest, TestWriteAppData) {
         expectSame(buf, "123456789017");
         return getBuf("abcd1234abcd");
       }));
-  auto buf = write_.write(std::move(msg));
+  auto buf = write_.write(std::move(msg), Aead::AeadOptions());
   expectSame(buf.data, "1703030006abcd1234abcd");
 }
 
@@ -322,7 +322,7 @@ TEST_F(EncryptedRecordTest, TestWriteAppDataInPlace) {
         // we need to return room for the header
         return getBuf("abcd1234abcd", 5, 0);
       }));
-  auto buf = write_.write(std::move(msg));
+  auto buf = write_.write(std::move(msg), Aead::AeadOptions());
   EXPECT_FALSE(buf.data->isChained());
   expectSame(buf.data, "1703030006abcd1234abcd");
 }
@@ -345,7 +345,7 @@ TEST_F(EncryptedRecordTest, TestFragmentedWrite) {
                           const IOBuf*,
                           uint64_t,
                           Aead::AeadOptions) { return getBuf("bbbb"); }));
-  auto outBuf = write_.write(std::move(msg));
+  auto outBuf = write_.write(std::move(msg), Aead::AeadOptions());
   expectSame(outBuf.data, "1703034001aaaa1703030a01bbbb");
 }
 
@@ -362,7 +362,7 @@ TEST_F(EncryptedRecordTest, TestWriteSplittingWholeBuf) {
                                 const IOBuf*,
                                 uint64_t,
                                 Aead::AeadOptions) { return getBuf("aaaa"); }));
-  write_.write(std::move(msg));
+  write_.write(std::move(msg), Aead::AeadOptions());
 }
 
 TEST_F(EncryptedRecordTest, TestWriteSplittingCombineSmall) {
@@ -378,7 +378,7 @@ TEST_F(EncryptedRecordTest, TestWriteSplittingCombineSmall) {
                                 const IOBuf*,
                                 uint64_t,
                                 Aead::AeadOptions) { return getBuf("aaaa"); }));
-  write_.write(std::move(msg));
+  write_.write(std::move(msg), Aead::AeadOptions());
 }
 
 TEST_F(EncryptedRecordTest, TestWriteSeqNum) {
@@ -392,13 +392,13 @@ TEST_F(EncryptedRecordTest, TestWriteSeqNum) {
           expectSame(buf, "123456789017");
           return getBuf("abcd1234abcd");
         }));
-    write_.write(std::move(msg));
+    write_.write(std::move(msg), Aead::AeadOptions());
   }
 }
 
 TEST_F(EncryptedRecordTest, TestWriteEmpty) {
   TLSMessage msg{ContentType::application_data, folly::IOBuf::create(0)};
-  auto outBuf = write_.write(std::move(msg));
+  auto outBuf = write_.write(std::move(msg), Aead::AeadOptions());
   EXPECT_TRUE(outBuf.data->empty());
 }
 
@@ -416,7 +416,7 @@ TEST_F(EncryptedRecordTest, TestWriteMaxSize) {
                                 const IOBuf*,
                                 uint64_t,
                                 Aead::AeadOptions) { return getBuf("aaaa"); }));
-  write_.write(std::move(msg));
+  write_.write(std::move(msg), Aead::AeadOptions());
 }
 
 TEST_F(EncryptedRecordTest, TestWriteMinSize) {
@@ -447,7 +447,7 @@ TEST_F(EncryptedRecordTest, TestWriteMinSize) {
         EXPECT_EQ(buf->computeChainDataLength(), 301);
         return getBuf("bbbb");
       }));
-  write_.write(std::move(msg));
+  write_.write(std::move(msg), Aead::AeadOptions());
 }
 
 TEST_F(EncryptedRecordTest, TestRecordState) {

@@ -1665,8 +1665,8 @@ EventHandler<ServerTypes, StateEnum::AcceptingEarlyData, Event::AppWrite>::
 
   WriteToSocket write;
   write.callback = appWrite.callback;
-  write.contents.emplace_back(
-      state.writeRecordLayer()->writeAppData(std::move(appWrite.data)));
+  write.contents.emplace_back(state.writeRecordLayer()->writeAppData(
+      std::move(appWrite.data), appWrite.aeadOptions));
   write.flags = appWrite.flags;
 
   return actions(std::move(write));
@@ -1702,8 +1702,8 @@ EventHandler<ServerTypes, StateEnum::ExpectingFinished, Event::AppWrite>::
 
   WriteToSocket write;
   write.callback = appWrite.callback;
-  write.contents.emplace_back(
-      state.writeRecordLayer()->writeAppData(std::move(appWrite.data)));
+  write.contents.emplace_back(state.writeRecordLayer()->writeAppData(
+      std::move(appWrite.data), appWrite.aeadOptions));
   write.flags = appWrite.flags;
 
   return actions(std::move(write));
@@ -2002,8 +2002,8 @@ EventHandler<ServerTypes, StateEnum::AcceptingData, Event::AppWrite>::handle(
 
   WriteToSocket write;
   write.callback = appWrite.callback;
-  write.contents.emplace_back(
-      state.writeRecordLayer()->writeAppData(std::move(appWrite.data)));
+  write.contents.emplace_back(state.writeRecordLayer()->writeAppData(
+      std::move(appWrite.data), appWrite.aeadOptions));
   write.flags = appWrite.flags;
 
   return actions(std::move(write));

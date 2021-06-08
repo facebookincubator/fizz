@@ -196,6 +196,7 @@ void AsyncFizzServerT<SM>::writeAppData(
   write.callback = callback;
   write.data = std::move(buf);
   write.flags = flags;
+  write.aeadOptions = writeAeadOptions_;
   fizzServer_.appWrite(std::move(write));
 }
 

@@ -88,21 +88,27 @@ class WriteRecordLayer {
  public:
   virtual ~WriteRecordLayer() = default;
 
-  virtual TLSContent write(TLSMessage&& msg) const = 0;
+  virtual TLSContent write(TLSMessage&& msg, Aead::AeadOptions options)
+      const = 0;
 
   TLSContent writeAlert(Alert&& alert) const {
-    return write(TLSMessage{ContentType::alert, encode(std::move(alert))});
+    return write(
+        TLSMessage{ContentType::alert, encode(std::move(alert))},
+        Aead::AeadOptions());
   }
 
-  TLSContent writeAppData(std::unique_ptr<folly::IOBuf>&& appData) const {
-    return write(TLSMessage{ContentType::application_data, std::move(appData)});
+  TLSContent writeAppData(
+      std::unique_ptr<folly::IOBuf>&& appData,
+      Aead::AeadOptions options) const {
+    return write(
+        TLSMessage{ContentType::application_data, std::move(appData)}, options);
   }
 
   template <typename... Args>
   TLSContent writeHandshake(Buf&& encodedHandshakeMsg, Args&&... args) const {
     TLSMessage msg{ContentType::handshake, std::move(encodedHandshakeMsg)};
     addMessage(msg.fragment, std::forward<Args>(args)...);
-    return write(std::move(msg));
+    return write(std::move(msg), Aead::AeadOptions());
   }
 
   void setProtocolVersion(ProtocolVersion version) const {

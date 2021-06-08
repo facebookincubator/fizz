@@ -164,7 +164,9 @@ EncryptionLevel EncryptedReadRecordLayer::getEncryptionLevel() const {
   return encryptionLevel_;
 }
 
-TLSContent EncryptedWriteRecordLayer::write(TLSMessage&& msg) const {
+TLSContent EncryptedWriteRecordLayer::write(
+    TLSMessage&& msg,
+    Aead::AeadOptions options) const {
   folly::IOBufQueue queue;
   queue.append(std::move(msg.fragment));
   std::unique_ptr<folly::IOBuf> outBuf;
@@ -208,7 +210,10 @@ TLSContent EncryptedWriteRecordLayer::write(TLSMessage&& msg) const {
     appender.writeBE<uint16_t>(ciphertextLength);
 
     auto cipherText = aead_->encrypt(
-        std::move(dataBuf), useAdditionalData_ ? &header : nullptr, seqNum_++);
+        std::move(dataBuf),
+        useAdditionalData_ ? &header : nullptr,
+        seqNum_++,
+        options);
 
     std::unique_ptr<folly::IOBuf> record;
     if (!cipherText->isShared() &&

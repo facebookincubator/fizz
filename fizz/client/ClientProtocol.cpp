@@ -2058,8 +2058,8 @@ EventHandler<ClientTypes, StateEnum::Established, Event::AppWrite>::handle(
 
   WriteToSocket write;
   write.callback = appWrite.callback;
-  write.contents.emplace_back(
-      state.writeRecordLayer()->writeAppData(std::move(appWrite.data)));
+  write.contents.emplace_back(state.writeRecordLayer()->writeAppData(
+      std::move(appWrite.data), appWrite.aeadOptions));
   write.flags = appWrite.flags;
 
   return actions(std::move(write));
@@ -2162,8 +2162,8 @@ static Actions handleEarlyAppWrite(const State& state, EarlyAppWrite appWrite) {
       WriteToSocket write;
       write.callback = appWrite.callback;
       write.flags = appWrite.flags;
-      auto appData =
-          state.earlyWriteRecordLayer()->writeAppData(std::move(appWrite.data));
+      auto appData = state.earlyWriteRecordLayer()->writeAppData(
+          std::move(appWrite.data), appWrite.aeadOptions);
 
       if (!state.sentCCS() && state.context()->getCompatibilityMode()) {
         TLSContent writeCCS;
@@ -2231,8 +2231,8 @@ EventHandler<ClientTypes, StateEnum::Established, Event::EarlyAppWrite>::handle(
     // the all-or-nothing property of early data.
     WriteToSocket write;
     write.callback = appWrite.callback;
-    write.contents.emplace_back(
-        state.writeRecordLayer()->writeAppData(std::move(appWrite.data)));
+    write.contents.emplace_back(state.writeRecordLayer()->writeAppData(
+        std::move(appWrite.data), appWrite.aeadOptions));
     write.flags = appWrite.flags;
     return actions(std::move(write));
   } else {

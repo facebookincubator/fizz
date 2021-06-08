@@ -47,7 +47,7 @@ class PlaintextWriteRecordLayer : public WriteRecordLayer {
  public:
   ~PlaintextWriteRecordLayer() override = default;
 
-  TLSContent write(TLSMessage&& msg) const override;
+  TLSContent write(TLSMessage&& msg, Aead::AeadOptions options) const override;
 
   /**
    * Write the initial ClientHello handshake message. This is a separate method

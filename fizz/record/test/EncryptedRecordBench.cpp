@@ -78,7 +78,7 @@ void encryptGCM(uint32_t n, size_t size, size_t num) {
 
   TLSContent content;
   for (auto& msg : msgs) {
-    content = write.write(std::move(msg));
+    content = write.write(std::move(msg), Aead::AeadOptions());
   }
   folly::doNotOptimizeAway(content);
 }
@@ -96,7 +96,7 @@ void decryptGCM(uint32_t n, size_t size) {
     read.setAead(folly::ByteRange(), std::move(readAead));
     for (size_t i = 0; i < n; ++i) {
       TLSMessage msg{ContentType::application_data, makeRandom(size)};
-      auto content = write.write(std::move(msg));
+      auto content = write.write(std::move(msg), Aead::AeadOptions());
       folly::IOBufQueue queue{folly::IOBufQueue::cacheChainLength()};
       queue.append(std::move(content.data));
       folly::doNotOptimizeAway(queue.front());
@@ -198,7 +198,7 @@ void encryptOCB(uint32_t n, size_t size) {
 
   TLSContent content;
   for (auto& msg : msgs) {
-    content = write.write(std::move(msg));
+    content = write.write(std::move(msg), Aead::AeadOptions());
   }
   folly::doNotOptimizeAway(content);
 }

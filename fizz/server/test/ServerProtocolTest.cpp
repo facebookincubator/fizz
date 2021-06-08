@@ -363,7 +363,7 @@ TEST_F(ServerProtocolTest, TestInvalidTransitionNoAlert) {
 
 TEST_F(ServerProtocolTest, TestInvalidTransitionAlert) {
   setMockRecord();
-  EXPECT_CALL(*mockWrite_, _write(_));
+  EXPECT_CALL(*mockWrite_, _write(_, _));
   auto actions =
       getActions(ServerStateMachine().processAppWrite(state_, AppWrite()));
   expectError<FizzException>(
@@ -437,16 +437,17 @@ TEST_F(ServerProtocolTest, TestAccept) {
 
 TEST_F(ServerProtocolTest, TestAppClose) {
   setUpAcceptingData();
-  EXPECT_CALL(*appWrite_, _write(_)).WillOnce(Invoke([&](TLSMessage& msg) {
-    TLSContent content;
-    content.contentType = msg.type;
-    content.encryptionLevel = appWrite_->getEncryptionLevel();
-    EXPECT_EQ(msg.type, ContentType::alert);
-    EXPECT_TRUE(IOBufEqualTo()(
-        msg.fragment, encode(Alert(AlertDescription::close_notify))));
-    content.data = IOBuf::copyBuffer("closenotify");
-    return content;
-  }));
+  EXPECT_CALL(*appWrite_, _write(_, _))
+      .WillOnce(Invoke([&](TLSMessage& msg, Aead::AeadOptions) {
+        TLSContent content;
+        content.contentType = msg.type;
+        content.encryptionLevel = appWrite_->getEncryptionLevel();
+        EXPECT_EQ(msg.type, ContentType::alert);
+        EXPECT_TRUE(IOBufEqualTo()(
+            msg.fragment, encode(Alert(AlertDescription::close_notify))));
+        content.data = IOBuf::copyBuffer("closenotify");
+        return content;
+      }));
   auto actions = ServerStateMachine().processAppClose(state_);
   expectActions<MutateState, WriteToSocket>(actions);
   auto write = expectAction<WriteToSocket>(actions);
@@ -492,16 +493,17 @@ TEST_F(ServerProtocolTest, TestAppCloseNoWrite) {
 
 TEST_F(ServerProtocolTest, TestAppCloseImmediate) {
   setUpAcceptingData();
-  EXPECT_CALL(*appWrite_, _write(_)).WillOnce(Invoke([&](TLSMessage& msg) {
-    TLSContent content;
-    content.contentType = msg.type;
-    content.encryptionLevel = appWrite_->getEncryptionLevel();
-    EXPECT_EQ(msg.type, ContentType::alert);
-    EXPECT_TRUE(IOBufEqualTo()(
-        msg.fragment, encode(Alert(AlertDescription::close_notify))));
-    content.data = IOBuf::copyBuffer("closenotify");
-    return content;
-  }));
+  EXPECT_CALL(*appWrite_, _write(_, _))
+      .WillOnce(Invoke([&](TLSMessage& msg, Aead::AeadOptions) {
+        TLSContent content;
+        content.contentType = msg.type;
+        content.encryptionLevel = appWrite_->getEncryptionLevel();
+        EXPECT_EQ(msg.type, ContentType::alert);
+        EXPECT_TRUE(IOBufEqualTo()(
+            msg.fragment, encode(Alert(AlertDescription::close_notify))));
+        content.data = IOBuf::copyBuffer("closenotify");
+        return content;
+      }));
   auto actions = ServerStateMachine().processAppCloseImmediate(state_);
   expectActions<MutateState, WriteToSocket>(actions);
   auto write = expectAction<WriteToSocket>(actions);
@@ -563,16 +565,17 @@ TEST_F(ServerProtocolTest, TestClientHelloFullHandshakeFlow) {
     random.fill(0x44);
     return random;
   }));
-  EXPECT_CALL(*mockWrite_, _write(_)).WillOnce(Invoke([&](TLSMessage& msg) {
-    TLSContent content;
-    content.contentType = msg.type;
-    content.encryptionLevel = mockWrite_->getEncryptionLevel();
-    EXPECT_EQ(msg.type, ContentType::handshake);
-    EXPECT_TRUE(IOBufEqualTo()(
-        msg.fragment, encodeHandshake(TestMessages::serverHello())));
-    content.data = IOBuf::copyBuffer("writtenshlo");
-    return content;
-  }));
+  EXPECT_CALL(*mockWrite_, _write(_, _))
+      .WillOnce(Invoke([&](TLSMessage& msg, Aead::AeadOptions) {
+        TLSContent content;
+        content.contentType = msg.type;
+        content.encryptionLevel = mockWrite_->getEncryptionLevel();
+        EXPECT_EQ(msg.type, ContentType::handshake);
+        EXPECT_TRUE(IOBufEqualTo()(
+            msg.fragment, encodeHandshake(TestMessages::serverHello())));
+        content.data = IOBuf::copyBuffer("writtenshlo");
+        return content;
+      }));
   EXPECT_CALL(
       *mockKeyScheduler_,
       getSecret(
@@ -823,16 +826,17 @@ TEST_F(ServerProtocolTest, TestClientHelloCompressedCertFlow) {
     random.fill(0x44);
     return random;
   }));
-  EXPECT_CALL(*mockWrite_, _write(_)).WillOnce(Invoke([&](TLSMessage& msg) {
-    TLSContent content;
-    content.contentType = msg.type;
-    content.encryptionLevel = mockWrite_->getEncryptionLevel();
-    EXPECT_EQ(msg.type, ContentType::handshake);
-    EXPECT_TRUE(IOBufEqualTo()(
-        msg.fragment, encodeHandshake(TestMessages::serverHello())));
-    content.data = IOBuf::copyBuffer("writtenshlo");
-    return content;
-  }));
+  EXPECT_CALL(*mockWrite_, _write(_, _))
+      .WillOnce(Invoke([&](TLSMessage& msg, Aead::AeadOptions) {
+        TLSContent content;
+        content.contentType = msg.type;
+        content.encryptionLevel = mockWrite_->getEncryptionLevel();
+        EXPECT_EQ(msg.type, ContentType::handshake);
+        EXPECT_TRUE(IOBufEqualTo()(
+            msg.fragment, encodeHandshake(TestMessages::serverHello())));
+        content.data = IOBuf::copyBuffer("writtenshlo");
+        return content;
+      }));
   EXPECT_CALL(
       *mockKeyScheduler_,
       getSecret(
@@ -1076,16 +1080,17 @@ TEST_F(ServerProtocolTest, TestECHDecryptionSuccess) {
     random.fill(0x44);
     return random;
   }));
-  EXPECT_CALL(*mockWrite_, _write(_)).WillOnce(Invoke([&](TLSMessage& msg) {
-    TLSContent content;
-    content.contentType = msg.type;
-    content.encryptionLevel = mockWrite_->getEncryptionLevel();
-    EXPECT_EQ(msg.type, ContentType::handshake);
-    EXPECT_TRUE(IOBufEqualTo()(
-        msg.fragment, encodeHandshake(TestMessages::serverHello())));
-    content.data = IOBuf::copyBuffer("writtenshlo");
-    return content;
-  }));
+  EXPECT_CALL(*mockWrite_, _write(_, _))
+      .WillOnce(Invoke([&](TLSMessage& msg, Aead::AeadOptions) {
+        TLSContent content;
+        content.contentType = msg.type;
+        content.encryptionLevel = mockWrite_->getEncryptionLevel();
+        EXPECT_EQ(msg.type, ContentType::handshake);
+        EXPECT_TRUE(IOBufEqualTo()(
+            msg.fragment, encodeHandshake(TestMessages::serverHello())));
+        content.data = IOBuf::copyBuffer("writtenshlo");
+        return content;
+      }));
   EXPECT_CALL(
       *mockKeyScheduler_,
       getSecret(
@@ -1345,16 +1350,17 @@ TEST_F(ServerProtocolTest, TestECHDecryptionFailure) {
     random.fill(0x44);
     return random;
   }));
-  EXPECT_CALL(*mockWrite_, _write(_)).WillOnce(Invoke([&](TLSMessage& msg) {
-    TLSContent content;
-    content.contentType = msg.type;
-    content.encryptionLevel = mockWrite_->getEncryptionLevel();
-    EXPECT_EQ(msg.type, ContentType::handshake);
-    EXPECT_TRUE(IOBufEqualTo()(
-        msg.fragment, encodeHandshake(TestMessages::serverHello())));
-    content.data = IOBuf::copyBuffer("writtenshlo");
-    return content;
-  }));
+  EXPECT_CALL(*mockWrite_, _write(_, _))
+      .WillOnce(Invoke([&](TLSMessage& msg, Aead::AeadOptions) {
+        TLSContent content;
+        content.contentType = msg.type;
+        content.encryptionLevel = mockWrite_->getEncryptionLevel();
+        EXPECT_EQ(msg.type, ContentType::handshake);
+        EXPECT_TRUE(IOBufEqualTo()(
+            msg.fragment, encodeHandshake(TestMessages::serverHello())));
+        content.data = IOBuf::copyBuffer("writtenshlo");
+        return content;
+      }));
   EXPECT_CALL(
       *mockKeyScheduler_,
       getSecret(
@@ -1620,16 +1626,17 @@ TEST_F(ServerProtocolTest, TestClientHelloCertRequestFlow) {
     random.fill(0x44);
     return random;
   }));
-  EXPECT_CALL(*mockWrite_, _write(_)).WillOnce(Invoke([&](TLSMessage& msg) {
-    TLSContent content;
-    content.contentType = msg.type;
-    content.encryptionLevel = mockWrite_->getEncryptionLevel();
-    EXPECT_EQ(msg.type, ContentType::handshake);
-    EXPECT_TRUE(IOBufEqualTo()(
-        msg.fragment, encodeHandshake(TestMessages::serverHello())));
-    content.data = IOBuf::copyBuffer("writtenshlo");
-    return content;
-  }));
+  EXPECT_CALL(*mockWrite_, _write(_, _))
+      .WillOnce(Invoke([&](TLSMessage& msg, Aead::AeadOptions) {
+        TLSContent content;
+        content.contentType = msg.type;
+        content.encryptionLevel = mockWrite_->getEncryptionLevel();
+        EXPECT_EQ(msg.type, ContentType::handshake);
+        EXPECT_TRUE(IOBufEqualTo()(
+            msg.fragment, encodeHandshake(TestMessages::serverHello())));
+        content.data = IOBuf::copyBuffer("writtenshlo");
+        return content;
+      }));
   EXPECT_CALL(
       *mockKeyScheduler_,
       getSecret(
@@ -1884,20 +1891,22 @@ TEST_F(ServerProtocolTest, TestClientHelloPskFlow) {
     random.fill(0x44);
     return random;
   }));
-  EXPECT_CALL(*mockWrite_, _write(_)).WillOnce(Invoke([&](TLSMessage& msg) {
-    TLSContent content;
-    content.contentType = msg.type;
-    content.encryptionLevel = mockWrite_->getEncryptionLevel();
-    EXPECT_EQ(msg.type, ContentType::handshake);
-    auto shlo = TestMessages::serverHello();
-    TestMessages::removeExtension(shlo, ExtensionType::key_share);
-    ServerPresharedKey serverPsk;
-    serverPsk.selected_identity = 0;
-    shlo.extensions.push_back(encodeExtension(std::move(serverPsk)));
-    EXPECT_TRUE(IOBufEqualTo()(msg.fragment, encodeHandshake(std::move(shlo))));
-    content.data = IOBuf::copyBuffer("writtenshlo");
-    return content;
-  }));
+  EXPECT_CALL(*mockWrite_, _write(_, _))
+      .WillOnce(Invoke([&](TLSMessage& msg, Aead::AeadOptions) {
+        TLSContent content;
+        content.contentType = msg.type;
+        content.encryptionLevel = mockWrite_->getEncryptionLevel();
+        EXPECT_EQ(msg.type, ContentType::handshake);
+        auto shlo = TestMessages::serverHello();
+        TestMessages::removeExtension(shlo, ExtensionType::key_share);
+        ServerPresharedKey serverPsk;
+        serverPsk.selected_identity = 0;
+        shlo.extensions.push_back(encodeExtension(std::move(serverPsk)));
+        EXPECT_TRUE(
+            IOBufEqualTo()(msg.fragment, encodeHandshake(std::move(shlo))));
+        content.data = IOBuf::copyBuffer("writtenshlo");
+        return content;
+      }));
   EXPECT_CALL(
       *mockKeyScheduler_,
       getSecret(
@@ -2116,19 +2125,21 @@ TEST_F(ServerProtocolTest, TestClientHelloPskDheFlow) {
     random.fill(0x44);
     return random;
   }));
-  EXPECT_CALL(*mockWrite_, _write(_)).WillOnce(Invoke([&](TLSMessage& msg) {
-    EXPECT_EQ(msg.type, ContentType::handshake);
-    auto shlo = TestMessages::serverHello();
-    ServerPresharedKey serverPsk;
-    serverPsk.selected_identity = 0;
-    shlo.extensions.push_back(encodeExtension(std::move(serverPsk)));
-    EXPECT_TRUE(IOBufEqualTo()(msg.fragment, encodeHandshake(std::move(shlo))));
-    TLSContent content;
-    content.contentType = msg.type;
-    content.encryptionLevel = mockWrite_->getEncryptionLevel();
-    content.data = IOBuf::copyBuffer("writtenshlo");
-    return content;
-  }));
+  EXPECT_CALL(*mockWrite_, _write(_, _))
+      .WillOnce(Invoke([&](TLSMessage& msg, Aead::AeadOptions) {
+        EXPECT_EQ(msg.type, ContentType::handshake);
+        auto shlo = TestMessages::serverHello();
+        ServerPresharedKey serverPsk;
+        serverPsk.selected_identity = 0;
+        shlo.extensions.push_back(encodeExtension(std::move(serverPsk)));
+        EXPECT_TRUE(
+            IOBufEqualTo()(msg.fragment, encodeHandshake(std::move(shlo))));
+        TLSContent content;
+        content.contentType = msg.type;
+        content.encryptionLevel = mockWrite_->getEncryptionLevel();
+        content.data = IOBuf::copyBuffer("writtenshlo");
+        return content;
+      }));
   EXPECT_CALL(
       *mockKeyScheduler_,
       getSecret(
@@ -2304,16 +2315,17 @@ TEST_F(ServerProtocolTest, TestClientHelloHelloRetryRequestFlow) {
         return std::unique_ptr<HandshakeContext>(secondHandshakeContext);
       }));
   EXPECT_CALL(*secondHandshakeContext, appendToTranscript(_)).Times(2);
-  EXPECT_CALL(*mockWrite_, _write(_)).WillOnce(Invoke([&](TLSMessage& msg) {
-    TLSContent content;
-    content.contentType = msg.type;
-    content.encryptionLevel = mockWrite_->getEncryptionLevel();
-    EXPECT_EQ(msg.type, ContentType::handshake);
-    EXPECT_TRUE(IOBufEqualTo()(
-        msg.fragment, encodeHandshake(TestMessages::helloRetryRequest())));
-    content.data = IOBuf::copyBuffer("writtenhrr");
-    return content;
-  }));
+  EXPECT_CALL(*mockWrite_, _write(_, _))
+      .WillOnce(Invoke([&](TLSMessage& msg, Aead::AeadOptions) {
+        TLSContent content;
+        content.contentType = msg.type;
+        content.encryptionLevel = mockWrite_->getEncryptionLevel();
+        EXPECT_EQ(msg.type, ContentType::handshake);
+        EXPECT_TRUE(IOBufEqualTo()(
+            msg.fragment, encodeHandshake(TestMessages::helloRetryRequest())));
+        content.data = IOBuf::copyBuffer("writtenhrr");
+        return content;
+      }));
   auto newRrl = new MockPlaintextReadRecordLayer();
   EXPECT_CALL(*factory_, makePlaintextReadRecordLayer())
       .WillOnce(Invoke([newRrl]() {
@@ -2388,16 +2400,17 @@ TEST_F(ServerProtocolTest, TestRetryClientHelloFullHandshakeFlow) {
     random.fill(0x44);
     return random;
   }));
-  EXPECT_CALL(*mockWrite_, _write(_)).WillOnce(Invoke([&](TLSMessage& msg) {
-    TLSContent content;
-    content.contentType = msg.type;
-    content.encryptionLevel = mockWrite_->getEncryptionLevel();
-    EXPECT_EQ(msg.type, ContentType::handshake);
-    EXPECT_TRUE(IOBufEqualTo()(
-        msg.fragment, encodeHandshake(TestMessages::serverHello())));
-    content.data = IOBuf::copyBuffer("writtenshlo");
-    return content;
-  }));
+  EXPECT_CALL(*mockWrite_, _write(_, _))
+      .WillOnce(Invoke([&](TLSMessage& msg, Aead::AeadOptions) {
+        TLSContent content;
+        content.contentType = msg.type;
+        content.encryptionLevel = mockWrite_->getEncryptionLevel();
+        EXPECT_EQ(msg.type, ContentType::handshake);
+        EXPECT_TRUE(IOBufEqualTo()(
+            msg.fragment, encodeHandshake(TestMessages::serverHello())));
+        content.data = IOBuf::copyBuffer("writtenshlo");
+        return content;
+      }));
   EXPECT_CALL(
       *mockKeyScheduler_,
       getSecret(
@@ -2646,19 +2659,21 @@ TEST_F(ServerProtocolTest, TestRetryClientHelloPskDheFlow) {
     random.fill(0x44);
     return random;
   }));
-  EXPECT_CALL(*mockWrite_, _write(_)).WillOnce(Invoke([&](TLSMessage& msg) {
-    TLSContent content;
-    content.contentType = msg.type;
-    content.encryptionLevel = mockWrite_->getEncryptionLevel();
-    EXPECT_EQ(msg.type, ContentType::handshake);
-    auto shlo = TestMessages::serverHello();
-    ServerPresharedKey serverPsk;
-    serverPsk.selected_identity = 0;
-    shlo.extensions.push_back(encodeExtension(std::move(serverPsk)));
-    EXPECT_TRUE(IOBufEqualTo()(msg.fragment, encodeHandshake(std::move(shlo))));
-    content.data = IOBuf::copyBuffer("writtenshlo");
-    return content;
-  }));
+  EXPECT_CALL(*mockWrite_, _write(_, _))
+      .WillOnce(Invoke([&](TLSMessage& msg, Aead::AeadOptions) {
+        TLSContent content;
+        content.contentType = msg.type;
+        content.encryptionLevel = mockWrite_->getEncryptionLevel();
+        EXPECT_EQ(msg.type, ContentType::handshake);
+        auto shlo = TestMessages::serverHello();
+        ServerPresharedKey serverPsk;
+        serverPsk.selected_identity = 0;
+        shlo.extensions.push_back(encodeExtension(std::move(serverPsk)));
+        EXPECT_TRUE(
+            IOBufEqualTo()(msg.fragment, encodeHandshake(std::move(shlo))));
+        content.data = IOBuf::copyBuffer("writtenshlo");
+        return content;
+      }));
   EXPECT_CALL(
       *mockKeyScheduler_,
       getSecret(
@@ -2893,19 +2908,21 @@ TEST_F(ServerProtocolTest, TestClientHelloPskDheEarlyFlow) {
     random.fill(0x44);
     return random;
   }));
-  EXPECT_CALL(*mockWrite_, _write(_)).WillOnce(Invoke([&](TLSMessage& msg) {
-    TLSContent content;
-    content.contentType = msg.type;
-    content.encryptionLevel = mockWrite_->getEncryptionLevel();
-    EXPECT_EQ(msg.type, ContentType::handshake);
-    auto shlo = TestMessages::serverHello();
-    ServerPresharedKey serverPsk;
-    serverPsk.selected_identity = 0;
-    shlo.extensions.push_back(encodeExtension(std::move(serverPsk)));
-    EXPECT_TRUE(IOBufEqualTo()(msg.fragment, encodeHandshake(std::move(shlo))));
-    content.data = IOBuf::copyBuffer("writtenshlo");
-    return content;
-  }));
+  EXPECT_CALL(*mockWrite_, _write(_, _))
+      .WillOnce(Invoke([&](TLSMessage& msg, Aead::AeadOptions) {
+        TLSContent content;
+        content.contentType = msg.type;
+        content.encryptionLevel = mockWrite_->getEncryptionLevel();
+        EXPECT_EQ(msg.type, ContentType::handshake);
+        auto shlo = TestMessages::serverHello();
+        ServerPresharedKey serverPsk;
+        serverPsk.selected_identity = 0;
+        shlo.extensions.push_back(encodeExtension(std::move(serverPsk)));
+        EXPECT_TRUE(
+            IOBufEqualTo()(msg.fragment, encodeHandshake(std::move(shlo))));
+        content.data = IOBuf::copyBuffer("writtenshlo");
+        return content;
+      }));
   EXPECT_CALL(
       *mockKeyScheduler_,
       getSecret(
@@ -3157,20 +3174,22 @@ TEST_F(ServerProtocolTest, TestClientHelloPskEarlyFlow) {
     random.fill(0x44);
     return random;
   }));
-  EXPECT_CALL(*mockWrite_, _write(_)).WillOnce(Invoke([&](TLSMessage& msg) {
-    TLSContent content;
-    content.contentType = msg.type;
-    content.encryptionLevel = mockWrite_->getEncryptionLevel();
-    EXPECT_EQ(msg.type, ContentType::handshake);
-    auto shlo = TestMessages::serverHello();
-    TestMessages::removeExtension(shlo, ExtensionType::key_share);
-    ServerPresharedKey serverPsk;
-    serverPsk.selected_identity = 0;
-    shlo.extensions.push_back(encodeExtension(std::move(serverPsk)));
-    EXPECT_TRUE(IOBufEqualTo()(msg.fragment, encodeHandshake(std::move(shlo))));
-    content.data = IOBuf::copyBuffer("writtenshlo");
-    return content;
-  }));
+  EXPECT_CALL(*mockWrite_, _write(_, _))
+      .WillOnce(Invoke([&](TLSMessage& msg, Aead::AeadOptions) {
+        TLSContent content;
+        content.contentType = msg.type;
+        content.encryptionLevel = mockWrite_->getEncryptionLevel();
+        EXPECT_EQ(msg.type, ContentType::handshake);
+        auto shlo = TestMessages::serverHello();
+        TestMessages::removeExtension(shlo, ExtensionType::key_share);
+        ServerPresharedKey serverPsk;
+        serverPsk.selected_identity = 0;
+        shlo.extensions.push_back(encodeExtension(std::move(serverPsk)));
+        EXPECT_TRUE(
+            IOBufEqualTo()(msg.fragment, encodeHandshake(std::move(shlo))));
+        content.data = IOBuf::copyBuffer("writtenshlo");
+        return content;
+      }));
   EXPECT_CALL(
       *mockKeyScheduler_,
       getSecret(
@@ -4516,15 +4535,16 @@ TEST_F(ServerProtocolTest, TestEarlyAppData) {
 
 TEST_F(ServerProtocolTest, TestEarlyAppWrite) {
   setUpAcceptingEarlyData();
-  EXPECT_CALL(*mockWrite_, _write(_)).WillOnce(Invoke([&](TLSMessage& msg) {
-    TLSContent content;
-    content.contentType = msg.type;
-    content.encryptionLevel = mockWrite_->getEncryptionLevel();
-    EXPECT_EQ(msg.type, ContentType::application_data);
-    EXPECT_TRUE(IOBufEqualTo()(msg.fragment, IOBuf::copyBuffer("appdata")));
-    content.data = IOBuf::copyBuffer("writtenappdata");
-    return content;
-  }));
+  EXPECT_CALL(*mockWrite_, _write(_, _))
+      .WillOnce(Invoke([&](TLSMessage& msg, Aead::AeadOptions) {
+        TLSContent content;
+        content.contentType = msg.type;
+        content.encryptionLevel = mockWrite_->getEncryptionLevel();
+        EXPECT_EQ(msg.type, ContentType::application_data);
+        EXPECT_TRUE(IOBufEqualTo()(msg.fragment, IOBuf::copyBuffer("appdata")));
+        content.data = IOBuf::copyBuffer("writtenappdata");
+        return content;
+      }));
 
   auto actions =
       getActions(detail::processEvent(state_, TestMessages::appWrite()));
@@ -4628,16 +4648,17 @@ TEST_F(ServerProtocolTest, TestFullHandshakeFinished) {
         return std::make_pair(
             IOBuf::copyBuffer("ticket"), std::chrono::seconds(100));
       }));
-  EXPECT_CALL(*mockWrite_, _write(_)).WillOnce(Invoke([&](TLSMessage& msg) {
-    TLSContent content;
-    content.contentType = msg.type;
-    content.encryptionLevel = mockWrite_->getEncryptionLevel();
-    EXPECT_EQ(msg.type, ContentType::handshake);
-    EXPECT_TRUE(IOBufEqualTo()(
-        msg.fragment, encodeHandshake(TestMessages::newSessionTicket())));
-    content.data = folly::IOBuf::copyBuffer("handshake");
-    return content;
-  }));
+  EXPECT_CALL(*mockWrite_, _write(_, _))
+      .WillOnce(Invoke([&](TLSMessage& msg, Aead::AeadOptions) {
+        TLSContent content;
+        content.contentType = msg.type;
+        content.encryptionLevel = mockWrite_->getEncryptionLevel();
+        EXPECT_EQ(msg.type, ContentType::handshake);
+        EXPECT_TRUE(IOBufEqualTo()(
+            msg.fragment, encodeHandshake(TestMessages::newSessionTicket())));
+        content.data = folly::IOBuf::copyBuffer("handshake");
+        return content;
+      }));
   EXPECT_CALL(*mockKeyScheduler_, clearMasterSecret());
 
   auto actions =
@@ -4683,19 +4704,21 @@ TEST_F(ServerProtocolTest, TestFinishedTicketEarly) {
   setUpExpectingFinished();
 
   EXPECT_CALL(*factory_, makeTicketAgeAdd()).WillOnce(Return(0x44444444));
-  EXPECT_CALL(*mockWrite_, _write(_)).WillOnce(Invoke([&](TLSMessage& msg) {
-    TLSContent content;
-    content.contentType = msg.type;
-    content.encryptionLevel = mockWrite_->getEncryptionLevel();
-    EXPECT_EQ(msg.type, ContentType::handshake);
-    auto nst = TestMessages::newSessionTicket();
-    TicketEarlyData early;
-    early.max_early_data_size = 0xffffffff;
-    nst.extensions.push_back(encodeExtension(std::move(early)));
-    EXPECT_TRUE(IOBufEqualTo()(msg.fragment, encodeHandshake(std::move(nst))));
-    content.data = folly::IOBuf::copyBuffer("handshake");
-    return content;
-  }));
+  EXPECT_CALL(*mockWrite_, _write(_, _))
+      .WillOnce(Invoke([&](TLSMessage& msg, Aead::AeadOptions) {
+        TLSContent content;
+        content.contentType = msg.type;
+        content.encryptionLevel = mockWrite_->getEncryptionLevel();
+        EXPECT_EQ(msg.type, ContentType::handshake);
+        auto nst = TestMessages::newSessionTicket();
+        TicketEarlyData early;
+        early.max_early_data_size = 0xffffffff;
+        nst.extensions.push_back(encodeExtension(std::move(early)));
+        EXPECT_TRUE(
+            IOBufEqualTo()(msg.fragment, encodeHandshake(std::move(nst))));
+        content.data = folly::IOBuf::copyBuffer("handshake");
+        return content;
+      }));
 
   auto actions =
       getActions(detail::processEvent(state_, TestMessages::finished()));
@@ -4757,15 +4780,16 @@ TEST_F(ServerProtocolTest, TestFinishedExtraData) {
 
 TEST_F(ServerProtocolTest, TestExpectingFinishedAppWrite) {
   setUpExpectingFinished();
-  EXPECT_CALL(*mockWrite_, _write(_)).WillOnce(Invoke([&](TLSMessage& msg) {
-    TLSContent content;
-    content.contentType = msg.type;
-    content.encryptionLevel = mockWrite_->getEncryptionLevel();
-    EXPECT_EQ(msg.type, ContentType::application_data);
-    EXPECT_TRUE(IOBufEqualTo()(msg.fragment, IOBuf::copyBuffer("appdata")));
-    content.data = IOBuf::copyBuffer("writtenappdata");
-    return content;
-  }));
+  EXPECT_CALL(*mockWrite_, _write(_, _))
+      .WillOnce(Invoke([&](TLSMessage& msg, Aead::AeadOptions) {
+        TLSContent content;
+        content.contentType = msg.type;
+        content.encryptionLevel = mockWrite_->getEncryptionLevel();
+        EXPECT_EQ(msg.type, ContentType::application_data);
+        EXPECT_TRUE(IOBufEqualTo()(msg.fragment, IOBuf::copyBuffer("appdata")));
+        content.data = IOBuf::copyBuffer("writtenappdata");
+        return content;
+      }));
 
   auto actions =
       getActions(detail::processEvent(state_, TestMessages::appWrite()));
@@ -4803,16 +4827,17 @@ TEST_F(ServerProtocolTest, TestWriteNewSessionTicket) {
             IOBuf::copyBuffer("ticket"), std::chrono::seconds(100));
       }));
   auto nstBuf = folly::IOBuf::copyBuffer("nst");
-  EXPECT_CALL(*appWrite_, _write(_)).WillOnce(Invoke([&](TLSMessage& msg) {
-    TLSContent content;
-    content.contentType = msg.type;
-    content.encryptionLevel = appWrite_->getEncryptionLevel();
-    EXPECT_EQ(msg.type, ContentType::handshake);
-    EXPECT_TRUE(IOBufEqualTo()(
-        msg.fragment, encodeHandshake(TestMessages::newSessionTicket())));
-    content.data = nstBuf->clone();
-    return content;
-  }));
+  EXPECT_CALL(*appWrite_, _write(_, _))
+      .WillOnce(Invoke([&](TLSMessage& msg, Aead::AeadOptions) {
+        TLSContent content;
+        content.contentType = msg.type;
+        content.encryptionLevel = appWrite_->getEncryptionLevel();
+        EXPECT_EQ(msg.type, ContentType::handshake);
+        EXPECT_TRUE(IOBufEqualTo()(
+            msg.fragment, encodeHandshake(TestMessages::newSessionTicket())));
+        content.data = nstBuf->clone();
+        return content;
+      }));
 
   auto actions =
       getActions(detail::processEvent(state_, WriteNewSessionTicket()));
@@ -4827,19 +4852,21 @@ TEST_F(ServerProtocolTest, TestWriteNewSessionTicketWithTicketEarly) {
   setUpAcceptingData();
   context_->setSendNewSessionTicket(false);
 
-  EXPECT_CALL(*appWrite_, _write(_)).WillOnce(Invoke([&](TLSMessage& msg) {
-    TLSContent content;
-    content.contentType = msg.type;
-    content.encryptionLevel = appWrite_->getEncryptionLevel();
-    EXPECT_EQ(msg.type, ContentType::handshake);
-    auto nst = TestMessages::newSessionTicket();
-    TicketEarlyData early;
-    early.max_early_data_size = 0xffffffff;
-    nst.extensions.push_back(encodeExtension(std::move(early)));
-    EXPECT_TRUE(IOBufEqualTo()(msg.fragment, encodeHandshake(std::move(nst))));
-    content.data = folly::IOBuf::copyBuffer("handshake");
-    return content;
-  }));
+  EXPECT_CALL(*appWrite_, _write(_, _))
+      .WillOnce(Invoke([&](TLSMessage& msg, Aead::AeadOptions) {
+        TLSContent content;
+        content.contentType = msg.type;
+        content.encryptionLevel = appWrite_->getEncryptionLevel();
+        EXPECT_EQ(msg.type, ContentType::handshake);
+        auto nst = TestMessages::newSessionTicket();
+        TicketEarlyData early;
+        early.max_early_data_size = 0xffffffff;
+        nst.extensions.push_back(encodeExtension(std::move(early)));
+        EXPECT_TRUE(
+            IOBufEqualTo()(msg.fragment, encodeHandshake(std::move(nst))));
+        content.data = folly::IOBuf::copyBuffer("handshake");
+        return content;
+      }));
 
   auto actions =
       getActions(detail::processEvent(state_, WriteNewSessionTicket()));
@@ -4952,15 +4979,16 @@ TEST_F(ServerProtocolTest, TestAppData) {
 
 TEST_F(ServerProtocolTest, TestAppWrite) {
   setUpAcceptingData();
-  EXPECT_CALL(*appWrite_, _write(_)).WillOnce(Invoke([&](TLSMessage& msg) {
-    TLSContent content;
-    content.contentType = msg.type;
-    content.encryptionLevel = appWrite_->getEncryptionLevel();
-    EXPECT_EQ(msg.type, ContentType::application_data);
-    EXPECT_TRUE(IOBufEqualTo()(msg.fragment, IOBuf::copyBuffer("appdata")));
-    content.data = IOBuf::copyBuffer("writtenappdata");
-    return content;
-  }));
+  EXPECT_CALL(*appWrite_, _write(_, _))
+      .WillOnce(Invoke([&](TLSMessage& msg, Aead::AeadOptions) {
+        TLSContent content;
+        content.contentType = msg.type;
+        content.encryptionLevel = appWrite_->getEncryptionLevel();
+        EXPECT_EQ(msg.type, ContentType::application_data);
+        EXPECT_TRUE(IOBufEqualTo()(msg.fragment, IOBuf::copyBuffer("appdata")));
+        content.data = IOBuf::copyBuffer("writtenappdata");
+        return content;
+      }));
 
   auto actions =
       getActions(detail::processEvent(state_, TestMessages::appWrite()));
@@ -5033,16 +5061,17 @@ TEST_F(ServerProtocolTest, TestKeyUpdateRequest) {
             AppTrafficSecrets::ClientAppTraffic);
       }));
 
-  EXPECT_CALL(*appWrite_, _write(_)).WillOnce(Invoke([&](TLSMessage& msg) {
-    TLSContent content;
-    content.contentType = msg.type;
-    content.encryptionLevel = appWrite_->getEncryptionLevel();
-    EXPECT_EQ(msg.type, ContentType::handshake);
-    EXPECT_TRUE(IOBufEqualTo()(
-        msg.fragment, encodeHandshake(TestMessages::keyUpdate(false))));
-    content.data = folly::IOBuf::copyBuffer("keyupdated");
-    return content;
-  }));
+  EXPECT_CALL(*appWrite_, _write(_, _))
+      .WillOnce(Invoke([&](TLSMessage& msg, Aead::AeadOptions) {
+        TLSContent content;
+        content.contentType = msg.type;
+        content.encryptionLevel = appWrite_->getEncryptionLevel();
+        EXPECT_EQ(msg.type, ContentType::handshake);
+        EXPECT_TRUE(IOBufEqualTo()(
+            msg.fragment, encodeHandshake(TestMessages::keyUpdate(false))));
+        content.data = folly::IOBuf::copyBuffer("keyupdated");
+        return content;
+      }));
 
   EXPECT_CALL(*mockKeyScheduler_, serverKeyUpdate());
   EXPECT_CALL(
