@@ -42,10 +42,11 @@ class ActionMoveVisitor {
 class TestFizzServer : public DelayedDestruction {
  public:
   TestFizzServer()
-      : fizzServer_(state_, queue_, Aead::AeadOptions(), visitor_, this) {}
+      : fizzServer_(state_, queue_, readAeadOptions_, visitor_, this) {}
 
   State state_;
   IOBufQueue queue_;
+  Aead::AeadOptions readAeadOptions_;
   ActionMoveVisitor visitor_;
   FizzServer<ActionMoveVisitor, MockServerStateMachineInstance> fizzServer_;
 };

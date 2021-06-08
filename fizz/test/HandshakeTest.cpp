@@ -30,6 +30,58 @@ TEST_F(HandshakeTest, BasicHandshakeSynchronous) {
   verifyParameters();
 }
 
+TEST_F(HandshakeTest, BasicHandshakeInplaceDecrypt) {
+  // Trickle + in-place means each buffer will hold 1 encrypted byte,
+  // which will be where the decrypted byte also goes. Because of
+  // trim(), there may be empty bufs in the chain, so countChainElements()
+  // >= computeChainDataLength().
+  client_->setDecryptInplace(true);
+  server_->setDecryptInplace(true);
+  clientTransport_->setTrickle(true);
+  serverTransport_->setTrickle(true);
+  expectSuccess();
+  doHandshake();
+  verifyParameters();
+  EXPECT_CALL(clientRead_, readBufferAvailable_(BufMatches("serverdata")))
+      .WillOnce(Invoke([](auto& buf) {
+        EXPECT_GE(buf->countChainElements(), buf->computeChainDataLength());
+        EXPECT_TRUE(buf->isShared());
+      }));
+  EXPECT_CALL(serverRead_, readBufferAvailable_(BufMatches("clientdata")))
+      .WillOnce(Invoke([](auto& buf) {
+        EXPECT_GE(buf->countChainElements(), buf->computeChainDataLength());
+        EXPECT_TRUE(buf->isShared());
+      }));
+  clientWrite("clientdata");
+  serverWrite("serverdata");
+}
+
+TEST_F(HandshakeTest, BasicHandshakeSharedDecrypt) {
+  // Same as before, but now we ask it to respect shared policy.
+  // Because of setTrickle trimming the incoming packet, we expect
+  // that it will see a shared buffer and decrypt in a separate (unique)
+  // buffer.
+  client_->setDecryptInplace(false);
+  server_->setDecryptInplace(false);
+  clientTransport_->setTrickle(true);
+  serverTransport_->setTrickle(true);
+  expectSuccess();
+  doHandshake();
+  verifyParameters();
+  EXPECT_CALL(clientRead_, readBufferAvailable_(BufMatches("serverdata")))
+      .WillOnce(Invoke([](auto& buf) {
+        EXPECT_FALSE(buf->isChained());
+        EXPECT_FALSE(buf->isShared());
+      }));
+  EXPECT_CALL(serverRead_, readBufferAvailable_(BufMatches("clientdata")))
+      .WillOnce(Invoke([](auto& buf) {
+        EXPECT_FALSE(buf->isChained());
+        EXPECT_FALSE(buf->isShared());
+      }));
+  clientWrite("clientdata");
+  serverWrite("serverdata");
+}
+
 TEST_F(HandshakeTest, BasicHandshakeTrickle) {
   clientTransport_->setTrickle(true);
   serverTransport_->setTrickle(true);

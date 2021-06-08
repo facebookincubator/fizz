@@ -30,12 +30,12 @@ class FizzBase {
   FizzBase(
       const typename StateMachine::StateType& state,
       folly::IOBufQueue& transportReadBuf,
-      Aead::AeadOptions aeadOptions,
+      Aead::AeadOptions& readAeadOptions,
       ActionMoveVisitor& visitor,
       folly::DelayedDestructionBase* owner)
       : state_(state),
         transportReadBuf_(transportReadBuf),
-        aeadOptions_(aeadOptions),
+        readAeadOptions_(readAeadOptions),
         visitor_(visitor),
         owner_(owner) {}
   virtual ~FizzBase() = default;
@@ -136,7 +136,7 @@ class FizzBase {
   StateMachine machine_;
   const typename StateMachine::StateType& state_;
   folly::IOBufQueue& transportReadBuf_;
-  Aead::AeadOptions aeadOptions_;
+  Aead::AeadOptions& readAeadOptions_;
 
   ActionMoveVisitor& visitor_;
 

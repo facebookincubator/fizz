@@ -127,14 +127,14 @@ class TestFizzBase
       : FizzBase<TestFizzBase, ActionMoveVisitor, TestStateMachine>(
             state_,
             queue_,
-            {Aead::BufferOption::RespectSharedPolicy,
-             Aead::AllocationOption::Allow},
+            readAeadOptions_,
             visitor_,
             this) {}
 
   State state_;
   IOBufQueue queue_;
   ActionMoveVisitor visitor_;
+  Aead::AeadOptions readAeadOptions_;
 
   void startActions(Future<Actions> actions) {
     std::move(actions).then(

@@ -229,6 +229,17 @@ class AsyncFizzBase : public folly::WriteChainAsyncTransportWrapper<
    */
   virtual void tlsShutdown() = 0;
 
+  /*
+   * Sets whether or not to force in-place decryption of records. This is
+   * usually safe to do, as long as the application can handle chained IOBufs
+   * (as opposed to a contiguous buffer in the non-in-place case).
+   */
+  void setDecryptInplace(bool inPlace) {
+    readAeadOptions_.bufferOpt = inPlace
+        ? Aead::BufferOption::AllowInPlace
+        : Aead::BufferOption::RespectSharedPolicy;
+  }
+
  protected:
   /**
    * Start reading raw data from the transport.
@@ -290,6 +301,7 @@ class AsyncFizzBase : public folly::WriteChainAsyncTransportWrapper<
   virtual void endOfTLS(std::unique_ptr<folly::IOBuf> endOfData) noexcept;
 
   folly::IOBufQueue transportReadBuf_{folly::IOBufQueue::cacheChainLength()};
+  Aead::AeadOptions readAeadOptions_;
 
  private:
   class QueuedWriteRequest

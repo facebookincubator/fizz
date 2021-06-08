@@ -38,11 +38,12 @@ class ActionMoveVisitor {
 class TestFizzClient : public DelayedDestruction {
  public:
   TestFizzClient()
-      : fizzClient_(state_, queue_, Aead::AeadOptions(), visitor_, this) {}
+      : fizzClient_(state_, queue_, readAeadOptions_, visitor_, this) {}
 
   State state_;
   IOBufQueue queue_;
   ActionMoveVisitor visitor_;
+  Aead::AeadOptions readAeadOptions_;
   FizzClient<ActionMoveVisitor, MockClientStateMachineInstance> fizzClient_;
 };
 
