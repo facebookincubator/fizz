@@ -301,9 +301,9 @@ class Connection : public AsyncSocket::ConnectCallback,
       LOG(INFO) << "     i:" << OpenSSLCertUtils::getIssuer(*x509Cert).value();
     }
 
-    if (serverCert) {
+    if (auto opensslCert = dynamic_cast<const OpenSSLCert*>(serverCert.get())) {
       BioUniquePtr bio(BIO_new(BIO_s_mem()));
-      if (!PEM_write_bio_X509(bio.get(), serverCert->getX509().get())) {
+      if (!PEM_write_bio_X509(bio.get(), opensslCert->getX509().get())) {
         LOG(ERROR) << "  Couldn't convert server certificate to PEM: "
                    << SSLContext::getErrors();
       } else {
@@ -314,9 +314,9 @@ class Connection : public AsyncSocket::ConnectCallback,
       }
     }
 
-    if (clientCert) {
+    if (auto opensslCert = dynamic_cast<const OpenSSLCert*>(clientCert.get())) {
       BioUniquePtr bio(BIO_new(BIO_s_mem()));
-      if (!PEM_write_bio_X509(bio.get(), clientCert->getX509().get())) {
+      if (!PEM_write_bio_X509(bio.get(), opensslCert->getX509().get())) {
         LOG(ERROR) << "  Couldn't convert client certificate to PEM: "
                    << SSLContext::getErrors();
       } else {

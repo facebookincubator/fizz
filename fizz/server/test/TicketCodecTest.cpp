@@ -149,7 +149,7 @@ TEST(TicketCodecTest, TestEncodeNoX509) {
   auto drs = x509Decode(std::move(encoded));
   EXPECT_TRUE(drs.clientCert);
   EXPECT_EQ(drs.clientCert->getIdentity(), "clientid");
-  EXPECT_EQ(drs.clientCert->getX509(), nullptr);
+  EXPECT_EQ(dynamic_cast<const OpenSSLCert*>(drs.clientCert.get()), nullptr);
 }
 
 TEST(TicketCodecTest, TestDecodeDifferentStorage) {
@@ -164,7 +164,9 @@ TEST(TicketCodecTest, TestDecodeDifferentStorage) {
   auto drs = x509Decode(std::move(encoded));
   EXPECT_TRUE(drs.clientCert);
   EXPECT_EQ(drs.clientCert->getIdentity(), "Fizz");
-  EXPECT_NE(drs.clientCert->getX509(), nullptr);
+  auto opensslCert = dynamic_cast<const OpenSSLCert*>(drs.clientCert.get());
+  EXPECT_NE(opensslCert, nullptr);
+  EXPECT_NE(opensslCert->getX509(), nullptr);
 
   rs = getTestResumptionState(cert, peerCert);
   EXPECT_CALL(*cert, getIdentity()).WillOnce(Return("ident"));
@@ -174,7 +176,8 @@ TEST(TicketCodecTest, TestDecodeDifferentStorage) {
   auto drsX509 = x509Decode(std::move(encodedIdOnly));
   EXPECT_TRUE(drsX509.clientCert);
   EXPECT_EQ(drsX509.clientCert->getIdentity(), "FizzIdOnly");
-  EXPECT_EQ(drsX509.clientCert->getX509(), nullptr);
+  EXPECT_EQ(
+      dynamic_cast<const OpenSSLCert*>(drsX509.clientCert.get()), nullptr);
 }
 
 TEST(TicketCodecTest, TestDecode) {

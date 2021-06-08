@@ -12,6 +12,7 @@
 #include <fizz/protocol/CertificateCompressor.h>
 #include <fizz/record/Types.h>
 #include <folly/io/async/AsyncTransportCertificate.h>
+#include <folly/io/async/ssl/OpenSSLTransportCertificate.h>
 
 #include <map>
 
@@ -25,6 +26,7 @@ enum class CertificateVerifyContext {
 };
 
 using Cert = folly::AsyncTransportCertificate;
+using OpenSSLCert = folly::OpenSSLTransportCertificate;
 
 class IdentityCert : public Cert {
  public:
@@ -39,7 +41,7 @@ class IdentityCert : public Cert {
   std::string identity_;
 };
 
-class SelfCert : public Cert {
+class SelfCert : public OpenSSLCert {
  public:
   virtual ~SelfCert() = default;
 
@@ -66,7 +68,7 @@ class SelfCert : public Cert {
       folly::ByteRange toBeSigned) const = 0;
 };
 
-class PeerCert : public Cert {
+class PeerCert : public OpenSSLCert {
  public:
   virtual ~PeerCert() = default;
 

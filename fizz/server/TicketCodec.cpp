@@ -29,14 +29,29 @@ void appendClientCertificate(
     folly::io::Appender& appender) {
   Buf clientCertBuf = folly::IOBuf::create(0);
   CertificateStorage selectedStorage;
-  if (!cert || storage == CertificateStorage::None) {
-    selectedStorage = CertificateStorage::None;
-  } else if (storage == CertificateStorage::X509 && cert->getX509()) {
-    selectedStorage = CertificateStorage::X509;
-    clientCertBuf = folly::ssl::OpenSSLCertUtils::derEncode(*cert->getX509());
-  } else {
+
+  auto serializeIdentity = [&]() {
     selectedStorage = CertificateStorage::IdentityOnly;
     clientCertBuf = folly::IOBuf::copyBuffer(cert->getIdentity());
+  };
+
+  auto trySerializeX509 = [&]() {
+    auto opensslCert = dynamic_cast<const OpenSSLCert*>(cert.get());
+    if (opensslCert && opensslCert->getX509()) {
+      selectedStorage = CertificateStorage::X509;
+      clientCertBuf =
+          folly::ssl::OpenSSLCertUtils::derEncode(*opensslCert->getX509());
+    } else {
+      serializeIdentity();
+    }
+  };
+
+  if (!cert || storage == CertificateStorage::None) {
+    selectedStorage = CertificateStorage::None;
+  } else if (storage == CertificateStorage::X509) {
+    trySerializeX509();
+  } else {
+    serializeIdentity();
   }
   fizz::detail::write(selectedStorage, appender);
   if (selectedStorage != CertificateStorage::None) {
