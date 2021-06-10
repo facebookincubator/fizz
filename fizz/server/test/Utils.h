@@ -28,7 +28,11 @@ class FizzTestServer : public folly::AsyncServerSocket::AcceptCallback {
         std::shared_ptr<AsyncFizzServer> server) = 0;
   };
 
-  FizzTestServer(folly::EventBase& evb, CallbackFactory* factory, int port = 0)
+  FizzTestServer(
+      folly::EventBase& evb,
+      CallbackFactory* factory,
+      int port = 0,
+      std::string ip = "")
       : factory_(factory), evb_(evb) {
     auto certData =
         fizz::test::createCert("fizz-test-selfsign", false, nullptr);
@@ -43,7 +47,12 @@ class FizzTestServer : public folly::AsyncServerSocket::AcceptCallback {
 
     socket_ = folly::AsyncServerSocket::UniquePtr(
         new folly::AsyncServerSocket(&evb_));
-    socket_->bind(port);
+    if (ip.empty()) {
+      socket_->bind(port);
+    } else {
+      socket_->bind(
+          folly::SocketAddress(ip, port, false /* allowNameLookup */));
+    }
     socket_->listen(100);
     socket_->addAcceptCallback(this, &evb_);
     socket_->startAccepting();
