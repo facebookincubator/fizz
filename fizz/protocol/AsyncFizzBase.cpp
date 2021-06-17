@@ -87,6 +87,7 @@ AsyncFizzBase::QueuedWriteRequest::QueuedWriteRequest(
     folly::WriteFlags flags)
     : asyncFizzBase_(base), callback_(callback), flags_(flags) {
   data_.append(std::move(data));
+  entireChainBytesBuffered = data_.chainLength();
 }
 
 void AsyncFizzBase::QueuedWriteRequest::startWriting() {
@@ -96,18 +97,20 @@ void AsyncFizzBase::QueuedWriteRequest::startWriting() {
   if (!data_.empty()) {
     flags |= folly::WriteFlags::CORK;
   }
-  dataWritten_ += buf->computeChainDataLength();
+  size_t len = buf->computeChainDataLength();
+  dataWritten_ += len;
 
   CHECK(asyncFizzBase_);
+  CHECK(asyncFizzBase_->tailWriteRequest_);
+  asyncFizzBase_->tailWriteRequest_->entireChainBytesBuffered -= len;
   asyncFizzBase_->writeAppData(this, std::move(buf), flags);
 }
 
 void AsyncFizzBase::QueuedWriteRequest::append(QueuedWriteRequest* request) {
-  if (next_) {
-    next_->append(request);
-  } else {
-    next_ = request;
-  }
+  DCHECK(!next_);
+  next_ = request;
+  next_->entireChainBytesBuffered += entireChainBytesBuffered;
+  entireChainBytesBuffered = 0;
 }
 
 void AsyncFizzBase::QueuedWriteRequest::unlinkFromBase() {
@@ -208,6 +211,12 @@ size_t AsyncFizzBase::getAppBytesWritten() const {
 
 size_t AsyncFizzBase::getAppBytesReceived() const {
   return appBytesReceived_;
+}
+
+size_t AsyncFizzBase::getAppBytesBuffered() const {
+  return transport_->getAppBytesBuffered() +
+      (tailWriteRequest_ ? tailWriteRequest_->getEntireChainBytesBuffered()
+                         : 0);
 }
 
 void AsyncFizzBase::startTransportReads() {

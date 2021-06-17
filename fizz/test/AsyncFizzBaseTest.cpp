@@ -297,6 +297,41 @@ TYPED_TEST(AsyncFizzBaseTest, TestAppBytesReceived) {
   EXPECT_EQ(this->getAppBytesReceived(), 14);
 }
 
+TYPED_TEST(AsyncFizzBaseTest, TestAppBytesBuffered) {
+  AsyncTransportWrapper::WriteCallback* wcb;
+  this->expectWrite('a', kPartialWriteThreshold, &wcb);
+  this->expectWrite('a', 25);
+  this->expectWrite('a', kPartialWriteThreshold, &wcb);
+  this->expectWrite('a', 25);
+
+  EXPECT_EQ(this->getAppBytesBuffered(), 0);
+
+  auto buf = getBuf('a', kPartialWriteThreshold + 25);
+
+  // Send kPartialWriteThreshold bytes and cache the rest 25 bytes
+  this->writeChain(nullptr, buf->clone());
+
+  EXPECT_EQ(this->getAppBytesBuffered(), 25);
+
+  // Cache all kPartialWriteThreshold + 25 bytes
+  this->writeChain(nullptr, buf->clone());
+
+  EXPECT_EQ(this->getAppBytesBuffered(), kPartialWriteThreshold + 50);
+
+  // Send the oldest cached 25 bytes and the first kPartialWriteThreshold
+  // bytes of the next node in the chain
+  wcb->writeSuccess();
+
+  EXPECT_EQ(this->getAppBytesBuffered(), 25);
+
+  // Send the rest 25 bytes
+  wcb->writeSuccess();
+
+  EXPECT_EQ(this->getAppBytesBuffered(), 0);
+
+  EXPECT_EQ(this->getAppBytesWritten(), 2 * kPartialWriteThreshold + 50);
+}
+
 TYPED_TEST(AsyncFizzBaseTest, TestWrite) {
   auto buf = IOBuf::copyBuffer("buf");
 

@@ -112,6 +112,7 @@ class AsyncFizzBase : public folly::WriteChainAsyncTransportWrapper<
    */
   size_t getAppBytesWritten() const override;
   size_t getAppBytesReceived() const override;
+  size_t getAppBytesBuffered() const override;
 
   /**
    * Information about the current transport state.
@@ -341,6 +342,11 @@ class AsyncFizzBase : public folly::WriteChainAsyncTransportWrapper<
 
     void unlinkFromBase();
 
+    size_t getEntireChainBytesBuffered() {
+      DCHECK(!next_);
+      return entireChainBytesBuffered;
+    }
+
    private:
     void writeSuccess() noexcept override;
 
@@ -357,6 +363,9 @@ class AsyncFizzBase : public folly::WriteChainAsyncTransportWrapper<
     folly::WriteFlags flags_;
 
     size_t dataWritten_{0};
+    // Data length of the entire chain. Only valid at the tail node
+    // of the chain, i.e. when next_ is null.
+    size_t entireChainBytesBuffered;
 
     QueuedWriteRequest* next_{nullptr};
   };
