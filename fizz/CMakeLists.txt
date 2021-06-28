@@ -45,6 +45,8 @@ set(INCLUDE_INSTALL_DIR include CACHE STRING
     "The subdirectory where header files should be installed")
 set(LIB_INSTALL_DIR lib CACHE STRING
     "The subdirectory where libraries should be installed")
+set(BIN_INSTALL_DIR bin CACHE STRING
+    "The subdirectory where binaries should be installed")
 set(CMAKE_INSTALL_DIR lib/cmake/fizz CACHE STRING
     "The subdirectory where CMake package config files should be installed")
 
@@ -456,6 +458,11 @@ option(BUILD_EXAMPLES "BUILD_EXAMPLES" ON)
 if(BUILD_EXAMPLES)
   add_executable(BogoShim test/BogoShim.cpp)
   target_link_libraries(BogoShim fizz sodium)
+  set_target_properties(BogoShim PROPERTIES OUTPUT_NAME fizz-bogoshim)
+  install(
+    TARGETS BogoShim
+    DESTINATION ${BIN_INSTALL_DIR}
+  )
   add_executable(FizzTool
       tool/Main.cpp
       tool/FizzClientCommand.cpp
@@ -466,4 +473,8 @@ if(BUILD_EXAMPLES)
       tool/FizzServerCommand.cpp)
   target_link_libraries(FizzTool fizz sodium)
   set_target_properties(FizzTool PROPERTIES OUTPUT_NAME fizz)
+  install(
+    TARGETS FizzTool
+    DESTINATION ${BIN_INSTALL_DIR}
+  )
 endif()
