@@ -177,7 +177,11 @@ class ServerProtocolTest : public ProtocolTest<ServerTypes, Actions> {
   }
 
   void requireAlpn() {
-    context_->setRequireAlpn(true);
+    context_->setRequireAlpn(AlpnMode::Required);
+  }
+
+  void requireAlpnIfClientSupports() {
+    context_->setRequireAlpn(AlpnMode::RequiredIfClientSupports);
   }
 
   void acceptCookies() {
@@ -3615,7 +3619,7 @@ TEST_F(ServerProtocolTest, TestClientHelloDataAfter) {
       actions, AlertDescription::unexpected_message, "data after client hello");
 }
 
-TEST_F(ServerProtocolTest, TestClientHelloNoAlpn) {
+TEST_F(ServerProtocolTest, TestClientHelloNoAlpnNotRequired) {
   setUpExpectingClientHello();
   auto chlo = TestMessages::clientHello();
   TestMessages::removeExtension(
@@ -3626,18 +3630,23 @@ TEST_F(ServerProtocolTest, TestClientHelloNoAlpn) {
   EXPECT_FALSE(state_.alpn().has_value());
 }
 
-TEST_F(ServerProtocolTest, TestClientHelloRequireAlpn) {
-  requireAlpn();
+TEST_F(ServerProtocolTest, TestClientHelloWithAlpnNotRequired) {
   setUpExpectingClientHello();
   auto chlo = TestMessages::clientHello();
   TestMessages::removeExtension(
       chlo, ExtensionType::application_layer_protocol_negotiation);
+  ProtocolNameList alpn;
+  ProtocolName h3;
+  h3.name = folly::IOBuf::copyBuffer("h3");
+  alpn.protocol_name_list.push_back(std::move(h3));
+  chlo.extensions.push_back(encodeExtension(std::move(alpn)));
   auto actions = getActions(detail::processEvent(state_, std::move(chlo)));
-  expectError<FizzException>(
-      actions, AlertDescription::no_application_protocol, "ALPN is required");
+  expectActions<MutateState, WriteToSocket, SecretAvailable>(actions);
+  processStateMutations(actions);
+  EXPECT_TRUE(state_.alpn().has_value());
 }
 
-TEST_F(ServerProtocolTest, TestClientHelloAlpnMismatch) {
+TEST_F(ServerProtocolTest, TestClientHelloMismatchAlpnNotRequired) {
   setUpExpectingClientHello();
   auto chlo = TestMessages::clientHello();
   TestMessages::removeExtension(
@@ -3653,7 +3662,84 @@ TEST_F(ServerProtocolTest, TestClientHelloAlpnMismatch) {
   EXPECT_FALSE(state_.alpn().has_value());
 }
 
-TEST_F(ServerProtocolTest, TestClientHelloRequireAlpnMismatch) {
+TEST_F(ServerProtocolTest, TestClientHelloNoAlpnRequiredIfClientSupports) {
+  requireAlpnIfClientSupports();
+  setUpExpectingClientHello();
+  auto chlo = TestMessages::clientHello();
+  TestMessages::removeExtension(
+      chlo, ExtensionType::application_layer_protocol_negotiation);
+  auto actions = getActions(detail::processEvent(state_, std::move(chlo)));
+  expectActions<MutateState, WriteToSocket, SecretAvailable>(actions);
+  processStateMutations(actions);
+  EXPECT_FALSE(state_.alpn().has_value());
+}
+
+TEST_F(ServerProtocolTest, TestClientHelloWithAlpnRequiredIfClientSupports) {
+  requireAlpnIfClientSupports();
+  setUpExpectingClientHello();
+  auto chlo = TestMessages::clientHello();
+  TestMessages::removeExtension(
+      chlo, ExtensionType::application_layer_protocol_negotiation);
+  ProtocolNameList alpn;
+  ProtocolName h3;
+  h3.name = folly::IOBuf::copyBuffer("h3");
+  alpn.protocol_name_list.push_back(std::move(h3));
+  chlo.extensions.push_back(encodeExtension(std::move(alpn)));
+  auto actions = getActions(detail::processEvent(state_, std::move(chlo)));
+  expectActions<MutateState, WriteToSocket, SecretAvailable>(actions);
+  processStateMutations(actions);
+  EXPECT_TRUE(state_.alpn().has_value());
+}
+
+TEST_F(
+    ServerProtocolTest,
+    TestClientHelloMismatchAlpnRequiredIfClientSupports) {
+  requireAlpnIfClientSupports();
+  setUpExpectingClientHello();
+  auto chlo = TestMessages::clientHello();
+  TestMessages::removeExtension(
+      chlo, ExtensionType::application_layer_protocol_negotiation);
+  ProtocolNameList alpn;
+  ProtocolName gopher;
+  gopher.name = folly::IOBuf::copyBuffer("gopher");
+  alpn.protocol_name_list.push_back(std::move(gopher));
+  chlo.extensions.push_back(encodeExtension(std::move(alpn)));
+  auto actions = getActions(detail::processEvent(state_, std::move(chlo)));
+  expectError<FizzException>(
+      actions,
+      AlertDescription::no_application_protocol,
+      "ALPN mismatch when required");
+}
+
+TEST_F(ServerProtocolTest, TestClientHelloNoAlpnRequired) {
+  requireAlpn();
+  setUpExpectingClientHello();
+  auto chlo = TestMessages::clientHello();
+  TestMessages::removeExtension(
+      chlo, ExtensionType::application_layer_protocol_negotiation);
+  auto actions = getActions(detail::processEvent(state_, std::move(chlo)));
+  expectError<FizzException>(
+      actions, AlertDescription::no_application_protocol, "ALPN is required");
+}
+
+TEST_F(ServerProtocolTest, TestClientHelloWithAlpnRequired) {
+  requireAlpn();
+  setUpExpectingClientHello();
+  auto chlo = TestMessages::clientHello();
+  TestMessages::removeExtension(
+      chlo, ExtensionType::application_layer_protocol_negotiation);
+  ProtocolNameList alpn;
+  ProtocolName h3;
+  h3.name = folly::IOBuf::copyBuffer("h3");
+  alpn.protocol_name_list.push_back(std::move(h3));
+  chlo.extensions.push_back(encodeExtension(std::move(alpn)));
+  auto actions = getActions(detail::processEvent(state_, std::move(chlo)));
+  expectActions<MutateState, WriteToSocket, SecretAvailable>(actions);
+  processStateMutations(actions);
+  EXPECT_TRUE(state_.alpn().has_value());
+}
+
+TEST_F(ServerProtocolTest, TestClientHelloMismatchAlpnRequired) {
   requireAlpn();
   setUpExpectingClientHello();
   auto chlo = TestMessages::clientHello();

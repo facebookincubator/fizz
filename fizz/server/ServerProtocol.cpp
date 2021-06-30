@@ -757,21 +757,26 @@ static Optional<std::string> negotiateAlpn(
     const FizzServerContext& context) {
   auto ext = getExtension<ProtocolNameList>(chlo.extensions);
   std::vector<std::string> clientProtocols;
+  // Check whether client supports ALPN
   if (ext) {
     for (auto& protocol : ext->protocol_name_list) {
       clientProtocols.push_back(protocol.name->moveToFbString().toStdString());
     }
   } else {
     VLOG(6) << "Client did not send ALPN extension";
-    if (context.getRequireAlpn()) {
+    if (context.getRequireAlpn() == AlpnMode::Required) {
       throw FizzException(
           "ALPN is required", AlertDescription::no_application_protocol);
     }
+    return folly::none;
   }
+
+  // Since both support ALPN, check whether the protocols match.
+  // Server's support for ALPN is to be enforced at the configuration.
   auto selected = context.negotiateAlpn(clientProtocols, zeroRttAlpn);
   if (!selected) {
     VLOG(6) << "ALPN mismatch";
-    if (context.getRequireAlpn()) {
+    if (context.getRequireAlpn() != AlpnMode::NotRequired) {
       throw FizzException(
           "ALPN mismatch when required",
           AlertDescription::no_application_protocol);

@@ -44,6 +44,9 @@ struct ClockSkewTolerance {
  */
 enum class ClientAuthMode { None, Optional, Required };
 
+// ALPN enforcement types
+enum class AlpnMode { NotRequired, RequiredIfClientSupports, Required };
+
 class FizzServerContext {
  public:
   FizzServerContext() : factory_(std::make_shared<OpenSSLFactory>()) {}
@@ -127,6 +130,10 @@ class FizzServerContext {
    */
   void setSupportedAlpns(std::vector<std::string> protocols) {
     supportedAlpns_ = std::move(protocols);
+  }
+
+  const std::vector<std::string>& getSupportedAlpns() const {
+    return supportedAlpns_;
   }
 
   /**
@@ -316,14 +323,14 @@ class FizzServerContext {
   }
 
   /**
-   * Whether or not require ALPN.
-   * When set to true and ALPN fails, no_application_protocol alert is sent.
+   * Set ALPN enforcement type.
+   * When set to Required and ALPN fails, no_application_protocol alert is sent.
    */
-  void setRequireAlpn(bool enabled) {
-    requireAlpn_ = enabled;
+  void setRequireAlpn(AlpnMode type) {
+    requireAlpn_ = type;
   }
 
-  bool getRequireAlpn() const {
+  AlpnMode getRequireAlpn() const {
     return requireAlpn_;
   }
 
@@ -385,7 +392,7 @@ class FizzServerContext {
 
   bool omitEarlyRecordLayer_{false};
 
-  bool requireAlpn_{false};
+  AlpnMode requireAlpn_{AlpnMode::NotRequired};
 
   std::shared_ptr<ech::Decrypter> decrypter_;
 };
