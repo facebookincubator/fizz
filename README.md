@@ -100,7 +100,38 @@ The source code for this program can be found under `fizz/tool`.
 
 ## Building
 
+##### Ubuntu 20.04 LTS
+
+The following instructions were tested on an ubuntu 20.04.2.0 VM.
+This should work with other ubuntu 20.04 versions as well. 
+However, it will not work with other verions of ubuntu (18.04, 16.04).
+  
+First, run the build script:
+```sh
+cd fizz
+sh ubuntu-build.sh
+```
+
+Then, cd into the build directory and run the sample application.
+```sh
+cd fizz/fizz/build_
+```
+
+Start a TLS server on port 8443:
+(any port greater than 1023 will work without any extra configurations)
+```sh
+fizz server -accept 8443
+```
+
+Then, on the same host, you can connect with:
+```sh
+fizz client -connect localhost:8443
+```
+
 ### Ubuntu 16.04 LTS
+#### Note: These instructions will not work out-of-the-box. 
+You will need to solve some version conflicts due to the required versions
+for some libraries only being avaliable for download using apt on ubuntu 20.04.
 
 To begin, you should install the dependencies we need for build. This largely
 consists of [folly](https://github.com/facebook/folly)'s dependencies, as well as
@@ -126,6 +157,16 @@ sudo apt-get install \
     libssl-dev \
     pkg-config \
     libsodium-dev
+```
+
+First, build and install fmt (a folly dependency):
+
+```sh
+git clone https://github.com/fmtlib/fmt.git
+mkdir fmt/_build && cd fmt/_build
+cmake ..
+make -j$(nproc)
+sudo make install
 ```
 
 Then, build and install folly:
