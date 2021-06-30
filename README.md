@@ -100,7 +100,7 @@ The source code for this program can be found under `fizz/tool`.
 
 ## Building
 
-##### Ubuntu 20.04 LTS
+### Ubuntu 20.04 LTS
 
 The following instructions were tested on an ubuntu 20.04.2.0 VM.
 This should work with other ubuntu 20.04 versions as well. 
