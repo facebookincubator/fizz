@@ -27,6 +27,13 @@ void HandshakeLogging::populateFromClientHello(const ClientHello& chlo) {
       testExtensionByte = *extension.extension_data->data();
     }
   }
+  clientAlpns.clear();
+  auto alpn = getExtension<ProtocolNameList>(chlo.extensions);
+  if (alpn) {
+    for (auto& protocol : alpn->protocol_name_list) {
+      clientAlpns.push_back(protocol.name->moveToFbString().toStdString());
+    }
+  }
   auto sni = getExtension<ServerNameList>(chlo.extensions);
   if (sni && !sni->server_name_list.empty()) {
     clientSni =

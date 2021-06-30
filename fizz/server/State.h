@@ -51,6 +51,7 @@ struct HandshakeLogging {
   folly::Optional<bool> clientSessionIdSent;
   folly::Optional<Random> clientRandom;
   folly::Optional<uint8_t> testExtensionByte;
+  std::vector<std::string> clientAlpns;
 
   void populateFromClientHello(const ClientHello& chlo);
 };
