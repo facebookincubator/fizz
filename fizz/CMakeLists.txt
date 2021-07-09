@@ -57,6 +57,7 @@ find_package(OpenSSL REQUIRED)
 find_package(Glog REQUIRED)
 find_package(DoubleConversion REQUIRED)
 find_package(Threads REQUIRED)
+find_package(Zstd REQUIRED)
 if (UNIX AND NOT APPLE)
   find_package(Librt)
 endif()
@@ -237,6 +238,7 @@ target_include_directories(
     ${FOLLY_INCLUDE_DIR}
     ${OPENSSL_INCLUDE_DIR}
     ${sodium_INCLUDE_DIR}
+    ${ZSTD_INCLUDE_DIR}
   PRIVATE
     ${GLOG_INCLUDE_DIRS}
     ${FIZZ_INCLUDE_DIRECTORIES}
@@ -251,6 +253,7 @@ target_link_libraries(fizz
     sodium
     Threads::Threads
     ZLIB::ZLIB
+    ${ZSTD_LIBRARY}
   PRIVATE
     ${GLOG_LIBRARIES}
     ${GFLAGS_LIBRARIES}
