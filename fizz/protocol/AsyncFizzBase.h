@@ -10,6 +10,7 @@
 
 #include <fizz/protocol/KeyScheduler.h>
 #include <fizz/record/Types.h>
+#include <folly/io/IOBufIovecBuilder.h>
 #include <folly/io/IOBufQueue.h>
 #include <folly/io/async/AsyncSocket.h>
 #include <folly/io/async/WriteChainAsyncTransportWrapper.h>
@@ -89,6 +90,33 @@ class AsyncFizzBase : public folly::WriteChainAsyncTransportWrapper<
      * (for io_uring)
      */
     bool registerEventCallback{false};
+
+    /*
+     * AsyncTransport read mode.
+     *
+     * This setting controls the strategy for reading data from the underlying
+     * socket.
+     *
+     *   ReadMode::ReadBuffer (default)
+     *      Under this mode, Fizz will allocate contiguous chunks of memory to
+     *      read incoming encrypted records. This might lead to higher mem usage
+     *      due to the way the memory is allocated from an IOBufQueue and also
+     *      due to the inability to do in place decryption for shared buffers
+     *
+     *   ReadMode::ReadVec
+     *      Under this mode, Fizz will use vectored IO (`readv`) to read
+     *      incoming data. This can help avoid additional copies at the expense
+     *      of allocating extra ref counting objects. The overall mem usage is
+     * also dependent on the readVecBlockSize value.
+     *
+     */
+    folly::AsyncReader::ReadCallback::ReadMode readMode{ReadMode::ReadBuffer};
+
+    /*
+     * AsyncTransport read vec block size
+     */
+    size_t readVecBlockSize{
+        folly::IOBufIovecBuilder::Options::kDefaultBlockSize};
   };
 
   explicit AsyncFizzBase(
@@ -382,6 +410,7 @@ class AsyncFizzBase : public folly::WriteChainAsyncTransportWrapper<
    * ReadCallback implementation.
    */
   void getReadBuffer(void** bufReturn, size_t* lenReturn) override;
+  void getReadBuffers(folly::IOBufIovecBuilder::IoVecVec& iovs) override;
   void readDataAvailable(size_t len) noexcept override;
   bool isBufferMovable() noexcept override;
   void readBufferAvailable(
@@ -416,5 +445,7 @@ class AsyncFizzBase : public folly::WriteChainAsyncTransportWrapper<
 
   TransportOptions transportOptions_;
   std::unique_ptr<FizzMsgHdr> msgHdr_;
+
+  folly::IOBufIovecBuilder ioVecQueue_;
 };
 } // namespace fizz
