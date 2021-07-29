@@ -177,11 +177,11 @@ class ServerProtocolTest : public ProtocolTest<ServerTypes, Actions> {
   }
 
   void requireAlpn() {
-    context_->setRequireAlpn(AlpnMode::Required);
+    context_->setAlpnMode(AlpnMode::Required);
   }
 
-  void requireAlpnIfClientSupports() {
-    context_->setRequireAlpn(AlpnMode::RequiredIfClientSupports);
+  void optionalAlpn() {
+    context_->setAlpnMode(AlpnMode::Optional);
   }
 
   void acceptCookies() {
@@ -3619,7 +3619,7 @@ TEST_F(ServerProtocolTest, TestClientHelloDataAfter) {
       actions, AlertDescription::unexpected_message, "data after client hello");
 }
 
-TEST_F(ServerProtocolTest, TestClientHelloNoAlpnNotRequired) {
+TEST_F(ServerProtocolTest, TestClientHelloNoAlpnAllowMismatch) {
   setUpExpectingClientHello();
   auto chlo = TestMessages::clientHello();
   TestMessages::removeExtension(
@@ -3630,7 +3630,7 @@ TEST_F(ServerProtocolTest, TestClientHelloNoAlpnNotRequired) {
   EXPECT_FALSE(state_.alpn().has_value());
 }
 
-TEST_F(ServerProtocolTest, TestClientHelloWithAlpnNotRequired) {
+TEST_F(ServerProtocolTest, TestClientHelloWithAlpnAllowMismatch) {
   setUpExpectingClientHello();
   auto chlo = TestMessages::clientHello();
   TestMessages::removeExtension(
@@ -3646,7 +3646,7 @@ TEST_F(ServerProtocolTest, TestClientHelloWithAlpnNotRequired) {
   EXPECT_TRUE(state_.alpn().has_value());
 }
 
-TEST_F(ServerProtocolTest, TestClientHelloMismatchAlpnNotRequired) {
+TEST_F(ServerProtocolTest, TestClientHelloMismatchAlpnAllowMismatch) {
   setUpExpectingClientHello();
   auto chlo = TestMessages::clientHello();
   TestMessages::removeExtension(
@@ -3662,8 +3662,8 @@ TEST_F(ServerProtocolTest, TestClientHelloMismatchAlpnNotRequired) {
   EXPECT_FALSE(state_.alpn().has_value());
 }
 
-TEST_F(ServerProtocolTest, TestClientHelloNoAlpnRequiredIfClientSupports) {
-  requireAlpnIfClientSupports();
+TEST_F(ServerProtocolTest, TestClientHelloNAlpnOptional) {
+  optionalAlpn();
   setUpExpectingClientHello();
   auto chlo = TestMessages::clientHello();
   TestMessages::removeExtension(
@@ -3674,8 +3674,8 @@ TEST_F(ServerProtocolTest, TestClientHelloNoAlpnRequiredIfClientSupports) {
   EXPECT_FALSE(state_.alpn().has_value());
 }
 
-TEST_F(ServerProtocolTest, TestClientHelloWithAlpnRequiredIfClientSupports) {
-  requireAlpnIfClientSupports();
+TEST_F(ServerProtocolTest, TestClientHelloWithAlpnOptional) {
+  optionalAlpn();
   setUpExpectingClientHello();
   auto chlo = TestMessages::clientHello();
   TestMessages::removeExtension(
@@ -3691,10 +3691,8 @@ TEST_F(ServerProtocolTest, TestClientHelloWithAlpnRequiredIfClientSupports) {
   EXPECT_TRUE(state_.alpn().has_value());
 }
 
-TEST_F(
-    ServerProtocolTest,
-    TestClientHelloMismatchAlpnRequiredIfClientSupports) {
-  requireAlpnIfClientSupports();
+TEST_F(ServerProtocolTest, TestClientHelloMismatchAlpnOptional) {
+  optionalAlpn();
   setUpExpectingClientHello();
   auto chlo = TestMessages::clientHello();
   TestMessages::removeExtension(

@@ -45,7 +45,7 @@ struct ClockSkewTolerance {
 enum class ClientAuthMode { None, Optional, Required };
 
 // ALPN enforcement types
-enum class AlpnMode { NotRequired, RequiredIfClientSupports, Required };
+enum class AlpnMode { AllowMismatch, Optional, Required };
 
 class FizzServerContext {
  public:
@@ -323,15 +323,16 @@ class FizzServerContext {
   }
 
   /**
-   * Set ALPN enforcement type.
-   * When set to Required and ALPN fails, no_application_protocol alert is sent.
+   * Set ALPN enforcement mode.
+   * When set to Optional or Required while ALPN fails,
+   * no_application_protocol alert is sent.
    */
-  void setRequireAlpn(AlpnMode type) {
-    requireAlpn_ = type;
+  void setAlpnMode(AlpnMode mode) {
+    alpnMode_ = mode;
   }
 
-  AlpnMode getRequireAlpn() const {
-    return requireAlpn_;
+  AlpnMode getAlpnMode() const {
+    return alpnMode_;
   }
 
   /**
@@ -392,7 +393,7 @@ class FizzServerContext {
 
   bool omitEarlyRecordLayer_{false};
 
-  AlpnMode requireAlpn_{AlpnMode::NotRequired};
+  AlpnMode alpnMode_{AlpnMode::AllowMismatch};
 
   std::shared_ptr<ech::Decrypter> decrypter_;
 };

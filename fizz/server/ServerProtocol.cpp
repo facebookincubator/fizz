@@ -764,7 +764,7 @@ static Optional<std::string> negotiateAlpn(
     }
   } else {
     VLOG(6) << "Client did not send ALPN extension";
-    if (context.getRequireAlpn() == AlpnMode::Required) {
+    if (context.getAlpnMode() == AlpnMode::Required) {
       throw FizzException(
           "ALPN is required", AlertDescription::no_application_protocol);
     }
@@ -776,7 +776,7 @@ static Optional<std::string> negotiateAlpn(
   auto selected = context.negotiateAlpn(clientProtocols, zeroRttAlpn);
   if (!selected) {
     VLOG(6) << "ALPN mismatch";
-    if (context.getRequireAlpn() != AlpnMode::NotRequired) {
+    if (context.getAlpnMode() != AlpnMode::AllowMismatch) {
       throw FizzException(
           "ALPN mismatch when required",
           AlertDescription::no_application_protocol);
