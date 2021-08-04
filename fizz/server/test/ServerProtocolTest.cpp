@@ -41,6 +41,9 @@ class ServerProtocolTest : public ProtocolTest<ServerTypes, Actions> {
   void SetUp() override {
     context_ = std::make_shared<FizzServerContext>();
     context_->setSupportedVersions({ProtocolVersion::tls_1_3});
+    context_->setSupportedSigSchemes(
+        {SignatureScheme::ecdsa_secp256r1_sha256,
+         SignatureScheme::rsa_pss_sha256});
     auto mockFactory = std::make_unique<MockFactory>();
     mockFactory->setDefaults();
     factory_ = mockFactory.get();

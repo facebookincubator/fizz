@@ -35,6 +35,9 @@ class ClientProtocolTest : public ProtocolTest<ClientTypes, Actions> {
     context_->setSupportedCiphers(
         {CipherSuite::TLS_AES_128_GCM_SHA256,
          CipherSuite::TLS_AES_256_GCM_SHA384});
+    context_->setSupportedSigSchemes(
+        {SignatureScheme::ecdsa_secp256r1_sha256,
+         SignatureScheme::rsa_pss_sha256});
     auto mockFactory = std::make_unique<MockFactory>();
     mockFactory->setDefaults();
     factory_ = mockFactory.get();

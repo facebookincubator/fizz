@@ -276,6 +276,8 @@ class FizzClientContext {
   };
   std::vector<SignatureScheme> supportedSigSchemes_ = {
       SignatureScheme::ecdsa_secp256r1_sha256,
+      SignatureScheme::ecdsa_secp384r1_sha384,
+      SignatureScheme::ecdsa_secp521r1_sha512,
       SignatureScheme::rsa_pss_sha256};
   std::vector<NamedGroup> supportedGroups_ = {
       NamedGroup::x25519,
