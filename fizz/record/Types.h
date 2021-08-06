@@ -103,6 +103,7 @@ enum class ExtensionType : uint16_t {
   post_handshake_auth = 49,
   signature_algorithms_cert = 50,
   key_share = 51,
+  ech_outer_extensions = 0xfd00,
   quic_transport_parameters = 0xffa5,
 
   // alternate_server_name = 0xfb00,
@@ -385,5 +386,17 @@ std::string enumToHex(T enumValue);
 
 Buf encodeHkdfLabel(HkdfLabel&& label, const std::string& hkdfLabelPrefix);
 } // namespace fizz
+
+#ifdef FOLLY_MOBILE
+namespace std {
+template <>
+struct hash<fizz::ExtensionType> {
+  size_t operator()(fizz::ExtensionType t) const noexcept {
+    using underlying_type = std::underlying_type_t<decltype(t)>;
+    return std::hash<underlying_type>{}(static_cast<underlying_type>(t));
+  }
+};
+} // namespace std
+#endif
 
 #include <fizz/record/Types-inl.h>

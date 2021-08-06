@@ -16,6 +16,7 @@
 #include <fizz/protocol/ech/test/TestUtil.h>
 #include <fizz/protocol/test/Mocks.h>
 #include <fizz/protocol/test/TestMessages.h>
+#include <fizz/record/Extensions.h>
 
 using namespace fizz::test;
 
@@ -368,6 +369,173 @@ TEST(EncryptionTest, TestTryToDecryptECHV8) {
 
   checkDecodedChlo(
       std::move(decodedChloResult.value()), std::move(expectedChlo));
+}
+
+MATCHER_P(ExtensionEq, expectedVec, "") {
+  return std::equal(
+      arg.get().begin(),
+      arg.get().end(),
+      expectedVec.begin(),
+      [](const Extension& a, const Extension* b) {
+        return a.extension_type == b->extension_type &&
+            folly::IOBufEqualTo{}(a.extension_data, b->extension_data);
+      });
+}
+
+static std::vector<Extension> cloneExtensionList(std::vector<Extension*> list) {
+  std::vector<Extension> res;
+  for (auto ext : list) {
+    res.push_back(ext->clone());
+  }
+
+  return res;
+}
+
+TEST(EncryptionTest, TestSubstituteOuterExtensions) {
+  auto innerChlo = TestMessages::clientHello();
+  auto outerChlo = TestMessages::clientHello();
+
+  auto& outerExt = outerChlo.extensions;
+  EchOuterExtensions echOuterExt;
+  std::vector<Extension*> expectedRes;
+
+  Extension extA = outerExt.at(0).clone(), extB = outerExt.at(1).clone(),
+            extC = outerExt.at(2).clone(), extD = outerExt.at(3).clone(),
+            extE = outerExt.at(4).clone(), extF = outerExt.at(5).clone(),
+            extG = outerExt.at(6).clone();
+
+  /*
+   * If innerClientHello does not have the ech_outer_extensions extension
+   * included, we expect a list identical to innerExt.
+   *
+   * outerExt: []
+   * innerExt: [A, B, C, D, E, F, G]
+   *
+   * result: [A, B, C, D, E, F, G]
+   */
+
+  auto actualRes =
+      substituteOuterExtensions(std::move(innerChlo.extensions), {});
+
+  expectedRes = {&extA, &extB, &extC, &extD, &extE, &extF, &extG};
+
+  EXPECT_THAT(std::ref(actualRes), ExtensionEq(expectedRes));
+
+  /*
+   * If the ech_outer_extensions includes an extension_type that is not
+   * present in the outerClientHello, we expect it to throw an exception.
+   *
+   * outerExt: []
+   * innerExt: [A, B, C, D, E, F, G, outer_extensions(H)]
+   *
+   * result: FizzException
+   */
+  innerChlo = TestMessages::clientHello();
+
+  echOuterExt.extensionTypes.push_back(ExtensionType::early_data);
+  innerChlo.extensions.push_back(encodeExtension(echOuterExt));
+
+  EXPECT_THROW(
+      substituteOuterExtensions(std::move(innerChlo.extensions), {}),
+      fizz::FizzException);
+
+  /**
+   * If the ech_outer_extensions includes extension_type values that do not
+   * maintain its relative ordering found in outerClientHello, we expect it to
+   * throw an exception.
+   *
+   * outerExt: [E, F, G]
+   * innerExt: [outer_extensions(E, G, F)]
+   *
+   * result: FizzException
+   */
+
+  // return values to default
+  innerChlo = TestMessages::clientHello();
+  innerChlo.extensions.clear();
+
+  outerExt = cloneExtensionList({&extE, &extF, &extG});
+
+  echOuterExt.extensionTypes = {
+      extE.extension_type, extG.extension_type, extF.extension_type};
+
+  innerChlo.extensions.push_back(encodeExtension(echOuterExt));
+
+  EXPECT_THROW(
+      substituteOuterExtensions(std::move(innerChlo.extensions), outerExt),
+      fizz::FizzException);
+
+  /*
+   * If all ech_outer_extensions values are all present in outerExt and maintain
+   * its relative ordering, we expect the returned list's to be equivalent to
+   * innerExt with ech_outer_extensions expanded.
+   *
+   * outerExt: [D, E, F]
+   * innerExt: [A, B, C, outer_extensions(D, E, F), G]
+   *
+   * result: [A, B, C, D, E, F, G]
+   */
+  innerChlo = TestMessages::clientHello();
+
+  outerExt = cloneExtensionList({&extD, &extE, &extF});
+
+  echOuterExt.extensionTypes = {
+      extD.extension_type, extE.extension_type, extF.extension_type};
+
+  auto encodedEchOuterExt = encodeExtension(echOuterExt);
+  innerChlo.extensions =
+      cloneExtensionList({&extA, &extB, &extC, &encodedEchOuterExt, &extG});
+
+  actualRes =
+      substituteOuterExtensions(std::move(innerChlo.extensions), outerExt);
+
+  expectedRes = {&extA, &extB, &extC, &extD, &extE, &extF, &extG};
+
+  EXPECT_THAT(std::ref(actualRes), ExtensionEq(expectedRes));
+
+  /*
+   * If the inner client hello has duplicate extensions, we expect it to throw
+   * an error.
+   *
+   * outerExt: [A, B, C]
+   * innerExt: [D, E, F, F]
+   *
+   * result: FizzException
+   */
+
+  innerChlo = TestMessages::clientHello();
+
+  outerExt = cloneExtensionList({&extA, &extB, &extC});
+
+  innerChlo.extensions = cloneExtensionList({&extD, &extE, &extF, &extF});
+
+  EXPECT_THROW(
+      substituteOuterExtensions(std::move(innerChlo.extensions), outerExt),
+      FizzException);
+
+  /*
+   * If the expanded inner client hello has duplicate extensions, we expect it
+   * to throw an error.
+   *
+   * outerExt: [A, B, C, D]
+   * innerExt: [D, E, F, outer_extensions(D)]
+   *
+   * result: FizzException
+   */
+  innerChlo = TestMessages::clientHello();
+
+  outerExt = cloneExtensionList({&extA, &extB, &extC, &extD});
+
+  echOuterExt.extensionTypes = {extD.extension_type};
+
+  encodedEchOuterExt = encodeExtension(echOuterExt);
+
+  innerChlo.extensions =
+      cloneExtensionList({&extD, &extE, &extF, &encodedEchOuterExt});
+
+  EXPECT_THROW(
+      substituteOuterExtensions(std::move(innerChlo.extensions), outerExt),
+      FizzException);
 }
 
 } // namespace test

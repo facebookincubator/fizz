@@ -139,6 +139,12 @@ struct CertificateCompressionAlgorithms {
       ExtensionType::compress_certificate;
 };
 
+struct EchOuterExtensions {
+  std::vector<ExtensionType> extensionTypes;
+  static constexpr ExtensionType extension_type =
+      ExtensionType::ech_outer_extensions;
+};
+
 template <class T>
 folly::Optional<T> getExtension(const std::vector<Extension>& extension);
 template <class T>

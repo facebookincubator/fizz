@@ -7,6 +7,8 @@
  */
 
 #include <vector>
+#include "fizz/record/Extensions.h"
+#include "folly/io/IOBuf.h"
 
 #include <fizz/record/Types.h>
 
@@ -335,6 +337,16 @@ inline Extension encodeExtension(const CertificateCompressionAlgorithms& cca) {
   ext.extension_data = folly::IOBuf::create(0);
   folly::io::Appender appender(ext.extension_data.get(), 10);
   detail::writeVector<uint8_t>(cca.algorithms, appender);
+  return ext;
+}
+
+template <>
+inline Extension encodeExtension(const EchOuterExtensions& outerExt) {
+  Extension ext;
+  ext.extension_type = outerExt.extension_type;
+  ext.extension_data = folly::IOBuf::create(0);
+  folly::io::Appender appender(ext.extension_data.get(), 10);
+  detail::writeVector<uint8_t>(outerExt.extensionTypes, appender);
   return ext;
 }
 

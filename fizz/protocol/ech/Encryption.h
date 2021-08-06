@@ -61,5 +61,9 @@ std::unique_ptr<folly::IOBuf> getRecordDigest(
     const ECHConfig& echConfig,
     hpke::KDFId id);
 
+std::vector<Extension> substituteOuterExtensions(
+    std::vector<Extension>&& innerExt,
+    const std::vector<Extension>& outerExt);
+
 } // namespace ech
 } // namespace fizz
