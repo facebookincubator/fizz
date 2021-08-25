@@ -67,6 +67,8 @@ std::string toString(ExtensionType extType) {
       return "application_layer_protocol_negotiation";
     case ExtensionType::token_binding:
       return "token_binding";
+    case ExtensionType::quic_transport_parameters_draft:
+      return "quic_transport_parameters_draft";
     case ExtensionType::quic_transport_parameters:
       return "quic_transport_parameters";
     case ExtensionType::pre_shared_key:

@@ -104,7 +104,8 @@ enum class ExtensionType : uint16_t {
   signature_algorithms_cert = 50,
   key_share = 51,
   ech_outer_extensions = 0xfd00,
-  quic_transport_parameters = 0xffa5,
+  quic_transport_parameters = 0x39,
+  quic_transport_parameters_draft = 0xffa5,
 
   // alternate_server_name = 0xfb00,
   // draft_delegated_credential = 0xff02,
