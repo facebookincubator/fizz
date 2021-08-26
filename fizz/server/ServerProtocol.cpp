@@ -777,9 +777,10 @@ static Optional<std::string> negotiateAlpn(
   if (!selected) {
     VLOG(6) << "ALPN mismatch";
     if (context.getAlpnMode() != AlpnMode::AllowMismatch) {
-      throw FizzException(
-          "ALPN mismatch when required",
-          AlertDescription::no_application_protocol);
+      auto msg = context.getAlpnMode() == AlpnMode::Optional
+          ? "Unable to negotiate ALPN, as required by policy. policy=AlpnMode::Optional"
+          : "Unable to negotiate ALPN, as required by policy. policy=AlpnMode::Required";
+      throw FizzException(msg, AlertDescription::no_application_protocol);
     }
   } else {
     VLOG(6) << "ALPN: " << *selected;

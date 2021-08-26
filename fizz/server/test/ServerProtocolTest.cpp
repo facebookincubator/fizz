@@ -3709,7 +3709,7 @@ TEST_F(ServerProtocolTest, TestClientHelloMismatchAlpnOptional) {
   expectError<FizzException>(
       actions,
       AlertDescription::no_application_protocol,
-      "ALPN mismatch when required");
+      "Unable to negotiate ALPN, as required by policy. policy=AlpnMode::Optional");
 }
 
 TEST_F(ServerProtocolTest, TestClientHelloNoAlpnRequired) {
@@ -3755,7 +3755,7 @@ TEST_F(ServerProtocolTest, TestClientHelloMismatchAlpnRequired) {
   expectError<FizzException>(
       actions,
       AlertDescription::no_application_protocol,
-      "ALPN mismatch when required");
+      "Unable to negotiate ALPN, as required by policy. policy=AlpnMode::Required");
 }
 
 TEST_F(ServerProtocolTest, TestClientHelloServerPref) {
