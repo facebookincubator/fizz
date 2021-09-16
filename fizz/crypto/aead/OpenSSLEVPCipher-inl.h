@@ -7,26 +7,6 @@
  */
 
 namespace fizz {
-namespace detail {
-folly::Optional<std::unique_ptr<folly::IOBuf>> evpDecrypt(
-    std::unique_ptr<folly::IOBuf>&& ciphertext,
-    const folly::IOBuf* associatedData,
-    folly::ByteRange iv,
-    folly::MutableByteRange tag,
-    bool useBlockOps,
-    EVP_CIPHER_CTX* decryptCtx,
-    Aead::AeadOptions options);
-
-std::unique_ptr<folly::IOBuf> evpEncrypt(
-    std::unique_ptr<folly::IOBuf>&& plaintext,
-    const folly::IOBuf* associatedData,
-    folly::ByteRange iv,
-    size_t tagLen,
-    bool useBlockOps,
-    size_t headroom,
-    EVP_CIPHER_CTX* encryptCtx,
-    bool inPlace);
-} // namespace detail
 
 template <typename EVPImpl>
 std::unique_ptr<Aead> OpenSSLEVPCipher::makeCipher() {
@@ -41,4 +21,5 @@ std::unique_ptr<Aead> OpenSSLEVPCipher::makeCipher() {
       EVPImpl::kOperatesInBlocks,
       EVPImpl::kRequiresPresetTagLen));
 }
+
 } // namespace fizz

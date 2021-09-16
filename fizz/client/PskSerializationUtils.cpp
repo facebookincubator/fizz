@@ -7,7 +7,9 @@
 using namespace folly;
 
 namespace fizz {
-namespace detail {
+
+namespace {
+
 void tryWriteCert(const fizz::Cert* cert, io::Appender& appender) {
   if (auto opensslCert = dynamic_cast<const fizz::OpenSSLCert*>(cert)) {
     auto x509 = opensslCert->getX509();
@@ -18,7 +20,9 @@ void tryWriteCert(const fizz::Cert* cert, io::Appender& appender) {
     fizz::detail::writeBuf<uint32_t>(nullptr, appender);
   }
 }
-} // namespace detail
+
+} // namespace
+
 namespace client {
 
 std::string serializePsk(const fizz::client::CachedPsk& psk) {
@@ -55,8 +59,8 @@ std::string serializePsk(const fizz::client::CachedPsk& psk) {
   fizz::detail::write(psk.ticketAgeAdd, appender);
   fizz::detail::write(ticketIssueTime, appender);
   fizz::detail::write(ticketExpirationTime, appender);
-  fizz::detail::tryWriteCert(psk.serverCert.get(), appender);
-  fizz::detail::tryWriteCert(psk.clientCert.get(), appender);
+  tryWriteCert(psk.serverCert.get(), appender);
+  tryWriteCert(psk.clientCert.get(), appender);
   fizz::detail::write(psk.maxEarlyDataSize, appender);
   fizz::detail::write(ticketHandshakeTime, appender);
 

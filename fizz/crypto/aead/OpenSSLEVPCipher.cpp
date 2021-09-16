@@ -10,21 +10,8 @@
 #include <functional>
 
 namespace fizz {
-namespace detail {
 
-void encFunc(EVP_CIPHER_CTX*, const folly::IOBuf&, folly::IOBuf&);
-void encFuncBlocks(EVP_CIPHER_CTX*, const folly::IOBuf&, folly::IOBuf&);
-
-bool decFunc(
-    EVP_CIPHER_CTX*,
-    const folly::IOBuf&,
-    folly::IOBuf&,
-    folly::MutableByteRange);
-bool decFuncBlocks(
-    EVP_CIPHER_CTX*,
-    const folly::IOBuf&,
-    folly::IOBuf&,
-    folly::MutableByteRange);
+namespace {
 
 void encFuncBlocks(
     EVP_CIPHER_CTX* encryptCtx,
@@ -344,7 +331,8 @@ folly::Optional<std::unique_ptr<folly::IOBuf>> evpDecrypt(
   }
   return output;
 }
-} // namespace detail
+
+} // namespace
 
 OpenSSLEVPCipher::OpenSSLEVPCipher(
     size_t keyLength,
@@ -442,7 +430,7 @@ std::unique_ptr<folly::IOBuf> OpenSSLEVPCipher::encrypt(
     uint64_t seqNum,
     Aead::AeadOptions options) const {
   auto iv = createIV(seqNum);
-  return detail::evpEncrypt(
+  return evpEncrypt(
       std::move(plaintext),
       associatedData,
       folly::ByteRange(iv.data(), ivLength_),
@@ -458,7 +446,7 @@ std::unique_ptr<folly::IOBuf> OpenSSLEVPCipher::inplaceEncrypt(
     const folly::IOBuf* associatedData,
     uint64_t seqNum) const {
   auto iv = createIV(seqNum);
-  return detail::evpEncrypt(
+  return evpEncrypt(
       std::move(plaintext),
       associatedData,
       folly::ByteRange(iv.data(), ivLength_),
@@ -499,7 +487,7 @@ folly::Optional<std::unique_ptr<folly::IOBuf>> OpenSSLEVPCipher::tryDecrypt(
     tagBuf->trimStart(lastBuf->length());
 
     folly::MutableByteRange tagOut{tagBuf->writableData(), tagLength_};
-    return detail::evpDecrypt(
+    return evpDecrypt(
         std::move(ciphertext),
         associatedData,
         folly::ByteRange(iv.data(), ivLength_),
@@ -517,7 +505,7 @@ folly::Optional<std::unique_ptr<folly::IOBuf>> OpenSSLEVPCipher::tryDecrypt(
     // buffer to copy the tag into when we decrypt
     folly::MutableByteRange tagOut{tag.data(), tagLength_};
     trimBytes(*ciphertext, tagOut);
-    return detail::evpDecrypt(
+    return evpDecrypt(
         std::move(ciphertext),
         associatedData,
         folly::ByteRange(iv.data(), ivLength_),
