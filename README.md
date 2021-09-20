@@ -2,9 +2,9 @@
   <img width="500" height="216" alt="Fizz" src="logo2x.png">
 </p>
 
-![linux](https://github.com/facebookincubator/fizz/workflows/linux/badge.svg?branch=master)
-![mac](https://github.com/facebookincubator/fizz/workflows/mac/badge.svg?branch=master)
-![windows](https://github.com/facebookincubator/fizz/workflows/windows/badge.svg?branch=master)
+![linux](https://github.com/facebookincubator/fizz/workflows/linux/badge.svg?branch=main)
+![mac](https://github.com/facebookincubator/fizz/workflows/mac/badge.svg?branch=main)
+![windows](https://github.com/facebookincubator/fizz/workflows/windows/badge.svg?branch=main)
 
 Fizz is a TLS 1.3 implementation.
 
