@@ -200,7 +200,7 @@ TEST_F(KeySchedulerTest, TestClonability) {
   auto t2ch =
       cloned->getSecret(HandshakeSecrets::ClientHandshakeTraffic, transcript2);
   EXPECT_EQ(t1sh, t2sh);
-  EXPECT_EQ(t2ch, t2ch);
+  EXPECT_EQ(t1ch, t2ch);
 }
 
 } // namespace test
