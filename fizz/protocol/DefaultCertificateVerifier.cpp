@@ -7,6 +7,7 @@
  */
 
 #include <fizz/protocol/DefaultCertificateVerifier.h>
+#include <folly/FileUtil.h>
 #include <folly/ssl/OpenSSLCertUtils.h>
 
 namespace fizz {
@@ -24,6 +25,25 @@ DefaultCertificateVerifier::createFromCAFile(
   auto store = folly::ssl::OpenSSLCertUtils::readStoreFromFile(caFile);
   return std::make_unique<DefaultCertificateVerifier>(
       context, std::move(store));
+}
+
+/* static */ std::unique_ptr<DefaultCertificateVerifier>
+DefaultCertificateVerifier::createFromCAFiles(
+    VerificationContext context,
+    const std::vector<std::string>& caFiles) {
+  std::string certBuffer;
+  for (const auto& caFile : caFiles) {
+    std::string readBuffer;
+    if (!folly::readFile(caFile.c_str(), readBuffer)) {
+      throw std::runtime_error(
+          folly::to<std::string>("Could not read store file: ", caFile));
+    }
+    folly::toAppend(readBuffer, &certBuffer);
+  }
+  return std::make_unique<DefaultCertificateVerifier>(
+      context,
+      folly::ssl::OpenSSLCertUtils::readStoreFromBuffer(
+          folly::StringPiece(certBuffer)));
 }
 
 void DefaultCertificateVerifier::verify(

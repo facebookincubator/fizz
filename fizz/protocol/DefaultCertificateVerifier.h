@@ -60,6 +60,10 @@ class DefaultCertificateVerifier : public CertificateVerifier {
       VerificationContext context,
       const std::string& caFile);
 
+  static std::unique_ptr<DefaultCertificateVerifier> createFromCAFiles(
+      VerificationContext context,
+      const std::vector<std::string>& caFile);
+
  private:
   void createAuthorities();
 
