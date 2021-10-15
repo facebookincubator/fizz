@@ -110,6 +110,7 @@ set(FIZZ_HEADER_DIRS
   crypto/hpke
   crypto/signature
   crypto/openssl
+  experimental/ktls
   extensions/delegatedcred
   extensions/exportedauth
   extensions/tokenbinding
@@ -209,6 +210,10 @@ set(FIZZ_SOURCES
   extensions/tokenbinding/Validator.cpp
   experimental/client/BatchSignaturePeerCert.cpp
   experimental/protocol/BatchSignatureTypes.cpp
+  experimental/ktls/AsyncFizzBaseKTLS.cpp
+  experimental/ktls/FizzKTLSCallback.cpp
+  experimental/ktls/AsyncKTLSSocket.cpp
+  experimental/ktls/KTLS.cpp
   client/State.cpp
   client/ClientProtocol.cpp
   client/PskSerializationUtils.cpp
