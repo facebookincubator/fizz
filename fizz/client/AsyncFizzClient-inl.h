@@ -501,6 +501,10 @@ void AsyncFizzClientT<SM>::ActionMoveVisitor::operator()(
     ReportHandshakeSuccess& success) {
   client_.cancelHandshakeTimeout();
 
+  // Disable record aligned reads. At this point, we are aligned on a record
+  // boundary (if handshakeRecordAlignedReads = true).
+  client_.updateReadHint(0);
+
   // if there are app writes pending this handshake success, flush them first,
   // then flush the early data buffers
   auto& pendingHandshakeAppWrites = client_.pendingHandshakeAppWrites_;
@@ -578,9 +582,9 @@ void AsyncFizzClientT<SM>::ActionMoveVisitor::operator()(ReportError& error) {
 }
 
 template <typename SM>
-void AsyncFizzClientT<SM>::ActionMoveVisitor::operator()(WaitForData&) {
+void AsyncFizzClientT<SM>::ActionMoveVisitor::operator()(WaitForData& wfd) {
   client_.fizzClient_.waitForData();
-
+  client_.updateReadHint(wfd.recordSizeHint);
   if (client_.callback_) {
     // Make sure that the read callback is installed.
     client_.startTransportReads();

@@ -490,6 +490,7 @@ void FizzServerAcceptor::connectionAccepted(
           ctx_,
           nullptr,
           std::move(transportOpts)));
+  transport->setHandshakeRecordAlignedReads(true);
   socket_->pauseAccepting();
   auto serverCb = http_
       ? std::make_unique<FizzHTTPServer>(transport, this, sslCtx_)

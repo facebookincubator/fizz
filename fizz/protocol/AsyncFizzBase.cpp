@@ -393,7 +393,26 @@ void AsyncFizzBase::getReadBuffer(void** bufReturn, size_t* lenReturn) {
   std::pair<void*, uint32_t> readSpace =
       transportReadBuf_.preallocate(kMinReadSize, kMaxReadSize);
   *bufReturn = readSpace.first;
-  *lenReturn = readSpace.second;
+
+  // `readSizeHint_`, if zero, indicates that we do not care about how much
+  // data we read from the underlying socket.
+  //
+  // `readSizeHint_`, if nonzero, indicates the maximum amount of data we
+  // want to read from the underlying socket. This is necessary for kTLS,
+  // where we want to ensure that when ReportHandshakeSuccess is called, we
+  // are at a known point in the TCP stream, so we can let the kernel start
+  // decrypting records for us.
+  //
+  // For transport with "record aligned reads", we initially set `readSizeHint_`
+  // equal to the size of the TLS record header. Subsequently, the state machine
+  // will tell us exactly how much data is required to complete the record
+  // in WaitForData actions.
+  if (readSizeHint_ > 0) {
+    *lenReturn = std::min(
+        static_cast<decltype(readSizeHint_)>(kMinReadSize), readSizeHint_);
+  } else {
+    *lenReturn = readSpace.second;
+  }
 }
 
 void AsyncFizzBase::getReadBuffers(folly::IOBufIovecBuilder::IoVecVec& iovs) {

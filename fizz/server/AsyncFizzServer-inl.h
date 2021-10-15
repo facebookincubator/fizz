@@ -291,6 +291,11 @@ void AsyncFizzServerT<SM>::ActionMoveVisitor::operator()(
     server_.transportError(ase);
     return;
   }
+
+  // Disable record aligned reads. At this point, we are aligned on a record
+  // boundary (if handshakeRecordAlignedReads = true).
+  server_.updateReadHint(0);
+
   if (server_.handshakeCallback_) {
     auto callback = server_.handshakeCallback_;
     server_.handshakeCallback_ = nullptr;
@@ -307,8 +312,9 @@ void AsyncFizzServerT<SM>::ActionMoveVisitor::operator()(ReportError& error) {
 }
 
 template <typename SM>
-void AsyncFizzServerT<SM>::ActionMoveVisitor::operator()(WaitForData&) {
+void AsyncFizzServerT<SM>::ActionMoveVisitor::operator()(WaitForData& wfd) {
   server_.fizzServer_.waitForData();
+  server_.updateReadHint(wfd.recordSizeHint);
 
   if (server_.handshakeCallback_) {
     // Make sure that the read callback is installed.

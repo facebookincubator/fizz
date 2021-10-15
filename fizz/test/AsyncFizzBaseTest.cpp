@@ -997,5 +997,51 @@ TYPED_TEST(AsyncFizzBaseTest, TestWriteBufferingWriteInCallback) {
 
   wcb->writeSuccess();
 }
+
+TYPED_TEST(AsyncFizzBaseTest, TestAlignedRecordReads) {
+  this->setHandshakeRecordAlignedReads(true);
+
+  this->expectTransportReadCallback();
+  this->startTransportReads();
+  IOBufEqualTo eq;
+
+  void* buf;
+  size_t len;
+  this->transportReadCallback_->getReadBuffer(&buf, &len);
+
+  // Under record aligned reads mode, we should always start with a read
+  // of the record header (5 bytes)
+  EXPECT_EQ(len, 5);
+  std::memcpy(buf, "12345", 5);
+
+  EXPECT_CALL(*this, transportDataAvailable());
+  this->transportReadCallback_->readDataAvailable(5);
+  EXPECT_TRUE(
+      eq(*IOBuf::copyBuffer("12345"), *(this->transportReadBuf_.front())));
+  { auto _ = this->transportReadBuf_.move(); }
+
+  // Subclasses would normally make this call whenever it receives a
+  // WaitForData action from the state machine
+  this->updateReadHint(100);
+
+  this->transportReadCallback_->getReadBuffer(&buf, &len);
+  std::memset(buf, 'A', 100);
+  EXPECT_EQ(len, 100);
+
+  EXPECT_CALL(*this, transportDataAvailable());
+  this->transportReadCallback_->readDataAvailable(100);
+  { auto _ = this->transportReadBuf_.move(); }
+
+  // When the handshake completes, read hint will be 0, subsequent allocations
+  // should be equal to the default kMaxReadSize allocation.
+  this->updateReadHint(0);
+
+  // This should be ignored, since updateReadHint(0) was already called.
+  this->updateReadHint(5);
+
+  this->transportReadCallback_->getReadBuffer(&buf, &len);
+  EXPECT_EQ(4000, len);
+}
+
 } // namespace test
 } // namespace fizz

@@ -246,6 +246,31 @@ class AsyncFizzBase : public folly::WriteChainAsyncTransportWrapper<
     endOfTLSCallback_ = cb;
   }
 
+  /**
+   * setHandshakeRecordAlignedReads defines the behavior for reading data
+   * from the backing transport during the handshake.
+   *
+   * This must be called prior to initiating the handshake.
+   *
+   * If true, this indicates that during the handshake, Fizz will read data
+   * such that at the end of the handshake, the next byte in the underlying
+   * transport's buffer (e.g. the kernel buffer) is guaranteed to be aligned
+   * on a record boundary.
+   *
+   * In practice, this means that during the handshake, Fizz will read records
+   * by (1) reading the record header and (2) reading just enough bytes to
+   * complete the current record. This uses more system calls.
+   *
+   * If false, Fizz will read data from the underlying transport in chunks not
+   * tied to any record boundary.
+   */
+  void setHandshakeRecordAlignedReads(bool flag) {
+    constexpr size_t kRecordHeaderSize = 5;
+    if (flag) {
+      readSizeHint_ = kRecordHeaderSize;
+    }
+  }
+
   /*
    * Gets the client random associated with this connection. The CR can be
    * used as a transport agnostic identifier (for instance, for NSS keylogging)
@@ -350,6 +375,23 @@ class AsyncFizzBase : public folly::WriteChainAsyncTransportWrapper<
    */
   virtual void endOfTLS(std::unique_ptr<folly::IOBuf> endOfData) noexcept;
 
+  /**
+   * Called by derived classes to control the size of the next read from the
+   * underlying transport (if using the readDataAvailable() API) when
+   * the transport performs record aligned reads.
+   *
+   * Record aligned reads are not the default; it must be explicitly enabled
+   * through AsyncFizzBase::setHandshakeRecordAlignedReads()
+   *
+   * setting hint=0 disables this functionality. All subsequent updateReadHint()
+   * values will be ignored.
+   */
+  void updateReadHint(size_t hint) {
+    if (readSizeHint_ > 0) {
+      readSizeHint_ = hint;
+    }
+  }
+
   folly::IOBufQueue transportReadBuf_{folly::IOBufQueue::cacheChainLength()};
   Aead::AeadOptions readAeadOptions_;
   Aead::AeadOptions writeAeadOptions_;
@@ -435,6 +477,8 @@ class AsyncFizzBase : public folly::WriteChainAsyncTransportWrapper<
 
   size_t appBytesWritten_{0};
   size_t appBytesReceived_{0};
+
+  size_t readSizeHint_{0};
 
   QueuedWriteRequest* tailWriteRequest_{nullptr};
 

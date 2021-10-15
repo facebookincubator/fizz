@@ -540,6 +540,41 @@ TEST_F(AsyncFizzServerTest, TestRemoteClosed) {
   EXPECT_FALSE(server_->good());
 }
 
+TEST_F(AsyncFizzServerTest, TestHandshakeRecordAlignedReads) {
+  server_->setHandshakeRecordAlignedReads(true);
+
+  accept();
+
+  void* buf;
+  size_t len;
+  socketReadCallback_->getReadBuffer(&buf, &len);
+
+  // Handshake record aligned reads begin with a read of 5 bytes for the
+  // record header.
+  EXPECT_EQ(len, 5);
+
+  EXPECT_CALL(*machine_, _processSocketData(_, _, _))
+      .WillOnce(InvokeWithoutArgs([] { return actions(WaitForData{10}); }));
+  socketReadCallback_->readDataAvailable(5);
+
+  socketReadCallback_->getReadBuffer(&buf, &len);
+  EXPECT_EQ(len, 10);
+
+  EXPECT_CALL(*machine_, _processSocketData(_, _, _))
+      .WillOnce(Invoke([](auto&&, auto&& queue, auto&&) {
+        queue.move();
+        return actions(WaitForData{5});
+      }));
+  socketReadCallback_->readDataAvailable(10);
+
+  // Handshake successs event should have now transitioned the socket to
+  // not perform record aligned reads, so subsequent allocations should be
+  // larger
+  fullHandshakeSuccess();
+  socketReadCallback_->getReadBuffer(&buf, &len);
+  EXPECT_EQ(len, 4000);
+}
+
 } // namespace test
 } // namespace server
 } // namespace fizz

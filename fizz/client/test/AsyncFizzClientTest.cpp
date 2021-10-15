@@ -1121,6 +1121,42 @@ TEST_F(AsyncFizzClientTest, TestAsyncFizzClientDestructor) {
       fizzClient, folly::DelayedDestruction::Destructor()};
 }
 
+TEST_F(AsyncFizzClientTest, TestHandshakeRecordAlignedReads) {
+  client_->setHandshakeRecordAlignedReads(true);
+
+  connect();
+
+  void* buf;
+  size_t len;
+  socketReadCallback_->getReadBuffer(&buf, &len);
+
+  // Handshake record aligned reads begin with a read of 5 bytes for the
+  // record header.
+  EXPECT_EQ(len, 5);
+
+  EXPECT_CALL(*machine_, _processSocketData(_, _, _))
+      .WillOnce(
+          InvokeWithoutArgs([] { return detail::actions(WaitForData{10}); }));
+  socketReadCallback_->readDataAvailable(5);
+
+  socketReadCallback_->getReadBuffer(&buf, &len);
+  EXPECT_EQ(len, 10);
+
+  EXPECT_CALL(*machine_, _processSocketData(_, _, _))
+      .WillOnce(Invoke([](auto&&, auto&& queue, auto&&) {
+        queue.move();
+        return detail::actions(WaitForData{5});
+      }));
+  socketReadCallback_->readDataAvailable(10);
+
+  // Handshake successs event should have now transitioned the socket to
+  // not perform record aligned reads, so subsequent allocations should be
+  // larger
+  fullHandshakeSuccess(false);
+  socketReadCallback_->getReadBuffer(&buf, &len);
+  EXPECT_EQ(len, 4000);
+}
+
 } // namespace test
 } // namespace client
 } // namespace fizz
