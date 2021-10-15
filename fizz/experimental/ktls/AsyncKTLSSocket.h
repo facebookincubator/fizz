@@ -48,6 +48,16 @@ namespace fizz {
  *  * We can throw away much of the state from AsyncFizzSocket and keep just
  *    the bare minimum to handle TLS events. This allows us to save some
  *    memory per socket.
+ *
+ * KNOWN LIMITATIONS
+ * =================
+ * * kTLS does not have a way to handle KeyUpdate messages. (There is no way
+ *   to update the TLS keys in the kernel). This makes kTLS non-compliant with a
+ *   standard TLS 1.3 implementation. Do not use this class
+ *   if you are expected to interop with clients that you do not control.
+ *
+ * * kTLS inherently is incompatible with SO_ZEROCOPY
+ * (AsyncSocket::setZeroCopy).
  */
 class AsyncKTLSSocket final : public folly::AsyncSocket {
  public:
@@ -96,6 +106,14 @@ class AsyncKTLSSocket final : public folly::AsyncSocket {
   }
 
  private:
+  /**
+   * kTLS does not support SO_ZEROCOPY
+   */
+  bool setZeroCopy(bool) override {
+    return false;
+  }
+  void setZeroCopyEnableFunc(AsyncWriter::ZeroCopyEnableFunc) override {}
+
   AsyncSocket::ReadResult
   performRead(void** buf, size_t* buflen, size_t* offset) override;
 
