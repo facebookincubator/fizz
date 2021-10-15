@@ -47,14 +47,13 @@ class MockPlaintextReadRecordLayer : public PlaintextReadRecordLayer {
  public:
   MOCK_METHOD2(
       read,
-      folly::Optional<TLSMessage>(folly::IOBufQueue& buf, Aead::AeadOptions));
+      ReadResult<TLSMessage>(folly::IOBufQueue& buf, Aead::AeadOptions));
   MOCK_CONST_METHOD0(hasUnparsedHandshakeData, bool());
   MOCK_METHOD1(setSkipEncryptedRecords, void(bool));
-  MOCK_METHOD0(mockReadEvent, folly::Optional<Param>());
+  MOCK_METHOD0(mockReadEvent, ReadResult<Param>());
 
-  folly::Optional<Param> readEvent(
-      folly::IOBufQueue& buf,
-      Aead::AeadOptions options) override {
+  ReadResult<Param> readEvent(folly::IOBufQueue& buf, Aead::AeadOptions options)
+      override {
     if (useMockReadEvent_) {
       return mockReadEvent();
     } else {
@@ -77,7 +76,7 @@ class MockEncryptedReadRecordLayer : public EncryptedReadRecordLayer {
 
   MOCK_METHOD2(
       read,
-      folly::Optional<TLSMessage>(
+      ReadResult<TLSMessage>(
           folly::IOBufQueue& buf,
           Aead::AeadOptions options));
   MOCK_CONST_METHOD0(hasUnparsedHandshakeData, bool());
@@ -89,11 +88,10 @@ class MockEncryptedReadRecordLayer : public EncryptedReadRecordLayer {
   }
 
   MOCK_METHOD1(setSkipFailedDecryption, void(bool));
-  MOCK_METHOD0(mockReadEvent, folly::Optional<Param>());
+  MOCK_METHOD0(mockReadEvent, ReadResult<Param>());
 
-  folly::Optional<Param> readEvent(
-      folly::IOBufQueue& buf,
-      Aead::AeadOptions options) override {
+  ReadResult<Param> readEvent(folly::IOBufQueue& buf, Aead::AeadOptions options)
+      override {
     if (useMockReadEvent_) {
       return mockReadEvent();
     } else {

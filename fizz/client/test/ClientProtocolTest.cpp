@@ -4014,8 +4014,7 @@ TEST_F(ClientProtocolTest, TestEstablishedAppClose) {
   EXPECT_EQ(state_.writeRecordLayer().get(), nullptr);
 
   EXPECT_CALL(*mockRead_, mockReadEvent()).WillOnce(InvokeWithoutArgs([]() {
-    Param p = CloseNotify();
-    return p;
+    return ReadRecordLayer::ReadResult<Param>::from(CloseNotify());
   }));
 
   mockRead_->useMockReadEvent(true);
@@ -4053,9 +4052,10 @@ TEST_F(ClientProtocolTest, TestEstablishedAppCloseImmediate) {
 TEST_F(ClientProtocolTest, TestDecodeErrorAlert) {
   setupAcceptingData();
   EXPECT_CALL(*mockRead_, read(_, _))
-      .WillOnce(InvokeWithoutArgs([]() -> folly::Optional<TLSMessage> {
-        throw std::runtime_error("read record layer error");
-      }));
+      .WillOnce(
+          InvokeWithoutArgs([]() -> ReadRecordLayer::ReadResult<TLSMessage> {
+            throw std::runtime_error("read record layer error");
+          }));
   folly::IOBufQueue buf;
   auto actions =
       ClientStateMachine().processSocketData(state_, buf, Aead::AeadOptions());
@@ -4069,11 +4069,12 @@ TEST_F(ClientProtocolTest, TestDecodeErrorAlert) {
 TEST_F(ClientProtocolTest, TestSocketDataFizzExceptionAlert) {
   setupAcceptingData();
   EXPECT_CALL(*mockRead_, read(_, _))
-      .WillOnce(InvokeWithoutArgs([]() -> folly::Optional<TLSMessage> {
-        throw FizzException(
-            "arbitrary fizzexception with alert",
-            AlertDescription::internal_error);
-      }));
+      .WillOnce(
+          InvokeWithoutArgs([]() -> ReadRecordLayer::ReadResult<TLSMessage> {
+            throw FizzException(
+                "arbitrary fizzexception with alert",
+                AlertDescription::internal_error);
+          }));
   folly::IOBufQueue buf;
   auto actions =
       ClientStateMachine().processSocketData(state_, buf, Aead::AeadOptions());
@@ -4089,10 +4090,11 @@ TEST_F(ClientProtocolTest, TestSocketDataFizzExceptionAlert) {
 TEST_F(ClientProtocolTest, TestSocketDataFizzExceptionNoAlert) {
   setupAcceptingData();
   EXPECT_CALL(*mockRead_, read(_, _))
-      .WillOnce(InvokeWithoutArgs([]() -> folly::Optional<TLSMessage> {
-        throw FizzException(
-            "arbitrary fizzexception without alert", folly::none);
-      }));
+      .WillOnce(
+          InvokeWithoutArgs([]() -> ReadRecordLayer::ReadResult<TLSMessage> {
+            throw FizzException(
+                "arbitrary fizzexception without alert", folly::none);
+          }));
   folly::IOBufQueue buf;
   auto actions =
       ClientStateMachine().processSocketData(state_, buf, Aead::AeadOptions());

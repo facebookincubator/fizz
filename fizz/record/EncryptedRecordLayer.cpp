@@ -19,7 +19,8 @@ static constexpr uint16_t kMaxEncryptedRecordSize = 0x4000 + 256; // 16k + 256
 static constexpr size_t kEncryptedHeaderSize =
     sizeof(ContentType) + sizeof(ProtocolVersion) + sizeof(uint16_t);
 
-folly::Optional<Buf> EncryptedReadRecordLayer::getDecryptedBuf(
+EncryptedReadRecordLayer::ReadResult<Buf>
+EncryptedReadRecordLayer::getDecryptedBuf(
     folly::IOBufQueue& buf,
     Aead::AeadOptions options) {
   while (true) {
@@ -29,7 +30,8 @@ folly::Optional<Buf> EncryptedReadRecordLayer::getDecryptedBuf(
     folly::io::Cursor cursor(frontBuf);
 
     if (buf.empty() || !cursor.canAdvance(kEncryptedHeaderSize)) {
-      return folly::none;
+      return ReadResult<Buf>::noneWithSizeHint(
+          kEncryptedHeaderSize - buf.chainLength());
     }
 
     std::array<uint8_t, kEncryptedHeaderSize> ad;
@@ -50,7 +52,8 @@ folly::Optional<Buf> EncryptedReadRecordLayer::getDecryptedBuf(
     }
     auto consumedBytes = cursor - frontBuf;
     if (buf.chainLength() < consumedBytes + length) {
-      return folly::none;
+      auto remaining = (consumedBytes + length) - buf.chainLength();
+      return ReadResult<Buf>::noneWithSizeHint(remaining);
     }
 
     if (contentType == ContentType::alert && length == 2) {
@@ -93,26 +96,26 @@ folly::Optional<Buf> EncryptedReadRecordLayer::getDecryptedBuf(
       if (decryptAttempt) {
         seqNum_++;
         skipFailedDecryption_ = false;
-        return decryptAttempt;
+        return ReadResult<Buf>::from(std::move(decryptAttempt).value());
       } else {
         continue;
       }
     } else {
-      return aead_->decrypt(
+      return ReadResult<Buf>::from(aead_->decrypt(
           std::move(encrypted),
           useAdditionalData_ ? &adBuf : nullptr,
           seqNum_++,
-          options);
+          options));
     }
   }
 }
 
-folly::Optional<TLSMessage> EncryptedReadRecordLayer::read(
+EncryptedReadRecordLayer::ReadResult<TLSMessage> EncryptedReadRecordLayer::read(
     folly::IOBufQueue& buf,
     Aead::AeadOptions options) {
   auto decryptedBuf = getDecryptedBuf(buf, std::move(options));
   if (!decryptedBuf) {
-    return folly::none;
+    return ReadResult<TLSMessage>::noneWithSizeHint(decryptedBuf.sizeHint);
   }
 
   TLSMessage msg{};
@@ -157,7 +160,7 @@ folly::Optional<TLSMessage> EncryptedReadRecordLayer::read(
     }
   }
 
-  return msg;
+  return ReadResult<TLSMessage>::from(std::move(msg));
 }
 
 EncryptionLevel EncryptedReadRecordLayer::getEncryptionLevel() const {

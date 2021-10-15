@@ -19,6 +19,8 @@ using namespace folly;
 namespace fizz {
 namespace test {
 
+constexpr size_t kEncryptedHeaderSize = 1 + 2 + 2;
+
 class EncryptedRecordTest : public testing::Test {
   void SetUp() override {
     auto readAead = std::make_unique<MockAead>();
@@ -56,7 +58,9 @@ class EncryptedRecordTest : public testing::Test {
 };
 
 TEST_F(EncryptedRecordTest, TestReadEmpty) {
-  EXPECT_FALSE(read_.read(queue_, Aead::AeadOptions()).has_value());
+  auto msg = read_.read(queue_, Aead::AeadOptions());
+  EXPECT_FALSE(msg.has_value());
+  EXPECT_EQ(kEncryptedHeaderSize, msg.sizeHint);
 }
 
 TEST_F(EncryptedRecordTest, TestReadHandshake) {
@@ -73,6 +77,7 @@ TEST_F(EncryptedRecordTest, TestReadHandshake) {
   EXPECT_EQ(msg->type, ContentType::handshake);
   expectSame(msg->fragment, "abcdef");
   EXPECT_TRUE(queue_.empty());
+  EXPECT_EQ(msg.sizeHint, 0);
 }
 
 TEST_F(EncryptedRecordTest, TestReadAlert) {
@@ -89,6 +94,7 @@ TEST_F(EncryptedRecordTest, TestReadAlert) {
   EXPECT_EQ(msg->type, ContentType::alert);
   expectSame(msg->fragment, "0202");
   EXPECT_TRUE(queue_.empty());
+  EXPECT_EQ(msg.sizeHint, 0);
 }
 
 TEST_F(EncryptedRecordTest, TestReadAppData) {
@@ -106,6 +112,7 @@ TEST_F(EncryptedRecordTest, TestReadAppData) {
   EXPECT_EQ(msg->type, ContentType::application_data);
   expectSame(msg->fragment, "1234abcd");
   EXPECT_TRUE(queue_.empty());
+  EXPECT_EQ(msg.sizeHint, 0);
 }
 
 TEST_F(EncryptedRecordTest, TestReadUnknown) {
@@ -123,20 +130,26 @@ TEST_F(EncryptedRecordTest, TestReadUnknown) {
 
 TEST_F(EncryptedRecordTest, TestWaitForData) {
   addToQueue("1703010010012345");
-  EXPECT_FALSE(read_.read(queue_, Aead::AeadOptions()).has_value());
+  auto msg = read_.read(queue_, Aead::AeadOptions());
+  EXPECT_FALSE(msg.has_value());
   EXPECT_EQ(queue_.chainLength(), 8);
+  EXPECT_EQ(13, msg.sizeHint);
 }
 
 TEST_F(EncryptedRecordTest, TestWaitForHeader) {
   addToQueue("16030102");
-  EXPECT_FALSE(read_.read(queue_, Aead::AeadOptions()).has_value());
+  auto msg = read_.read(queue_, Aead::AeadOptions());
+  EXPECT_FALSE(msg.has_value());
   EXPECT_EQ(queue_.chainLength(), 4);
+  EXPECT_EQ(1, msg.sizeHint);
 }
 
 TEST_F(EncryptedRecordTest, TestMaxSize) {
   addToQueue("1603014100");
-  EXPECT_FALSE(read_.read(queue_, Aead::AeadOptions()).has_value());
+  auto msg = read_.read(queue_, Aead::AeadOptions());
+  EXPECT_FALSE(msg.has_value());
   EXPECT_EQ(queue_.chainLength(), 5);
+  EXPECT_EQ(0x4100, msg.sizeHint);
 }
 
 TEST_F(EncryptedRecordTest, TestOverSize) {
@@ -154,7 +167,8 @@ TEST_F(EncryptedRecordTest, TestDataRemaining) {
         expectSame(buf, "0123456789");
         return getBuf("abcdef16");
       }));
-  read_.read(queue_, Aead::AeadOptions());
+  auto msg = read_.read(queue_, Aead::AeadOptions());
+  EXPECT_EQ(msg.sizeHint, 0);
   EXPECT_EQ(queue_.chainLength(), 1);
 }
 
@@ -169,6 +183,7 @@ TEST_F(EncryptedRecordTest, TestPadding) {
         return getBuf("1234abcd17000000");
       }));
   auto msg = read_.read(queue_, Aead::AeadOptions());
+  EXPECT_EQ(msg.sizeHint, 0);
   EXPECT_EQ(msg->type, ContentType::application_data);
   expectSame(msg->fragment, "1234abcd");
   EXPECT_TRUE(queue_.empty());
@@ -227,7 +242,8 @@ TEST_F(EncryptedRecordTest, TestReadSeqNum) {
           expectSame(buf, "0123456789");
           return getBuf("1234abcd17");
         }));
-    read_.read(queue_, Aead::AeadOptions());
+    auto msg = read_.read(queue_, Aead::AeadOptions());
+    EXPECT_EQ(msg.sizeHint, 0);
   }
 }
 
@@ -239,7 +255,13 @@ TEST_F(EncryptedRecordTest, TestSkipAndWait) {
                           const IOBuf*,
                           uint64_t,
                           Aead::AeadOptions) { return folly::none; }));
-  EXPECT_FALSE(read_.read(queue_, Aead::AeadOptions()).has_value());
+  auto msg = read_.read(queue_, Aead::AeadOptions());
+
+  // We skipped the failed record; it is effectively treated as a 0 byte read,
+  // so we still need to read the header.
+  EXPECT_EQ(msg.sizeHint, kEncryptedHeaderSize);
+
+  EXPECT_FALSE(msg.has_value());
   EXPECT_TRUE(queue_.empty());
 }
 
@@ -263,6 +285,7 @@ TEST_F(EncryptedRecordTest, TestSkipAndRead) {
         return getBuf("1234abcd17");
       }));
   auto msg = read_.read(queue_, Aead::AeadOptions());
+  EXPECT_EQ(msg.sizeHint, 0);
   EXPECT_EQ(msg->type, ContentType::application_data);
   expectSame(msg->fragment, "1234abcd");
   EXPECT_EQ(queue_.chainLength(), 10);
@@ -276,6 +299,7 @@ TEST_F(EncryptedRecordTest, TestSkipAndRead) {
         return getBuf("1234abaa17");
       }));
   msg = read_.read(queue_, Aead::AeadOptions());
+  EXPECT_EQ(msg.sizeHint, 0);
   EXPECT_EQ(msg->type, ContentType::application_data);
   expectSame(msg->fragment, "1234abaa");
   EXPECT_TRUE(queue_.empty());

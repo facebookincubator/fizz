@@ -18,6 +18,8 @@ using namespace folly;
 namespace fizz {
 namespace test {
 
+constexpr size_t kPlaintextHeaderSize = 1 + 2 + 2;
+
 class PlaintextRecordTest : public testing::Test {
  protected:
   PlaintextReadRecordLayer read_;
@@ -43,7 +45,9 @@ class PlaintextRecordTest : public testing::Test {
 };
 
 TEST_F(PlaintextRecordTest, TestReadEmpty) {
-  EXPECT_FALSE(read_.read(queue_, Aead::AeadOptions()).has_value());
+  auto result = read_.read(queue_, Aead::AeadOptions());
+  EXPECT_FALSE(result.has_value());
+  EXPECT_EQ(result.sizeHint, kPlaintextHeaderSize);
 }
 
 TEST_F(PlaintextRecordTest, TestReadHandshake) {
@@ -52,6 +56,7 @@ TEST_F(PlaintextRecordTest, TestReadHandshake) {
   EXPECT_EQ(msg->type, ContentType::handshake);
   expectSame(msg->fragment, "0123456789");
   EXPECT_TRUE(queue_.empty());
+  EXPECT_EQ(0, msg.sizeHint);
 }
 
 TEST_F(PlaintextRecordTest, TestReadAlert) {
@@ -60,6 +65,7 @@ TEST_F(PlaintextRecordTest, TestReadAlert) {
   EXPECT_EQ(msg->type, ContentType::alert);
   expectSame(msg->fragment, "0123456789");
   EXPECT_TRUE(queue_.empty());
+  EXPECT_EQ(0, msg.sizeHint);
 }
 
 TEST_F(PlaintextRecordTest, TestReadAppData) {
@@ -69,19 +75,25 @@ TEST_F(PlaintextRecordTest, TestReadAppData) {
 
 TEST_F(PlaintextRecordTest, TestWaitForData) {
   addToQueue("160301000512345678");
-  EXPECT_FALSE(read_.read(queue_, Aead::AeadOptions()).has_value());
+  auto result = read_.read(queue_, Aead::AeadOptions());
+  EXPECT_FALSE(result.has_value());
+  EXPECT_EQ(1, result.sizeHint);
   EXPECT_EQ(queue_.chainLength(), 9);
 }
 
 TEST_F(PlaintextRecordTest, TestWaitForHeader) {
   addToQueue("16030102");
-  EXPECT_FALSE(read_.read(queue_, Aead::AeadOptions()).has_value());
+  auto result = read_.read(queue_, Aead::AeadOptions());
+  EXPECT_FALSE(result.has_value());
   EXPECT_EQ(queue_.chainLength(), 4);
+  EXPECT_EQ(1, result.sizeHint);
 }
 
 TEST_F(PlaintextRecordTest, TestMaxSize) {
   addToQueue("1603014000");
-  EXPECT_FALSE(read_.read(queue_, Aead::AeadOptions()).has_value());
+  auto result = read_.read(queue_, Aead::AeadOptions());
+  EXPECT_FALSE(result.has_value());
+  EXPECT_EQ(0x4000, result.sizeHint);
   EXPECT_EQ(queue_.chainLength(), 5);
 }
 
@@ -107,8 +119,10 @@ TEST_F(PlaintextRecordTest, TestDataRemaining) {
 TEST_F(PlaintextRecordTest, TestSkipAndWait) {
   read_.setSkipEncryptedRecords(true);
   addToQueue("17030100050123456789");
-  EXPECT_FALSE(read_.read(queue_, Aead::AeadOptions()).has_value());
+  auto msg = read_.read(queue_, Aead::AeadOptions());
+  EXPECT_FALSE(msg.has_value());
   EXPECT_TRUE(queue_.empty());
+  EXPECT_EQ(kPlaintextHeaderSize, msg.sizeHint);
 }
 
 TEST_F(PlaintextRecordTest, TestSkipOversizedRecord) {
@@ -117,14 +131,18 @@ TEST_F(PlaintextRecordTest, TestSkipOversizedRecord) {
   auto longBuf = IOBuf::create(0xfffb);
   longBuf->append(0xfffb);
   queue_.append(std::move(longBuf));
-  EXPECT_FALSE(read_.read(queue_, Aead::AeadOptions()).has_value());
+  auto msg = read_.read(queue_, Aead::AeadOptions());
+  EXPECT_FALSE(msg.has_value());
   EXPECT_TRUE(queue_.empty());
+  EXPECT_EQ(kPlaintextHeaderSize, msg.sizeHint);
 }
 
 TEST_F(PlaintextRecordTest, TestWaitBeforeSkip) {
   read_.setSkipEncryptedRecords(true);
   addToQueue("170301000501234567");
-  EXPECT_FALSE(read_.read(queue_, Aead::AeadOptions()).has_value());
+  auto msg = read_.read(queue_, Aead::AeadOptions());
+  EXPECT_FALSE(msg.has_value());
+  EXPECT_EQ(1, msg.sizeHint);
   expectSame(queue_.move(), "170301000501234567");
 }
 
@@ -135,6 +153,7 @@ TEST_F(PlaintextRecordTest, TestSkipAndRead) {
   EXPECT_EQ(msg->type, ContentType::handshake);
   expectSame(msg->fragment, "0123456789");
   EXPECT_TRUE(queue_.empty());
+  EXPECT_EQ(0, msg.sizeHint);
 }
 
 TEST_F(PlaintextRecordTest, TestWriteHandshake) {

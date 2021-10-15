@@ -34,6 +34,59 @@ struct RecordLayerState {
 
 class ReadRecordLayer {
  public:
+  template <class T>
+  struct ReadResult {
+    ReadResult() : message(folly::none), sizeHint{0} {}
+    /* implicit */ ReadResult(const folly::None&)
+        : message(folly::none), sizeHint{0} {}
+
+    folly::Optional<T> message;
+
+    // A non-zero size hint indicates the amount of bytes needed to continue
+    // record processing.
+    size_t sizeHint{0};
+
+    static ReadResult from(T&& t) {
+      return from(std::forward<T>(t), 0);
+    }
+
+    static ReadResult from(T&& t, size_t sizeHint) {
+      ReadResult r;
+      r.message = std::forward<T>(t);
+      r.sizeHint = sizeHint;
+      return r;
+    }
+
+    static ReadResult none() {
+      return noneWithSizeHint(0);
+    }
+
+    static ReadResult noneWithSizeHint(size_t s) {
+      ReadResult r;
+      r.sizeHint = s;
+      return r;
+    }
+
+    operator bool() const {
+      return bool(message);
+    }
+
+    [[nodiscard]] bool has_value() const {
+      return message.has_value();
+    }
+
+    auto operator->() -> decltype(this->message.operator->()) {
+      return message.operator->();
+    }
+
+    auto operator->() const -> decltype(this->message.operator->()) {
+      return message.operator->();
+    }
+    auto operator*() -> decltype(this->message.operator*()) {
+      return message.operator*();
+    }
+  };
+
   virtual ~ReadRecordLayer() = default;
 
   /**
@@ -41,7 +94,7 @@ class ReadRecordLayer {
    * insuficient data available. Throws if data malformed. On success, advances
    * buf the amount read.
    */
-  virtual folly::Optional<TLSMessage> read(
+  virtual ReadResult<TLSMessage> read(
       folly::IOBufQueue& buf,
       Aead::AeadOptions options) = 0;
 
@@ -49,7 +102,7 @@ class ReadRecordLayer {
    * Get a message from the record layer. Returns none if insufficient data was
    * available on the socket. Throws on parse error.
    */
-  virtual folly::Optional<Param> readEvent(
+  virtual ReadResult<Param> readEvent(
       folly::IOBufQueue& socketBuf,
       Aead::AeadOptions options);
 

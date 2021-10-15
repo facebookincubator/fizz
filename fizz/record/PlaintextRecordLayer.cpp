@@ -20,14 +20,15 @@ static constexpr uint16_t kMaxPlaintextRecordSize = 0x4000; // 16k
 static constexpr size_t kPlaintextHeaderSize =
     sizeof(ContentType) + sizeof(ProtocolVersion) + sizeof(uint16_t);
 
-folly::Optional<TLSMessage> PlaintextReadRecordLayer::read(
+PlaintextReadRecordLayer::ReadResult<TLSMessage> PlaintextReadRecordLayer::read(
     folly::IOBufQueue& buf,
     Aead::AeadOptions) {
   while (true) {
     folly::io::Cursor cursor(buf.front());
 
     if (buf.empty() || !cursor.canAdvance(kPlaintextHeaderSize)) {
-      return folly::none;
+      return ReadResult<TLSMessage>::noneWithSizeHint(
+          kPlaintextHeaderSize - buf.chainLength());
     }
 
     TLSMessage msg;
@@ -38,7 +39,8 @@ folly::Optional<TLSMessage> PlaintextReadRecordLayer::read(
         cursor.skip(sizeof(ProtocolVersion));
         auto length = cursor.readBE<uint16_t>();
         if (buf.chainLength() < (cursor - buf.front()) + length) {
-          return folly::none;
+          auto missing = ((cursor - buf.front()) + length) - buf.chainLength();
+          return ReadResult<TLSMessage>::noneWithSizeHint(missing);
         }
         buf.trimStart(static_cast<size_t>(kPlaintextHeaderSize) + length);
         continue;
@@ -72,7 +74,8 @@ folly::Optional<TLSMessage> PlaintextReadRecordLayer::read(
       throw std::runtime_error("received empty plaintext record");
     }
     if (buf.chainLength() < (cursor - buf.front()) + length) {
-      return folly::none;
+      auto missing = ((cursor - buf.front()) + length) - buf.chainLength();
+      return ReadResult<TLSMessage>::noneWithSizeHint(missing);
     }
 
     cursor.clone(msg.fragment, length);
@@ -89,7 +92,7 @@ folly::Optional<TLSMessage> PlaintextReadRecordLayer::read(
       }
     }
 
-    return msg;
+    return ReadResult<TLSMessage>::from(std::move(msg));
   }
 }
 

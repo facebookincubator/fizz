@@ -15,7 +15,7 @@ using HandshakeTypeType = typename std::underlying_type<HandshakeType>::type;
 static constexpr size_t kHandshakeHeaderSize =
     sizeof(HandshakeType) + detail::bits24::size;
 
-folly::Optional<Param> ReadRecordLayer::readEvent(
+ReadRecordLayer::ReadResult<Param> ReadRecordLayer::readEvent(
     folly::IOBufQueue& socketBuf,
     Aead::AeadOptions options) {
   if (!unparsedHandshakeData_.empty()) {
@@ -23,17 +23,19 @@ folly::Optional<Param> ReadRecordLayer::readEvent(
     if (param) {
       VLOG(8) << "Received handshake message "
               << toString(EventVisitor()(*param));
-      return param;
+      return ReadResult<Param>::from(std::move(param).value());
     }
   }
 
   while (true) {
     // Read one record. We read one record at a time since records could cause
     // a change in the record layer.
-    auto message = read(socketBuf, options);
-    if (!message) {
-      return folly::none;
+    auto messageResult = read(socketBuf, options);
+    if (!messageResult) {
+      return ReadResult<Param>::noneWithSizeHint(messageResult.sizeHint);
     }
+
+    auto& message = messageResult.message;
 
     if (!unparsedHandshakeData_.empty() &&
         message->type != ContentType::handshake) {
@@ -44,9 +46,9 @@ folly::Optional<Param> ReadRecordLayer::readEvent(
       case ContentType::alert: {
         auto alert = decode<Alert>(std::move(message->fragment));
         if (alert.description == AlertDescription::close_notify) {
-          return Param(CloseNotify(socketBuf.move()));
+          return ReadResult<Param>::from(Param(CloseNotify(socketBuf.move())));
         } else {
-          return Param(std::move(alert));
+          return ReadResult<Param>::from(Param(std::move(alert)));
         }
       }
       case ContentType::handshake: {
@@ -82,7 +84,7 @@ folly::Optional<Param> ReadRecordLayer::readEvent(
         if (param) {
           VLOG(8) << "Received handshake message "
                   << toString(EventVisitor()(*param));
-          return param;
+          return ReadResult<Param>::from(std::move(param).value());
         } else {
           // If we read handshake data but didn't have enough to get a full
           // message we immediately try to read another record.
@@ -91,7 +93,8 @@ folly::Optional<Param> ReadRecordLayer::readEvent(
         }
       }
       case ContentType::application_data:
-        return Param(AppData(std::move(message->fragment)));
+        return ReadResult<Param>::from(
+            Param(AppData(std::move(message->fragment))));
       default:
         throw std::runtime_error("unknown content type");
     }

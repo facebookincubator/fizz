@@ -23,9 +23,8 @@ class PlaintextReadRecordLayer : public ReadRecordLayer {
     skipEncryptedRecords_ = enabled;
   }
 
-  folly::Optional<TLSMessage> read(
-      folly::IOBufQueue& buf,
-      Aead::AeadOptions options) override;
+  ReadResult<TLSMessage> read(folly::IOBufQueue& buf, Aead::AeadOptions options)
+      override;
 
   /**
    * Get the record protocol version of the most recent received record.

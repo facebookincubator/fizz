@@ -104,7 +104,7 @@ void decryptGCM(uint32_t n, size_t size) {
     }
   }
 
-  folly::Optional<TLSMessage> msg;
+  ReadRecordLayer::ReadResult<TLSMessage> msg;
   for (auto& buf : contents) {
     msg = read.read(buf, Aead::AeadOptions());
   }

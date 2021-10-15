@@ -24,9 +24,8 @@ class EncryptedReadRecordLayer : public ReadRecordLayer {
   explicit EncryptedReadRecordLayer(EncryptionLevel encryptionLevel)
       : encryptionLevel_(encryptionLevel) {}
 
-  folly::Optional<TLSMessage> read(
-      folly::IOBufQueue& buf,
-      Aead::AeadOptions options) override;
+  ReadResult<TLSMessage> read(folly::IOBufQueue& buf, Aead::AeadOptions options)
+      override;
 
   virtual void setAead(
       folly::ByteRange /* baseSecret */,
@@ -70,7 +69,7 @@ class EncryptedReadRecordLayer : public ReadRecordLayer {
   }
 
  private:
-  folly::Optional<Buf> getDecryptedBuf(
+  ReadResult<Buf> getDecryptedBuf(
       folly::IOBufQueue& buf,
       Aead::AeadOptions options);
 
