@@ -126,6 +126,10 @@ class FizzClientContext {
     return pskCache_.get();
   }
 
+  std::shared_ptr<PskCache> getPskCacheShared() const {
+    return pskCache_;
+  }
+
   folly::Optional<CachedPsk> getPsk(const std::string& identity) const {
     if (pskCache_) {
       return pskCache_->getPsk(identity);

@@ -146,6 +146,10 @@ class AsyncFizzClientT : public AsyncFizzBase,
 
   folly::Optional<Random> getClientRandom() const override;
 
+  folly::Optional<std::string> getPskIdentity() const {
+    return pskIdentity_;
+  }
+
  protected:
   ~AsyncFizzClientT() override = default;
   void writeAppData(

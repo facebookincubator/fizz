@@ -14,12 +14,15 @@
  * limitations under the License.
  */
 #include <fizz/client/AsyncFizzClient.h>
+#include <fizz/client/SynchronizedLruPskCache.h>
 #include <fizz/crypto/test/TestUtil.h>
 #include <fizz/experimental/ktls/AsyncFizzBaseKTLS.h>
 #include <fizz/protocol/Certificate.h>
+#include <fizz/server/AeadTicketCipher.h>
 #include <fizz/server/AsyncFizzServer.h>
 #include <fizz/server/CertManager.h>
 #include <fizz/server/FizzServerContext.h>
+#include <fizz/server/TicketCodec.h>
 
 #include <folly/Function.h>
 #include <folly/futures/Future.h>
@@ -132,18 +135,22 @@ folly::SemiFuture<AsyncFizzServer::UniquePtr> fizzAccept(
 
 folly::SemiFuture<fizz::client::AsyncFizzClient::UniquePtr> fizzConnect(
     AsyncFizzClient::UniquePtr socket,
-    const folly::SocketAddress& addr) {
+    const folly::SocketAddress& addr,
+    std::string pskIdentity) {
   struct ConnectAwaiter : public folly::AsyncSocket::ConnectCallback {
     explicit ConnectAwaiter(
         AsyncFizzClient::UniquePtr sock,
-        const folly::SocketAddress& addr)
-        : fizzSocket_(std::move(sock)), addr_(addr) {}
+        const folly::SocketAddress& addr,
+        std::string&& pskIdentity)
+        : fizzSocket_(std::move(sock)),
+          addr_(addr),
+          pskIdentity_(std::move(pskIdentity)) {}
 
     folly::SemiFuture<AsyncFizzClient::UniquePtr> await() {
       auto [p, f] = folly::makePromiseContract<AsyncFizzClient::UniquePtr>();
       promise_ = std::move(p);
 
-      fizzSocket_->connect(addr_, this, nullptr, folly::none, folly::none);
+      fizzSocket_->connect(addr_, this, nullptr, folly::none, pskIdentity_);
       return std::move(f);
     }
 
@@ -160,9 +167,11 @@ folly::SemiFuture<fizz::client::AsyncFizzClient::UniquePtr> fizzConnect(
     AsyncFizzClient::UniquePtr fizzSocket_;
     folly::SocketAddress addr_;
     folly::Promise<AsyncFizzClient::UniquePtr> promise_;
+    std::string pskIdentity_;
   };
 
-  ConnectAwaiter* awaiter = new ConnectAwaiter(std::move(socket), addr);
+  ConnectAwaiter* awaiter =
+      new ConnectAwaiter(std::move(socket), addr, std::move(pskIdentity));
   return awaiter->await();
 }
 
@@ -218,9 +227,28 @@ makeTestServerContext() {
           fizz::test::kP256Certificate.str(), fizz::test::kP256Key.str()),
       true);
 
+  auto factory = std::make_shared<OpenSSLFactory>();
+  auto certManager = std::make_shared<CertManager>();
+  auto ticketCipher = std::make_shared<
+      Aead128GCMTicketCipher<TicketCodec<CertificateStorage::X509>>>(
+      std::move(factory), std::move(certManager));
+  static constexpr folly::StringPiece ticketSecret =
+      "this is the incredibly secure ticket cipher secret";
+  ticketCipher->setTicketSecrets({folly::range(ticketSecret)});
+
   auto ctx = std::make_shared<fizz::server::FizzServerContext>();
   ctx->setVersionFallbackEnabled(false);
   ctx->setCertManager(certmanager);
+  ctx->setTicketCipher(ticketCipher);
+  return ctx;
+}
+
+static std::shared_ptr<fizz::client::FizzClientContext>
+makeTestClientContext() {
+  auto pskCache = std::make_shared<fizz::client::SynchronizedLruPskCache>(5);
+  auto ctx = std::make_shared<fizz::client::FizzClientContext>();
+  ctx->setPskCache(pskCache);
+  ctx->setSupportedCiphers({CipherSuite::TLS_AES_128_GCM_SHA256});
   return ctx;
 }
 
@@ -266,10 +294,10 @@ TEST(AsyncFizzBaseKTLSTest, TestFizzClientKTLSServer) {
   stopServer = [&] { acceptor.stopAccepting(); };
 
   VLOG(1) << "Server listening on " << acceptor.getLocalAddress().describe();
-  auto clientCtx = std::make_shared<fizz::client::FizzClientContext>();
+  auto clientCtx = makeTestClientContext();
   AsyncFizzClient::UniquePtr fizzClient;
   fizzClient.reset(new AsyncFizzClient(&evb, clientCtx));
-  fizzConnect(std::move(fizzClient), acceptor.getLocalAddress())
+  fizzConnect(std::move(fizzClient), acceptor.getLocalAddress(), "ktls_server")
       .via(&evb)
       .thenValue([](AsyncFizzClient::UniquePtr fizzSock) {
         auto read = new OneshotRead<AsyncFizzClient>(std::move(fizzSock), 512);
@@ -329,29 +357,67 @@ TEST(AsyncFizzBaseKTLSTest, TestKTLSClientFizzServer) {
       &evb, handleClient, [](auto&&) { ASSERT_FALSE(true); });
   stopServer = [&] { acceptor.stopAccepting(); };
 
-  auto clientCtx = std::make_shared<fizz::client::FizzClientContext>();
-  AsyncFizzClient::UniquePtr fizzClient;
-  fizzClient.reset(new AsyncFizzClient(&evb, clientCtx));
-  fizzClient->setHandshakeRecordAlignedReads(true);
-  fizzConnect(std::move(fizzClient), acceptor.getLocalAddress())
-      .via(&evb)
-      .thenValue([](AsyncFizzClient::UniquePtr fizzSock) {
-        VLOG(1) << "fizz client connected";
-        auto ktlsSocket = mustConvertKTLS(*fizzSock);
-        auto read =
-            new OneshotRead<AsyncKTLSSocket>(std::move(ktlsSocket), 512);
-        return read->await();
-      })
-      .via(&evb)
-      .thenValue([](auto&& res) {
-        auto& [t, data] = res;
-        ASSERT_TRUE(data.get());
-        auto value = data->moveToFbString().toStdString();
-        VLOG(1) << "client received: " << value;
-        EXPECT_EQ(value, "hello from fizz");
+  auto clientCtx = makeTestClientContext();
 
-        t->write(nullptr, "hello from ktls", sizeof("hello from ktls") - 1);
-      });
+  {
+    AsyncFizzClient::UniquePtr fizzClient;
+    fizzClient.reset(new AsyncFizzClient(&evb, clientCtx));
+    fizzClient->setHandshakeRecordAlignedReads(true);
+    fizzConnect(
+        std::move(fizzClient), acceptor.getLocalAddress(), "ktls_client")
+        .via(&evb)
+        .thenValue([](AsyncFizzClient::UniquePtr fizzSock) {
+          VLOG(1) << "fizz client connected";
+          auto ktlsSocket = mustConvertKTLS(*fizzSock);
+          auto read =
+              new OneshotRead<AsyncKTLSSocket>(std::move(ktlsSocket), 512);
+          return read->await();
+        })
+        .via(&evb)
+        .thenValue([](auto&& res) {
+          auto& [t, data] = res;
+          ASSERT_TRUE(data.get());
+          auto value = data->moveToFbString().toStdString();
+          VLOG(1) << "client received: " << value;
+          EXPECT_EQ(value, "hello from fizz");
+          t->write(nullptr, "hello from ktls", sizeof("hello from ktls") - 1);
+        });
+  }
 
   evb.loop();
+
+  auto cachedPsk = clientCtx->getPsk("ktls_client");
+  ASSERT_TRUE(cachedPsk.has_value());
+
+  auto handshakeAndAssertResumption =
+      [&](folly::AsyncSocket::UniquePtr sock) mutable noexcept -> void {
+    AsyncFizzServer::UniquePtr fizzSock;
+    fizzSock.reset(new AsyncFizzServer(std::move(sock), serverCtx));
+    fizzAccept(std::move(fizzSock))
+        .via(&evb)
+        .thenValue([](auto&& sock) {
+          auto pskType = sock->getState().pskType();
+          ASSERT_TRUE(pskType.has_value());
+          EXPECT_EQ(pskType.value(), PskType::Resumption);
+        })
+        .ensure([&] { stopServer(); });
+  };
+
+  ServerAcceptor acceptor2(
+      &evb, handshakeAndAssertResumption, [](auto&&) { ASSERT_FALSE(true); });
+  stopServer = [&] { acceptor2.stopAccepting(); };
+
+  {
+    AsyncFizzClient::UniquePtr fizzClient;
+    fizzClient.reset(new AsyncFizzClient(&evb, clientCtx));
+    fizzClient->setHandshakeRecordAlignedReads(true);
+    fizzConnect(
+        std::move(fizzClient), acceptor2.getLocalAddress(), "ktls_client")
+        .via(&evb)
+        .thenValue([](auto&& sock) {
+          auto pskType = sock->getState().pskType();
+          ASSERT_TRUE(pskType.has_value());
+          EXPECT_EQ(pskType.value(), PskType::Resumption);
+        });
+  }
 }

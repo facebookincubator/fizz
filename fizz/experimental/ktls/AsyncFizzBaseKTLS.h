@@ -16,11 +16,47 @@
 #pragma once
 
 #include <fizz/experimental/ktls/AsyncKTLSSocket.h>
+#include <fizz/experimental/ktls/FizzKTLSCallback.h>
 #include <fizz/protocol/AsyncFizzBase.h>
 #include <folly/Expected.h>
 #include <glog/logging.h>
 
 namespace fizz {
+namespace client {
+template <class SM>
+class AsyncFizzClientT;
+class PskCache;
+class State;
+} // namespace client
+
+namespace detail {
+KTLSCallbackImpl::TicketHandler makeTicketHandler(
+    std::string&& pskIdentity,
+    const fizz::client::State& state,
+    std::shared_ptr<fizz::client::PskCache>&& pskCache);
+
+template <class T>
+KTLSCallbackImpl::TicketHandler getTicketHandler(T&) {
+  return {};
+}
+
+template <class SM>
+KTLSCallbackImpl::TicketHandler getTicketHandler(
+    fizz::client::AsyncFizzClientT<SM>& client) {
+  auto pskIdentity = client.getPskIdentity();
+  if (!pskIdentity) {
+    return {};
+  }
+  auto pskCache = client.getState().context()->getPskCacheShared();
+  if (!pskCache) {
+    return {};
+  }
+
+  return makeTicketHandler(
+      std::move(pskIdentity).value(), client.getState(), std::move(pskCache));
+}
+} // namespace detail
+
 /**
  * fizz::tryConvertKTLS attempts to convert a fizz::AsyncFizzBase socket into
  * an instance of fizz::AsyncKTLSSocket
@@ -103,6 +139,11 @@ tryConvertKTLS(FizzSocket& fizzSock) {
   auto tx = KTLSDirectionalCryptoParams<TrafficDirection::Transmit>(
       KTLSCryptoParams::fromRecordState(ciphersuite, wstate));
 
+  auto keyScheduler = state.keyScheduler()->clone();
+  auto ticketHandler = detail::getTicketHandler(fizzSock);
+  auto callbackImpl = std::make_unique<KTLSCallbackImpl>(
+      std::move(keyScheduler), std::move(ticketHandler));
+
   auto result =
       KTLSNetworkSocket::tryEnableKTLS(sock->getNetworkSocket(), rx, tx);
   if (!result) {
@@ -115,8 +156,7 @@ tryConvertKTLS(FizzSocket& fizzSock) {
 
   (void)sock->detachNetworkSocket();
   AsyncKTLSSocket::UniquePtr ret;
-  // TODO: extract key scheduler and psk cache and use it as tls callback.
-  ret.reset(new AsyncKTLSSocket(evb, result.value(), nullptr));
+  ret.reset(new AsyncKTLSSocket(evb, result.value(), std::move(callbackImpl)));
   ret->setReadCB(readCb);
   return ret;
 #else

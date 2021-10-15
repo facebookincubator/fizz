@@ -189,6 +189,7 @@ folly::AsyncSocket::ReadResult AsyncKTLSSocket::processHandshakeData(
   auto payloadBuf =
       folly::IOBuf::wrapBufferAsValue(payload.data(), payload.size());
 
+  VLOG(10) << "AsyncKTLSSocket::processHandshakeData()";
   folly::Optional<fizz::Param> handshakeMessage;
 
   // TODO: This can probably be simplified
@@ -244,12 +245,14 @@ folly::AsyncSocket::ReadResult AsyncKTLSSocket::processHandshakeData(
     case decltype(param)::Type::KeyUpdate_E:
       // The kTLS implementation in the kernel does not currently support
       // switching keys.
+      VLOG(10) << "Received key update on kTLS connection";
       return ReadResult(
           READ_ERROR,
           std::make_unique<folly::AsyncSocketException>(
               folly::AsyncSocketException::SSL_ERROR,
               "ktls does not support key_updates"));
     case decltype(param)::Type::NewSessionTicket_E:
+      VLOG(10) << "Received NewSessionTicket on KTLS connection";
       tlsCallback_->receivedNewSessionTicket(
           this, std::move(*param.asNewSessionTicket()));
       break;
