@@ -4103,6 +4103,21 @@ TEST_F(ClientProtocolTest, TestSocketDataFizzExceptionNoAlert) {
 
   EXPECT_FALSE(exc.getAlert().has_value());
 }
+
+TEST_F(ClientProtocolTest, TestWaitForDataSizeHint) {
+  setupAcceptingData();
+  EXPECT_CALL(*mockRead_, read(_, _))
+      .WillOnce(
+          InvokeWithoutArgs([]() -> ReadRecordLayer::ReadResult<TLSMessage> {
+            return ReadRecordLayer::ReadResult<TLSMessage>::noneWithSizeHint(
+                17);
+          }));
+  folly::IOBufQueue buf;
+  auto actions =
+      ClientStateMachine().processSocketData(state_, buf, Aead::AeadOptions());
+  auto wfd = expectAction<WaitForData>(actions);
+  EXPECT_EQ(wfd.recordSizeHint, 17);
+}
 } // namespace test
 } // namespace client
 } // namespace fizz

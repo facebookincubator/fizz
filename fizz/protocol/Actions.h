@@ -65,7 +65,11 @@ struct ReportError {
  * Reports that more data is needed to progress. waitForData() should be
  * called.
  */
-struct WaitForData {};
+struct WaitForData {
+  // A hint for the *minimum* number of bytes needed in order to make progress
+  // for consuming a record.
+  size_t recordSizeHint{0};
+};
 
 /**
  * New secret available. This event is triggered whenever the TLS layer derives

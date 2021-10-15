@@ -187,7 +187,7 @@ Actions ClientStateMachine::processSocketData(
     }
     auto param = state.readRecordLayer()->readEvent(buf, std::move(options));
     if (!param.has_value()) {
-      return actions(WaitForData());
+      return actions(WaitForData{param.sizeHint});
     }
     return detail::processEvent(state, std::move(*param));
   } catch (const FizzException& e) {
