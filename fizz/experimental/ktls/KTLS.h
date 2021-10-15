@@ -44,6 +44,9 @@ struct KTLSCryptoParams {
   TrafficKey key;
   uint64_t recordSeq;
 
+  static KTLSCryptoParams fromRecordState(
+      CipherSuite suite,
+      const RecordLayerState& recordState);
   /**
    * toSockoptFormat encodes `KTLSCryptoParams` into a format that is
    * suitable to pass to the kernel through `setsockopt(2)`
@@ -75,7 +78,12 @@ enum class TrafficDirection {
  * This is used in some APIs to help prevent specifying the wrong parameters
  */
 template <TrafficDirection D>
-struct KTLSDirectionalCryptoParams : public KTLSCryptoParams {};
+struct KTLSDirectionalCryptoParams : public KTLSCryptoParams {
+  KTLSDirectionalCryptoParams() = default;
+
+  /* implicit */ KTLSDirectionalCryptoParams(KTLSCryptoParams&& params)
+      : KTLSCryptoParams{std::move(params)} {}
+};
 
 /*
  * platformSupportKTLS probes the running system for KTLS support. It checks

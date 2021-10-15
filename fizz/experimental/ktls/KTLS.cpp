@@ -80,6 +80,20 @@ static folly::Optional<KTLSParameterLayout> getKTLSLayout(CipherSuite suite) {
   return ret;
 }
 
+KTLSCryptoParams KTLSCryptoParams::fromRecordState(
+    CipherSuite suite,
+    const RecordLayerState& recordState) {
+  if (!recordState.key.has_value() || !recordState.sequence.has_value()) {
+    throw std::runtime_error("invalid record state for ktls");
+  }
+
+  KTLSCryptoParams params;
+  params.ciphersuite = suite;
+  params.key = recordState.key->clone();
+  params.recordSeq = *recordState.sequence;
+  return params;
+}
+
 Buf KTLSCryptoParams::toSockoptFormat() const {
   auto layout = getKTLSLayout(ciphersuite);
   if (!layout) {
