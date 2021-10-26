@@ -14,6 +14,24 @@
 
 namespace fizz {
 
+namespace detail {
+
+#define FIZZ_PENDING_EVENT(F, ...) \
+  F(AppWrite, __VA_ARGS__)         \
+  F(EarlyAppWrite, __VA_ARGS__)    \
+  F(AppClose, __VA_ARGS__)         \
+  F(WriteNewSessionTicket, __VA_ARGS__)
+
+// `fizz::detail::PendingEvent` is declared here, rather than
+// being declared as a private struct within `fizz::FizzBase` in order to
+// work around an MSVC ICE.
+//
+// See https://github.com/facebookincubator/fizz/issues/59
+FIZZ_DECLARE_VARIANT_TYPE(PendingEvent, FIZZ_PENDING_EVENT)
+
+#undef FIZZ_PENDING_EVENT
+} // namespace detail
+
 /**
  * FizzBase defines an async method of communicating with the fizz state
  * machine. Given a const reference to state, and a reference to
@@ -145,15 +163,7 @@ class FizzBase {
 
   folly::DelayedDestructionBase* owner_;
 
-#define FIZZ_PENDING_EVENT(F, ...) \
-  F(AppWrite, __VA_ARGS__)         \
-  F(EarlyAppWrite, __VA_ARGS__)    \
-  F(AppClose, __VA_ARGS__)         \
-  F(WriteNewSessionTicket, __VA_ARGS__)
-
-  FIZZ_DECLARE_VARIANT_TYPE(PendingEvent, FIZZ_PENDING_EVENT)
-
-  std::deque<PendingEvent> pendingEvents_;
+  std::deque<detail::PendingEvent> pendingEvents_;
   bool waitForData_{true};
   folly::Optional<folly::DelayedDestruction::DestructorGuard> actionGuard_;
   bool inProcessPendingEvents_{false};

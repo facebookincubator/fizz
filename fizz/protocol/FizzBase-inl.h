@@ -31,13 +31,13 @@ void FizzBase<Derived, ActionMoveVisitor, StateMachine>::earlyAppWrite(
 
 template <typename Derived, typename ActionMoveVisitor, typename StateMachine>
 void FizzBase<Derived, ActionMoveVisitor, StateMachine>::appClose() {
-  pendingEvents_.push_back(PendingEvent(AppClose::WAIT));
+  pendingEvents_.push_back(detail::PendingEvent(AppClose::WAIT));
   processPendingEvents();
 }
 
 template <typename Derived, typename ActionMoveVisitor, typename StateMachine>
 void FizzBase<Derived, ActionMoveVisitor, StateMachine>::appCloseImmediate() {
-  pendingEvents_.push_back(PendingEvent(AppClose::IMMEDIATE));
+  pendingEvents_.push_back(detail::PendingEvent(AppClose::IMMEDIATE));
   processPendingEvents();
 }
 
@@ -62,18 +62,18 @@ void FizzBase<Derived, ActionMoveVisitor, StateMachine>::moveToErrorState(
     auto event = std::move(pendingEvents_.front());
     pendingEvents_.pop_front();
     switch (event.type()) {
-      case PendingEvent::Type::AppWrite_E:
+      case detail::PendingEvent::Type::AppWrite_E:
         if (event.asAppWrite()->callback) {
           event.asAppWrite()->callback->writeErr(0, ex);
         }
         break;
-      case PendingEvent::Type::EarlyAppWrite_E:
+      case detail::PendingEvent::Type::EarlyAppWrite_E:
         if (event.asEarlyAppWrite()->callback) {
           event.asEarlyAppWrite()->callback->writeErr(0, ex);
         }
         break;
-      case PendingEvent::Type::AppClose_E:
-      case PendingEvent::Type::WriteNewSessionTicket_E:
+      case detail::PendingEvent::Type::AppClose_E:
+      case detail::PendingEvent::Type::WriteNewSessionTicket_E:
         break;
     }
   }
@@ -156,19 +156,19 @@ void FizzBase<Derived, ActionMoveVisitor, StateMachine>::
       auto event = std::move(pendingEvents_.front());
       pendingEvents_.pop_front();
       switch (event.type()) {
-        case PendingEvent::Type::WriteNewSessionTicket_E:
+        case detail::PendingEvent::Type::WriteNewSessionTicket_E:
           actions.emplace(machine_.processWriteNewSessionTicket(
               state_, std::move(*event.asWriteNewSessionTicket())));
           break;
-        case PendingEvent::Type::AppWrite_E:
+        case detail::PendingEvent::Type::AppWrite_E:
           actions.emplace(
               machine_.processAppWrite(state_, std::move(*event.asAppWrite())));
           break;
-        case PendingEvent::Type::EarlyAppWrite_E:
+        case detail::PendingEvent::Type::EarlyAppWrite_E:
           actions.emplace(machine_.processEarlyAppWrite(
               state_, std::move(*event.asEarlyAppWrite())));
           break;
-        case PendingEvent::Type::AppClose_E:
+        case detail::PendingEvent::Type::AppClose_E:
           if (event.asAppClose()->policy == AppClose::WAIT) {
             actions.emplace(machine_.processAppClose(state_));
           } else {
