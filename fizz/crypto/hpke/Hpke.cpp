@@ -91,7 +91,8 @@ HpkeContext keySchedule(KeyScheduleParams params) {
       std::move(params.cipher),
       std::move(exporterSecret),
       std::move(hkdf),
-      std::move(params.suiteId));
+      std::move(params.suiteId),
+      params.ctxRole);
 }
 
 SetupResult setupWithEncap(
@@ -109,7 +110,8 @@ SetupResult setupWithEncap(
       std::move(pskInputs),
       std::move(param.cipher),
       std::move(param.hkdf),
-      std::move(param.suiteId)};
+      std::move(param.suiteId),
+      HpkeContext::Role::Sender};
 
   SetupResult result{
       std::move(encapResult.enc), keySchedule(std::move(keyScheduleParams))};
@@ -130,7 +132,8 @@ HpkeContext setupWithDecap(
       std::move(pskInputs),
       std::move(param.cipher),
       std::move(param.hkdf),
-      std::move(param.suiteId)};
+      std::move(param.suiteId),
+      HpkeContext::Role::Receiver};
 
   return keySchedule(std::move(keyScheduleParams));
 }

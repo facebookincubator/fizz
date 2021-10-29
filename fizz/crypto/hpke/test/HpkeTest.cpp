@@ -205,7 +205,8 @@ TEST_P(HpkeTest, TestKeySchedule) {
             testParam.mode,
             toIOBuf(testParam.psk),
             toIOBuf(testParam.pskId)),
-        std::move(cipher), std::move(hkdf), std::move(suiteId)
+        std::move(cipher), std::move(hkdf), std::move(suiteId),
+        fizz::hpke::HpkeContext::Role::Sender
   };
   auto context = keySchedule(std::move(keyScheduleParams));
 

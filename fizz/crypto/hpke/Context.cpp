@@ -16,11 +16,13 @@ HpkeContext::HpkeContext(
     std::unique_ptr<Aead> cipher,
     std::unique_ptr<folly::IOBuf> exporterSecret,
     std::unique_ptr<fizz::hpke::Hkdf> hkdf,
-    HpkeSuiteId suiteId)
+    HpkeSuiteId suiteId,
+    HpkeContext::Role role)
     : cipher_(std::move(cipher)),
       exporterSecret_(std::move(exporterSecret)),
       hkdf_(std::move(hkdf)),
-      suiteId_(std::move(suiteId)) {}
+      suiteId_(std::move(suiteId)),
+      role_(role) {}
 
 void HpkeContext::incrementSeq() {
   if (seqNum_ >= (UINT64_MAX - 1)) {
@@ -32,6 +34,9 @@ void HpkeContext::incrementSeq() {
 std::unique_ptr<folly::IOBuf> HpkeContext::seal(
     const folly::IOBuf* aad,
     std::unique_ptr<folly::IOBuf> pt) {
+  if (role_ != Role::Sender) {
+    throw std::logic_error("sealing can only be done from a sender context");
+  }
   std::unique_ptr<folly::IOBuf> ct =
       cipher_->encrypt(std::move(pt), aad, seqNum_);
   incrementSeq();
@@ -41,6 +46,9 @@ std::unique_ptr<folly::IOBuf> HpkeContext::seal(
 std::unique_ptr<folly::IOBuf> HpkeContext::open(
     const folly::IOBuf* aad,
     std::unique_ptr<folly::IOBuf> ct) {
+  if (role_ != Role::Receiver) {
+    throw std::logic_error("opening can only be done from a receiver context");
+  }
   std::unique_ptr<folly::IOBuf> pt =
       cipher_->decrypt(std::move(ct), aad, seqNum_);
   incrementSeq();
