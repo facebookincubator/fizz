@@ -44,7 +44,6 @@ ECHConfig getECHConfig() {
   ECHConfig config;
   config.version = ECHVersion::Draft8;
   config.ech_config_content = encode(getECHConfigContent());
-  config.length = config.ech_config_content->computeChainDataLength();
   return config;
 }
 

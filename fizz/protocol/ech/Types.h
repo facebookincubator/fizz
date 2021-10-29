@@ -43,12 +43,10 @@ struct ECHConfigContentDraft {
 
 struct ECHConfig {
   ECHVersion version;
-  uint16_t length;
   Buf ech_config_content;
   ECHConfig() {}
   ECHConfig(const ECHConfig& other) {
     version = other.version;
-    length = other.length;
     ech_config_content = other.ech_config_content->clone();
   }
 };

@@ -22,7 +22,7 @@ folly::StringPiece kTestEncStr{"6b54657374456e63537472"};
 folly::StringPiece kTestRecordDigestStr{
     "6b546573745265636f7264446967657374537472"};
 folly::StringPiece kClientECHExtensionData{
-    "000100010009636f6e6669675f69640003656e6300077061796c6f6164"};
+    "0001000109636f6e6669675f69640003656e6300077061796c6f6164"};
 
 Buf getBuf(folly::StringPiece hex) {
   auto data = unhexlify(hex);
@@ -61,7 +61,6 @@ TEST(ECHTest, TestConfigContentEncodeDecode) {
 TEST(ECHTest, TestECHConfigEncodeDecode) {
   // Encode ECH config
   ECHConfig echConfig;
-  echConfig.length = 1;
   echConfig.version = ECHVersion::Draft8;
   echConfig.ech_config_content =
       encode<ECHConfigContentDraft>(getECHConfigContent());
@@ -73,7 +72,6 @@ TEST(ECHTest, TestECHConfigEncodeDecode) {
   auto gotECHConfig = decode<ECHConfig>(cursor);
 
   // Check decode(encode(config)) = config
-  EXPECT_EQ(gotECHConfig.length, 1);
   EXPECT_EQ(gotECHConfig.version, ECHVersion::Draft8);
   EXPECT_TRUE(folly::IOBufEqualTo()(
       gotECHConfig.ech_config_content,

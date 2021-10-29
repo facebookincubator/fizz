@@ -94,8 +94,6 @@ ECHConfig getInvalidVECHConfig() {
   auto configContent = getECHConfigContent();
   configContent.kem_id = hpke::KEMId::secp384r1;
   invalidConfig.ech_config_content = encode(std::move(configContent));
-  invalidConfig.length =
-      invalidConfig.ech_config_content->computeChainDataLength();
 
   return invalidConfig;
 }
@@ -152,7 +150,6 @@ TEST(EncryptionTest, TestValidECHConfigContent) {
   ECHConfig invalid;
   invalid.version = ECHVersion::Draft8;
   invalid.ech_config_content = encode(std::move(invalidConfigContent));
-  invalid.length = invalid.ech_config_content->computeChainDataLength();
 
   // Add config that works and can be supported
   ECHConfig valid = getECHConfig();
@@ -175,8 +172,6 @@ TEST(EncryptionTest, TestInvalidECHConfigContent) {
   ECHConfig invalidConfig;
   invalidConfig.version = static_cast<ECHVersion>(0xfe07); // Draft 7
   invalidConfig.ech_config_content = encode(std::move(configContent));
-  invalidConfig.length =
-      invalidConfig.ech_config_content->computeChainDataLength();
 
   std::vector<ECHConfig> configs;
   configs.push_back(std::move(invalidConfig));

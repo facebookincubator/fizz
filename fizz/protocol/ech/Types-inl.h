@@ -17,8 +17,7 @@ inline void detail::write<ech::ECHConfig>(
     const ech::ECHConfig& echConfig,
     folly::io::Appender& out) {
   detail::write(echConfig.version, out);
-  detail::write(echConfig.length, out);
-  detail::writeBufWithoutLength(echConfig.ech_config_content, out);
+  detail::writeBuf<uint16_t>(echConfig.ech_config_content, out);
 }
 
 template <>
@@ -33,7 +32,8 @@ template <>
 struct detail::Sizer<ech::ECHConfig> {
   template <class T>
   size_t getSize(const ech::ECHConfig& proto) {
-    return sizeof(uint16_t) + sizeof(uint16_t) + proto.length;
+    return sizeof(uint16_t) +
+        detail::getBufSize<uint16_t>(proto.ech_config_content);
   }
 };
 
@@ -61,7 +61,6 @@ struct detail::Reader<ech::ECHConfig> {
   size_t read(ech::ECHConfig& echConfig, folly::io::Cursor& cursor) {
     size_t len = 0;
     len += detail::read(echConfig.version, cursor);
-    len += detail::read(echConfig.length, cursor);
     len += readBuf<uint16_t>(echConfig.ech_config_content, cursor);
     return len;
   }
@@ -79,13 +78,23 @@ struct detail::Reader<std::array<uint8_t, 16>> {
 template <>
 inline Buf encode<ech::ECHConfigContentDraft>(
     ech::ECHConfigContentDraft&& ech) {
+  size_t extLen = [&]() {
+    size_t sz = 0;
+    for (const auto& ext : ech.extensions) {
+      sz += detail::getSize(ext);
+    }
+    return sizeof(uint16_t) + sz;
+  }();
   auto buf = folly::IOBuf::create(
       detail::getBufSize<uint16_t>(ech.public_name) +
-      detail::getBufSize<uint16_t>(ech.public_key) + sizeof(uint16_t) +
-      sizeof(ech::ECHCipherSuite) * ech.cipher_suites.size() +
-      sizeof(uint16_t) + 20);
+      detail::getBufSize<uint16_t>(ech.public_key) +
+      sizeof(uint16_t) + // kem_id
+      sizeof(uint16_t) + // cipher_suites.size
+      sizeof(ech::ECHCipherSuite) * ech.cipher_suites.size() + // cipher_suites
+      sizeof(uint16_t) + // maximum_name_length
+      extLen); // extensions
 
-  folly::io::Appender appender(buf.get(), 20);
+  folly::io::Appender appender(buf.get(), 0);
   detail::writeBuf<uint16_t>(ech.public_name, appender);
   detail::writeBuf<uint16_t>(ech.public_key, appender);
   detail::write(ech.kem_id, appender);
@@ -98,12 +107,11 @@ inline Buf encode<ech::ECHConfigContentDraft>(
 template <>
 inline Buf encode<const ech::ECHConfig&>(const ech::ECHConfig& echConfig) {
   auto buf = folly::IOBuf::create(
-      sizeof(uint16_t) + sizeof(uint16_t) +
+      sizeof(uint16_t) +
       detail::getBufSize<uint16_t>(echConfig.ech_config_content));
 
   folly::io::Appender appender(buf.get(), 20);
   detail::write(echConfig.version, appender);
-  detail::write(echConfig.length, appender);
   detail::writeBuf<uint16_t>(echConfig.ech_config_content, appender);
 
   return buf;
@@ -131,7 +139,6 @@ template <>
 inline ech::ECHConfig decode(folly::io::Cursor& cursor) {
   ech::ECHConfig echConfig;
   detail::read(echConfig.version, cursor);
-  detail::read<uint16_t>(echConfig.length, cursor);
   detail::readBuf<uint16_t>(echConfig.ech_config_content, cursor);
 
   return echConfig;
