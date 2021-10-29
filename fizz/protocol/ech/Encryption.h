@@ -27,18 +27,11 @@ folly::Optional<SupportedECHConfig> selectECHConfig(
     std::vector<hpke::KEMId> supportedKEMs,
     std::vector<hpke::AeadId> supportedAeads);
 
-ech::ECHNonce createNonceExtension(const hpke::HpkeContext& context);
-
 hpke::SetupResult constructHpkeSetupResult(
     std::unique_ptr<KeyExchange> kex,
     const SupportedECHConfig& supportedConfig);
 
-EncryptedClientHello encryptClientHello(
-    const SupportedECHConfig& supportedConfig,
-    ClientHello clientHello,
-    hpke::SetupResult setupResult);
-
-ClientECH encryptClientHelloV8(
+ClientECH encryptClientHello(
     const SupportedECHConfig& supportedConfig,
     const ClientHello& clientHelloInner,
     const ClientHello& clientHelloOuter,

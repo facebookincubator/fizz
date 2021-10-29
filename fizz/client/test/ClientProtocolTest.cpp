@@ -980,16 +980,9 @@ TEST_F(ClientProtocolTest, TestConnectCompat) {
   EXPECT_FALSE(state_.legacySessionId().value()->empty());
 }
 
-TEST_F(ClientProtocolTest, TestConnectECHV7) {
-  doECHConnectFlow(
-      ech::test::getECHConfig(),
-      IOBuf::copyBuffer("publicname"),
-      ech::ECHVersion::Draft7);
-}
-
 TEST_F(ClientProtocolTest, TestConnectECHV8) {
   doECHConnectFlow(
-      ech::test::getECHConfigV8(),
+      ech::test::getECHConfig(),
       IOBuf::copyBuffer("v8 publicname"),
       ech::ECHVersion::Draft8);
 }
@@ -3388,14 +3381,8 @@ void ClientProtocolTest::doECHConnectFlow(
       actualChlo.legacy_session_id, chloOuter.legacy_session_id));
 
   // Check there exists client hello inner extension.
-  if (echVersion == ech::ECHVersion::Draft7) {
-    auto echExtension =
-        getExtension<ech::EncryptedClientHello>(chloOuter.extensions);
-    EXPECT_TRUE(echExtension.hasValue());
-  } else if (echVersion == ech::ECHVersion::Draft8) {
-    auto echExtension = getExtension<ech::ClientECH>(chloOuter.extensions);
-    EXPECT_TRUE(echExtension.hasValue());
-  }
+  auto echExtension = getExtension<ech::ClientECH>(chloOuter.extensions);
+  EXPECT_TRUE(echExtension.hasValue());
 }
 
 TEST_F(ClientProtocolTest, TestFinished) {

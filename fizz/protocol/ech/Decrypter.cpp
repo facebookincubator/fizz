@@ -21,27 +21,6 @@ folly::Optional<ClientHello> tryToDecodeECH(
     folly::io::Cursor cursor(encodedECHExtension.extension_data.get());
     folly::Optional<ClientHello> decryptionResult;
     switch (param.echConfig.version) {
-      case ECHVersion::Draft7: {
-        auto echExtension = getExtension<ech::EncryptedClientHello>(cursor);
-        // Check if this ECH config record digest matches the ECH extension.
-        const auto& currentRecordDigest =
-            getRecordDigest(param.echConfig, echExtension.suite.kdf_id);
-        if (!folly::IOBufEqualTo()(
-                currentRecordDigest, echExtension.record_digest)) {
-          continue;
-        }
-
-        // Decrypt client hello
-        decryptionResult = tryToDecryptECH(
-            clientHelloOuter,
-            param.echConfig,
-            echExtension.suite,
-            echExtension.enc->clone(),
-            echExtension.encrypted_ch->clone(),
-            param.kex->clone(),
-            ECHVersion::Draft7);
-        break;
-      }
       case ECHVersion::Draft8: {
         auto echExtension = getExtension<ech::ClientECH>(cursor);
         auto echConfig = param.echConfig;
@@ -73,11 +52,6 @@ folly::Optional<ClientHello> tryToDecodeECH(
     if (decryptionResult.has_value()) {
       // We've successfully decrypted the client hello.
       return std::move(decryptionResult.value());
-    } else if (param.echConfig.version == ECHVersion::Draft7) {
-      // Decryption unsuccessful, abort the connection.
-      throw FizzException(
-          "unable to successfully decrypt ECH",
-          AlertDescription::decrypt_error);
     }
   }
   return folly::none;

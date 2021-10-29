@@ -29,8 +29,9 @@ ECHConfigContentDraft getECHConfigContent() {
   ECHCipherSuite suite{
       hpke::KDFId::Sha256, hpke::AeadId::TLS_AES_128_GCM_SHA256};
   ECHConfigContentDraft echConfigContent;
-  echConfigContent.public_name = folly::IOBuf::copyBuffer("publicname");
-  echConfigContent.public_key = folly::IOBuf::copyBuffer("public key");
+  echConfigContent.public_name = folly::IOBuf::copyBuffer("v8 publicname");
+  echConfigContent.public_key = detail::encodeECPublicKey(
+      ::fizz::test::getPublicKey(::fizz::test::kP256PublicKey));
   echConfigContent.kem_id = hpke::KEMId::secp256r1;
   echConfigContent.cipher_suites = {suite};
   echConfigContent.maximum_name_length = 1000;
@@ -40,35 +41,11 @@ ECHConfigContentDraft getECHConfigContent() {
 }
 
 ECHConfig getECHConfig() {
-  ECHConfig testConfig;
-  testConfig.version = ECHVersion::Draft7;
-  testConfig.ech_config_content = encode(getECHConfigContent());
-  testConfig.length = testConfig.ech_config_content->computeChainDataLength();
-  return testConfig;
-}
-
-ECHConfig getECHConfigV8() {
   ECHConfig config;
   config.version = ECHVersion::Draft8;
-  auto testConfigContent = getECHConfigContent();
-  testConfigContent.public_name = folly::IOBuf::copyBuffer("v8 publicname");
-  testConfigContent.public_key = detail::encodeECPublicKey(
-      ::fizz::test::getPublicKey(::fizz::test::kP256PublicKey));
-  config.ech_config_content = encode(std::move(testConfigContent));
+  config.ech_config_content = encode(getECHConfigContent());
   config.length = config.ech_config_content->computeChainDataLength();
   return config;
-}
-
-EncryptedClientHello getECH(
-    ClientHello chlo,
-    std::unique_ptr<KeyExchange> kex) {
-  auto echConfigContent = getECHConfigContent();
-  auto cipherSuite = echConfigContent.cipher_suites[0];
-  auto supportedECHConfig = SupportedECHConfig{getECHConfig(), cipherSuite};
-  auto setupResult =
-      constructHpkeSetupResult(std::move(kex), supportedECHConfig);
-  return encryptClientHello(
-      supportedECHConfig, std::move(chlo), std::move(setupResult));
 }
 
 ClientHello getClientHelloOuter() {

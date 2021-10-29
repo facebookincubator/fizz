@@ -21,18 +21,6 @@ namespace ech {
 namespace test {
 
 namespace {
-ECHConfig constructECHConfigV7() {
-  auto configContent = getECHConfigContent();
-  configContent.public_key =
-      detail::encodeECPublicKey(getPublicKey(kP256PublicKey));
-
-  ECHConfig testConfig;
-  testConfig.version = ECHVersion::Draft7;
-  testConfig.ech_config_content = encode(std::move(configContent));
-  testConfig.length = testConfig.ech_config_content->computeChainDataLength();
-  return testConfig;
-}
-
 void checkDecryptionResult(
     folly::Optional<ClientHello> gotChlo,
     const std::unique_ptr<folly::IOBuf>& chloOuterHandshake,
@@ -44,12 +32,8 @@ void checkDecryptionResult(
       chloOuterHandshake, encodeHandshake(expectedChloInner)));
 
   auto chlo = std::move(gotChlo.value());
-  if (version == ECHVersion::Draft7) {
-    TestMessages::removeExtension(chlo, ExtensionType::ech_nonce);
-  } else if (version == ECHVersion::Draft8) {
-    // Remove the empty ECH extension from the client hello inner
-    TestMessages::removeExtension(chlo, ExtensionType::encrypted_client_hello);
-  }
+  // Remove the empty ECH extension from the client hello inner
+  TestMessages::removeExtension(chlo, ExtensionType::encrypted_client_hello);
 
   EXPECT_TRUE(folly::IOBufEqualTo()(
       encodeHandshake(chlo), encodeHandshake(expectedChloInner)));
@@ -58,49 +42,10 @@ void checkDecryptionResult(
 } // namespace
 
 TEST(DecrypterTest, TestDecodeSuccess) {
-  auto getClientHelloOuter = [](std::unique_ptr<KeyExchange> kex) {
-    // Setup ECH extension
-    auto supportedECHConfig = SupportedECHConfig{
-        constructECHConfigV7(),
-        ECHCipherSuite{
-            hpke::KDFId::Sha256, hpke::AeadId::TLS_AES_128_GCM_SHA256}};
-    auto setupResult =
-        constructHpkeSetupResult(std::move(kex), supportedECHConfig);
-
-    // Add nonce extension
-    auto chloInner = TestMessages::clientHello();
-    chloInner.extensions.push_back(
-        encodeExtension(createNonceExtension(setupResult.context)));
-
-    // Encrypt client hello
-    EncryptedClientHello echExt = encryptClientHello(
-        supportedECHConfig, std::move(chloInner), std::move(setupResult));
-
-    // Add ECH extension
-    ClientHello chloOuter;
-    chloOuter.extensions.push_back(encodeExtension(echExt));
-
-    return chloOuter;
-  };
-
-  auto kex = std::make_unique<OpenSSLECKeyExchange<P256>>();
-  kex->setPrivateKey(getPrivateKey(kP256Key));
-
-  ECHConfigManager decrypter;
-  decrypter.addDecryptionConfig(
-      DecrypterParams{constructECHConfigV7(), kex->clone()});
-  auto chloOuter = getClientHelloOuter(kex->clone());
-  auto gotChlo = decrypter.decryptClientHello(chloOuter);
-
-  checkDecryptionResult(
-      std::move(gotChlo), encodeHandshake(chloOuter), ECHVersion::Draft7);
-}
-
-TEST(DecrypterTest, TestDecodeSuccessV8) {
   auto getChloOuterWithExt = [](std::unique_ptr<KeyExchange> kex) {
     // Setup ECH extension
     auto supportedECHConfig = SupportedECHConfig{
-        getECHConfigV8(),
+        getECHConfig(),
         ECHCipherSuite{
             hpke::KDFId::Sha256, hpke::AeadId::TLS_AES_128_GCM_SHA256}};
     auto setupResult =
@@ -115,7 +60,7 @@ TEST(DecrypterTest, TestDecodeSuccessV8) {
     ClientHello chloOuter = getClientHelloOuter();
     chloOuter.legacy_session_id = folly::IOBuf::create(0);
 
-    ClientECH echExt = encryptClientHelloV8(
+    ClientECH echExt = encryptClientHello(
         supportedECHConfig, chloInner, chloOuter, std::move(setupResult));
 
     // Add ECH extension
@@ -128,8 +73,7 @@ TEST(DecrypterTest, TestDecodeSuccessV8) {
   kex->setPrivateKey(getPrivateKey(kP256Key));
 
   ECHConfigManager decrypter;
-  decrypter.addDecryptionConfig(
-      DecrypterParams{getECHConfigV8(), kex->clone()});
+  decrypter.addDecryptionConfig(DecrypterParams{getECHConfig(), kex->clone()});
   auto chloOuter = getChloOuterWithExt(kex->clone());
   auto gotChlo = decrypter.decryptClientHello(chloOuter);
 
@@ -137,7 +81,8 @@ TEST(DecrypterTest, TestDecodeSuccessV8) {
       std::move(gotChlo), encodeHandshake(chloOuter), ECHVersion::Draft8);
 }
 
-void testFailure(ECHConfig echConfig) {
+TEST(DecrypterTest, TestDecodeFailure) {
+  auto echConfig = getECHConfig();
   auto kex = std::make_unique<OpenSSLECKeyExchange<P256>>();
   kex->setPrivateKey(getPrivateKey(kP256Key));
 
@@ -147,11 +92,6 @@ void testFailure(ECHConfig echConfig) {
   auto gotChlo = decrypter.decryptClientHello(TestMessages::clientHello());
 
   EXPECT_FALSE(gotChlo.has_value());
-}
-
-TEST(DecrypterTest, TestDecodeFailure) {
-  testFailure(constructECHConfigV7());
-  testFailure(getECHConfigV8());
 }
 
 } // namespace test

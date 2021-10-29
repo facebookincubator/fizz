@@ -13,14 +13,6 @@
 
 namespace fizz {
 template <>
-struct detail::Writer<ech::HpkeNonce> {
-  template <class T>
-  void write(const std::array<uint8_t, 16>& arr, folly::io::Appender& out) {
-    out.push(arr.data(), arr.size());
-  }
-};
-
-template <>
 inline void detail::write<ech::ECHConfig>(
     const ech::ECHConfig& echConfig,
     folly::io::Appender& out) {

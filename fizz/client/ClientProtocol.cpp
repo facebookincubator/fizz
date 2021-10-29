@@ -426,7 +426,6 @@ static ClientHello getClientHello(
     const Optional<EarlyDataParams>& earlyDataParams,
     const Buf& legacySessionId,
     ClientExtensions* extensions,
-    Optional<ech::ECHNonce> echNonceExtension,
     Optional<Extension> encodedECHExtension,
     Buf cookie = nullptr) {
   ClientHello chlo;
@@ -502,11 +501,6 @@ static ClientHello getClientHello(
     for (auto& ext : additionalExtensions) {
       chlo.extensions.push_back(std::move(ext));
     }
-  }
-
-  if (echNonceExtension.has_value()) {
-    chlo.extensions.push_back(
-        encodeExtension(std::move(echNonceExtension.value())));
   }
 
   if (encodedECHExtension.has_value()) {
@@ -733,14 +727,6 @@ EventHandler<ClientTypes, StateEnum::Uninitialized, Event::Connect>::handle(
       context->getSupportedGroups(),
       *context->getFactory());
 
-  // Create ECH nonce extension, if we're constructing an ECH V7.
-  auto echNonceExt = (echParams.has_value() &&
-                      (echParams.value().supportedECHConfig.config.version ==
-                       ech::ECHVersion::Draft7))
-      ? folly::Optional<ech::ECHNonce>(
-            ech::createNonceExtension(echParams->setupResult.context))
-      : folly::none;
-
   auto encodedEmptyECHExt = Optional<Extension>(folly::none);
   if (echParams.has_value() &&
       echParams.value().supportedECHConfig.config.version ==
@@ -767,7 +753,6 @@ EventHandler<ClientTypes, StateEnum::Uninitialized, Event::Connect>::handle(
       earlyDataParams,
       legacySessionId,
       connect.extensions.get(),
-      echNonceExt,
       std::move(encodedEmptyECHExt));
 
   std::vector<ExtensionType> requestedExtensions;
@@ -829,16 +814,6 @@ EventHandler<ClientTypes, StateEnum::Uninitialized, Event::Connect>::handle(
     Extension encodedECHExtension;
     // Create the encrypted client hello inner extension.
     switch (echParams->supportedECHConfig.config.version) {
-      case (ech::ECHVersion::Draft7): {
-        ech::EncryptedClientHello innerClientHelloExtension =
-            encryptClientHello(
-                echParams->supportedECHConfig,
-                std::move(chlo),
-                std::move(echParams->setupResult));
-        encodedECHExtension =
-            encodeExtension(std::move(innerClientHelloExtension));
-        break;
-      }
       case (ech::ECHVersion::Draft8): {
         // Generate a client hello outer to be used for
         // encrypting the ECH extension.
@@ -857,9 +832,8 @@ EventHandler<ClientTypes, StateEnum::Uninitialized, Event::Connect>::handle(
             earlyDataParams,
             legacySessionId,
             connect.extensions.get(),
-            Optional<ech::ECHNonce>(folly::none),
             Optional<Extension>(folly::none));
-        ech::ClientECH clientECHExtension = encryptClientHelloV8(
+        ech::ClientECH clientECHExtension = encryptClientHello(
             echParams->supportedECHConfig,
             std::move(chlo),
             std::move(chloOuterNoECHExt),
@@ -890,7 +864,6 @@ EventHandler<ClientTypes, StateEnum::Uninitialized, Event::Connect>::handle(
         // ECH is negotiated.
         legacySessionId,
         connect.extensions.get(),
-        Optional<ech::ECHNonce>(folly::none),
         std::move(encodedECHExtension));
 
     // Save client hello inner
@@ -1403,7 +1376,6 @@ Actions EventHandler<
       folly::none,
       state.legacySessionId(),
       state.extensions(),
-      Optional<ech::ECHNonce>(folly::none),
       Optional<Extension>(folly::none),
       cookie ? std::move(cookie->cookie) : nullptr);
 

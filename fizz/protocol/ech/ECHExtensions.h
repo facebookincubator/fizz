@@ -16,25 +16,6 @@
 
 namespace fizz {
 namespace ech {
-struct EncryptedClientHello {
-  // The ECHCipherSuite cipher suite used to encrypt
-  // ClientHelloInner.
-  ECHCipherSuite suite;
-  // A cryptographic hash of the ECHConfig structure from
-  // which the ECH key was obtained.
-  Buf record_digest;
-  // The HPKE encapsulated key, used by servers to
-  // decrypt the corresponding encrypted_ch field.
-  Buf enc;
-  // The serialized and encrypted ClientHelloInner
-  // structure, AEAD-encrypted using HPKE with the selected KEM, KDF,
-  // and AEAD algorithm and key generated as described below.
-  Buf encrypted_ch;
-
-  static constexpr ExtensionType extension_type =
-      ExtensionType::encrypted_client_hello;
-};
-
 struct ClientECH {
   // The cipher suite used to encrypt ClientHelloInner.
   // This MUST match a value provided in the corresponding
@@ -59,12 +40,6 @@ struct ClientECH {
       ExtensionType::encrypted_client_hello;
 };
 
-struct ECHNonce {
-  // A 16-byte nonce exported from the HPKE encryption context.
-  HpkeNonce nonce;
-
-  static constexpr ExtensionType extension_type = ExtensionType::ech_nonce;
-};
 } // namespace ech
 } // namespace fizz
 
