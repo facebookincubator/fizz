@@ -230,13 +230,8 @@ ech::ECHNonce createNonceExtension(const hpke::HpkeContext& context) {
 hpke::SetupResult constructHpkeSetupResult(
     std::unique_ptr<KeyExchange> kex,
     const SupportedECHConfig& supportedConfig) {
-  const std::unique_ptr<folly::IOBuf> prefix{
-      folly::IOBuf::copyBuffer("HPKE-05 ")};
-
-  if (supportedConfig.config.version != ECHVersion::V7 &&
-      supportedConfig.config.version != ECHVersion::V8) {
-    throw std::runtime_error("encrypt client hello: version not implemented");
-  }
+  const std::unique_ptr<folly::IOBuf> prefix =
+      folly::IOBuf::copyBuffer("HPKE-07");
 
   folly::io::Cursor cursor(supportedConfig.config.ech_config_content.get());
   auto config = decode<ECHConfigContentDraft>(cursor);
@@ -315,8 +310,8 @@ folly::Optional<ClientHello> tryToDecryptECH(
     std::unique_ptr<folly::IOBuf> encryptedCh,
     std::unique_ptr<KeyExchange> kex,
     ECHVersion version) {
-  const std::unique_ptr<folly::IOBuf> prefix{
-      folly::IOBuf::copyBuffer("HPKE-05 ")};
+  const std::unique_ptr<folly::IOBuf> prefix =
+      folly::IOBuf::copyBuffer("HPKE-07");
 
   // Get crypto primitive types used for decrypting
   hpke::KDFId kdfId = cipherSuite.kdf_id;

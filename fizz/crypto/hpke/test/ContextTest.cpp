@@ -25,7 +25,6 @@ namespace test {
 
 const std::string kExportSecret =
     "60f5fe76e2699f98c19eab82fecf330b990ac32694a8e40e598e2326d0e29150";
-const std::string kPrefix = "HPKE-05 ";
 
 struct Params {
   std::string key;
@@ -43,6 +42,7 @@ class HpkeContextTest : public ::testing::TestWithParam<Params> {};
 
 TEST_P(HpkeContextTest, TestContext) {
   auto testParam = GetParam();
+  const auto kPrefix = folly::IOBuf::copyBuffer("HPKE-07");
   auto suiteId = generateHpkeSuiteId(
       NamedGroup::secp256r1, HashFunction::Sha256, testParam.cipher);
   auto encryptCipher = getCipher(testParam.cipher);
@@ -53,7 +53,7 @@ TEST_P(HpkeContextTest, TestContext) {
       std::move(encryptCipher),
       toIOBuf(kExportSecret),
       std::make_unique<fizz::hpke::Hkdf>(
-          folly::IOBuf::copyBuffer(kPrefix),
+          kPrefix->clone(),
           std::make_unique<HkdfImpl>(HkdfImpl::create<Sha256>())),
       suiteId->clone(),
       fizz::hpke::HpkeContext::Role::Sender);
@@ -69,7 +69,7 @@ TEST_P(HpkeContextTest, TestContext) {
       std::move(decryptCipher),
       toIOBuf(kExportSecret),
       std::make_unique<fizz::hpke::Hkdf>(
-          folly::IOBuf::copyBuffer(kPrefix),
+          kPrefix->clone(),
           std::make_unique<HkdfImpl>(HkdfImpl::create<Sha256>())),
       std::move(suiteId),
       fizz::hpke::HpkeContext::Role::Receiver);
@@ -81,6 +81,7 @@ TEST_P(HpkeContextTest, TestContext) {
 
 TEST_P(HpkeContextTest, TestContextRoles) {
   auto testParam = GetParam();
+  const auto kPrefix = folly::IOBuf::copyBuffer("HPKE-07");
   auto suiteId = generateHpkeSuiteId(
       NamedGroup::secp256r1, HashFunction::Sha256, testParam.cipher);
   auto encryptCipher = getCipher(testParam.cipher);
@@ -91,7 +92,7 @@ TEST_P(HpkeContextTest, TestContextRoles) {
       std::move(encryptCipher),
       toIOBuf(kExportSecret),
       std::make_unique<fizz::hpke::Hkdf>(
-          folly::IOBuf::copyBuffer(kPrefix),
+          kPrefix->clone(),
           std::make_unique<HkdfImpl>(HkdfImpl::create<Sha256>())),
       suiteId->clone(),
       fizz::hpke::HpkeContext::Role::Sender);
@@ -103,7 +104,7 @@ TEST_P(HpkeContextTest, TestContextRoles) {
       std::move(decryptCipher),
       toIOBuf(kExportSecret),
       std::make_unique<fizz::hpke::Hkdf>(
-          folly::IOBuf::copyBuffer(kPrefix),
+          kPrefix->clone(),
           std::make_unique<HkdfImpl>(HkdfImpl::create<Sha256>())),
       std::move(suiteId),
       fizz::hpke::HpkeContext::Role::Receiver);
@@ -127,17 +128,16 @@ TEST_P(HpkeContextTest, TestExportSecret) {
        {fizz::hpke::HpkeContext::Role::Sender,
         fizz::hpke::HpkeContext::Role::Receiver}) {
     auto testParam = GetParam();
+    const auto kPrefix = folly::IOBuf::copyBuffer("HPKE-07");
     auto exporterContext = toIOBuf(testParam.exportContext);
 
     auto suiteId = generateHpkeSuiteId(
-        NamedGroup::x25519,
-        HashFunction::Sha256,
-        CipherSuite::TLS_AES_128_GCM_SHA256);
+        NamedGroup::x25519, HashFunction::Sha256, testParam.cipher);
     HpkeContext context(
-        OpenSSLEVPCipher::makeCipher<AESGCM128>(),
+        getCipher(testParam.cipher),
         toIOBuf(testParam.exporterSecret),
         std::make_unique<fizz::hpke::Hkdf>(
-            folly::IOBuf::copyBuffer(kPrefix),
+            kPrefix->clone(),
             std::make_unique<HkdfImpl>(HkdfImpl::create<Sha256>())),
         std::move(suiteId),
         role);
@@ -154,6 +154,7 @@ TEST_P(HpkeContextTest, TestExportSecretThrow) {
        {fizz::hpke::HpkeContext::Role::Sender,
         fizz::hpke::HpkeContext::Role::Receiver}) {
     auto testParam = GetParam();
+    const auto kPrefix = folly::IOBuf::copyBuffer("HPKE-07");
     auto exporterContext = toIOBuf(testParam.exportContext);
 
     auto suiteId = generateHpkeSuiteId(
@@ -164,7 +165,7 @@ TEST_P(HpkeContextTest, TestExportSecretThrow) {
         OpenSSLEVPCipher::makeCipher<AESGCM128>(),
         toIOBuf(testParam.exporterSecret),
         std::make_unique<fizz::hpke::Hkdf>(
-            folly::IOBuf::copyBuffer(kPrefix),
+            kPrefix->clone(),
             std::make_unique<HkdfImpl>(HkdfImpl::create<Sha256>())),
         std::move(suiteId),
         role);
@@ -176,8 +177,8 @@ TEST_P(HpkeContextTest, TestExportSecretThrow) {
 }
 
 /***
- * Test vectors sourced from HPKE IETF draft and existing tests.
- * https://raw.githubusercontent.com/cfrg/draft-irtf-cfrg-hpke/580119bb7bb45fd09a1079b920f8ef257f901309/test-vectors.json
+ * Test vectors sourced from HPKE IETF draft vectors
+ * https://raw.githubusercontent.com/cfrg/draft-irtf-cfrg-hpke/3d6ced124134825ed7a953b126cf5f756d960bc9/test-vectors.json
  */
 // clang-format off
 
@@ -187,45 +188,35 @@ INSTANTIATE_TEST_CASE_P(
     ::testing::
         Values(
             Params{
-                "f0529818bc7e87857fd38eeca1a47020",
-                "4bbcb168c8486e04b9382642",
+                "e20cee1bf5392ad2d3a442e231f187ae",
+                "5d99b2f03c452f7a9441933a",
                 "436f756e742d30",
                 "4265617574792069732074727574682c20747275746820626561757479",
-                "9076d402a8bacf1721ce194185de331c014c55dd801ae92aa63017a1f0c0dff615d4bcbc03d22f6d635e89b4c2",
+                "9418f1ae06eddc43aa911032aed4a951754ee2286a786733761857f8d96a7ec8d852da93bc5eeab49623344aba",
                 CipherSuite::TLS_AES_128_GCM_SHA256,
-                "7e9ef6d537503f815d0eaf70550a1f8e9af12c1cccb76919aafe93535547c150",
-                "436f6e746578742d30",
-                "bd292b132fae00243851451c3f3a87e9e11c3293c14d61b114b7e12e07245ffd"},
+                "00c3cdacab28e981cc907d12e4f55f0aacae261dbb4eb610447a6bc431bfe2aa",
+                "54657374436f6e74657874",
+                "c8387c1e6ec4f026c7f3577e3f29df51f46161295eec84c4f64a9174f7b64e4f"},
             Params{
-                "550ee0b7ec1ea2532f2e2bac87040a4c",
-                "2b855847756795a57229559a",
+                "29b6985e93a71d68d77935d8372cf179db14bc21a3ad681e3afcabd287e46fd0",
+                "52d2af88623a97733e068886",
                 "436f756e742d30",
                 "4265617574792069732074727574682c20747275746820626561757479",
-                "971ba65db526758ea30ae748cd769bc8d90579b62a037816057f24ce427416bd47c05ed1c2446ac8e19ec9ae79",
-                CipherSuite::TLS_AES_128_GCM_SHA256,
-                "7e9ef6d537503f815d0eaf70550a1f8e9af12c1cccb76919aafe93535547c150",
-                "436f6e746578742d31",
-                "695de26bc9336caee01cb04826f6e224f4d2108066ab17fc18f0c993dce05f24"},
-            Params{
-                "E3C08A8F06C6E3AD95A70557B23F75483CE33021A9C72B7025666204C69C0B72",
-                "12153524C0895E81B2C28465",
-                "D609B1F056637A0D46DF998D88E52E00B2C2846512153524C0895E81",
-                "08000F101112131415161718191A1B1C1D1E1F202122232425262728292A2B2C2D2E2F303132333435363738393A0002",
-                "E2006EB42F5277022D9B19925BC419D7A592666C925FE2EF718EB4E308EFEAA7C5273B394118860A5BE2A97F56AB78365CA597CDBB3EDB8D1A1151EA0AF7B436",
+                "451972846bb2c58ff6e6eb5ccc3bda8cc84fb6e93be5a1119cc32e3e374182d66d9a5910a14ec51baede71bedf",
                 CipherSuite::TLS_AES_256_GCM_SHA384,
-                "7e9ef6d537503f815d0eaf70550a1f8e9af12c1cccb76919aafe93535547c150",
-                "436f6e746578742d32",
-                "c53f26ef1bf4f5fd5469d807c418a0e103d035c76ccdbc6afb5bc42b24968f6c"},
+                "29f070f3562ed755db05a24bd3ce1562f7cee293cc5531bbc9573863731566b3",
+                "54657374436f6e74657874",
+                "36c126f8cb75015204ea8ceb866b346fa33309f3723553b91eae547e15153d72"},
             Params{
-                "9a97f65b9b4c721b960a672145fca8d4e32e67f9111ea979ce9c4826806aeee6",
-                "000000003de9c0da2bd7f91e",
-                "",
-                "",
-                "5a6e21f4ba6dbee57380e79e79c30def",
+                "a17448a542d0d6d75e3b21be0a1f68607904b4802c6b19a7e7e90976aa00a5c8",
+                "6f6b832dba944a91e5684514",
+                "436f756e742d30",
+                "4265617574792069732074727574682c20747275746820626561757479",
+                "1b9ce69bd0e6b4242ac2dd841ef093fc9dfa9e684f81c2d1778fd3268ca5aa7d612cd87f72acd2aeaee084dee2",
                 CipherSuite::TLS_CHACHA20_POLY1305_SHA256,
-                "7e9ef6d537503f815d0eaf70550a1f8e9af12c1cccb76919aafe93535547c150",
-                "436f6e746578742d33",
-                "8cea4a595dfe3de84644ca8ea7ea9401a345f0db29bb4beebc2c471afc602ec4"}
+                "bbbd4216184bd12888e0cec08e384c2e39639fe1527f220f3aa751f5290a9aa7",
+                "54657374436f6e74657874",
+                "bb69068c4f7767331512d375e4ab0ca0c6c51446040096ea0ae1cc3f9a3f54bd"}
     ));
 // clang-format on
 

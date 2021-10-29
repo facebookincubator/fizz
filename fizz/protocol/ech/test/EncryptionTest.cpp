@@ -237,7 +237,7 @@ TEST(EncryptionTest, TestInvalidSelectECHConfigContentV8) {
   EXPECT_FALSE(result.hasValue());
 }
 
-TEST(EncryptionTest, TestValidEncryptClientHello) {
+TEST(EncryptionTest, DISABLED_TestValidEncryptClientHello) {
   auto testCipherSuite =
       ECHCipherSuite{hpke::KDFId::Sha256, hpke::AeadId::TLS_AES_128_GCM_SHA256};
   auto gotECH = getTestECH(TestMessages::clientHello());
@@ -262,7 +262,7 @@ TEST(EncryptionTest, TestValidEncryptClientHello) {
   checkDecodedChlo(std::move(decodedChlo), std::move(expectedChlo));
 }
 
-TEST(EncryptionTest, TestValidEncryptClientHelloV8) {
+TEST(EncryptionTest, DISABLED_TestValidEncryptClientHelloV8) {
   auto clientECH = getTestClientECH();
   auto expectedChlo = TestMessages::clientHello();
   // Add a legacy_session_id to match client hello inner used in
@@ -297,7 +297,7 @@ TEST(EncryptionTest, TestValidEncryptClientHelloV8) {
   checkDecodedChlo(std::move(gotChlo), std::move(expectedChlo));
 }
 
-TEST(EncryptionTest, TestTryToDecryptECHV7) {
+TEST(EncryptionTest, DISABLED_TestTryToDecryptECHV7) {
   // This value comes from what was printed when we get the context exported
   // value.
   auto nonceHex = "972a9c468ef0891fd22c052c6785f6a6";

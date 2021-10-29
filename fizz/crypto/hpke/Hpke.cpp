@@ -50,15 +50,10 @@ HpkeContext keySchedule(KeyScheduleParams params) {
       writeKeyScheduleContext(params.mode, pskIdHash, infoHash);
 
   // Generate hashes for cipher key
-  std::vector<uint8_t> pskHash = hkdf->labeledExtract(
-      folly::IOBuf::copyBuffer(""),
-      folly::ByteRange(folly::StringPiece("psk_hash")),
-      std::move(psk),
-      params.suiteId->clone());
   std::vector<uint8_t> secret = hkdf->labeledExtract(
-      folly::IOBuf::copyBuffer(pskHash),
-      folly::ByteRange(folly::StringPiece("secret")),
       std::move(params.sharedSecret),
+      folly::ByteRange(folly::StringPiece("secret")),
+      std::move(psk),
       params.suiteId->clone());
 
   // Generate additional values needed for contructing context
@@ -70,7 +65,7 @@ HpkeContext keySchedule(KeyScheduleParams params) {
       params.suiteId->clone());
   std::unique_ptr<folly::IOBuf> nonce = hkdf->labeledExpand(
       secret,
-      folly::ByteRange(folly::StringPiece("nonce")),
+      folly::ByteRange(folly::StringPiece("base_nonce")),
       keyScheduleContext->clone(),
       params.cipher->ivLength(),
       params.suiteId->clone());

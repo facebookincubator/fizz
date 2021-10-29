@@ -27,7 +27,6 @@ AeadId getAeadId(CipherSuite suite);
 NamedGroup getKexGroup(KEMId kemId);
 HashFunction getHashFunction(KDFId kdfId);
 CipherSuite getCipherSuite(AeadId aeadId);
-
 std::unique_ptr<Hkdf> makeHpkeHkdf(
     std::unique_ptr<folly::IOBuf> prefix,
     KDFId kdfId);
