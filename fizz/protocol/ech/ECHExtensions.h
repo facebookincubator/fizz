@@ -40,6 +40,9 @@ struct ClientECH {
       ExtensionType::encrypted_client_hello;
 };
 
+struct ECHIsInner {
+  static constexpr ExtensionType extension_type = ExtensionType::ech_is_inner;
+};
 } // namespace ech
 } // namespace fizz
 

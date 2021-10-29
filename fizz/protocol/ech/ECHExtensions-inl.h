@@ -28,6 +28,14 @@ inline Extension encodeExtension(const ech::ClientECH& clientECH) {
 }
 
 template <>
+inline Extension encodeExtension(const ech::ECHIsInner&) {
+  Extension ext;
+  ext.extension_type = ExtensionType::ech_is_inner;
+  ext.extension_data = folly::IOBuf::create(0);
+  return ext;
+}
+
+template <>
 inline ech::ClientECH getExtension(folly::io::Cursor& cs) {
   ech::ClientECH clientECH;
   detail::read(clientECH.cipher_suite, cs);
