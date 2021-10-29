@@ -52,6 +52,8 @@ void printUsage() {
     << "                           TLS_AES_128_GCM_SHA256,TLS_AES_256_GCM_SHA384:TLS_CHACHA20_POLY1305_SHA256)\n"
     << " -cert cert               (PEM format server certificate. Default: none, generates a self-signed cert)\n"
     << " -key key                 (PEM format private key for server certificate. Default: none)\n"
+    << "                          (note: you can specify cert and key multiple times to support multiple certs.\n"
+    << "                           The first (non-delegated) cert passed in will be used as the default cert.)\n"
     << " -pass password           (private key password. Default: none)\n"
     << " -requestcert             (request an optional client certificate from clients. Default: false)\n"
     << " -requirecert             (require a client certificate from clients. Default: false)\n"
@@ -521,6 +523,45 @@ void FizzServerAcceptor::done() {
   }
 }
 
+class PrivateKeyMatcher {
+ public:
+  void addKey(std::string path, folly::ssl::EvpPkeyUniquePtr key) {
+    privKeys_[path] = std::move(key);
+  }
+
+  std::pair<std::string, folly::ssl::EvpPkeyUniquePtr> fetchKey(X509* cert) {
+    for (const auto& keyPair : privKeys_) {
+      auto& key = keyPair.second;
+      auto& path = keyPair.first;
+      if (X509_check_private_key(cert, key.get()) == 1) {
+        return {path, cloneKey(key)};
+      }
+    }
+    return {"", nullptr};
+  }
+
+  folly::ssl::EvpPkeyUniquePtr fetchKey(
+      const folly::ssl::EvpPkeyUniquePtr& pubKey) {
+    for (const auto& keyPair : privKeys_) {
+      auto& key = keyPair.second;
+      if (EVP_PKEY_cmp(pubKey.get(), key.get()) == 1) {
+        return cloneKey(key);
+      }
+    }
+    return nullptr;
+  }
+
+ private:
+  folly::ssl::EvpPkeyUniquePtr cloneKey(const folly::ssl::EvpPkeyUniquePtr& k) {
+    if (EVP_PKEY_up_ref(k.get()) == 1) {
+      return folly::ssl::EvpPkeyUniquePtr(k.get());
+    } else {
+      throw std::runtime_error("Failed to upref privkey");
+    }
+  }
+  std::unordered_map<std::string, folly::ssl::EvpPkeyUniquePtr> privKeys_;
+};
+
 std::unique_ptr<KeyExchange> createKeyExchange(
     hpke::KEMId kemId,
     std::string echPrivateKeyFile) {
@@ -637,8 +678,8 @@ std::shared_ptr<ech::Decrypter> setupDefaultDecrypter() {
 
 int fizzServerCommand(const std::vector<std::string>& args) {
   uint16_t port = 8443;
-  std::string certPath;
-  std::string keyPath;
+  std::vector<std::string> certPaths;
+  std::vector<std::string> keyPaths;
   std::string keyPass;
   ClientAuthMode clientAuthMode = ClientAuthMode::None;
   std::string caPath;
@@ -689,8 +730,8 @@ int fizzServerCommand(const std::vector<std::string>& args) {
           }
         }
     }}},
-    {"-cert", {true, [&certPath](const std::string& arg) { certPath = arg; }}},
-    {"-key", {true, [&keyPath](const std::string& arg) { keyPath = arg; }}},
+    {"-cert", {true, [&certPaths](const std::string& arg) { certPaths.push_back(arg); }}},
+    {"-key", {true, [&keyPaths](const std::string& arg) { keyPaths.push_back(arg); }}},
     {"-pass", {true, [&keyPass](const std::string& arg) { keyPass = arg; }}},
     {"-requestcert", {false, [&clientAuthMode](const std::string&) {
       clientAuthMode = ClientAuthMode::Optional;
@@ -771,12 +812,12 @@ int fizzServerCommand(const std::vector<std::string>& args) {
   }
 
   // Sanity check input.
-  if (certPath.empty() != keyPath.empty()) {
+  if (certPaths.empty() != keyPaths.empty()) {
     LOG(ERROR) << "-cert and -key are both required when specified";
     return 1;
   }
 
-  if (!credPath.empty() && (certPath.empty() || keyPath.empty())) {
+  if (!credPath.empty() && (certPaths.empty() || keyPaths.empty())) {
     LOG(ERROR)
         << "-cert and -key are both required when delegated credentials are in use";
     return 1;
@@ -859,7 +900,7 @@ int fizzServerCommand(const std::vector<std::string>& args) {
 
   // Store a vector of compressors and algorithms for which there are
   // compressors.
-  std::unique_ptr<CertManager> certManager =
+  auto certManager =
       std::make_unique<fizz::extensions::DelegatedCredentialCertManager>();
   std::vector<std::shared_ptr<CertificateCompressor>> compressors;
   std::vector<CertificateCompressionAlgorithm> finalAlgos;
@@ -893,27 +934,59 @@ int fizzServerCommand(const std::vector<std::string>& args) {
   }
   serverContext->setSupportedCompressionAlgorithms(finalAlgos);
 
-  if (!certPath.empty()) {
-    std::string certData;
-    std::string keyData;
-    if (!readFile(certPath.c_str(), certData)) {
-      LOG(ERROR) << "Failed to read certificate";
-      return 1;
-    } else if (!readFile(keyPath.c_str(), keyData)) {
-      LOG(ERROR) << "Failed to read private key";
+  // Keeps track of whether or not the credential has been matched to
+  // a cert passed in (if a credential is provided).
+  bool credentialMatchNeeded = !credPath.empty();
+
+  // Flag to indicate whether we've loaded the first cert (for default cert)
+  bool first = true;
+
+  // SSL context for fallback (if enabled).
+  std::shared_ptr<SSLContext> sslContext;
+  if (fallback) {
+    if (certPaths.empty()) {
+      LOG(ERROR) << "Fallback mode requires explicit certificates";
       return 1;
     }
-    std::unique_ptr<SelfCert> cert;
-    if (credPath.empty()) {
-      if (!keyPass.empty()) {
-        cert = CertUtils::makeSelfCert(certData, keyData, keyPass, compressors);
-      } else {
-        cert = CertUtils::makeSelfCert(certData, keyData, compressors);
+  }
+
+  // If we have specific certs to load (as opposed to autogenerated certs), we
+  // load them in the following way:
+  // 1) Load all private keys passed in and add them to the PrivateKeyMatcher
+  // 2) Parse a credential (if passed in)
+  // 3) For every cert:
+  // 3a) If we have a delegated credential to match to a cert, check if this is
+  //     a match. If so, find the corresponding privkey matching the
+  //     credential's pubkey, and create the DC + add it.
+  // 3b) If there is no credential or it's not a match, find the privkey
+  // associated
+  //     with this cert's pubkey and create a regular SelfCert with the certs +
+  //     keys.
+  //
+  // If the cert doesn't match any known keys or the credential fails to be
+  // associated with a private key and parent cert, the tool will exit with an
+  // error.
+  if (!certPaths.empty()) {
+    // First, let's read the private keys
+    PrivateKeyMatcher matcher;
+    for (const auto& keyPath : keyPaths) {
+      std::string keyData;
+      if (!readFile(keyPath.c_str(), keyData)) {
+        LOG(ERROR) << "Failed to read private key: " << keyPath;
+        return 1;
       }
-    } else {
+      matcher.addKey(
+          keyPath,
+          CertUtils::readPrivateKeyFromBuffer(
+              keyData, keyPass.empty() ? nullptr : &keyPass[0]));
+    }
+
+    // Parse the credential if passed in.
+    folly::Optional<fizz::extensions::DelegatedCredential> cred;
+    if (credentialMatchNeeded) {
       std::string credData;
       if (!readFile(credPath.c_str(), credData)) {
-        LOG(ERROR) << "Failed to read credential";
+        LOG(ERROR) << "Failed to read credential: " << credPath;
         return 1;
       }
       std::vector<Extension> credVec;
@@ -921,65 +994,143 @@ int fizzServerCommand(const std::vector<std::string>& args) {
           ExtensionType::delegated_credential,
           folly::IOBuf::copyBuffer(std::move(credData))});
 
-      auto certs = folly::ssl::OpenSSLCertUtils::readCertsFromBuffer(
-          folly::StringPiece(certData));
-
-      folly::ssl::EvpPkeyUniquePtr credPrivKey =
-          CertUtils::readPrivateKeyFromBuffer(
-              keyData, keyPass.empty() ? nullptr : &keyPass[0]);
-
       try {
-        auto cred = getExtension<fizz::extensions::DelegatedCredential>(
+        cred = getExtension<fizz::extensions::DelegatedCredential>(
             std::move(credVec));
-        switch (CertUtils::getKeyType(credPrivKey)) {
-          case KeyType::RSA:
-            cert = std::make_unique<
-                fizz::extensions::SelfDelegatedCredentialImpl<KeyType::RSA>>(
-                std::move(certs),
-                std::move(credPrivKey),
-                std::move(*cred),
-                compressors);
-            break;
-          case KeyType::P256:
-            cert = std::make_unique<
-                fizz::extensions::SelfDelegatedCredentialImpl<KeyType::P256>>(
-                std::move(certs),
-                std::move(credPrivKey),
-                std::move(*cred),
-                compressors);
-            break;
-          case KeyType::P384:
-            cert = std::make_unique<
-                fizz::extensions::SelfDelegatedCredentialImpl<KeyType::P384>>(
-                std::move(certs),
-                std::move(credPrivKey),
-                std::move(*cred),
-                compressors);
-            break;
-          case KeyType::P521:
-            cert = std::make_unique<
-                fizz::extensions::SelfDelegatedCredentialImpl<KeyType::P521>>(
-                std::move(certs),
-                std::move(credPrivKey),
-                std::move(*cred),
-                compressors);
-            break;
-          case KeyType::ED25519:
-            cert =
-                std::make_unique<fizz::extensions::SelfDelegatedCredentialImpl<
-                    KeyType::ED25519>>(
-                    std::move(certs),
-                    std::move(credPrivKey),
-                    std::move(*cred),
-                    compressors);
-            break;
-        }
       } catch (const std::exception& e) {
         LOG(ERROR) << "Credential parsing failed: " << e.what();
         return 1;
       }
     }
-    certManager->addCert(std::move(cert), true);
+
+    // Now, match certs to keys (and the credential if passed in).
+    for (const auto& certPath : certPaths) {
+      std::string certData;
+      if (!readFile(certPath.c_str(), certData)) {
+        LOG(ERROR) << "Failed to read certificate: " << certPath;
+        return 1;
+      }
+      auto certs = folly::ssl::OpenSSLCertUtils::readCertsFromBuffer(
+          folly::StringPiece(certData));
+      if (certs.empty()) {
+        LOG(ERROR) << "Failed to read any certs from path: " << certPath;
+        return 1;
+      }
+
+      if (credentialMatchNeeded) {
+        // Check if the signature matches.
+        auto leafCert = certs.front().get();
+        if (X509_up_ref(leafCert) != 1) {
+          LOG(ERROR) << "Failed to upref leaf cert";
+          return 1;
+        }
+        auto leafPeer =
+            CertUtils::makePeerCert(folly::ssl::X509UniquePtr(leafCert));
+        auto toSign =
+            fizz::extensions::DelegatedCredentialUtils::prepareSignatureBuffer(
+                *cred, folly::ssl::OpenSSLCertUtils::derEncode(*leafCert));
+        try {
+          leafPeer->verify(
+              cred->credential_scheme,
+              CertificateVerifyContext::DelegatedCredential,
+              toSign->coalesce(),
+              cred->signature->coalesce());
+          // Verification succeeded, so make the credential.
+          auto pubKeyRange = cred->public_key->coalesce();
+          auto addr = pubKeyRange.data();
+          folly::ssl::EvpPkeyUniquePtr pubKey(
+              d2i_PUBKEY(nullptr, &addr, pubKeyRange.size()));
+          if (!pubKey) {
+            LOG(ERROR) << "Failed to parse credential pubkey";
+            return 1;
+          }
+
+          auto credPrivKey = matcher.fetchKey(pubKey);
+          if (!credPrivKey) {
+            LOG(ERROR)
+                << "Failed to match credential pubkey to any of the provided keys.";
+            return 1;
+          }
+
+          std::unique_ptr<fizz::extensions::SelfDelegatedCredential> cert;
+          switch (CertUtils::getKeyType(credPrivKey)) {
+            case KeyType::RSA:
+              cert = std::make_unique<
+                  fizz::extensions::SelfDelegatedCredentialImpl<KeyType::RSA>>(
+                  std::move(certs),
+                  std::move(credPrivKey),
+                  std::move(*cred),
+                  compressors);
+              break;
+            case KeyType::P256:
+              cert = std::make_unique<
+                  fizz::extensions::SelfDelegatedCredentialImpl<KeyType::P256>>(
+                  std::move(certs),
+                  std::move(credPrivKey),
+                  std::move(*cred),
+                  compressors);
+              break;
+            case KeyType::P384:
+              cert = std::make_unique<
+                  fizz::extensions::SelfDelegatedCredentialImpl<KeyType::P384>>(
+                  std::move(certs),
+                  std::move(credPrivKey),
+                  std::move(*cred),
+                  compressors);
+              break;
+            case KeyType::P521:
+              cert = std::make_unique<
+                  fizz::extensions::SelfDelegatedCredentialImpl<KeyType::P521>>(
+                  std::move(certs),
+                  std::move(credPrivKey),
+                  std::move(*cred),
+                  compressors);
+              break;
+            case KeyType::ED25519:
+              cert = std::make_unique<
+                  fizz::extensions::SelfDelegatedCredentialImpl<
+                      KeyType::ED25519>>(
+                  std::move(certs),
+                  std::move(credPrivKey),
+                  std::move(*cred),
+                  compressors);
+              break;
+          }
+
+          certManager->addDelegatedCredential(std::move(cert));
+
+          credentialMatchNeeded = false;
+
+          // Skip the normal cert code at the end since it's a match.
+          continue;
+        } catch (const std::runtime_error&) {
+          // Signature isn't a match, so this isn't for the credential. Exit out
+          // of this block and add it as a regular cert.
+        }
+      }
+
+      // Not a credential, add it as a normal cert.
+      auto pkey = matcher.fetchKey(certs.front().get());
+      if (!pkey.second) {
+        LOG(ERROR) << "No matching private key for cert at path: " << certPath;
+        return 1;
+      }
+
+      auto cert = CertUtils::makeSelfCert(
+          std::move(certs), std::move(pkey.second), compressors);
+      certManager->addCert(std::move(cert), first);
+      if (first) {
+        if (fallback) {
+          // Fallback mode requires additional callback work for SNI to be
+          // supported. As such, we just assign the default cert to it.
+          sslContext = std::make_shared<SSLContext>();
+          sslContext->loadCertKeyPairFromFiles(
+              certPath.c_str(), pkey.first.c_str());
+          SSL_CTX_set_ecdh_auto(sslContext->getSSLCtx(), 1);
+        }
+        first = false;
+      }
+    }
   } else {
     auto certData = fizz::test::createCert("fizz-self-signed", false, nullptr);
     std::vector<folly::ssl::X509UniquePtr> certChain;
@@ -988,6 +1139,20 @@ int fizzServerCommand(const std::vector<std::string>& args) {
         std::move(certData.key), std::move(certChain), compressors);
     certManager->addCert(std::move(cert), true);
   }
+
+  if (credentialMatchNeeded) {
+    LOG(INFO) << "Credential did not match any keys provided.";
+    return 1;
+  }
+
+  if (fallback && first) {
+    // There was no default cert; this can only happen if you configured only
+    // one cert (which is a delegated credential) and requested fallback. This
+    // will invariably fail (as fallback doesn't support DC certs).
+    LOG(ERROR) << "Fallback requested but no valid default cert found.";
+    return 1;
+  }
+
   serverContext->setCertManager(std::move(certManager));
 
   if (early) {
@@ -998,16 +1163,6 @@ int fizzServerCommand(const std::vector<std::string>& args) {
     serverContext->setMaxEarlyDataSize(earlyDataSize);
   }
 
-  std::shared_ptr<SSLContext> sslContext;
-  if (fallback) {
-    if (certPath.empty()) {
-      LOG(ERROR) << "Fallback mode requires explicit certificates";
-      return 1;
-    }
-    sslContext = std::make_shared<SSLContext>();
-    sslContext->loadCertKeyPairFromFiles(certPath.c_str(), keyPath.c_str());
-    SSL_CTX_set_ecdh_auto(sslContext->getSSLCtx(), 1);
-  }
   serverContext->setVersionFallbackEnabled(fallback);
 
   if (!alpns.empty()) {
