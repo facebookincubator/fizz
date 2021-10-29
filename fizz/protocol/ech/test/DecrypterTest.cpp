@@ -20,27 +20,6 @@ namespace fizz {
 namespace ech {
 namespace test {
 
-namespace {
-void checkDecryptionResult(
-    folly::Optional<ClientHello> gotChlo,
-    const std::unique_ptr<folly::IOBuf>& chloOuterHandshake,
-    ECHVersion version) {
-  EXPECT_TRUE(gotChlo.has_value());
-
-  auto expectedChloInner = TestMessages::clientHello();
-  EXPECT_FALSE(folly::IOBufEqualTo()(
-      chloOuterHandshake, encodeHandshake(expectedChloInner)));
-
-  auto chlo = std::move(gotChlo.value());
-  // Remove the empty ECH extension from the client hello inner
-  TestMessages::removeExtension(chlo, ExtensionType::encrypted_client_hello);
-
-  EXPECT_TRUE(folly::IOBufEqualTo()(
-      encodeHandshake(chlo), encodeHandshake(expectedChloInner)));
-}
-
-} // namespace
-
 TEST(DecrypterTest, TestDecodeSuccess) {
   auto getChloOuterWithExt = [](std::unique_ptr<KeyExchange> kex) {
     // Setup ECH extension
@@ -77,8 +56,18 @@ TEST(DecrypterTest, TestDecodeSuccess) {
   auto chloOuter = getChloOuterWithExt(kex->clone());
   auto gotChlo = decrypter.decryptClientHello(chloOuter);
 
-  checkDecryptionResult(
-      std::move(gotChlo), encodeHandshake(chloOuter), ECHVersion::Draft8);
+  EXPECT_TRUE(gotChlo.has_value());
+
+  auto expectedChloInner = TestMessages::clientHello();
+  EXPECT_FALSE(folly::IOBufEqualTo()(
+      encodeHandshake(chloOuter), encodeHandshake(expectedChloInner)));
+
+  auto chlo = std::move(gotChlo.value());
+  // Remove the inner ECH extension from the client hello inner
+  TestMessages::removeExtension(chlo, ExtensionType::ech_is_inner);
+
+  EXPECT_TRUE(folly::IOBufEqualTo()(
+      encodeHandshake(chlo), encodeHandshake(expectedChloInner)));
 }
 
 TEST(DecrypterTest, TestDecodeFailure) {

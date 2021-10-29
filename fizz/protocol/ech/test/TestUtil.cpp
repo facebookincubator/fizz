@@ -29,7 +29,7 @@ ECHConfigContentDraft getECHConfigContent() {
   ECHCipherSuite suite{
       hpke::KDFId::Sha256, hpke::AeadId::TLS_AES_128_GCM_SHA256};
   ECHConfigContentDraft echConfigContent;
-  echConfigContent.public_name = folly::IOBuf::copyBuffer("v8 publicname");
+  echConfigContent.public_name = folly::IOBuf::copyBuffer("v9 publicname");
   echConfigContent.public_key = detail::encodeECPublicKey(
       ::fizz::test::getPublicKey(::fizz::test::kP256PublicKey));
   echConfigContent.kem_id = hpke::KEMId::secp256r1;
@@ -42,7 +42,7 @@ ECHConfigContentDraft getECHConfigContent() {
 
 ECHConfig getECHConfig() {
   ECHConfig config;
-  config.version = ECHVersion::Draft8;
+  config.version = ECHVersion::Draft9;
   config.ech_config_content = encode(getECHConfigContent());
   return config;
 }

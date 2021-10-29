@@ -731,15 +731,12 @@ EventHandler<ClientTypes, StateEnum::Uninitialized, Event::Connect>::handle(
       context->getSupportedGroups(),
       *context->getFactory());
 
-  auto encodedEmptyECHExt = Optional<Extension>(folly::none);
+  folly::Optional<Extension> encodedInnerECHExt = folly::none;
   if (echParams.has_value() &&
       echParams.value().supportedECHConfig.config.version ==
-          ech::ECHVersion::Draft8) {
-    // When offering the "encrypted_client_hello" extension in its
-    // ClientHelloOuter, the client MUST also offer an empty
-    // "encrypted_client_hello" extension in its ClientHelloInner.
-    ech::ClientECH chloInnerExt;
-    encodedEmptyECHExt = encodeExtension(std::move(chloInnerExt));
+          ech::ECHVersion::Draft9) {
+    ech::ECHIsInner chloIsInnerExt;
+    encodedInnerECHExt = encodeExtension(std::move(chloIsInnerExt));
   }
 
   auto chlo = getClientHello(
@@ -757,7 +754,7 @@ EventHandler<ClientTypes, StateEnum::Uninitialized, Event::Connect>::handle(
       earlyDataParams,
       legacySessionId,
       connect.extensions.get(),
-      std::move(encodedEmptyECHExt));
+      std::move(encodedInnerECHExt));
 
   std::vector<ExtensionType> requestedExtensions;
   for (const auto& extension : chlo.extensions) {
@@ -819,7 +816,7 @@ EventHandler<ClientTypes, StateEnum::Uninitialized, Event::Connect>::handle(
     Extension encodedECHExtension;
     // Create the encrypted client hello inner extension.
     switch (echParams->supportedECHConfig.config.version) {
-      case (ech::ECHVersion::Draft8): {
+      case (ech::ECHVersion::Draft9): {
         // Generate a client hello outer to be used for
         // encrypting the ECH extension.
         auto chloOuterNoECHExt = getClientHello(
@@ -834,7 +831,7 @@ EventHandler<ClientTypes, StateEnum::Uninitialized, Event::Connect>::handle(
             newFakeSni,
             context->getSupportedAlpns(),
             context->getSupportedCertDecompressionAlgorithms(),
-            earlyDataParams,
+            folly::none,
             legacySessionId,
             connect.extensions.get(),
             Optional<Extension>(folly::none));
@@ -844,6 +841,7 @@ EventHandler<ClientTypes, StateEnum::Uninitialized, Event::Connect>::handle(
             std::move(chloOuterNoECHExt),
             std::move(echParams->setupResult));
         encodedECHExtension = encodeExtension(std::move(clientECHExtension));
+        requestedExtensions.push_back(ExtensionType::encrypted_client_hello);
         break;
       }
     }
@@ -862,7 +860,7 @@ EventHandler<ClientTypes, StateEnum::Uninitialized, Event::Connect>::handle(
         newFakeSni,
         context->getSupportedAlpns(),
         context->getSupportedCertDecompressionAlgorithms(),
-        earlyDataParams,
+        folly::none,
         // The legacy_session_id field MUST be copied from the client hello
         // inner (chlo). This allows the server to echo the correct session ID
         // for TLS 1.3's compatibility mode (see Appendix D.4 of [RFC8446]) when

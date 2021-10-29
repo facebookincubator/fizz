@@ -22,7 +22,7 @@ namespace ech {
 
 namespace {
 
-std::unique_ptr<folly::IOBuf> makeClientHelloOuterAad(
+std::unique_ptr<folly::IOBuf> makeClientHelloOuterForAad(
     const ClientHello& clientHelloOuter) {
   // Copy client hello outer
   ClientHello chloCopy = clientHelloOuter.clone();
@@ -40,16 +40,20 @@ std::unique_ptr<folly::IOBuf> makeClientHelloOuterAad(
 
 std::unique_ptr<folly::IOBuf> extractEncodedClientHelloInner(
     ECHVersion version,
+    std::unique_ptr<folly::IOBuf> configId,
+    const ECHCipherSuite& cipherSuite,
+    const std::unique_ptr<folly::IOBuf>& encapsulatedKey,
     std::unique_ptr<folly::IOBuf> encryptedCh,
     hpke::HpkeContext& context,
     const ClientHello& clientHelloOuter) {
   std::unique_ptr<folly::IOBuf> encodedClientHelloInner;
   switch (version) {
-    case ECHVersion::Draft8: {
-      auto chloOuterAad = makeClientHelloOuterAad(clientHelloOuter);
+    case ECHVersion::Draft9: {
+      auto aadCH = makeClientHelloOuterForAad(clientHelloOuter);
+      auto chloOuterAad =
+          makeClientHelloAad(cipherSuite, configId, encapsulatedKey, aadCH);
       encodedClientHelloInner =
           context.open(chloOuterAad.get(), std::move(encryptedCh));
-      break;
     }
   }
   return encodedClientHelloInner;
@@ -58,7 +62,7 @@ std::unique_ptr<folly::IOBuf> extractEncodedClientHelloInner(
 std::unique_ptr<folly::IOBuf> makeHpkeContextInfoParam(
     const ECHConfig& echConfig) {
   switch (echConfig.version) {
-    case ECHVersion::Draft8: {
+    case ECHVersion::Draft9: {
       // The "info" parameter to setupWithEncap is the
       // concatenation of "tls ech", a zero byte, and the serialized
       // ECHConfig.
@@ -79,16 +83,15 @@ std::unique_ptr<folly::IOBuf> constructConfigId(
     hpke::KDFId kdfId,
     ECHConfig echConfig) {
   std::unique_ptr<HkdfImpl> hkdf;
-  size_t hashLen;
+  // Draft 9 set this to a fixed value
+  const size_t hashLen = 8;
   switch (kdfId) {
     case (hpke::KDFId::Sha256): {
       hkdf = std::make_unique<HkdfImpl>(HkdfImpl::create<Sha256>());
-      hashLen = Sha256::HashLen;
       break;
     }
     case (hpke::KDFId::Sha384): {
       hkdf = std::make_unique<HkdfImpl>(HkdfImpl::create<Sha384>());
-      hashLen = Sha384::HashLen;
       break;
     }
     default: {
@@ -111,7 +114,7 @@ folly::Optional<SupportedECHConfig> selectECHConfig(
   // we should be selecting the first one that we can support.
   for (const auto& config : configs) {
     folly::io::Cursor cursor(config.ech_config_content.get());
-    if (config.version == ECHVersion::Draft8) {
+    if (config.version == ECHVersion::Draft9) {
       auto echConfig = decode<ECHConfigContentDraft>(cursor);
       // Check if we (client) support the server's chosen KEM.
       auto result = std::find(
@@ -212,6 +215,20 @@ hpke::SetupResult constructHpkeSetupResult(
           std::move(dhkem), prefix->clone(), config.kem_id, cipherSuite));
 }
 
+std::unique_ptr<folly::IOBuf> makeClientHelloAad(
+    ECHCipherSuite cipherSuite,
+    const std::unique_ptr<folly::IOBuf>& configId,
+    const std::unique_ptr<folly::IOBuf>& enc,
+    const std::unique_ptr<folly::IOBuf>& clientHello) {
+  auto aad = folly::IOBuf::create(0);
+  folly::io::Appender appender(aad.get(), 32);
+  detail::write<ech::ECHCipherSuite>(cipherSuite, appender);
+  detail::writeBuf<uint8_t>(configId, appender);
+  detail::writeBuf<uint16_t>(enc, appender);
+  detail::writeBuf<detail::bits24>(clientHello, appender);
+  return aad;
+}
+
 ClientECH encryptClientHello(
     const SupportedECHConfig& supportedConfig,
     const ClientHello& clientHelloInner,
@@ -229,8 +246,15 @@ ClientECH encryptClientHello(
   chloInnerCopy.legacy_session_id = folly::IOBuf::copyBuffer("");
   auto encodedClientHelloInner = encode(chloInnerCopy);
 
-  // Encrypt and serialize client hello inner
-  auto clientHelloOuterAad = encode(clientHelloOuter);
+  // Compute the AAD for sealing
+  auto clientHelloOuterEnc = encode(clientHelloOuter);
+  auto clientHelloOuterAad = makeClientHelloAad(
+      supportedConfig.cipherSuite,
+      echExtension.config_id,
+      echExtension.enc,
+      clientHelloOuterEnc);
+
+  // Encrypt inner client hello
   echExtension.payload = setupResult.context.seal(
       clientHelloOuterAad.get(), std::move(encodedClientHelloInner));
   return echExtension;
@@ -277,7 +301,13 @@ folly::Optional<ClientHello> tryToDecryptECH(
         std::move(setupParam));
 
     auto encodedClientHelloInner = extractEncodedClientHelloInner(
-        version, std::move(encryptedCh), context, clientHelloOuter);
+        version,
+        constructConfigId(cipherSuite.kdf_id, echConfig),
+        cipherSuite,
+        encapsulatedKey,
+        std::move(encryptedCh),
+        context,
+        clientHelloOuter);
 
     // Set actual client hello, ECH acceptance
     folly::io::Cursor encodedECHInnerCursor(encodedClientHelloInner.get());

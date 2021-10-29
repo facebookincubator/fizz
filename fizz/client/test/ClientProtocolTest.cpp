@@ -1011,10 +1011,10 @@ TEST_F(ClientProtocolTest, TestConnectECH) {
   EXPECT_TRUE(sniExt.hasValue());
   EXPECT_TRUE(IOBufEqualTo()(
       sniExt.value().server_name_list[0].hostname,
-      IOBuf::copyBuffer("v8 publicname")));
+      IOBuf::copyBuffer("v9 publicname")));
 
   // Check that the state is using the fake server name
-  EXPECT_EQ(*state_.sni(), "v8 publicname");
+  EXPECT_EQ(*state_.sni(), "v9 publicname");
 
   // Check that the real name is saved.
   EXPECT_EQ(*state_.echSni(), "www.hostname.com");
@@ -1024,9 +1024,15 @@ TEST_F(ClientProtocolTest, TestConnectECH) {
   EXPECT_TRUE(IOBufEqualTo()(
       actualChlo.legacy_session_id, chloOuter.legacy_session_id));
 
-  // Check there exists client hello inner extension.
+  // Check there exists an ECH extension.
   auto echExtension = getExtension<ech::ClientECH>(chloOuter.extensions);
   EXPECT_TRUE(echExtension.hasValue());
+
+  // Check that early data and PSK are NOT present.
+  auto pskExtension = getExtension<ClientPresharedKey>(chloOuter.extensions);
+  EXPECT_FALSE(pskExtension.hasValue());
+  auto earlyExtension = getExtension<ClientEarlyData>(chloOuter.extensions);
+  EXPECT_FALSE(earlyExtension.hasValue());
 }
 
 TEST_F(ClientProtocolTest, TestConnectECHWithPSK) {
@@ -1056,6 +1062,10 @@ TEST_F(ClientProtocolTest, TestConnectECHWithPSK) {
   ClientHello decodedChlo = decode<ClientHello>(std::move(encodedHello));
   auto pskExt = getExtension<ClientPresharedKey>(decodedChlo.extensions);
   EXPECT_FALSE(pskExt.hasValue());
+
+  // Check that early data is not present.
+  auto earlyExtension = getExtension<ClientEarlyData>(decodedChlo.extensions);
+  EXPECT_FALSE(earlyExtension.hasValue());
 }
 
 TEST_F(ClientProtocolTest, TestECHKeyUsedInKeyGeneration) {

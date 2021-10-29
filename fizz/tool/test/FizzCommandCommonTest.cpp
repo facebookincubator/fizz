@@ -74,7 +74,7 @@ TEST(FizzCommandCommonTest, TestParseECHConfigsSuccess) {
   auto json = folly::parseJson(R"(
       {
         "echconfigs": [{
-                "version": "Draft8",
+                "version": "Draft9",
                 "public_name": "publicname",
                 "public_key": "049d87bcaddb65d8dcf6df8b148a9679b5b710db19c95a9badfff13468cb358b4e21d24a5c826112658ebb96d64e2985dfb41c1948334391a4aa81b67837e2dbf0",
                 "kem_id": "secp256r1",
@@ -94,7 +94,8 @@ TEST(FizzCommandCommonTest, TestParseECHConfigsSuccess) {
 
   ASSERT_EQ(echConfigs->size(), 1);
   auto echConfig = echConfigs.value()[0];
-  ASSERT_EQ(echConfig.version, ech::ECHVersion::Draft8);
+  ASSERT_EQ(echConfig.version, ech::ECHVersion::Draft9);
+
   folly::io::Cursor cursor(echConfig.ech_config_content.get());
   auto echConfigContent = decode<ech::ECHConfigContentDraft>(cursor);
   checkECHConfigContent(echConfigContent);
@@ -117,7 +118,7 @@ TEST(FizzCommandCommonTest, TestParseECHConfigsJsonExceptions) {
   auto testJson = folly::parseJson(R"(
       {
         "echconfigs": [{
-                "version": "Draft8",
+                "version": "Draft9",
                 "public_name": "publicname",
                 "public_key": "049d87bcaddb65d8dcf6df8b148a9679b5b710db19c95a9badfff13468cb358b4e21d24a5c826112658ebb96d64e2985dfb41c1948334391a4aa81b67837e2dbf0",
                 "kem_id": "secp256r1",

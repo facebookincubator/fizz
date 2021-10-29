@@ -31,6 +31,12 @@ hpke::SetupResult constructHpkeSetupResult(
     std::unique_ptr<KeyExchange> kex,
     const SupportedECHConfig& supportedConfig);
 
+std::unique_ptr<folly::IOBuf> makeClientHelloAad(
+    ECHCipherSuite cipherSuite,
+    const std::unique_ptr<folly::IOBuf>& configId,
+    const std::unique_ptr<folly::IOBuf>& enc,
+    const std::unique_ptr<folly::IOBuf>& clientHello);
+
 ClientECH encryptClientHello(
     const SupportedECHConfig& supportedConfig,
     const ClientHello& clientHelloInner,

@@ -108,13 +108,18 @@ void TerminalInputHandler::hitEOF() {
 
 std::vector<Extension> getExtensions(folly::StringPiece hex) {
   auto buf = folly::IOBuf::copyBuffer(folly::unhexlify(hex.toString()));
-  folly::io::Cursor cursor(buf.get());
-  Extension ext;
-  CHECK_EQ(detail::read(ext, cursor), buf->computeChainDataLength());
+  auto outBuf = folly::IOBuf::create(0);
+  {
+    folly::io::Appender appender(outBuf.get(), 16);
+    detail::writeBuf<uint16_t>(buf, appender);
+  }
+  folly::io::Cursor cursor(outBuf.get());
+  std::vector<Extension> extensions;
+  if (!cursor.isAtEnd()) {
+    detail::readVector<uint16_t>(extensions, cursor);
+  }
   CHECK(cursor.isAtEnd());
-  std::vector<Extension> exts;
-  exts.push_back(std::move(ext));
-  return exts;
+  return extensions;
 }
 
 hpke::KEMId getKEMId(std::string kemStr) {
@@ -186,8 +191,8 @@ folly::Optional<std::vector<ech::ECHConfig>> parseECHConfigs(
     std::string version = config["version"].asString();
 
     ech::ECHVersion echVersion;
-    if (version == "Draft8") {
-      echVersion = ech::ECHVersion::Draft8;
+    if (version == "Draft9") {
+      echVersion = ech::ECHVersion::Draft9;
     } else {
       return folly::none;
     }
@@ -212,6 +217,7 @@ folly::Optional<std::vector<ech::ECHConfig>> parseECHConfigs(
 
       ciphersuites.push_back(parsedSuite);
     }
+
     configContent.cipher_suites = ciphersuites;
 
     // Get extensions.
@@ -253,7 +259,7 @@ std::vector<ech::ECHConfig> getDefaultECHConfigs() {
 
   // Construct an ECH config to pass in to the client.
   ech::ECHConfig echConfig;
-  echConfig.version = ech::ECHVersion::Draft8;
+  echConfig.version = ech::ECHVersion::Draft9;
   echConfig.ech_config_content = encode(std::move(echConfigContent));
   auto configs = std::vector<ech::ECHConfig>();
   configs.push_back(std::move(echConfig));

@@ -21,7 +21,7 @@ folly::Optional<ClientHello> tryToDecodeECH(
     folly::io::Cursor cursor(encodedECHExtension.extension_data.get());
     folly::Optional<ClientHello> decryptionResult;
     switch (param.echConfig.version) {
-      case ECHVersion::Draft8: {
+      case ECHVersion::Draft9: {
         auto echExtension = getExtension<ech::ClientECH>(cursor);
         auto echConfig = param.echConfig;
         const auto& currentConfigId =
@@ -38,7 +38,7 @@ folly::Optional<ClientHello> tryToDecodeECH(
             echExtension.enc->clone(),
             echExtension.payload->clone(),
             param.kex->clone(),
-            ECHVersion::Draft8);
+            ECHVersion::Draft9);
 
         break;
       }

@@ -20,8 +20,7 @@ using Buf = std::unique_ptr<folly::IOBuf>;
 using HpkePublicKey = Buf;
 
 enum class ECHVersion : uint16_t {
-  Draft8 = 0xfe08,
-  //  Draft7 = 0xff07,
+  Draft9 = 0xfe09,
 };
 
 struct ECHCipherSuite {
