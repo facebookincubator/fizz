@@ -50,6 +50,8 @@ void printUsage() {
     << " -accept port             (set port to accept connections on. Default: 8443)\n"
     << " -ciphers c1,c2:c3;...    (Lists of ciphers in preference order, separated by colons. Default:\n"
     << "                           TLS_AES_128_GCM_SHA256,TLS_AES_256_GCM_SHA384:TLS_CHACHA20_POLY1305_SHA256)\n"
+    << " -sigschemes s1:...       (colon-separated list of signature schemes in preference order.\n"
+    << " -curves c1:...           (colon-separated list of supported ECDSA curves. Default: secp256r1, x25519)\n"
     << " -cert cert               (PEM format server certificate. Default: none, generates a self-signed cert)\n"
     << " -key key                 (PEM format private key for server certificate. Default: none)\n"
     << "                          (note: you can specify cert and key multiple times to support multiple certs.\n"
@@ -700,6 +702,16 @@ int fizzServerCommand(const std::vector<std::string>& args) {
     }
 #endif
   };
+  std::vector<SignatureScheme> sigSchemes{
+      SignatureScheme::ecdsa_secp256r1_sha256,
+      SignatureScheme::ecdsa_secp384r1_sha384,
+      SignatureScheme::ecdsa_secp521r1_sha512,
+      SignatureScheme::rsa_pss_sha256,
+  };
+  std::vector<NamedGroup> groups{
+      NamedGroup::secp256r1,
+      NamedGroup::x25519,
+  };
   std::string credPath;
   bool ech = false;
   std::string echConfigsFile;
@@ -729,6 +741,12 @@ int fizzServerCommand(const std::vector<std::string>& args) {
             throw;
           }
         }
+    }}},
+    {"-sigschemes", {true, [&sigSchemes](const std::string& arg) {
+        sigSchemes = splitParse<SignatureScheme>(arg);
+    }}},
+    {"-curves", {true, [&groups](const std::string& arg) {
+        groups = splitParse<NamedGroup>(arg);
     }}},
     {"-cert", {true, [&certPaths](const std::string& arg) { certPaths.push_back(arg); }}},
     {"-key", {true, [&keyPaths](const std::string& arg) { keyPaths.push_back(arg); }}},
@@ -888,6 +906,8 @@ int fizzServerCommand(const std::vector<std::string>& args) {
   }
 
   serverContext->setSupportedCiphers(std::move(ciphers));
+  serverContext->setSupportedSigSchemes(std::move(sigSchemes));
+  serverContext->setSupportedGroups(std::move(groups));
   serverContext->setClientAuthMode(clientAuthMode);
   serverContext->setClientCertVerifier(verifier);
 

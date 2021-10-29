@@ -52,7 +52,10 @@ inline SignatureScheme parse(folly::StringPiece s) {
 template <>
 inline NamedGroup parse(folly::StringPiece s) {
   static const std::map<folly::StringPiece, NamedGroup> stringToGroups = {
-      {"secp256r1", NamedGroup::secp256r1}, {"x25519", NamedGroup::x25519}};
+      {"secp256r1", NamedGroup::secp256r1},
+      {"secp384r1", NamedGroup::secp384r1},
+      {"secp521r1", NamedGroup::secp521r1},
+      {"x25519", NamedGroup::x25519}};
 
   auto location = stringToGroups.find(s);
   if (location != stringToGroups.end()) {

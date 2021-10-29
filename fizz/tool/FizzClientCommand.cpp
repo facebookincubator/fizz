@@ -67,6 +67,7 @@ void printUsage() {
     << " -ciphers c1:...          (colon-separated list of ciphers in preference order. Default:\n"
     << "                           TLS_AES_128_GCM_SHA256,TLS_AES_256_GCM_SHA384,TLS_CHACHA20_POLY1305_SHA256)\n"
     << " -sigschemes s1:...       (colon-separated list of signature schemes in preference order.\n"
+    << " -curves c1:...           (colon-separated list of supported ECDSA curves. Default: secp256r1, x25519)\n"
     << " -certcompression a1:...  (enables certificate compression support for given algorithms. Default: None)\n"
     << " -early                   (enables sending early data during resumption. Default: false)\n"
     << " -quiet                   (hide informational logging. Default: false)\n"
@@ -517,7 +518,13 @@ int fizzClientCommand(const std::vector<std::string>& args) {
   };
   std::vector<SignatureScheme> sigSchemes{
       SignatureScheme::ecdsa_secp256r1_sha256,
+      SignatureScheme::ecdsa_secp384r1_sha384,
+      SignatureScheme::ecdsa_secp521r1_sha512,
       SignatureScheme::rsa_pss_sha256,
+  };
+  std::vector<NamedGroup> groups{
+      NamedGroup::secp256r1,
+      NamedGroup::x25519,
   };
   bool delegatedCredentials = false;
   bool ech = false;
@@ -583,6 +590,9 @@ int fizzClientCommand(const std::vector<std::string>& args) {
     }}},
     {"-sigschemes", {true, [&sigSchemes](const std::string& arg) {
         sigSchemes = splitParse<SignatureScheme>(arg);
+    }}},
+    {"-curves", {true, [&groups](const std::string& arg) {
+        groups = splitParse<NamedGroup>(arg);
     }}},
     {"-delegatedcred", {false, [&delegatedCredentials](const std::string&) {
         delegatedCredentials = true;
@@ -653,6 +663,8 @@ int fizzClientCommand(const std::vector<std::string>& args) {
 
   clientContext->setSupportedCiphers(ciphers);
   clientContext->setSupportedSigSchemes(sigSchemes);
+  clientContext->setSupportedGroups(groups);
+  clientContext->setDefaultShares(groups);
 
   clientContext->setSupportedVersions(
       {ProtocolVersion::tls_1_3, ProtocolVersion::tls_1_3_28});
