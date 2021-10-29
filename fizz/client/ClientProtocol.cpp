@@ -684,6 +684,10 @@ EventHandler<ClientTypes, StateEnum::Uninitialized, Event::Connect>::handle(
 
   auto context = std::move(connect.context);
 
+  // Set up SNI (including possible replacement ECH SNI)
+  folly::Optional<std::string> echSni;
+  auto sni = std::move(connect.sni);
+
   folly::Optional<CachedPsk> psk =
       validatePsk(*context, std::move(connect.cachedPsk));
 
@@ -747,7 +751,7 @@ EventHandler<ClientTypes, StateEnum::Uninitialized, Event::Connect>::handle(
       keyExchangers,
       context->getSupportedSigSchemes(),
       context->getSupportedPskModes(),
-      connect.sni,
+      sni,
       context->getSupportedAlpns(),
       context->getSupportedCertDecompressionAlgorithms(),
       earlyDataParams,
@@ -806,6 +810,7 @@ EventHandler<ClientTypes, StateEnum::Uninitialized, Event::Connect>::handle(
 
   // Create the ECH (both the client hello inner and client hello outer)
   folly::Optional<Buf> encodedECH = folly::none;
+
   if (echParams.has_value()) {
     auto newFakeRandom = context->getFactory()->makeRandom();
     auto newFakeSni =
@@ -871,6 +876,10 @@ EventHandler<ClientTypes, StateEnum::Uninitialized, Event::Connect>::handle(
 
     // Update the client hello with the ECH client hello outer
     encodedClientHello = encodeHandshake(chlo);
+
+    // Assume the server will reject by default; set sni to fakeSni and store
+    // the real one.
+    echSni = std::exchange(sni, std::move(newFakeSni));
   }
 
   auto readRecordLayer = context->getFactory()->makePlaintextReadRecordLayer();
@@ -891,7 +900,8 @@ EventHandler<ClientTypes, StateEnum::Uninitialized, Event::Connect>::handle(
                          readRecordLayer = std::move(readRecordLayer),
                          writeRecordLayer = std::move(writeRecordLayer),
                          keyExchangers = std::move(keyExchangers),
-                         sni = std::move(connect.sni),
+                         sni = std::move(sni),
+                         echSni = std::move(echSni),
                          random = std::move(random),
                          legacySessionId = std::move(legacySessionId),
                          psk = std::move(psk),
@@ -906,6 +916,7 @@ EventHandler<ClientTypes, StateEnum::Uninitialized, Event::Connect>::handle(
     newState.writeRecordLayer() = std::move(writeRecordLayer);
     newState.keyExchangers() = std::move(keyExchangers);
     newState.sni() = std::move(sni);
+    newState.echSni() = std::move(echSni);
     newState.clientRandom() = std::move(random);
     newState.legacySessionId() = std::move(legacySessionId);
     newState.attemptedPsk() = std::move(psk);
@@ -1182,6 +1193,8 @@ EventHandler<ClientTypes, StateEnum::ExpectingServerHello, Event::ServerHello>::
     scheduler->deriveHandshakeSecret();
   }
 
+  // TODO: Implement ECH acceptance confirmation
+  bool acceptedECH = false;
   if (state.readRecordLayer()->hasUnparsedHandshakeData()) {
     throw FizzException(
         "data after server hello", AlertDescription::unexpected_message);
@@ -1250,6 +1263,7 @@ EventHandler<ClientTypes, StateEnum::ExpectingServerHello, Event::ServerHello>::
            pskMode = negotiatedPsk.mode,
            serverCert = std::move(negotiatedPsk.serverCert),
            clientCert = std::move(negotiatedPsk.clientCert),
+           acceptedECH,
            authType = std::move(authType),
            handshakeTime = std::move(handshakeTime)](State& newState) mutable {
             newState.keyScheduler() = std::move(keyScheduler);
@@ -1271,6 +1285,9 @@ EventHandler<ClientTypes, StateEnum::ExpectingServerHello, Event::ServerHello>::
             newState.clientCert() = std::move(clientCert);
             newState.clientAuthRequested() = std::move(authType);
             newState.handshakeTime() = std::move(handshakeTime);
+            if (acceptedECH) {
+              newState.sni() = newState.echSni();
+            }
           }),
       SecretAvailable(std::move(handshakeReadSecret)),
       SecretAvailable(std::move(handshakeWriteSecret)),
