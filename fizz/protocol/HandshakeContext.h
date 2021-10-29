@@ -40,6 +40,8 @@ class HandshakeContext {
    * Returns the handshake context for an empty transcript.
    */
   virtual folly::ByteRange getBlankContext() const = 0;
+
+  virtual std::unique_ptr<HandshakeContext> clone() const = 0;
 };
 
 template <typename Hash>
@@ -55,6 +57,12 @@ class HandshakeContextImpl : public HandshakeContext {
 
   folly::ByteRange getBlankContext() const override {
     return Hash::BlankHash;
+  }
+
+  virtual std::unique_ptr<HandshakeContext> clone() const override {
+    auto newCtx = std::make_unique<HandshakeContextImpl>(hkdfLabelPrefix_);
+    newCtx->hashState_ = hashState_;
+    return newCtx;
   }
 
  private:

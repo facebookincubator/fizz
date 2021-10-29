@@ -95,6 +95,7 @@ class MockHandshakeContext : public HandshakeContext {
   MOCK_CONST_METHOD0(getHandshakeContext, Buf());
   MOCK_CONST_METHOD1(getFinishedData, Buf(folly::ByteRange baseKey));
   MOCK_CONST_METHOD0(getBlankContext, folly::ByteRange());
+  MOCK_CONST_METHOD0(clone, std::unique_ptr<HandshakeContext>());
 
   void setDefaults() {
     ON_CALL(*this, getHandshakeContext()).WillByDefault(InvokeWithoutArgs([]() {
@@ -103,6 +104,10 @@ class MockHandshakeContext : public HandshakeContext {
 
     ON_CALL(*this, getFinishedData(_)).WillByDefault(InvokeWithoutArgs([]() {
       return folly::IOBuf::copyBuffer("verifydata");
+    }));
+
+    ON_CALL(*this, clone()).WillByDefault(InvokeWithoutArgs([]() {
+      return std::make_unique<MockHandshakeContext>();
     }));
   }
 };
