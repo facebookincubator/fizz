@@ -94,7 +94,7 @@ void checkDecodedChlo(ClientHello decodedChlo, ClientHello expectedChlo) {
 ECHConfig getInvalidVECHConfigV8() {
   // Add invalid config
   ECHConfig invalidConfig;
-  invalidConfig.version = ECHVersion::V8;
+  invalidConfig.version = ECHVersion::Draft8;
   auto configContent = getECHConfigContent();
   configContent.kem_id = hpke::KEMId::secp384r1;
   invalidConfig.ech_config_content = encode(std::move(configContent));
@@ -125,7 +125,7 @@ EncryptedClientHello getTestECH(ClientHello chlo) {
     testConfigContent.public_key = std::move(publicKey);
 
     ECHConfig testConfig;
-    testConfig.version = ECHVersion::V7;
+    testConfig.version = ECHVersion::Draft7;
     testConfig.ech_config_content = encode(std::move(testConfigContent));
     testConfig.length = testConfig.ech_config_content->computeChainDataLength();
     return testConfig;
@@ -177,7 +177,7 @@ TEST(EncryptionTest, TestValidECHConfigContent) {
   invalidConfigContent.kem_id = hpke::KEMId::secp521r1;
   std::vector<ECHConfig> configs;
   ECHConfig invalid;
-  invalid.version = ECHVersion::V7;
+  invalid.version = ECHVersion::Draft7;
   invalid.ech_config_content = encode(std::move(invalidConfigContent));
   invalid.length = invalid.ech_config_content->computeChainDataLength();
 
@@ -200,7 +200,7 @@ TEST(EncryptionTest, TestInvalidECHConfigContent) {
   configContent.cipher_suites = cipher_suites;
 
   ECHConfig invalidConfig;
-  invalidConfig.version = ECHVersion::V7;
+  invalidConfig.version = ECHVersion::Draft7;
   invalidConfig.ech_config_content = encode(std::move(configContent));
   invalidConfig.length =
       invalidConfig.ech_config_content->computeChainDataLength();
@@ -217,7 +217,7 @@ TEST(EncryptionTest, TestInvalidECHConfigContent) {
 TEST(EncryptionTest, TestValidSelectECHConfigContentV8) {
   // Add valid config
   ECHConfig validConfig;
-  validConfig.version = ECHVersion::V8;
+  validConfig.version = ECHVersion::Draft8;
   validConfig.ech_config_content = encode(getECHConfigContent());
 
   std::vector<ECHConfig> configs;
@@ -335,7 +335,7 @@ TEST(EncryptionTest, DISABLED_TestTryToDecryptECHV7) {
       std::move(testECH.enc),
       std::move(testECH.encrypted_ch),
       std::move(kex),
-      ECHVersion::V7);
+      ECHVersion::Draft7);
   EXPECT_TRUE(decodedChloResult.has_value());
   EXPECT_TRUE(folly::IOBufEqualTo()(expectedNonceValue, toIOBuf(nonceHex)));
 
@@ -363,7 +363,7 @@ TEST(EncryptionTest, TestTryToDecryptECHV8) {
       std::move(testECH.enc),
       std::move(testECH.payload),
       std::move(kex),
-      ECHVersion::V8);
+      ECHVersion::Draft8);
 
   EXPECT_TRUE(decodedChloResult.has_value());
 

@@ -27,7 +27,7 @@ ECHConfig constructECHConfigV7() {
       detail::encodeECPublicKey(getPublicKey(kP256PublicKey));
 
   ECHConfig testConfig;
-  testConfig.version = ECHVersion::V7;
+  testConfig.version = ECHVersion::Draft7;
   testConfig.ech_config_content = encode(std::move(configContent));
   testConfig.length = testConfig.ech_config_content->computeChainDataLength();
   return testConfig;
@@ -44,9 +44,9 @@ void checkDecryptionResult(
       chloOuterHandshake, encodeHandshake(expectedChloInner)));
 
   auto chlo = std::move(gotChlo.value());
-  if (version == ECHVersion::V7) {
+  if (version == ECHVersion::Draft7) {
     TestMessages::removeExtension(chlo, ExtensionType::ech_nonce);
-  } else if (version == ECHVersion::V8) {
+  } else if (version == ECHVersion::Draft8) {
     // Remove the empty ECH extension from the client hello inner
     TestMessages::removeExtension(chlo, ExtensionType::encrypted_client_hello);
   }
@@ -93,7 +93,7 @@ TEST(DecrypterTest, TestDecodeSuccess) {
   auto gotChlo = decrypter.decryptClientHello(chloOuter);
 
   checkDecryptionResult(
-      std::move(gotChlo), encodeHandshake(chloOuter), ECHVersion::V7);
+      std::move(gotChlo), encodeHandshake(chloOuter), ECHVersion::Draft7);
 }
 
 TEST(DecrypterTest, TestDecodeSuccessV8) {
@@ -134,7 +134,7 @@ TEST(DecrypterTest, TestDecodeSuccessV8) {
   auto gotChlo = decrypter.decryptClientHello(chloOuter);
 
   checkDecryptionResult(
-      std::move(gotChlo), encodeHandshake(chloOuter), ECHVersion::V8);
+      std::move(gotChlo), encodeHandshake(chloOuter), ECHVersion::Draft8);
 }
 
 void testFailure(ECHConfig echConfig) {

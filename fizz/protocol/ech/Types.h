@@ -21,8 +21,8 @@ using HpkePublicKey = Buf;
 using HpkeNonce = std::array<uint8_t, 16>;
 
 enum class ECHVersion : uint16_t {
-  V7 = 0xff07,
-  V8 = 0xfe08,
+  Draft7 = 0xff07,
+  Draft8 = 0xfe08,
 };
 
 struct ECHCipherSuite {

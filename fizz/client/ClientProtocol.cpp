@@ -736,7 +736,7 @@ EventHandler<ClientTypes, StateEnum::Uninitialized, Event::Connect>::handle(
   // Create ECH nonce extension, if we're constructing an ECH V7.
   auto echNonceExt = (echParams.has_value() &&
                       (echParams.value().supportedECHConfig.config.version ==
-                       ech::ECHVersion::V7))
+                       ech::ECHVersion::Draft7))
       ? folly::Optional<ech::ECHNonce>(
             ech::createNonceExtension(echParams->setupResult.context))
       : folly::none;
@@ -744,7 +744,7 @@ EventHandler<ClientTypes, StateEnum::Uninitialized, Event::Connect>::handle(
   auto encodedEmptyECHExt = Optional<Extension>(folly::none);
   if (echParams.has_value() &&
       echParams.value().supportedECHConfig.config.version ==
-          ech::ECHVersion::V8) {
+          ech::ECHVersion::Draft8) {
     // When offering the "encrypted_client_hello" extension in its
     // ClientHelloOuter, the client MUST also offer an empty
     // "encrypted_client_hello" extension in its ClientHelloInner.
@@ -829,7 +829,7 @@ EventHandler<ClientTypes, StateEnum::Uninitialized, Event::Connect>::handle(
     Extension encodedECHExtension;
     // Create the encrypted client hello inner extension.
     switch (echParams->supportedECHConfig.config.version) {
-      case (ech::ECHVersion::V7): {
+      case (ech::ECHVersion::Draft7): {
         ech::EncryptedClientHello innerClientHelloExtension =
             encryptClientHello(
                 echParams->supportedECHConfig,
@@ -839,7 +839,7 @@ EventHandler<ClientTypes, StateEnum::Uninitialized, Event::Connect>::handle(
             encodeExtension(std::move(innerClientHelloExtension));
         break;
       }
-      case (ech::ECHVersion::V8): {
+      case (ech::ECHVersion::Draft8): {
         // Generate a client hello outer to be used for
         // encrypting the ECH extension.
         auto chloOuterNoECHExt = getClientHello(

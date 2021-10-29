@@ -45,12 +45,12 @@ std::unique_ptr<folly::IOBuf> extractEncodedClientHelloInner(
     const ClientHello& clientHelloOuter) {
   std::unique_ptr<folly::IOBuf> encodedClientHelloInner;
   switch (version) {
-    case ECHVersion::V7: {
+    case ECHVersion::Draft7: {
       encodedClientHelloInner = context.open(
           folly::IOBuf::copyBuffer("").get(), std::move(encryptedCh));
       break;
     }
-    case ECHVersion::V8: {
+    case ECHVersion::Draft8: {
       auto chloOuterAad = makeClientHelloOuterAad(clientHelloOuter);
       encodedClientHelloInner =
           context.open(chloOuterAad.get(), std::move(encryptedCh));
@@ -63,9 +63,9 @@ std::unique_ptr<folly::IOBuf> extractEncodedClientHelloInner(
 std::unique_ptr<folly::IOBuf> makeHpkeContextInfoParam(
     const ECHConfig& echConfig) {
   switch (echConfig.version) {
-    case ECHVersion::V7:
+    case ECHVersion::Draft7:
       return folly::IOBuf::copyBuffer("tls13-ech");
-    case ECHVersion::V8: {
+    case ECHVersion::Draft8: {
       // The "info" parameter to setupWithEncap is the
       // concatenation of "tls ech", a zero byte, and the serialized
       // ECHConfig.
@@ -138,7 +138,8 @@ folly::Optional<SupportedECHConfig> selectECHConfig(
   // we should be selecting the first one that we can support.
   for (const auto& config : configs) {
     folly::io::Cursor cursor(config.ech_config_content.get());
-    if (config.version == ECHVersion::V7 || config.version == ECHVersion::V8) {
+    if (config.version == ECHVersion::Draft7 ||
+        config.version == ECHVersion::Draft8) {
       auto echConfig = decode<ECHConfigContentDraft>(cursor);
       // Check if we (client) support the server's chosen KEM.
       auto result = std::find(
@@ -350,14 +351,15 @@ folly::Optional<ClientHello> tryToDecryptECH(
     auto decodedChlo = decode<ClientHello>(encodedECHInnerCursor);
     decodedChlo.originalEncoding = encodeHandshake(decodedChlo);
 
-    if (version == ECHVersion::V8) {
+    if (version == ECHVersion::Draft8) {
       // Replace legacy_session_id that got removed during encryption
       decodedChlo.legacy_session_id =
           clientHelloOuter.legacy_session_id->clone();
     }
 
     // Check ECH nonce if V7
-    if (version == ECHVersion::V7 && !isNonceValueEqual(context, decodedChlo)) {
+    if (version == ECHVersion::Draft7 &&
+        !isNonceValueEqual(context, decodedChlo)) {
       return folly::none;
     }
 

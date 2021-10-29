@@ -41,7 +41,7 @@ ECHConfigContentDraft getECHConfigContent() {
 
 ECHConfig getECHConfig() {
   ECHConfig testConfig;
-  testConfig.version = ECHVersion::V7;
+  testConfig.version = ECHVersion::Draft7;
   testConfig.ech_config_content = encode(getECHConfigContent());
   testConfig.length = testConfig.ech_config_content->computeChainDataLength();
   return testConfig;
@@ -49,7 +49,7 @@ ECHConfig getECHConfig() {
 
 ECHConfig getECHConfigV8() {
   ECHConfig config;
-  config.version = ECHVersion::V8;
+  config.version = ECHVersion::Draft8;
   auto testConfigContent = getECHConfigContent();
   testConfigContent.public_name = folly::IOBuf::copyBuffer("v8 publicname");
   testConfigContent.public_key = detail::encodeECPublicKey(
