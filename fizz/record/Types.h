@@ -112,6 +112,7 @@ enum class ExtensionType : uint16_t {
   test_extension = 0xff01,
   encrypted_client_hello = 0xfe08,
   ech_nonce = 0xff03,
+  ech_is_inner = 0xda09,
   thrift_parameters = 0xff41,
 };
 
