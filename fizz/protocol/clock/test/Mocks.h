@@ -6,6 +6,8 @@
  *  LICENSE file in the root directory of this source tree.
  */
 
+#pragma once
+
 #include <fizz/protocol/clock/Clock.h>
 #include <folly/portability/GMock.h>
 
