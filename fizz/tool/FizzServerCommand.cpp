@@ -112,7 +112,8 @@ class FizzServerAcceptor : AsyncServerSocket::AcceptCallback {
 
   void connectionAccepted(
       folly::NetworkSocket fdNetworkSocket,
-      const SocketAddress& clientAddr) noexcept override;
+      const SocketAddress& clientAddr,
+      AcceptInfo /* info */) noexcept override;
 
   void acceptError(folly::exception_wrapper ex) noexcept override;
   void done();
@@ -481,7 +482,8 @@ FizzServerAcceptor::FizzServerAcceptor(
 
 void FizzServerAcceptor::connectionAccepted(
     folly::NetworkSocket fdNetworkSocket,
-    const SocketAddress& clientAddr) noexcept {
+    const SocketAddress& clientAddr,
+    AcceptInfo /* info */) noexcept {
   int fd = fdNetworkSocket.toFd();
 
   LOG(INFO) << "Connection accepted from " << clientAddr;

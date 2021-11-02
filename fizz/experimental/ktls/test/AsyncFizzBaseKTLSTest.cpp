@@ -51,7 +51,8 @@ class ServerAcceptor : public folly::AsyncServerSocket::AcceptCallback {
   }
   void connectionAccepted(
       folly::NetworkSocket fd,
-      const folly::SocketAddress&) noexcept override {
+      const folly::SocketAddress&,
+      AcceptInfo /* info */) noexcept override {
     auto sock =
         folly::AsyncSocket::newSocket(serverSocket_->getEventBase(), fd);
     if (success_) {
