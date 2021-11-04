@@ -83,7 +83,6 @@ EncryptedReadRecordLayer::getDecryptedBuf(
       }
     }
 
-    TLSMessage msg;
     if (seqNum_ == std::numeric_limits<uint64_t>::max()) {
       throw std::runtime_error("max read seq num");
     }
