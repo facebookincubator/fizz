@@ -501,5 +501,108 @@ TEST_F(EncryptedRecordTest, TestRecordState) {
   testImpl(read_, *readAead_);
   testImpl(write_, *writeAead_);
 }
+
+TEST_F(EncryptedRecordTest, TestWritePaddingWithoutTailroom) {
+  const size_t paddingLength = 50;
+  const size_t recordLength = 2000;
+
+  write_.setMaxRecord(0x4000);
+  write_.setMinDesiredRecord(1500);
+  write_.setRecordPadding(paddingLength);
+
+  TLSMessage msg{ContentType::application_data, IOBuf::create(recordLength)};
+  msg.fragment->append(recordLength);
+  memset(msg.fragment->writableData(), 0x1, msg.fragment->length());
+
+  EXPECT_CALL(*writeAead_, _encrypt(_, _, _, _))
+      .WillOnce(Invoke([](std::unique_ptr<IOBuf>& buf,
+                          const IOBuf*,
+                          uint64_t,
+                          Aead::AeadOptions) {
+        // Record size + 1 byte footer + padding
+        EXPECT_EQ(
+            buf->computeChainDataLength(), recordLength + paddingLength + 1);
+        EXPECT_EQ(buf->countChainElements(), 2);
+        return getBuf("aaaa");
+      }));
+  write_.write(std::move(msg), Aead::AeadOptions());
+}
+
+TEST_F(EncryptedRecordTest, TestWritePaddingWithTailroom) {
+  const size_t paddingLength = 50;
+  const size_t recordLength = 2000;
+
+  write_.setMaxRecord(0x4000);
+  write_.setMinDesiredRecord(1500);
+  write_.setRecordPadding(paddingLength);
+
+  TLSMessage msg{
+      ContentType::application_data, IOBuf::create(recordLength + 1000)};
+  msg.fragment->append(recordLength);
+  memset(msg.fragment->writableData(), 0x1, msg.fragment->length());
+
+  EXPECT_CALL(*writeAead_, _encrypt(_, _, _, _))
+      .WillOnce(Invoke([](std::unique_ptr<IOBuf>& buf,
+                          const IOBuf*,
+                          uint64_t,
+                          Aead::AeadOptions) {
+        // Record size + 1 byte footer + padding
+        EXPECT_EQ(
+            buf->computeChainDataLength(), recordLength + paddingLength + 1);
+        EXPECT_EQ(buf->countChainElements(), 1);
+        return getBuf("aaaa");
+      }));
+  write_.write(std::move(msg), Aead::AeadOptions());
+}
+
+TEST_F(EncryptedRecordTest, TestWritePaddingAtMaxRecord) {
+  const size_t paddingLength = 50;
+  const size_t recordLength = 2000;
+
+  write_.setMaxRecord(recordLength);
+  write_.setMinDesiredRecord(1500);
+  write_.setRecordPadding(paddingLength);
+
+  TLSMessage msg{ContentType::application_data, IOBuf::create(recordLength)};
+  msg.fragment->append(recordLength);
+  memset(msg.fragment->writableData(), 0x1, msg.fragment->length());
+
+  EXPECT_CALL(*writeAead_, _encrypt(_, _, _, _))
+      .WillOnce(Invoke([](std::unique_ptr<IOBuf>& buf,
+                          const IOBuf*,
+                          uint64_t,
+                          Aead::AeadOptions) {
+        // Record size + 1 byte footer + 0 padding (due to max record)
+        EXPECT_EQ(buf->computeChainDataLength(), recordLength + 1);
+        return getBuf("aaaa");
+      }));
+  write_.write(std::move(msg), Aead::AeadOptions());
+}
+
+TEST_F(EncryptedRecordTest, TestWritePaddingNearMaxRecord) {
+  const size_t paddingLength = 50;
+  const size_t recordLength = 2000;
+  const size_t truncatedPadding = 20;
+
+  write_.setMaxRecord(recordLength + truncatedPadding);
+  write_.setMinDesiredRecord(1500);
+  write_.setRecordPadding(paddingLength);
+
+  TLSMessage msg{ContentType::application_data, IOBuf::create(recordLength)};
+  msg.fragment->append(recordLength);
+  memset(msg.fragment->writableData(), 0x1, msg.fragment->length());
+
+  EXPECT_CALL(*writeAead_, _encrypt(_, _, _, _))
+      .WillOnce(Invoke([](std::unique_ptr<IOBuf>& buf,
+                          const IOBuf*,
+                          uint64_t,
+                          Aead::AeadOptions) {
+        // Record size + 1 byte footer + truncated padding (due to max record)
+        EXPECT_EQ(
+            buf->computeChainDataLength(), recordLength + truncatedPadding + 1);
+        return getBuf("aaaa");
+      }));
+  write_.write(std::move(msg), Aead::AeadOptions());
+}
 } // namespace test
 } // namespace fizz

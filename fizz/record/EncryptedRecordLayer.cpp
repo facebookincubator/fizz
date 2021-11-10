@@ -176,21 +176,26 @@ TLSContent EncryptedWriteRecordLayer::write(
   auto header = folly::IOBuf::wrapBufferAsValue(folly::range(headerBuf));
   aead_->setEncryptedBufferHeadroom(kEncryptedHeaderSize);
   while (!queue.empty()) {
-    auto dataBuf = getBufToEncrypt(queue);
-    // Currently we never send padding.
+    Buf dataBuf;
+    size_t paddingSize;
+    std::tie(dataBuf, paddingSize) = getBufAndPaddingToEncrypt(queue);
 
-    // check if we have enough room to add the encrypted footer.
+    // check if we have enough room to add padding and the encrypted footer.
     if (!dataBuf->isShared() &&
-        dataBuf->prev()->tailroom() >= sizeof(ContentType)) {
-      // extend it and add it
+        dataBuf->prev()->tailroom() >= sizeof(ContentType) + paddingSize) {
+      // extend it and add padding and footer
       folly::io::Appender appender(dataBuf.get(), 0);
       appender.writeBE(static_cast<ContentTypeType>(msg.type));
+      memset(appender.writableData(), 0, paddingSize);
+      appender.append(paddingSize);
     } else {
       // not enough or shared - let's add enough for the tag as well
       auto encryptedFooter = folly::IOBuf::create(
-          sizeof(ContentType) + aead_->getCipherOverhead());
+          sizeof(ContentType) + paddingSize + aead_->getCipherOverhead());
       folly::io::Appender appender(encryptedFooter.get(), 0);
       appender.writeBE(static_cast<ContentTypeType>(msg.type));
+      memset(appender.writableData(), 0, paddingSize);
+      appender.append(paddingSize);
       dataBuf->prependChain(std::move(encryptedFooter));
     }
 
@@ -247,14 +252,20 @@ TLSContent EncryptedWriteRecordLayer::write(
   return content;
 }
 
-Buf EncryptedWriteRecordLayer::getBufToEncrypt(folly::IOBufQueue& queue) const {
+std::pair<Buf, size_t> EncryptedWriteRecordLayer::getBufAndPaddingToEncrypt(
+    folly::IOBufQueue& queue) const {
+  Buf dataBuf;
   if (queue.front()->length() > maxRecord_) {
-    return queue.splitAtMost(maxRecord_);
+    dataBuf = queue.splitAtMost(maxRecord_);
   } else if (queue.front()->length() >= desiredMinRecord_) {
-    return queue.pop_front();
+    dataBuf = queue.pop_front();
   } else {
-    return queue.splitAtMost(desiredMinRecord_);
+    dataBuf = queue.splitAtMost(desiredMinRecord_);
   }
+  size_t paddingSize = recordPadding_ > 0
+      ? std::min(recordPadding_, maxRecord_ - dataBuf->computeChainDataLength())
+      : 0;
+  return std::make_pair(std::move(dataBuf), paddingSize);
 }
 
 EncryptionLevel EncryptedWriteRecordLayer::getEncryptionLevel() const {
