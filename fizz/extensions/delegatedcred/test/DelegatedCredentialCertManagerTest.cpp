@@ -15,7 +15,6 @@
 #include <fizz/protocol/test/Mocks.h>
 
 using namespace fizz::test;
-using namespace folly;
 
 namespace fizz {
 namespace extensions {
@@ -103,7 +102,7 @@ TYPED_TEST(DelegatedCredentialCertManagerTestTyped, TestNoSniDefault) {
   auto cert = DelegatedCredentialCertManagerTest::getCert("blah.com", {}, kRsa);
   DelegatedCredentialCertManagerTest::manager_.addCert(cert, true);
   auto res = DelegatedCredentialCertManagerTest::manager_.getCert(
-      none, kRsa, kRsa, TypeParam::Extensions());
+      folly::none, kRsa, kRsa, TypeParam::Extensions());
   EXPECT_EQ(res->cert, cert);
 }
 
@@ -112,7 +111,7 @@ TYPED_TEST(DelegatedCredentialCertManagerTestTyped, TestWildcardDefault) {
       DelegatedCredentialCertManagerTest::getCert("*.blah.com", {}, kRsa);
   DelegatedCredentialCertManagerTest::manager_.addCert(cert, true);
   auto res = DelegatedCredentialCertManagerTest::manager_.getCert(
-      none, kRsa, kRsa, TypeParam::Extensions());
+      folly::none, kRsa, kRsa, TypeParam::Extensions());
   EXPECT_EQ(res->cert, cert);
 }
 
@@ -120,7 +119,7 @@ TYPED_TEST(DelegatedCredentialCertManagerTestTyped, TestUppercaseDefault) {
   auto cert = DelegatedCredentialCertManagerTest::getCert("BLAH.com", {}, kRsa);
   DelegatedCredentialCertManagerTest::manager_.addCert(cert, true);
   auto res = DelegatedCredentialCertManagerTest::manager_.getCert(
-      none, kRsa, kRsa, TypeParam::Extensions());
+      folly::none, kRsa, kRsa, TypeParam::Extensions());
   EXPECT_EQ(res->cert, cert);
 }
 

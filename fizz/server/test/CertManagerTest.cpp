@@ -14,7 +14,6 @@
 #include <fizz/protocol/test/Mocks.h>
 
 using namespace fizz::test;
-using namespace folly;
 
 namespace fizz {
 namespace server {
@@ -48,21 +47,21 @@ TEST_F(CertManagerTest, TestNoMatchDefault) {
 TEST_F(CertManagerTest, TestNoSniDefault) {
   auto cert = getCert("blah.com", {}, kRsa);
   manager_.addCert(cert, true);
-  auto res = manager_.getCert(none, kRsa, kRsa, {});
+  auto res = manager_.getCert(folly::none, kRsa, kRsa, {});
   EXPECT_EQ(res->cert, cert);
 }
 
 TEST_F(CertManagerTest, TestWildcardDefault) {
   auto cert = getCert("*.blah.com", {}, kRsa);
   manager_.addCert(cert, true);
-  auto res = manager_.getCert(none, kRsa, kRsa, {});
+  auto res = manager_.getCert(folly::none, kRsa, kRsa, {});
   EXPECT_EQ(res->cert, cert);
 }
 
 TEST_F(CertManagerTest, TestUppercaseDefault) {
   auto cert = getCert("BLAH.com", {}, kRsa);
   manager_.addCert(cert, true);
-  auto res = manager_.getCert(none, kRsa, kRsa, {});
+  auto res = manager_.getCert(folly::none, kRsa, kRsa, {});
   EXPECT_EQ(res->cert, cert);
 }
 

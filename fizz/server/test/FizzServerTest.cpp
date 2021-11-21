@@ -12,8 +12,6 @@
 #include <fizz/server/FizzServer.h>
 #include <fizz/server/test/Mocks.h>
 
-using namespace folly;
-
 namespace fizz {
 namespace server {
 namespace test {
@@ -39,13 +37,13 @@ class ActionMoveVisitor {
   }
 };
 
-class TestFizzServer : public DelayedDestruction {
+class TestFizzServer : public folly::DelayedDestruction {
  public:
   TestFizzServer()
       : fizzServer_(state_, queue_, readAeadOptions_, visitor_, this) {}
 
   State state_;
-  IOBufQueue queue_;
+  folly::IOBufQueue queue_;
   Aead::AeadOptions readAeadOptions_;
   ActionMoveVisitor visitor_;
   FizzServer<ActionMoveVisitor, MockServerStateMachineInstance> fizzServer_;
@@ -67,19 +65,20 @@ class FizzServerTest : public Test {
   }
 
   std::shared_ptr<FizzServerContext> context_;
-  EventBase evb_;
-  std::unique_ptr<TestFizzServer, DelayedDestruction::Destructor> fizzServer_;
+  folly::EventBase evb_;
+  std::unique_ptr<TestFizzServer, folly::DelayedDestruction::Destructor>
+      fizzServer_;
 };
 
 TEST_F(FizzServerTest, TestAccept) {
   accept();
 }
 
-static std::unique_ptr<IOBuf> getV2ClientHello() {
+static std::unique_ptr<folly::IOBuf> getV2ClientHello() {
   // This client hello is truncated but is sufficient to trigger the fallback.
-  static constexpr StringPiece v2ClientHello =
+  static constexpr folly::StringPiece v2ClientHello =
       "808c0103010063000000200000390000380000350000";
-  return IOBuf::copyBuffer(folly::unhexlify(v2ClientHello));
+  return folly::IOBuf::copyBuffer(folly::unhexlify(v2ClientHello));
 }
 
 TEST_F(FizzServerTest, TestSSLV2) {
@@ -106,7 +105,7 @@ TEST_F(FizzServerTest, TestSSLV2NoVersionFallback) {
 TEST_F(FizzServerTest, TestNotSSLV2) {
   context_->setVersionFallbackEnabled(true);
   accept();
-  fizzServer_->queue_.append(IOBuf::copyBuffer("ClientHello"));
+  fizzServer_->queue_.append(folly::IOBuf::copyBuffer("ClientHello"));
   EXPECT_CALL(
       *MockServerStateMachineInstance::instance, _processSocketData(_, _, _))
       .WillOnce(InvokeWithoutArgs([this]() {
@@ -119,7 +118,7 @@ TEST_F(FizzServerTest, TestNotSSLV2) {
 TEST_F(FizzServerTest, TestSSLV2AfterData) {
   context_->setVersionFallbackEnabled(true);
   accept();
-  fizzServer_->queue_.append(IOBuf::copyBuffer("ClientHello"));
+  fizzServer_->queue_.append(folly::IOBuf::copyBuffer("ClientHello"));
   EXPECT_CALL(
       *MockServerStateMachineInstance::instance, _processSocketData(_, _, _))
       .WillOnce(InvokeWithoutArgs([this]() {

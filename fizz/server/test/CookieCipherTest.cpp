@@ -15,12 +15,11 @@
 #include <fizz/protocol/test/TestMessages.h>
 
 using namespace fizz::test;
-using namespace folly;
 
-static constexpr StringPiece statelessHrr{
+static constexpr folly::StringPiece statelessHrr{
     "020000380303cf21ad74e59a6111be1d8c021e65b891c2a211167abb8c5e079e09e2c8a8339c001301000010002b00020304002c0006000474657374"};
 
-static constexpr StringPiece statelessHrrGroup{
+static constexpr folly::StringPiece statelessHrrGroup{
     "0200003e0303cf21ad74e59a6111be1d8c021e65b891c2a211167abb8c5e079e09e2c8a8339c001301000016002b0002030400330002001d002c0006000474657374"};
 
 namespace fizz {
@@ -31,9 +30,9 @@ TEST(GetStatelessHrrTest, NoGroup) {
   auto hrr = getStatelessHelloRetryRequest(
       ProtocolVersion::tls_1_3,
       CipherSuite::TLS_AES_128_GCM_SHA256,
-      none,
-      IOBuf::copyBuffer("test"));
-  EXPECT_EQ(hexlify(hrr->coalesce()), statelessHrr);
+      folly::none,
+      folly::IOBuf::copyBuffer("test"));
+  EXPECT_EQ(folly::hexlify(hrr->coalesce()), statelessHrr);
 }
 
 TEST(GetStatelessHrrTest, Group) {
@@ -41,8 +40,8 @@ TEST(GetStatelessHrrTest, Group) {
       ProtocolVersion::tls_1_3,
       CipherSuite::TLS_AES_128_GCM_SHA256,
       NamedGroup::x25519,
-      IOBuf::copyBuffer("test"));
-  EXPECT_EQ(hexlify(hrr->coalesce()), statelessHrrGroup);
+      folly::IOBuf::copyBuffer("test"));
+  EXPECT_EQ(folly::hexlify(hrr->coalesce()), statelessHrrGroup);
 }
 
 class GetCookieStateTest : public Test {
@@ -69,19 +68,21 @@ TEST_F(GetCookieStateTest, TestBasic) {
       appendToTranscript(BufMatches("clienthelloencoding")))
       .InSequence(seq);
   EXPECT_CALL(*mockHandshakeContext, getHandshakeContext())
-      .WillOnce(Invoke([]() { return IOBuf::copyBuffer("context"); }));
+      .WillOnce(Invoke([]() { return folly::IOBuf::copyBuffer("context"); }));
   auto state = getCookieState(
       factory_,
       {TestProtocolVersion},
       {{CipherSuite::TLS_AES_128_GCM_SHA256}},
       {NamedGroup::x25519},
       TestMessages::clientHello(),
-      IOBuf::copyBuffer("token"));
+      folly::IOBuf::copyBuffer("token"));
   EXPECT_EQ(state.version, TestProtocolVersion);
   EXPECT_EQ(state.cipher, CipherSuite::TLS_AES_128_GCM_SHA256);
   EXPECT_FALSE(state.group.has_value());
-  EXPECT_TRUE(IOBufEqualTo()(state.chloHash, IOBuf::copyBuffer("context")));
-  EXPECT_TRUE(IOBufEqualTo()(state.appToken, IOBuf::copyBuffer("token")));
+  EXPECT_TRUE(folly::IOBufEqualTo()(
+      state.chloHash, folly::IOBuf::copyBuffer("context")));
+  EXPECT_TRUE(
+      folly::IOBufEqualTo()(state.appToken, folly::IOBuf::copyBuffer("token")));
 }
 
 TEST_F(GetCookieStateTest, TestNoVersion) {
@@ -94,7 +95,7 @@ TEST_F(GetCookieStateTest, TestNoVersion) {
           {{CipherSuite::TLS_AES_128_GCM_SHA256}},
           {NamedGroup::x25519},
           chlo,
-          IOBuf::copyBuffer("token")),
+          folly::IOBuf::copyBuffer("token")),
       std::runtime_error);
 }
 
@@ -106,7 +107,7 @@ TEST_F(GetCookieStateTest, TestVersionMismatch) {
           {{CipherSuite::TLS_AES_128_GCM_SHA256}},
           {NamedGroup::x25519},
           TestMessages::clientHello(),
-          IOBuf::copyBuffer("token")),
+          folly::IOBuf::copyBuffer("token")),
       std::runtime_error);
 }
 
@@ -125,7 +126,7 @@ TEST_F(GetCookieStateTest, TestCipherNegotiate) {
        {CipherSuite::TLS_AES_128_GCM_SHA256}},
       {NamedGroup::x25519},
       TestMessages::clientHello(),
-      IOBuf::copyBuffer("token"));
+      folly::IOBuf::copyBuffer("token"));
   EXPECT_EQ(state.cipher, CipherSuite::TLS_AES_256_GCM_SHA384);
 }
 
@@ -144,7 +145,7 @@ TEST_F(GetCookieStateTest, TestCipherNegotiateTie) {
         CipherSuite::TLS_AES_128_GCM_SHA256}},
       {NamedGroup::x25519},
       TestMessages::clientHello(),
-      IOBuf::copyBuffer("token"));
+      folly::IOBuf::copyBuffer("token"));
   EXPECT_EQ(state.cipher, CipherSuite::TLS_AES_128_GCM_SHA256);
 }
 
@@ -156,7 +157,7 @@ TEST_F(GetCookieStateTest, TestCipherMismatch) {
           {{}},
           {NamedGroup::x25519},
           TestMessages::clientHello(),
-          IOBuf::copyBuffer("token")),
+          folly::IOBuf::copyBuffer("token")),
       std::runtime_error);
 }
 
@@ -167,7 +168,7 @@ TEST_F(GetCookieStateTest, TestGroupNotSent) {
       {{CipherSuite::TLS_AES_128_GCM_SHA256}},
       {NamedGroup::secp256r1},
       TestMessages::clientHello(),
-      IOBuf::copyBuffer("token"));
+      folly::IOBuf::copyBuffer("token"));
   EXPECT_EQ(*state.group, NamedGroup::secp256r1);
 }
 
@@ -181,7 +182,7 @@ TEST_F(GetCookieStateTest, TestNoGroups) {
       {{CipherSuite::TLS_AES_128_GCM_SHA256}},
       {NamedGroup::x25519},
       chlo,
-      IOBuf::copyBuffer("token"));
+      folly::IOBuf::copyBuffer("token"));
   EXPECT_FALSE(state.group.has_value());
 }
 
@@ -195,7 +196,7 @@ TEST_F(GetCookieStateTest, TestNoKeyShare) {
           {{CipherSuite::TLS_AES_128_GCM_SHA256}},
           {NamedGroup::x25519},
           chlo,
-          IOBuf::copyBuffer("token")),
+          folly::IOBuf::copyBuffer("token")),
       std::runtime_error);
 }
 
@@ -206,7 +207,7 @@ TEST_F(GetCookieStateTest, TestGroupMismatch) {
       {{CipherSuite::TLS_AES_128_GCM_SHA256}},
       {},
       TestMessages::clientHello(),
-      IOBuf::copyBuffer("token"));
+      folly::IOBuf::copyBuffer("token"));
   EXPECT_FALSE(state.group.has_value());
 }
 } // namespace test

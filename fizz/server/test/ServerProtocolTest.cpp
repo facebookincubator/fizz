@@ -23,8 +23,6 @@
 #include <fizz/util/Workarounds.h>
 #include <folly/executors/ManualExecutor.h>
 
-using namespace folly;
-
 namespace fizz {
 namespace server {
 namespace test {
@@ -97,7 +95,7 @@ class ServerProtocolTest : public ProtocolTest<ServerTypes, Actions> {
         [](Actions& immediateActions) { return std::move(immediateActions); });
   }
 
-  static std::unique_ptr<IOBuf> getEncryptedHandshakeWrite(
+  static std::unique_ptr<folly::IOBuf> getEncryptedHandshakeWrite(
       EncryptedExtensions encryptedExt,
       CertificateMsg certificate,
       CertificateVerify verify,
@@ -109,7 +107,7 @@ class ServerProtocolTest : public ProtocolTest<ServerTypes, Actions> {
     return buf;
   }
 
-  static std::unique_ptr<IOBuf> getEncryptedHandshakeWrite(
+  static std::unique_ptr<folly::IOBuf> getEncryptedHandshakeWrite(
       EncryptedExtensions encryptedExt,
       CertificateRequest request,
       CertificateMsg certificate,
@@ -123,7 +121,7 @@ class ServerProtocolTest : public ProtocolTest<ServerTypes, Actions> {
     return buf;
   }
 
-  static std::unique_ptr<IOBuf> getEncryptedHandshakeWrite(
+  static std::unique_ptr<folly::IOBuf> getEncryptedHandshakeWrite(
       EncryptedExtensions encryptedExt,
       CompressedCertificate certificate,
       CertificateVerify verify,
@@ -135,7 +133,7 @@ class ServerProtocolTest : public ProtocolTest<ServerTypes, Actions> {
     return buf;
   }
 
-  static std::unique_ptr<IOBuf> getEncryptedHandshakeWrite(
+  static std::unique_ptr<folly::IOBuf> getEncryptedHandshakeWrite(
       EncryptedExtensions encryptedExt,
       Finished finished) {
     auto buf = encodeHandshake(std::move(encryptedExt));
@@ -196,12 +194,13 @@ class ServerProtocolTest : public ProtocolTest<ServerTypes, Actions> {
     acceptCookies();
     EXPECT_CALL(*mockCookieCipher_, _decrypt(_))
         .WillOnce(Invoke([](Buf& cookie) {
-          if (IOBufEqualTo()(cookie, IOBuf::copyBuffer("cookie"))) {
+          if (folly::IOBufEqualTo()(
+                  cookie, folly::IOBuf::copyBuffer("cookie"))) {
             CookieState cs;
             cs.version = TestProtocolVersion;
             cs.cipher = CipherSuite::TLS_AES_128_GCM_SHA256;
-            cs.chloHash = IOBuf::copyBuffer("chlohash");
-            cs.appToken = IOBuf::create(0);
+            cs.chloHash = folly::IOBuf::copyBuffer("chlohash");
+            cs.appToken = folly::IOBuf::create(0);
             return folly::Optional<CookieState>(std::move(cs));
           } else {
             return folly::Optional<CookieState>();
@@ -240,8 +239,8 @@ class ServerProtocolTest : public ProtocolTest<ServerTypes, Actions> {
     setMockHandshakeContext();
     state_.executor() = &executor_;
     state_.context() = context_;
-    state_.clientHandshakeSecret() = IOBuf::copyBuffer("clihandsec");
-    state_.exporterMasterSecret() = IOBuf::copyBuffer("exportermaster");
+    state_.clientHandshakeSecret() = folly::IOBuf::copyBuffer("clihandsec");
+    state_.exporterMasterSecret() = folly::IOBuf::copyBuffer("exportermaster");
     state_.version() = TestProtocolVersion;
     state_.cipher() = CipherSuite::TLS_AES_128_GCM_SHA256;
     state_.state() = StateEnum::ExpectingFinished;
@@ -258,8 +257,8 @@ class ServerProtocolTest : public ProtocolTest<ServerTypes, Actions> {
     setMockHandshakeContext();
     state_.executor() = &executor_;
     state_.context() = context_;
-    state_.clientHandshakeSecret() = IOBuf::copyBuffer("clihandsec");
-    state_.exporterMasterSecret() = IOBuf::copyBuffer("exportermaster");
+    state_.clientHandshakeSecret() = folly::IOBuf::copyBuffer("clihandsec");
+    state_.exporterMasterSecret() = folly::IOBuf::copyBuffer("exportermaster");
     state_.version() = TestProtocolVersion;
     state_.cipher() = CipherSuite::TLS_AES_128_GCM_SHA256;
     state_.state() = StateEnum::ExpectingCertificate;
@@ -277,8 +276,8 @@ class ServerProtocolTest : public ProtocolTest<ServerTypes, Actions> {
     setMockHandshakeContext();
     state_.executor() = &executor_;
     state_.context() = context_;
-    state_.clientHandshakeSecret() = IOBuf::copyBuffer("clihandsec");
-    state_.exporterMasterSecret() = IOBuf::copyBuffer("exportermaster");
+    state_.clientHandshakeSecret() = folly::IOBuf::copyBuffer("clihandsec");
+    state_.exporterMasterSecret() = folly::IOBuf::copyBuffer("exportermaster");
     state_.version() = TestProtocolVersion;
     state_.cipher() = CipherSuite::TLS_AES_128_GCM_SHA256;
     state_.state() = StateEnum::ExpectingCertificateVerify;
@@ -341,7 +340,7 @@ class ServerProtocolTest : public ProtocolTest<ServerTypes, Actions> {
     return testChlo;
   }
 
-  ManualExecutor executor_;
+  folly::ManualExecutor executor_;
   MockPlaintextReadRecordLayer* mockRead_;
   MockPlaintextWriteRecordLayer* mockWrite_;
   MockEncryptedReadRecordLayer* appRead_;
@@ -365,7 +364,7 @@ class ServerProtocolTest : public ProtocolTest<ServerTypes, Actions> {
 TEST_F(ServerProtocolTest, TestInvalidTransitionNoAlert) {
   auto actions =
       getActions(ServerStateMachine().processAppWrite(state_, AppWrite()));
-  expectError<FizzException>(actions, none, "invalid event");
+  expectError<FizzException>(actions, folly::none, "invalid event");
 }
 
 TEST_F(ServerProtocolTest, TestInvalidTransitionAlert) {
@@ -450,9 +449,9 @@ TEST_F(ServerProtocolTest, TestAppClose) {
         content.contentType = msg.type;
         content.encryptionLevel = appWrite_->getEncryptionLevel();
         EXPECT_EQ(msg.type, ContentType::alert);
-        EXPECT_TRUE(IOBufEqualTo()(
+        EXPECT_TRUE(folly::IOBufEqualTo()(
             msg.fragment, encode(Alert(AlertDescription::close_notify))));
-        content.data = IOBuf::copyBuffer("closenotify");
+        content.data = folly::IOBuf::copyBuffer("closenotify");
         return content;
       }));
   auto actions = ServerStateMachine().processAppClose(state_);
@@ -466,7 +465,7 @@ TEST_F(ServerProtocolTest, TestAppClose) {
   EXPECT_EQ(state_.writeRecordLayer().get(), nullptr);
 
   EXPECT_CALL(*appRead_, mockReadEvent()).WillOnce(InvokeWithoutArgs([]() {
-    Param p = CloseNotify(IOBuf::copyBuffer("ignoreddata"));
+    Param p = CloseNotify(folly::IOBuf::copyBuffer("ignoreddata"));
     return ReadRecordLayer::ReadResult<Param>::from(std::move(p));
   }));
 
@@ -482,7 +481,7 @@ TEST_F(ServerProtocolTest, TestAppClose) {
         processStateMutations(actions);
         auto eod = expectAction<EndOfData>(actions);
         EXPECT_NE(eod.postTlsData, nullptr);
-        auto expected = IOBuf::copyBuffer("ignoreddata");
+        auto expected = folly::IOBuf::copyBuffer("ignoreddata");
         EXPECT_EQ(eod.postTlsData->coalesce(), expected->coalesce());
         EXPECT_EQ(state_.state(), StateEnum::Closed);
       },
@@ -506,9 +505,9 @@ TEST_F(ServerProtocolTest, TestAppCloseImmediate) {
         content.contentType = msg.type;
         content.encryptionLevel = appWrite_->getEncryptionLevel();
         EXPECT_EQ(msg.type, ContentType::alert);
-        EXPECT_TRUE(IOBufEqualTo()(
+        EXPECT_TRUE(folly::IOBufEqualTo()(
             msg.fragment, encode(Alert(AlertDescription::close_notify))));
-        content.data = IOBuf::copyBuffer("closenotify");
+        content.data = folly::IOBuf::copyBuffer("closenotify");
         return content;
       }));
   auto actions = ServerStateMachine().processAppCloseImmediate(state_);
@@ -554,9 +553,9 @@ TEST_F(ServerProtocolTest, TestClientHelloFullHandshakeFlow) {
         EXPECT_CALL(*ret, generateKeyPair());
         EXPECT_CALL(*ret, generateSharedSecret(RangeMatches("keyshare")))
             .WillOnce(InvokeWithoutArgs(
-                []() { return IOBuf::copyBuffer("sharedsecret"); }));
+                []() { return folly::IOBuf::copyBuffer("sharedsecret"); }));
         EXPECT_CALL(*ret, getKeyShare()).WillOnce(InvokeWithoutArgs([]() {
-          return IOBuf::copyBuffer("servershare");
+          return folly::IOBuf::copyBuffer("servershare");
         }));
         return ret;
       }));
@@ -564,7 +563,8 @@ TEST_F(ServerProtocolTest, TestClientHelloFullHandshakeFlow) {
       .InSequence(contextSeq);
   EXPECT_CALL(*mockHandshakeContext_, getHandshakeContext())
       .InSequence(contextSeq)
-      .WillRepeatedly(Invoke([]() { return IOBuf::copyBuffer("chlo_shlo"); }));
+      .WillRepeatedly(
+          Invoke([]() { return folly::IOBuf::copyBuffer("chlo_shlo"); }));
   EXPECT_CALL(
       *mockKeyScheduler_, deriveHandshakeSecret(RangeMatches("sharedsecret")));
   EXPECT_CALL(*factory_, makeRandom()).WillOnce(Invoke([]() {
@@ -578,9 +578,9 @@ TEST_F(ServerProtocolTest, TestClientHelloFullHandshakeFlow) {
         content.contentType = msg.type;
         content.encryptionLevel = mockWrite_->getEncryptionLevel();
         EXPECT_EQ(msg.type, ContentType::handshake);
-        EXPECT_TRUE(IOBufEqualTo()(
+        EXPECT_TRUE(folly::IOBufEqualTo()(
             msg.fragment, encodeHandshake(TestMessages::serverHello())));
-        content.data = IOBuf::copyBuffer("writtenshlo");
+        content.data = folly::IOBuf::copyBuffer("writtenshlo");
         return content;
       }));
   EXPECT_CALL(
@@ -604,12 +604,14 @@ TEST_F(ServerProtocolTest, TestClientHelloFullHandshakeFlow) {
   EXPECT_CALL(*mockKeyScheduler_, getTrafficKey(RangeMatches("sht"), _, _))
       .WillOnce(InvokeWithoutArgs([]() {
         return TrafficKey{
-            IOBuf::copyBuffer("serverkey"), IOBuf::copyBuffer("serveriv")};
+            folly::IOBuf::copyBuffer("serverkey"),
+            folly::IOBuf::copyBuffer("serveriv")};
       }));
   EXPECT_CALL(*mockKeyScheduler_, getTrafficKey(RangeMatches("cht"), _, _))
       .WillOnce(InvokeWithoutArgs([]() {
         return TrafficKey{
-            IOBuf::copyBuffer("clientkey"), IOBuf::copyBuffer("clientiv")};
+            folly::IOBuf::copyBuffer("clientkey"),
+            folly::IOBuf::copyBuffer("clientiv")};
       }));
   EXPECT_CALL(*extensions_, getExtensions(_)).WillOnce(InvokeWithoutArgs([]() {
     Extension ext;
@@ -631,12 +633,12 @@ TEST_F(ServerProtocolTest, TestClientHelloFullHandshakeFlow) {
        {"serverkey", &waead},
        {"serverappkey", &appwaead}});
   expectEncryptedReadRecordLayerCreation(
-      &rrl, &raead, StringPiece("cht"), false);
+      &rrl, &raead, folly::StringPiece("cht"), false);
   Sequence recSeq;
   expectEncryptedWriteRecordLayerCreation(
       &wrl,
       &waead,
-      StringPiece("sht"),
+      folly::StringPiece("sht"),
       [](TLSMessage& msg, auto writeRecord) {
         EXPECT_EQ(msg.type, ContentType::handshake);
 
@@ -645,7 +647,7 @@ TEST_F(ServerProtocolTest, TestClientHelloFullHandshakeFlow) {
         ext.extension_type = ExtensionType::token_binding;
         ext.extension_data = folly::IOBuf::copyBuffer("someextension");
         modifiedEncryptedExt.extensions.push_back(std::move(ext));
-        EXPECT_TRUE(IOBufEqualTo()(
+        EXPECT_TRUE(folly::IOBufEqualTo()(
             msg.fragment,
             getEncryptedHandshakeWrite(
                 std::move(modifiedEncryptedExt),
@@ -660,7 +662,7 @@ TEST_F(ServerProtocolTest, TestClientHelloFullHandshakeFlow) {
       },
       &recSeq);
   expectEncryptedWriteRecordLayerCreation(
-      &appwrl, &appwaead, StringPiece("sat"), nullptr, &recSeq);
+      &appwrl, &appwaead, folly::StringPiece("sat"), nullptr, &recSeq);
   EXPECT_CALL(*mockHandshakeContext_, appendToTranscript(_))
       .InSequence(contextSeq);
   EXPECT_CALL(*certManager_, getCert(_, _, _, _))
@@ -684,28 +686,28 @@ TEST_F(ServerProtocolTest, TestClientHelloFullHandshakeFlow) {
       .InSequence(contextSeq);
   EXPECT_CALL(*mockHandshakeContext_, getHandshakeContext())
       .InSequence(contextSeq)
-      .WillRepeatedly(
-          Invoke([]() { return IOBuf::copyBuffer("chlo_shlo_ee_cert"); }));
+      .WillRepeatedly(Invoke(
+          []() { return folly::IOBuf::copyBuffer("chlo_shlo_ee_cert"); }));
   EXPECT_CALL(
       *cert_,
       sign(
           SignatureScheme::ecdsa_secp256r1_sha256,
           CertificateVerifyContext::Server,
           RangeMatches("chlo_shlo_ee_cert")))
-      .WillOnce(
-          InvokeWithoutArgs([]() { return IOBuf::copyBuffer("signature"); }));
+      .WillOnce(InvokeWithoutArgs(
+          []() { return folly::IOBuf::copyBuffer("signature"); }));
   EXPECT_CALL(*mockHandshakeContext_, appendToTranscript(_))
       .InSequence(contextSeq);
   EXPECT_CALL(*mockHandshakeContext_, getFinishedData(RangeMatches("sht")))
       .InSequence(contextSeq)
-      .WillRepeatedly(
-          InvokeWithoutArgs([]() { return IOBuf::copyBuffer("verifydata"); }));
+      .WillRepeatedly(InvokeWithoutArgs(
+          []() { return folly::IOBuf::copyBuffer("verifydata"); }));
   EXPECT_CALL(*mockHandshakeContext_, appendToTranscript(_))
       .InSequence(contextSeq);
   EXPECT_CALL(*mockHandshakeContext_, getHandshakeContext())
       .InSequence(contextSeq)
       .WillRepeatedly(InvokeWithoutArgs(
-          []() { return IOBuf::copyBuffer("chlo_shlo_ee_cert_sfin"); }));
+          []() { return folly::IOBuf::copyBuffer("chlo_shlo_ee_cert_sfin"); }));
   EXPECT_CALL(*mockKeyScheduler_, deriveMasterSecret());
   EXPECT_CALL(
       *mockKeyScheduler_,
@@ -730,8 +732,8 @@ TEST_F(ServerProtocolTest, TestClientHelloFullHandshakeFlow) {
   EXPECT_CALL(*mockKeyScheduler_, getTrafficKey(RangeMatches("sat"), _, _))
       .WillOnce(InvokeWithoutArgs([]() {
         return TrafficKey{
-            IOBuf::copyBuffer("serverappkey"),
-            IOBuf::copyBuffer("serverappiv")};
+            folly::IOBuf::copyBuffer("serverappkey"),
+            folly::IOBuf::copyBuffer("serverappiv")};
       }));
 
   auto actions =
@@ -743,20 +745,24 @@ TEST_F(ServerProtocolTest, TestClientHelloFullHandshakeFlow) {
 
   EXPECT_EQ(write.contents[0].encryptionLevel, EncryptionLevel::Plaintext);
   EXPECT_EQ(write.contents[0].contentType, ContentType::handshake);
-  EXPECT_TRUE(
-      IOBufEqualTo()(write.contents[0].data, IOBuf::copyBuffer("writtenshlo")));
+  EXPECT_TRUE(folly::IOBufEqualTo()(
+      write.contents[0].data, folly::IOBuf::copyBuffer("writtenshlo")));
 
   EXPECT_EQ(write.contents[1].encryptionLevel, EncryptionLevel::Handshake);
   EXPECT_EQ(write.contents[1].contentType, ContentType::handshake);
-  EXPECT_TRUE(
-      IOBufEqualTo()(write.contents[1].data, IOBuf::copyBuffer("handshake")));
+  EXPECT_TRUE(folly::IOBufEqualTo()(
+      write.contents[1].data, folly::IOBuf::copyBuffer("handshake")));
 
   expectSecret(
-      actions, HandshakeSecrets::ClientHandshakeTraffic, StringPiece("cht"));
+      actions,
+      HandshakeSecrets::ClientHandshakeTraffic,
+      folly::StringPiece("cht"));
   expectSecret(
-      actions, HandshakeSecrets::ServerHandshakeTraffic, StringPiece("sht"));
+      actions,
+      HandshakeSecrets::ServerHandshakeTraffic,
+      folly::StringPiece("sht"));
   expectSecret(
-      actions, AppTrafficSecrets::ServerAppTraffic, StringPiece("sat"));
+      actions, AppTrafficSecrets::ServerAppTraffic, folly::StringPiece("sat"));
   processStateMutations(actions);
   EXPECT_EQ(state_.state(), StateEnum::ExpectingFinished);
   EXPECT_EQ(state_.readRecordLayer().get(), rrl);
@@ -781,10 +787,10 @@ TEST_F(ServerProtocolTest, TestClientHelloFullHandshakeFlow) {
   EXPECT_EQ(state_.replayCacheResult(), ReplayCacheResult::NotChecked);
   EXPECT_FALSE(state_.clientClockSkew().has_value());
   EXPECT_EQ(*state_.alpn(), "h2");
-  EXPECT_TRUE(IOBufEqualTo()(
-      *state_.clientHandshakeSecret(), IOBuf::copyBuffer("cht")));
-  EXPECT_TRUE(IOBufEqualTo()(
-      *state_.exporterMasterSecret(), IOBuf::copyBuffer("expm")));
+  EXPECT_TRUE(folly::IOBufEqualTo()(
+      *state_.clientHandshakeSecret(), folly::IOBuf::copyBuffer("cht")));
+  EXPECT_TRUE(folly::IOBufEqualTo()(
+      *state_.exporterMasterSecret(), folly::IOBuf::copyBuffer("expm")));
   EXPECT_FALSE(state_.earlyExporterMasterSecret().has_value());
   ASSERT_TRUE(state_.clientRandom().hasValue());
   auto cr = state_.clientRandom().value();
@@ -815,9 +821,9 @@ TEST_F(ServerProtocolTest, TestClientHelloCompressedCertFlow) {
         EXPECT_CALL(*ret, generateKeyPair());
         EXPECT_CALL(*ret, generateSharedSecret(RangeMatches("keyshare")))
             .WillOnce(InvokeWithoutArgs(
-                []() { return IOBuf::copyBuffer("sharedsecret"); }));
+                []() { return folly::IOBuf::copyBuffer("sharedsecret"); }));
         EXPECT_CALL(*ret, getKeyShare()).WillOnce(InvokeWithoutArgs([]() {
-          return IOBuf::copyBuffer("servershare");
+          return folly::IOBuf::copyBuffer("servershare");
         }));
         return ret;
       }));
@@ -825,7 +831,8 @@ TEST_F(ServerProtocolTest, TestClientHelloCompressedCertFlow) {
       .InSequence(contextSeq);
   EXPECT_CALL(*mockHandshakeContext_, getHandshakeContext())
       .InSequence(contextSeq)
-      .WillRepeatedly(Invoke([]() { return IOBuf::copyBuffer("chlo_shlo"); }));
+      .WillRepeatedly(
+          Invoke([]() { return folly::IOBuf::copyBuffer("chlo_shlo"); }));
   EXPECT_CALL(
       *mockKeyScheduler_, deriveHandshakeSecret(RangeMatches("sharedsecret")));
   EXPECT_CALL(*factory_, makeRandom()).WillOnce(Invoke([]() {
@@ -839,9 +846,9 @@ TEST_F(ServerProtocolTest, TestClientHelloCompressedCertFlow) {
         content.contentType = msg.type;
         content.encryptionLevel = mockWrite_->getEncryptionLevel();
         EXPECT_EQ(msg.type, ContentType::handshake);
-        EXPECT_TRUE(IOBufEqualTo()(
+        EXPECT_TRUE(folly::IOBufEqualTo()(
             msg.fragment, encodeHandshake(TestMessages::serverHello())));
-        content.data = IOBuf::copyBuffer("writtenshlo");
+        content.data = folly::IOBuf::copyBuffer("writtenshlo");
         return content;
       }));
   EXPECT_CALL(
@@ -865,12 +872,14 @@ TEST_F(ServerProtocolTest, TestClientHelloCompressedCertFlow) {
   EXPECT_CALL(*mockKeyScheduler_, getTrafficKey(RangeMatches("sht"), _, _))
       .WillOnce(InvokeWithoutArgs([]() {
         return TrafficKey{
-            IOBuf::copyBuffer("serverkey"), IOBuf::copyBuffer("serveriv")};
+            folly::IOBuf::copyBuffer("serverkey"),
+            folly::IOBuf::copyBuffer("serveriv")};
       }));
   EXPECT_CALL(*mockKeyScheduler_, getTrafficKey(RangeMatches("cht"), _, _))
       .WillOnce(InvokeWithoutArgs([]() {
         return TrafficKey{
-            IOBuf::copyBuffer("clientkey"), IOBuf::copyBuffer("clientiv")};
+            folly::IOBuf::copyBuffer("clientkey"),
+            folly::IOBuf::copyBuffer("clientiv")};
       }));
   EXPECT_CALL(*extensions_, getExtensions(_)).WillOnce(InvokeWithoutArgs([]() {
     Extension ext;
@@ -892,12 +901,12 @@ TEST_F(ServerProtocolTest, TestClientHelloCompressedCertFlow) {
        {"serverkey", &waead},
        {"serverappkey", &appwaead}});
   expectEncryptedReadRecordLayerCreation(
-      &rrl, &raead, StringPiece("cht"), false);
+      &rrl, &raead, folly::StringPiece("cht"), false);
   Sequence recSeq;
   expectEncryptedWriteRecordLayerCreation(
       &wrl,
       &waead,
-      StringPiece("sht"),
+      folly::StringPiece("sht"),
       [](TLSMessage& msg, auto writeRecord) {
         EXPECT_EQ(msg.type, ContentType::handshake);
 
@@ -906,7 +915,7 @@ TEST_F(ServerProtocolTest, TestClientHelloCompressedCertFlow) {
         ext.extension_type = ExtensionType::token_binding;
         ext.extension_data = folly::IOBuf::copyBuffer("someextension");
         modifiedEncryptedExt.extensions.push_back(std::move(ext));
-        EXPECT_TRUE(IOBufEqualTo()(
+        EXPECT_TRUE(folly::IOBufEqualTo()(
             msg.fragment,
             getEncryptedHandshakeWrite(
                 std::move(modifiedEncryptedExt),
@@ -921,7 +930,7 @@ TEST_F(ServerProtocolTest, TestClientHelloCompressedCertFlow) {
       },
       &recSeq);
   expectEncryptedWriteRecordLayerCreation(
-      &appwrl, &appwaead, StringPiece("sat"), nullptr, &recSeq);
+      &appwrl, &appwaead, folly::StringPiece("sat"), nullptr, &recSeq);
   EXPECT_CALL(*mockHandshakeContext_, appendToTranscript(_))
       .InSequence(contextSeq);
   EXPECT_CALL(*certManager_, getCert(_, _, _, _))
@@ -949,28 +958,29 @@ TEST_F(ServerProtocolTest, TestClientHelloCompressedCertFlow) {
       .InSequence(contextSeq);
   EXPECT_CALL(*mockHandshakeContext_, getHandshakeContext())
       .InSequence(contextSeq)
-      .WillRepeatedly(
-          Invoke([]() { return IOBuf::copyBuffer("chlo_shlo_ee_compcert"); }));
+      .WillRepeatedly(Invoke(
+          []() { return folly::IOBuf::copyBuffer("chlo_shlo_ee_compcert"); }));
   EXPECT_CALL(
       *cert_,
       sign(
           SignatureScheme::ecdsa_secp256r1_sha256,
           CertificateVerifyContext::Server,
           RangeMatches("chlo_shlo_ee_compcert")))
-      .WillOnce(
-          InvokeWithoutArgs([]() { return IOBuf::copyBuffer("signature"); }));
+      .WillOnce(InvokeWithoutArgs(
+          []() { return folly::IOBuf::copyBuffer("signature"); }));
   EXPECT_CALL(*mockHandshakeContext_, appendToTranscript(_))
       .InSequence(contextSeq);
   EXPECT_CALL(*mockHandshakeContext_, getFinishedData(RangeMatches("sht")))
       .InSequence(contextSeq)
-      .WillRepeatedly(
-          InvokeWithoutArgs([]() { return IOBuf::copyBuffer("verifydata"); }));
+      .WillRepeatedly(InvokeWithoutArgs(
+          []() { return folly::IOBuf::copyBuffer("verifydata"); }));
   EXPECT_CALL(*mockHandshakeContext_, appendToTranscript(_))
       .InSequence(contextSeq);
   EXPECT_CALL(*mockHandshakeContext_, getHandshakeContext())
       .InSequence(contextSeq)
-      .WillRepeatedly(InvokeWithoutArgs(
-          []() { return IOBuf::copyBuffer("chlo_shlo_ee_compcert_sfin"); }));
+      .WillRepeatedly(InvokeWithoutArgs([]() {
+        return folly::IOBuf::copyBuffer("chlo_shlo_ee_compcert_sfin");
+      }));
   EXPECT_CALL(*mockKeyScheduler_, deriveMasterSecret());
   EXPECT_CALL(
       *mockKeyScheduler_,
@@ -995,8 +1005,8 @@ TEST_F(ServerProtocolTest, TestClientHelloCompressedCertFlow) {
   EXPECT_CALL(*mockKeyScheduler_, getTrafficKey(RangeMatches("sat"), _, _))
       .WillOnce(InvokeWithoutArgs([]() {
         return TrafficKey{
-            IOBuf::copyBuffer("serverappkey"),
-            IOBuf::copyBuffer("serverappiv")};
+            folly::IOBuf::copyBuffer("serverappkey"),
+            folly::IOBuf::copyBuffer("serverappiv")};
       }));
 
   auto chlo = TestMessages::clientHello();
@@ -1010,20 +1020,24 @@ TEST_F(ServerProtocolTest, TestClientHelloCompressedCertFlow) {
   ASSERT_EQ(write.contents.size(), 2);
   EXPECT_EQ(write.contents[0].encryptionLevel, EncryptionLevel::Plaintext);
   EXPECT_EQ(write.contents[0].contentType, ContentType::handshake);
-  EXPECT_TRUE(
-      IOBufEqualTo()(write.contents[0].data, IOBuf::copyBuffer("writtenshlo")));
+  EXPECT_TRUE(folly::IOBufEqualTo()(
+      write.contents[0].data, folly::IOBuf::copyBuffer("writtenshlo")));
 
   EXPECT_EQ(write.contents[1].encryptionLevel, EncryptionLevel::Handshake);
   EXPECT_EQ(write.contents[1].contentType, ContentType::handshake);
-  EXPECT_TRUE(
-      IOBufEqualTo()(write.contents[1].data, IOBuf::copyBuffer("handshake")));
+  EXPECT_TRUE(folly::IOBufEqualTo()(
+      write.contents[1].data, folly::IOBuf::copyBuffer("handshake")));
 
   expectSecret(
-      actions, HandshakeSecrets::ClientHandshakeTraffic, StringPiece("cht"));
+      actions,
+      HandshakeSecrets::ClientHandshakeTraffic,
+      folly::StringPiece("cht"));
   expectSecret(
-      actions, HandshakeSecrets::ServerHandshakeTraffic, StringPiece("sht"));
+      actions,
+      HandshakeSecrets::ServerHandshakeTraffic,
+      folly::StringPiece("sht"));
   expectSecret(
-      actions, AppTrafficSecrets::ServerAppTraffic, StringPiece("sat"));
+      actions, AppTrafficSecrets::ServerAppTraffic, folly::StringPiece("sat"));
   processStateMutations(actions);
   EXPECT_EQ(state_.state(), StateEnum::ExpectingFinished);
   EXPECT_EQ(state_.readRecordLayer().get(), rrl);
@@ -1043,10 +1057,10 @@ TEST_F(ServerProtocolTest, TestClientHelloCompressedCertFlow) {
   EXPECT_EQ(state_.replayCacheResult(), ReplayCacheResult::NotChecked);
   EXPECT_FALSE(state_.clientClockSkew().has_value());
   EXPECT_EQ(*state_.alpn(), "h2");
-  EXPECT_TRUE(IOBufEqualTo()(
-      *state_.clientHandshakeSecret(), IOBuf::copyBuffer("cht")));
-  EXPECT_TRUE(IOBufEqualTo()(
-      *state_.exporterMasterSecret(), IOBuf::copyBuffer("expm")));
+  EXPECT_TRUE(folly::IOBufEqualTo()(
+      *state_.clientHandshakeSecret(), folly::IOBuf::copyBuffer("cht")));
+  EXPECT_TRUE(folly::IOBufEqualTo()(
+      *state_.exporterMasterSecret(), folly::IOBuf::copyBuffer("expm")));
   EXPECT_FALSE(state_.earlyExporterMasterSecret().has_value());
 }
 
@@ -1079,7 +1093,8 @@ TEST_F(ServerProtocolTest, TestECHDecryptionSuccess) {
       .InSequence(contextSeq);
   EXPECT_CALL(*mockHandshakeContext_, getHandshakeContext())
       .InSequence(contextSeq)
-      .WillRepeatedly(Invoke([]() { return IOBuf::copyBuffer("chlo_shlo"); }));
+      .WillRepeatedly(
+          Invoke([]() { return folly::IOBuf::copyBuffer("chlo_shlo"); }));
   EXPECT_CALL(
       *mockKeyScheduler_, deriveHandshakeSecret(RangeMatches("sharedsecret")));
   EXPECT_CALL(*factory_, makeRandom()).WillOnce(Invoke([]() {
@@ -1093,9 +1108,9 @@ TEST_F(ServerProtocolTest, TestECHDecryptionSuccess) {
         content.contentType = msg.type;
         content.encryptionLevel = mockWrite_->getEncryptionLevel();
         EXPECT_EQ(msg.type, ContentType::handshake);
-        EXPECT_TRUE(IOBufEqualTo()(
+        EXPECT_TRUE(folly::IOBufEqualTo()(
             msg.fragment, encodeHandshake(TestMessages::serverHello())));
-        content.data = IOBuf::copyBuffer("writtenshlo");
+        content.data = folly::IOBuf::copyBuffer("writtenshlo");
         return content;
       }));
   EXPECT_CALL(
@@ -1119,12 +1134,14 @@ TEST_F(ServerProtocolTest, TestECHDecryptionSuccess) {
   EXPECT_CALL(*mockKeyScheduler_, getTrafficKey(RangeMatches("sht"), _, _))
       .WillOnce(InvokeWithoutArgs([]() {
         return TrafficKey{
-            IOBuf::copyBuffer("serverkey"), IOBuf::copyBuffer("serveriv")};
+            folly::IOBuf::copyBuffer("serverkey"),
+            folly::IOBuf::copyBuffer("serveriv")};
       }));
   EXPECT_CALL(*mockKeyScheduler_, getTrafficKey(RangeMatches("cht"), _, _))
       .WillOnce(InvokeWithoutArgs([]() {
         return TrafficKey{
-            IOBuf::copyBuffer("clientkey"), IOBuf::copyBuffer("clientiv")};
+            folly::IOBuf::copyBuffer("clientkey"),
+            folly::IOBuf::copyBuffer("clientiv")};
       }));
   EXPECT_CALL(*extensions_, getExtensions(_)).WillOnce(InvokeWithoutArgs([]() {
     Extension ext;
@@ -1157,12 +1174,12 @@ TEST_F(ServerProtocolTest, TestECHDecryptionSuccess) {
   }));
 
   expectEncryptedReadRecordLayerCreation(
-      &rrl, &raead, StringPiece("cht"), false);
+      &rrl, &raead, folly::StringPiece("cht"), false);
   Sequence recSeq;
   expectEncryptedWriteRecordLayerCreation(
       &wrl,
       &waead,
-      StringPiece("sht"),
+      folly::StringPiece("sht"),
       [](TLSMessage& msg, auto writeRecord) {
         EXPECT_EQ(msg.type, ContentType::handshake);
         auto modifiedEncryptedExt = TestMessages::encryptedExt();
@@ -1170,7 +1187,7 @@ TEST_F(ServerProtocolTest, TestECHDecryptionSuccess) {
         ext.extension_type = ExtensionType::token_binding;
         ext.extension_data = folly::IOBuf::copyBuffer("someextension");
         modifiedEncryptedExt.extensions.push_back(std::move(ext));
-        EXPECT_TRUE(IOBufEqualTo()(
+        EXPECT_TRUE(folly::IOBufEqualTo()(
             msg.fragment,
             getEncryptedHandshakeWrite(
                 std::move(modifiedEncryptedExt),
@@ -1186,7 +1203,7 @@ TEST_F(ServerProtocolTest, TestECHDecryptionSuccess) {
       },
       &recSeq);
   expectEncryptedWriteRecordLayerCreation(
-      &appwrl, &appwaead, StringPiece("sat"), nullptr, &recSeq);
+      &appwrl, &appwaead, folly::StringPiece("sat"), nullptr, &recSeq);
   EXPECT_CALL(*mockHandshakeContext_, appendToTranscript(_))
       .InSequence(contextSeq);
   EXPECT_CALL(*mockHandshakeContext_, appendToTranscript(_))
@@ -1212,28 +1229,28 @@ TEST_F(ServerProtocolTest, TestECHDecryptionSuccess) {
       .InSequence(contextSeq);
   EXPECT_CALL(*mockHandshakeContext_, getHandshakeContext())
       .InSequence(contextSeq)
-      .WillRepeatedly(
-          Invoke([]() { return IOBuf::copyBuffer("chlo_shlo_ee_cert"); }));
+      .WillRepeatedly(Invoke(
+          []() { return folly::IOBuf::copyBuffer("chlo_shlo_ee_cert"); }));
   EXPECT_CALL(
       *cert_,
       sign(
           SignatureScheme::ecdsa_secp256r1_sha256,
           CertificateVerifyContext::Server,
           RangeMatches("chlo_shlo_ee_cert")))
-      .WillOnce(
-          InvokeWithoutArgs([]() { return IOBuf::copyBuffer("signature"); }));
+      .WillOnce(InvokeWithoutArgs(
+          []() { return folly::IOBuf::copyBuffer("signature"); }));
   EXPECT_CALL(*mockHandshakeContext_, appendToTranscript(_))
       .InSequence(contextSeq);
   EXPECT_CALL(*mockHandshakeContext_, getFinishedData(RangeMatches("sht")))
       .InSequence(contextSeq)
-      .WillRepeatedly(
-          InvokeWithoutArgs([]() { return IOBuf::copyBuffer("verifydata"); }));
+      .WillRepeatedly(InvokeWithoutArgs(
+          []() { return folly::IOBuf::copyBuffer("verifydata"); }));
   EXPECT_CALL(*mockHandshakeContext_, appendToTranscript(_))
       .InSequence(contextSeq);
   EXPECT_CALL(*mockHandshakeContext_, getHandshakeContext())
       .InSequence(contextSeq)
       .WillRepeatedly(InvokeWithoutArgs(
-          []() { return IOBuf::copyBuffer("chlo_shlo_ee_cert_sfin"); }));
+          []() { return folly::IOBuf::copyBuffer("chlo_shlo_ee_cert_sfin"); }));
   EXPECT_CALL(*mockKeyScheduler_, deriveMasterSecret());
   EXPECT_CALL(
       *mockKeyScheduler_,
@@ -1258,8 +1275,8 @@ TEST_F(ServerProtocolTest, TestECHDecryptionSuccess) {
   EXPECT_CALL(*mockKeyScheduler_, getTrafficKey(RangeMatches("sat"), _, _))
       .WillOnce(InvokeWithoutArgs([]() {
         return TrafficKey{
-            IOBuf::copyBuffer("serverappkey"),
-            IOBuf::copyBuffer("serverappiv")};
+            folly::IOBuf::copyBuffer("serverappkey"),
+            folly::IOBuf::copyBuffer("serverappiv")};
       }));
 
   EXPECT_CALL(*factory_, makeKeyExchange(_))
@@ -1268,9 +1285,9 @@ TEST_F(ServerProtocolTest, TestECHDecryptionSuccess) {
         EXPECT_CALL(*ret, generateKeyPair());
         EXPECT_CALL(*ret, generateSharedSecret(RangeMatches("keyshare")))
             .WillOnce(InvokeWithoutArgs(
-                []() { return IOBuf::copyBuffer("sharedsecret"); }));
+                []() { return folly::IOBuf::copyBuffer("sharedsecret"); }));
         EXPECT_CALL(*ret, getKeyShare()).WillOnce(InvokeWithoutArgs([]() {
-          return IOBuf::copyBuffer("servershare");
+          return folly::IOBuf::copyBuffer("servershare");
         }));
         return ret;
       }));
@@ -1283,19 +1300,23 @@ TEST_F(ServerProtocolTest, TestECHDecryptionSuccess) {
   ASSERT_EQ(write.contents.size(), 2);
   EXPECT_EQ(write.contents[0].encryptionLevel, EncryptionLevel::Plaintext);
   EXPECT_EQ(write.contents[0].contentType, ContentType::handshake);
-  EXPECT_TRUE(
-      IOBufEqualTo()(write.contents[0].data, IOBuf::copyBuffer("writtenshlo")));
+  EXPECT_TRUE(folly::IOBufEqualTo()(
+      write.contents[0].data, folly::IOBuf::copyBuffer("writtenshlo")));
 
   EXPECT_EQ(write.contents[1].encryptionLevel, EncryptionLevel::Handshake);
   EXPECT_EQ(write.contents[1].contentType, ContentType::handshake);
-  EXPECT_TRUE(
-      IOBufEqualTo()(write.contents[1].data, IOBuf::copyBuffer("handshake")));
+  EXPECT_TRUE(folly::IOBufEqualTo()(
+      write.contents[1].data, folly::IOBuf::copyBuffer("handshake")));
   expectSecret(
-      actions, HandshakeSecrets::ClientHandshakeTraffic, StringPiece("cht"));
+      actions,
+      HandshakeSecrets::ClientHandshakeTraffic,
+      folly::StringPiece("cht"));
   expectSecret(
-      actions, HandshakeSecrets::ServerHandshakeTraffic, StringPiece("sht"));
+      actions,
+      HandshakeSecrets::ServerHandshakeTraffic,
+      folly::StringPiece("sht"));
   expectSecret(
-      actions, AppTrafficSecrets::ServerAppTraffic, StringPiece("sat"));
+      actions, AppTrafficSecrets::ServerAppTraffic, folly::StringPiece("sat"));
   processStateMutations(actions);
   EXPECT_EQ(state_.state(), StateEnum::ExpectingCertificate);
   EXPECT_EQ(state_.readRecordLayer().get(), rrl);
@@ -1314,10 +1335,10 @@ TEST_F(ServerProtocolTest, TestECHDecryptionSuccess) {
   EXPECT_EQ(state_.replayCacheResult(), ReplayCacheResult::NotChecked);
   EXPECT_FALSE(state_.clientClockSkew().has_value());
   EXPECT_EQ(*state_.alpn(), "h2");
-  EXPECT_TRUE(IOBufEqualTo()(
-      *state_.clientHandshakeSecret(), IOBuf::copyBuffer("cht")));
-  EXPECT_TRUE(IOBufEqualTo()(
-      *state_.exporterMasterSecret(), IOBuf::copyBuffer("expm")));
+  EXPECT_TRUE(folly::IOBufEqualTo()(
+      *state_.clientHandshakeSecret(), folly::IOBuf::copyBuffer("cht")));
+  EXPECT_TRUE(folly::IOBufEqualTo()(
+      *state_.exporterMasterSecret(), folly::IOBuf::copyBuffer("expm")));
   EXPECT_FALSE(state_.earlyExporterMasterSecret().has_value());
 }
 
@@ -1349,7 +1370,8 @@ TEST_F(ServerProtocolTest, TestECHDecryptionFailure) {
       .InSequence(contextSeq);
   EXPECT_CALL(*mockHandshakeContext_, getHandshakeContext())
       .InSequence(contextSeq)
-      .WillRepeatedly(Invoke([]() { return IOBuf::copyBuffer("chlo_shlo"); }));
+      .WillRepeatedly(
+          Invoke([]() { return folly::IOBuf::copyBuffer("chlo_shlo"); }));
   EXPECT_CALL(
       *mockKeyScheduler_, deriveHandshakeSecret(RangeMatches("sharedsecret")));
   EXPECT_CALL(*factory_, makeRandom()).WillOnce(Invoke([]() {
@@ -1363,9 +1385,9 @@ TEST_F(ServerProtocolTest, TestECHDecryptionFailure) {
         content.contentType = msg.type;
         content.encryptionLevel = mockWrite_->getEncryptionLevel();
         EXPECT_EQ(msg.type, ContentType::handshake);
-        EXPECT_TRUE(IOBufEqualTo()(
+        EXPECT_TRUE(folly::IOBufEqualTo()(
             msg.fragment, encodeHandshake(TestMessages::serverHello())));
-        content.data = IOBuf::copyBuffer("writtenshlo");
+        content.data = folly::IOBuf::copyBuffer("writtenshlo");
         return content;
       }));
   EXPECT_CALL(
@@ -1389,12 +1411,14 @@ TEST_F(ServerProtocolTest, TestECHDecryptionFailure) {
   EXPECT_CALL(*mockKeyScheduler_, getTrafficKey(RangeMatches("sht"), _, _))
       .WillOnce(InvokeWithoutArgs([]() {
         return TrafficKey{
-            IOBuf::copyBuffer("serverkey"), IOBuf::copyBuffer("serveriv")};
+            folly::IOBuf::copyBuffer("serverkey"),
+            folly::IOBuf::copyBuffer("serveriv")};
       }));
   EXPECT_CALL(*mockKeyScheduler_, getTrafficKey(RangeMatches("cht"), _, _))
       .WillOnce(InvokeWithoutArgs([]() {
         return TrafficKey{
-            IOBuf::copyBuffer("clientkey"), IOBuf::copyBuffer("clientiv")};
+            folly::IOBuf::copyBuffer("clientkey"),
+            folly::IOBuf::copyBuffer("clientiv")};
       }));
   EXPECT_CALL(*extensions_, getExtensions(_)).WillOnce(InvokeWithoutArgs([]() {
     Extension ext;
@@ -1427,12 +1451,12 @@ TEST_F(ServerProtocolTest, TestECHDecryptionFailure) {
   }));
 
   expectEncryptedReadRecordLayerCreation(
-      &rrl, &raead, StringPiece("cht"), false);
+      &rrl, &raead, folly::StringPiece("cht"), false);
   Sequence recSeq;
   expectEncryptedWriteRecordLayerCreation(
       &wrl,
       &waead,
-      StringPiece("sht"),
+      folly::StringPiece("sht"),
       [](TLSMessage& msg, auto writeRecord) {
         EXPECT_EQ(msg.type, ContentType::handshake);
         auto modifiedEncryptedExt = TestMessages::encryptedExt();
@@ -1440,7 +1464,7 @@ TEST_F(ServerProtocolTest, TestECHDecryptionFailure) {
         ext.extension_type = ExtensionType::token_binding;
         ext.extension_data = folly::IOBuf::copyBuffer("someextension");
         modifiedEncryptedExt.extensions.push_back(std::move(ext));
-        EXPECT_TRUE(IOBufEqualTo()(
+        EXPECT_TRUE(folly::IOBufEqualTo()(
             msg.fragment,
             getEncryptedHandshakeWrite(
                 std::move(modifiedEncryptedExt),
@@ -1456,7 +1480,7 @@ TEST_F(ServerProtocolTest, TestECHDecryptionFailure) {
       },
       &recSeq);
   expectEncryptedWriteRecordLayerCreation(
-      &appwrl, &appwaead, StringPiece("sat"), nullptr, &recSeq);
+      &appwrl, &appwaead, folly::StringPiece("sat"), nullptr, &recSeq);
   EXPECT_CALL(*mockHandshakeContext_, appendToTranscript(_))
       .InSequence(contextSeq);
   EXPECT_CALL(*mockHandshakeContext_, appendToTranscript(_))
@@ -1482,28 +1506,28 @@ TEST_F(ServerProtocolTest, TestECHDecryptionFailure) {
       .InSequence(contextSeq);
   EXPECT_CALL(*mockHandshakeContext_, getHandshakeContext())
       .InSequence(contextSeq)
-      .WillRepeatedly(
-          Invoke([]() { return IOBuf::copyBuffer("chlo_shlo_ee_cert"); }));
+      .WillRepeatedly(Invoke(
+          []() { return folly::IOBuf::copyBuffer("chlo_shlo_ee_cert"); }));
   EXPECT_CALL(
       *cert_,
       sign(
           SignatureScheme::ecdsa_secp256r1_sha256,
           CertificateVerifyContext::Server,
           RangeMatches("chlo_shlo_ee_cert")))
-      .WillOnce(
-          InvokeWithoutArgs([]() { return IOBuf::copyBuffer("signature"); }));
+      .WillOnce(InvokeWithoutArgs(
+          []() { return folly::IOBuf::copyBuffer("signature"); }));
   EXPECT_CALL(*mockHandshakeContext_, appendToTranscript(_))
       .InSequence(contextSeq);
   EXPECT_CALL(*mockHandshakeContext_, getFinishedData(RangeMatches("sht")))
       .InSequence(contextSeq)
-      .WillRepeatedly(
-          InvokeWithoutArgs([]() { return IOBuf::copyBuffer("verifydata"); }));
+      .WillRepeatedly(InvokeWithoutArgs(
+          []() { return folly::IOBuf::copyBuffer("verifydata"); }));
   EXPECT_CALL(*mockHandshakeContext_, appendToTranscript(_))
       .InSequence(contextSeq);
   EXPECT_CALL(*mockHandshakeContext_, getHandshakeContext())
       .InSequence(contextSeq)
       .WillRepeatedly(InvokeWithoutArgs(
-          []() { return IOBuf::copyBuffer("chlo_shlo_ee_cert_sfin"); }));
+          []() { return folly::IOBuf::copyBuffer("chlo_shlo_ee_cert_sfin"); }));
   EXPECT_CALL(*mockKeyScheduler_, deriveMasterSecret());
   EXPECT_CALL(
       *mockKeyScheduler_,
@@ -1528,8 +1552,8 @@ TEST_F(ServerProtocolTest, TestECHDecryptionFailure) {
   EXPECT_CALL(*mockKeyScheduler_, getTrafficKey(RangeMatches("sat"), _, _))
       .WillOnce(InvokeWithoutArgs([]() {
         return TrafficKey{
-            IOBuf::copyBuffer("serverappkey"),
-            IOBuf::copyBuffer("serverappiv")};
+            folly::IOBuf::copyBuffer("serverappkey"),
+            folly::IOBuf::copyBuffer("serverappiv")};
       }));
 
   EXPECT_CALL(*factory_, makeKeyExchange(_))
@@ -1538,9 +1562,9 @@ TEST_F(ServerProtocolTest, TestECHDecryptionFailure) {
         EXPECT_CALL(*ret, generateKeyPair());
         EXPECT_CALL(*ret, generateSharedSecret(RangeMatches("keyshare")))
             .WillOnce(InvokeWithoutArgs(
-                []() { return IOBuf::copyBuffer("sharedsecret"); }));
+                []() { return folly::IOBuf::copyBuffer("sharedsecret"); }));
         EXPECT_CALL(*ret, getKeyShare()).WillOnce(InvokeWithoutArgs([]() {
-          return IOBuf::copyBuffer("servershare");
+          return folly::IOBuf::copyBuffer("servershare");
         }));
         return ret;
       }));
@@ -1553,19 +1577,23 @@ TEST_F(ServerProtocolTest, TestECHDecryptionFailure) {
   ASSERT_EQ(write.contents.size(), 2);
   EXPECT_EQ(write.contents[0].encryptionLevel, EncryptionLevel::Plaintext);
   EXPECT_EQ(write.contents[0].contentType, ContentType::handshake);
-  EXPECT_TRUE(
-      IOBufEqualTo()(write.contents[0].data, IOBuf::copyBuffer("writtenshlo")));
+  EXPECT_TRUE(folly::IOBufEqualTo()(
+      write.contents[0].data, folly::IOBuf::copyBuffer("writtenshlo")));
 
   EXPECT_EQ(write.contents[1].encryptionLevel, EncryptionLevel::Handshake);
   EXPECT_EQ(write.contents[1].contentType, ContentType::handshake);
-  EXPECT_TRUE(
-      IOBufEqualTo()(write.contents[1].data, IOBuf::copyBuffer("handshake")));
+  EXPECT_TRUE(folly::IOBufEqualTo()(
+      write.contents[1].data, folly::IOBuf::copyBuffer("handshake")));
   expectSecret(
-      actions, HandshakeSecrets::ClientHandshakeTraffic, StringPiece("cht"));
+      actions,
+      HandshakeSecrets::ClientHandshakeTraffic,
+      folly::StringPiece("cht"));
   expectSecret(
-      actions, HandshakeSecrets::ServerHandshakeTraffic, StringPiece("sht"));
+      actions,
+      HandshakeSecrets::ServerHandshakeTraffic,
+      folly::StringPiece("sht"));
   expectSecret(
-      actions, AppTrafficSecrets::ServerAppTraffic, StringPiece("sat"));
+      actions, AppTrafficSecrets::ServerAppTraffic, folly::StringPiece("sat"));
   processStateMutations(actions);
   EXPECT_EQ(state_.state(), StateEnum::ExpectingCertificate);
   EXPECT_EQ(state_.readRecordLayer().get(), rrl);
@@ -1584,10 +1612,10 @@ TEST_F(ServerProtocolTest, TestECHDecryptionFailure) {
   EXPECT_EQ(state_.replayCacheResult(), ReplayCacheResult::NotChecked);
   EXPECT_FALSE(state_.clientClockSkew().has_value());
   EXPECT_EQ(*state_.alpn(), "h2");
-  EXPECT_TRUE(IOBufEqualTo()(
-      *state_.clientHandshakeSecret(), IOBuf::copyBuffer("cht")));
-  EXPECT_TRUE(IOBufEqualTo()(
-      *state_.exporterMasterSecret(), IOBuf::copyBuffer("expm")));
+  EXPECT_TRUE(folly::IOBufEqualTo()(
+      *state_.clientHandshakeSecret(), folly::IOBuf::copyBuffer("cht")));
+  EXPECT_TRUE(folly::IOBufEqualTo()(
+      *state_.exporterMasterSecret(), folly::IOBuf::copyBuffer("expm")));
   EXPECT_FALSE(state_.earlyExporterMasterSecret().has_value());
 }
 
@@ -1615,9 +1643,9 @@ TEST_F(ServerProtocolTest, TestClientHelloCertRequestFlow) {
         EXPECT_CALL(*ret, generateKeyPair());
         EXPECT_CALL(*ret, generateSharedSecret(RangeMatches("keyshare")))
             .WillOnce(InvokeWithoutArgs(
-                []() { return IOBuf::copyBuffer("sharedsecret"); }));
+                []() { return folly::IOBuf::copyBuffer("sharedsecret"); }));
         EXPECT_CALL(*ret, getKeyShare()).WillOnce(InvokeWithoutArgs([]() {
-          return IOBuf::copyBuffer("servershare");
+          return folly::IOBuf::copyBuffer("servershare");
         }));
         return ret;
       }));
@@ -1625,7 +1653,8 @@ TEST_F(ServerProtocolTest, TestClientHelloCertRequestFlow) {
       .InSequence(contextSeq);
   EXPECT_CALL(*mockHandshakeContext_, getHandshakeContext())
       .InSequence(contextSeq)
-      .WillRepeatedly(Invoke([]() { return IOBuf::copyBuffer("chlo_shlo"); }));
+      .WillRepeatedly(
+          Invoke([]() { return folly::IOBuf::copyBuffer("chlo_shlo"); }));
   EXPECT_CALL(
       *mockKeyScheduler_, deriveHandshakeSecret(RangeMatches("sharedsecret")));
   EXPECT_CALL(*factory_, makeRandom()).WillOnce(Invoke([]() {
@@ -1639,9 +1668,9 @@ TEST_F(ServerProtocolTest, TestClientHelloCertRequestFlow) {
         content.contentType = msg.type;
         content.encryptionLevel = mockWrite_->getEncryptionLevel();
         EXPECT_EQ(msg.type, ContentType::handshake);
-        EXPECT_TRUE(IOBufEqualTo()(
+        EXPECT_TRUE(folly::IOBufEqualTo()(
             msg.fragment, encodeHandshake(TestMessages::serverHello())));
-        content.data = IOBuf::copyBuffer("writtenshlo");
+        content.data = folly::IOBuf::copyBuffer("writtenshlo");
         return content;
       }));
   EXPECT_CALL(
@@ -1665,12 +1694,14 @@ TEST_F(ServerProtocolTest, TestClientHelloCertRequestFlow) {
   EXPECT_CALL(*mockKeyScheduler_, getTrafficKey(RangeMatches("sht"), _, _))
       .WillOnce(InvokeWithoutArgs([]() {
         return TrafficKey{
-            IOBuf::copyBuffer("serverkey"), IOBuf::copyBuffer("serveriv")};
+            folly::IOBuf::copyBuffer("serverkey"),
+            folly::IOBuf::copyBuffer("serveriv")};
       }));
   EXPECT_CALL(*mockKeyScheduler_, getTrafficKey(RangeMatches("cht"), _, _))
       .WillOnce(InvokeWithoutArgs([]() {
         return TrafficKey{
-            IOBuf::copyBuffer("clientkey"), IOBuf::copyBuffer("clientiv")};
+            folly::IOBuf::copyBuffer("clientkey"),
+            folly::IOBuf::copyBuffer("clientiv")};
       }));
   EXPECT_CALL(*extensions_, getExtensions(_)).WillOnce(InvokeWithoutArgs([]() {
     Extension ext;
@@ -1692,12 +1723,12 @@ TEST_F(ServerProtocolTest, TestClientHelloCertRequestFlow) {
        {"serverkey", &waead},
        {"serverappkey", &appwaead}});
   expectEncryptedReadRecordLayerCreation(
-      &rrl, &raead, StringPiece("cht"), false);
+      &rrl, &raead, folly::StringPiece("cht"), false);
   Sequence recSeq;
   expectEncryptedWriteRecordLayerCreation(
       &wrl,
       &waead,
-      StringPiece("sht"),
+      folly::StringPiece("sht"),
       [](TLSMessage& msg, auto writeRecord) {
         EXPECT_EQ(msg.type, ContentType::handshake);
         auto modifiedEncryptedExt = TestMessages::encryptedExt();
@@ -1705,7 +1736,7 @@ TEST_F(ServerProtocolTest, TestClientHelloCertRequestFlow) {
         ext.extension_type = ExtensionType::token_binding;
         ext.extension_data = folly::IOBuf::copyBuffer("someextension");
         modifiedEncryptedExt.extensions.push_back(std::move(ext));
-        EXPECT_TRUE(IOBufEqualTo()(
+        EXPECT_TRUE(folly::IOBufEqualTo()(
             msg.fragment,
             getEncryptedHandshakeWrite(
                 std::move(modifiedEncryptedExt),
@@ -1721,7 +1752,7 @@ TEST_F(ServerProtocolTest, TestClientHelloCertRequestFlow) {
       },
       &recSeq);
   expectEncryptedWriteRecordLayerCreation(
-      &appwrl, &appwaead, StringPiece("sat"), nullptr, &recSeq);
+      &appwrl, &appwaead, folly::StringPiece("sat"), nullptr, &recSeq);
   EXPECT_CALL(*mockHandshakeContext_, appendToTranscript(_))
       .InSequence(contextSeq);
   EXPECT_CALL(*mockHandshakeContext_, appendToTranscript(_))
@@ -1747,28 +1778,28 @@ TEST_F(ServerProtocolTest, TestClientHelloCertRequestFlow) {
       .InSequence(contextSeq);
   EXPECT_CALL(*mockHandshakeContext_, getHandshakeContext())
       .InSequence(contextSeq)
-      .WillRepeatedly(
-          Invoke([]() { return IOBuf::copyBuffer("chlo_shlo_ee_cert"); }));
+      .WillRepeatedly(Invoke(
+          []() { return folly::IOBuf::copyBuffer("chlo_shlo_ee_cert"); }));
   EXPECT_CALL(
       *cert_,
       sign(
           SignatureScheme::ecdsa_secp256r1_sha256,
           CertificateVerifyContext::Server,
           RangeMatches("chlo_shlo_ee_cert")))
-      .WillOnce(
-          InvokeWithoutArgs([]() { return IOBuf::copyBuffer("signature"); }));
+      .WillOnce(InvokeWithoutArgs(
+          []() { return folly::IOBuf::copyBuffer("signature"); }));
   EXPECT_CALL(*mockHandshakeContext_, appendToTranscript(_))
       .InSequence(contextSeq);
   EXPECT_CALL(*mockHandshakeContext_, getFinishedData(RangeMatches("sht")))
       .InSequence(contextSeq)
-      .WillRepeatedly(
-          InvokeWithoutArgs([]() { return IOBuf::copyBuffer("verifydata"); }));
+      .WillRepeatedly(InvokeWithoutArgs(
+          []() { return folly::IOBuf::copyBuffer("verifydata"); }));
   EXPECT_CALL(*mockHandshakeContext_, appendToTranscript(_))
       .InSequence(contextSeq);
   EXPECT_CALL(*mockHandshakeContext_, getHandshakeContext())
       .InSequence(contextSeq)
       .WillRepeatedly(InvokeWithoutArgs(
-          []() { return IOBuf::copyBuffer("chlo_shlo_ee_cert_sfin"); }));
+          []() { return folly::IOBuf::copyBuffer("chlo_shlo_ee_cert_sfin"); }));
   EXPECT_CALL(*mockKeyScheduler_, deriveMasterSecret());
   EXPECT_CALL(
       *mockKeyScheduler_,
@@ -1793,8 +1824,8 @@ TEST_F(ServerProtocolTest, TestClientHelloCertRequestFlow) {
   EXPECT_CALL(*mockKeyScheduler_, getTrafficKey(RangeMatches("sat"), _, _))
       .WillOnce(InvokeWithoutArgs([]() {
         return TrafficKey{
-            IOBuf::copyBuffer("serverappkey"),
-            IOBuf::copyBuffer("serverappiv")};
+            folly::IOBuf::copyBuffer("serverappkey"),
+            folly::IOBuf::copyBuffer("serverappiv")};
       }));
 
   auto actions =
@@ -1805,19 +1836,23 @@ TEST_F(ServerProtocolTest, TestClientHelloCertRequestFlow) {
   ASSERT_EQ(write.contents.size(), 2);
   EXPECT_EQ(write.contents[0].encryptionLevel, EncryptionLevel::Plaintext);
   EXPECT_EQ(write.contents[0].contentType, ContentType::handshake);
-  EXPECT_TRUE(
-      IOBufEqualTo()(write.contents[0].data, IOBuf::copyBuffer("writtenshlo")));
+  EXPECT_TRUE(folly::IOBufEqualTo()(
+      write.contents[0].data, folly::IOBuf::copyBuffer("writtenshlo")));
 
   EXPECT_EQ(write.contents[1].encryptionLevel, EncryptionLevel::Handshake);
   EXPECT_EQ(write.contents[1].contentType, ContentType::handshake);
-  EXPECT_TRUE(
-      IOBufEqualTo()(write.contents[1].data, IOBuf::copyBuffer("handshake")));
+  EXPECT_TRUE(folly::IOBufEqualTo()(
+      write.contents[1].data, folly::IOBuf::copyBuffer("handshake")));
   expectSecret(
-      actions, HandshakeSecrets::ClientHandshakeTraffic, StringPiece("cht"));
+      actions,
+      HandshakeSecrets::ClientHandshakeTraffic,
+      folly::StringPiece("cht"));
   expectSecret(
-      actions, HandshakeSecrets::ServerHandshakeTraffic, StringPiece("sht"));
+      actions,
+      HandshakeSecrets::ServerHandshakeTraffic,
+      folly::StringPiece("sht"));
   expectSecret(
-      actions, AppTrafficSecrets::ServerAppTraffic, StringPiece("sat"));
+      actions, AppTrafficSecrets::ServerAppTraffic, folly::StringPiece("sat"));
   processStateMutations(actions);
   EXPECT_EQ(state_.state(), StateEnum::ExpectingCertificate);
   EXPECT_EQ(state_.readRecordLayer().get(), rrl);
@@ -1836,10 +1871,10 @@ TEST_F(ServerProtocolTest, TestClientHelloCertRequestFlow) {
   EXPECT_EQ(state_.replayCacheResult(), ReplayCacheResult::NotChecked);
   EXPECT_FALSE(state_.clientClockSkew().has_value());
   EXPECT_EQ(*state_.alpn(), "h2");
-  EXPECT_TRUE(IOBufEqualTo()(
-      *state_.clientHandshakeSecret(), IOBuf::copyBuffer("cht")));
-  EXPECT_TRUE(IOBufEqualTo()(
-      *state_.exporterMasterSecret(), IOBuf::copyBuffer("expm")));
+  EXPECT_TRUE(folly::IOBufEqualTo()(
+      *state_.clientHandshakeSecret(), folly::IOBuf::copyBuffer("cht")));
+  EXPECT_TRUE(folly::IOBufEqualTo()(
+      *state_.exporterMasterSecret(), folly::IOBuf::copyBuffer("expm")));
   EXPECT_FALSE(state_.earlyExporterMasterSecret().has_value());
 }
 
@@ -1874,8 +1909,8 @@ TEST_F(ServerProtocolTest, TestClientHelloPskFlow) {
       .InSequence(contextSeq);
   EXPECT_CALL(*mockHandshakeContext_, getFinishedData(RangeMatches("bdr")))
       .InSequence(contextSeq)
-      .WillRepeatedly(
-          InvokeWithoutArgs([]() { return IOBuf::copyBuffer("verifydata"); }));
+      .WillRepeatedly(InvokeWithoutArgs(
+          []() { return folly::IOBuf::copyBuffer("verifydata"); }));
   EXPECT_CALL(
       *mockHandshakeContext_, appendToTranscript(BufMatches("helloencoding")))
       .InSequence(contextSeq);
@@ -1891,7 +1926,8 @@ TEST_F(ServerProtocolTest, TestClientHelloPskFlow) {
       .InSequence(contextSeq);
   EXPECT_CALL(*mockHandshakeContext_, getHandshakeContext())
       .InSequence(contextSeq)
-      .WillRepeatedly(Invoke([]() { return IOBuf::copyBuffer("chlo_shlo"); }));
+      .WillRepeatedly(
+          Invoke([]() { return folly::IOBuf::copyBuffer("chlo_shlo"); }));
   EXPECT_CALL(*mockKeyScheduler_, deriveHandshakeSecret());
   EXPECT_CALL(*factory_, makeRandom()).WillOnce(Invoke([]() {
     Random random;
@@ -1909,9 +1945,9 @@ TEST_F(ServerProtocolTest, TestClientHelloPskFlow) {
         ServerPresharedKey serverPsk;
         serverPsk.selected_identity = 0;
         shlo.extensions.push_back(encodeExtension(std::move(serverPsk)));
-        EXPECT_TRUE(
-            IOBufEqualTo()(msg.fragment, encodeHandshake(std::move(shlo))));
-        content.data = IOBuf::copyBuffer("writtenshlo");
+        EXPECT_TRUE(folly::IOBufEqualTo()(
+            msg.fragment, encodeHandshake(std::move(shlo))));
+        content.data = folly::IOBuf::copyBuffer("writtenshlo");
         return content;
       }));
   EXPECT_CALL(
@@ -1935,12 +1971,14 @@ TEST_F(ServerProtocolTest, TestClientHelloPskFlow) {
   EXPECT_CALL(*mockKeyScheduler_, getTrafficKey(RangeMatches("sht"), _, _))
       .WillOnce(InvokeWithoutArgs([]() {
         return TrafficKey{
-            IOBuf::copyBuffer("serverkey"), IOBuf::copyBuffer("serveriv")};
+            folly::IOBuf::copyBuffer("serverkey"),
+            folly::IOBuf::copyBuffer("serveriv")};
       }));
   EXPECT_CALL(*mockKeyScheduler_, getTrafficKey(RangeMatches("cht"), _, _))
       .WillOnce(InvokeWithoutArgs([]() {
         return TrafficKey{
-            IOBuf::copyBuffer("clientkey"), IOBuf::copyBuffer("clientiv")};
+            folly::IOBuf::copyBuffer("clientkey"),
+            folly::IOBuf::copyBuffer("clientiv")};
       }));
   MockAead* raead;
   MockAead* waead;
@@ -1953,15 +1991,15 @@ TEST_F(ServerProtocolTest, TestClientHelloPskFlow) {
        {"serverkey", &waead},
        {"serverappkey", &appwaead}});
   expectEncryptedReadRecordLayerCreation(
-      &rrl, &raead, StringPiece("cht"), false);
+      &rrl, &raead, folly::StringPiece("cht"), false);
   Sequence recSeq;
   expectEncryptedWriteRecordLayerCreation(
       &wrl,
       &waead,
-      StringPiece("sht"),
+      folly::StringPiece("sht"),
       [](TLSMessage& msg, auto writeRecord) {
         EXPECT_EQ(msg.type, ContentType::handshake);
-        EXPECT_TRUE(IOBufEqualTo()(
+        EXPECT_TRUE(folly::IOBufEqualTo()(
             msg.fragment,
             getEncryptedHandshakeWrite(
                 TestMessages::encryptedExt(), TestMessages::finished())));
@@ -1973,19 +2011,19 @@ TEST_F(ServerProtocolTest, TestClientHelloPskFlow) {
       },
       &recSeq);
   expectEncryptedWriteRecordLayerCreation(
-      &appwrl, &appwaead, StringPiece("sat"), nullptr, &recSeq);
+      &appwrl, &appwaead, folly::StringPiece("sat"), nullptr, &recSeq);
   EXPECT_CALL(*mockHandshakeContext_, appendToTranscript(_))
       .InSequence(contextSeq);
   EXPECT_CALL(*mockHandshakeContext_, getFinishedData(RangeMatches("sht")))
       .InSequence(contextSeq)
-      .WillRepeatedly(
-          InvokeWithoutArgs([]() { return IOBuf::copyBuffer("verifydata"); }));
+      .WillRepeatedly(InvokeWithoutArgs(
+          []() { return folly::IOBuf::copyBuffer("verifydata"); }));
   EXPECT_CALL(*mockHandshakeContext_, appendToTranscript(_))
       .InSequence(contextSeq);
   EXPECT_CALL(*mockHandshakeContext_, getHandshakeContext())
       .InSequence(contextSeq)
       .WillRepeatedly(InvokeWithoutArgs(
-          []() { return IOBuf::copyBuffer("chlo_shlo_sfin"); }));
+          []() { return folly::IOBuf::copyBuffer("chlo_shlo_sfin"); }));
   EXPECT_CALL(*mockKeyScheduler_, deriveMasterSecret());
   EXPECT_CALL(
       *mockKeyScheduler_,
@@ -2008,8 +2046,8 @@ TEST_F(ServerProtocolTest, TestClientHelloPskFlow) {
   EXPECT_CALL(*mockKeyScheduler_, getTrafficKey(RangeMatches("sat"), _, _))
       .WillOnce(InvokeWithoutArgs([]() {
         return TrafficKey{
-            IOBuf::copyBuffer("serverappkey"),
-            IOBuf::copyBuffer("serverappiv")};
+            folly::IOBuf::copyBuffer("serverappkey"),
+            folly::IOBuf::copyBuffer("serverappiv")};
       }));
 
   auto actions =
@@ -2020,19 +2058,23 @@ TEST_F(ServerProtocolTest, TestClientHelloPskFlow) {
   ASSERT_EQ(write.contents.size(), 2);
   EXPECT_EQ(write.contents[0].encryptionLevel, EncryptionLevel::Plaintext);
   EXPECT_EQ(write.contents[0].contentType, ContentType::handshake);
-  EXPECT_TRUE(
-      IOBufEqualTo()(write.contents[0].data, IOBuf::copyBuffer("writtenshlo")));
+  EXPECT_TRUE(folly::IOBufEqualTo()(
+      write.contents[0].data, folly::IOBuf::copyBuffer("writtenshlo")));
   EXPECT_EQ(write.contents[1].encryptionLevel, EncryptionLevel::Handshake);
   EXPECT_EQ(write.contents[1].contentType, ContentType::handshake);
-  EXPECT_TRUE(
-      IOBufEqualTo()(write.contents[1].data, IOBuf::copyBuffer("handshake")));
+  EXPECT_TRUE(folly::IOBufEqualTo()(
+      write.contents[1].data, folly::IOBuf::copyBuffer("handshake")));
 
   expectSecret(
-      actions, HandshakeSecrets::ClientHandshakeTraffic, StringPiece("cht"));
+      actions,
+      HandshakeSecrets::ClientHandshakeTraffic,
+      folly::StringPiece("cht"));
   expectSecret(
-      actions, HandshakeSecrets::ServerHandshakeTraffic, StringPiece("sht"));
+      actions,
+      HandshakeSecrets::ServerHandshakeTraffic,
+      folly::StringPiece("sht"));
   expectSecret(
-      actions, AppTrafficSecrets::ServerAppTraffic, StringPiece("sat"));
+      actions, AppTrafficSecrets::ServerAppTraffic, folly::StringPiece("sat"));
   processStateMutations(actions);
   EXPECT_EQ(state_.state(), StateEnum::ExpectingFinished);
   EXPECT_EQ(state_.readRecordLayer().get(), rrl);
@@ -2057,10 +2099,10 @@ TEST_F(ServerProtocolTest, TestClientHelloPskFlow) {
   EXPECT_EQ(state_.replayCacheResult(), ReplayCacheResult::NotChecked);
   EXPECT_TRUE(state_.clientClockSkew().has_value());
   EXPECT_EQ(*state_.alpn(), "h2");
-  EXPECT_TRUE(IOBufEqualTo()(
-      *state_.clientHandshakeSecret(), IOBuf::copyBuffer("cht")));
-  EXPECT_TRUE(IOBufEqualTo()(
-      *state_.exporterMasterSecret(), IOBuf::copyBuffer("expm")));
+  EXPECT_TRUE(folly::IOBufEqualTo()(
+      *state_.clientHandshakeSecret(), folly::IOBuf::copyBuffer("cht")));
+  EXPECT_TRUE(folly::IOBufEqualTo()(
+      *state_.exporterMasterSecret(), folly::IOBuf::copyBuffer("expm")));
   EXPECT_FALSE(state_.earlyExporterMasterSecret().has_value());
 }
 
@@ -2095,8 +2137,8 @@ TEST_F(ServerProtocolTest, TestClientHelloPskDheFlow) {
       .InSequence(contextSeq);
   EXPECT_CALL(*mockHandshakeContext_, getFinishedData(RangeMatches("bdr")))
       .InSequence(contextSeq)
-      .WillRepeatedly(
-          InvokeWithoutArgs([]() { return IOBuf::copyBuffer("verifydata"); }));
+      .WillRepeatedly(InvokeWithoutArgs(
+          []() { return folly::IOBuf::copyBuffer("verifydata"); }));
   EXPECT_CALL(
       *mockHandshakeContext_, appendToTranscript(BufMatches("helloencoding")))
       .InSequence(contextSeq);
@@ -2114,9 +2156,9 @@ TEST_F(ServerProtocolTest, TestClientHelloPskDheFlow) {
         EXPECT_CALL(*ret, generateKeyPair());
         EXPECT_CALL(*ret, generateSharedSecret(RangeMatches("keyshare")))
             .WillOnce(InvokeWithoutArgs(
-                []() { return IOBuf::copyBuffer("sharedsecret"); }));
+                []() { return folly::IOBuf::copyBuffer("sharedsecret"); }));
         EXPECT_CALL(*ret, getKeyShare()).WillOnce(InvokeWithoutArgs([]() {
-          return IOBuf::copyBuffer("servershare");
+          return folly::IOBuf::copyBuffer("servershare");
         }));
         return ret;
       }));
@@ -2124,7 +2166,8 @@ TEST_F(ServerProtocolTest, TestClientHelloPskDheFlow) {
       .InSequence(contextSeq);
   EXPECT_CALL(*mockHandshakeContext_, getHandshakeContext())
       .InSequence(contextSeq)
-      .WillRepeatedly(Invoke([]() { return IOBuf::copyBuffer("chlo_shlo"); }));
+      .WillRepeatedly(
+          Invoke([]() { return folly::IOBuf::copyBuffer("chlo_shlo"); }));
   EXPECT_CALL(
       *mockKeyScheduler_, deriveHandshakeSecret(RangeMatches("sharedsecret")));
   EXPECT_CALL(*factory_, makeRandom()).WillOnce(Invoke([]() {
@@ -2139,12 +2182,12 @@ TEST_F(ServerProtocolTest, TestClientHelloPskDheFlow) {
         ServerPresharedKey serverPsk;
         serverPsk.selected_identity = 0;
         shlo.extensions.push_back(encodeExtension(std::move(serverPsk)));
-        EXPECT_TRUE(
-            IOBufEqualTo()(msg.fragment, encodeHandshake(std::move(shlo))));
+        EXPECT_TRUE(folly::IOBufEqualTo()(
+            msg.fragment, encodeHandshake(std::move(shlo))));
         TLSContent content;
         content.contentType = msg.type;
         content.encryptionLevel = mockWrite_->getEncryptionLevel();
-        content.data = IOBuf::copyBuffer("writtenshlo");
+        content.data = folly::IOBuf::copyBuffer("writtenshlo");
         return content;
       }));
   EXPECT_CALL(
@@ -2168,12 +2211,14 @@ TEST_F(ServerProtocolTest, TestClientHelloPskDheFlow) {
   EXPECT_CALL(*mockKeyScheduler_, getTrafficKey(RangeMatches("sht"), _, _))
       .WillOnce(InvokeWithoutArgs([]() {
         return TrafficKey{
-            IOBuf::copyBuffer("serverkey"), IOBuf::copyBuffer("serveriv")};
+            folly::IOBuf::copyBuffer("serverkey"),
+            folly::IOBuf::copyBuffer("serveriv")};
       }));
   EXPECT_CALL(*mockKeyScheduler_, getTrafficKey(RangeMatches("cht"), _, _))
       .WillOnce(InvokeWithoutArgs([]() {
         return TrafficKey{
-            IOBuf::copyBuffer("clientkey"), IOBuf::copyBuffer("clientiv")};
+            folly::IOBuf::copyBuffer("clientkey"),
+            folly::IOBuf::copyBuffer("clientiv")};
       }));
   MockAead* raead;
   MockAead* waead;
@@ -2186,15 +2231,15 @@ TEST_F(ServerProtocolTest, TestClientHelloPskDheFlow) {
        {"serverkey", &waead},
        {"serverappkey", &appwaead}});
   expectEncryptedReadRecordLayerCreation(
-      &rrl, &raead, StringPiece("cht"), false);
+      &rrl, &raead, folly::StringPiece("cht"), false);
   Sequence recSeq;
   expectEncryptedWriteRecordLayerCreation(
       &wrl,
       &waead,
-      StringPiece("sht"),
+      folly::StringPiece("sht"),
       [](TLSMessage& msg, auto writeRecord) {
         EXPECT_EQ(msg.type, ContentType::handshake);
-        EXPECT_TRUE(IOBufEqualTo()(
+        EXPECT_TRUE(folly::IOBufEqualTo()(
             msg.fragment,
             getEncryptedHandshakeWrite(
                 TestMessages::encryptedExt(), TestMessages::finished())));
@@ -2206,19 +2251,19 @@ TEST_F(ServerProtocolTest, TestClientHelloPskDheFlow) {
       },
       &recSeq);
   expectEncryptedWriteRecordLayerCreation(
-      &appwrl, &appwaead, StringPiece("sat"), nullptr, &recSeq);
+      &appwrl, &appwaead, folly::StringPiece("sat"), nullptr, &recSeq);
   EXPECT_CALL(*mockHandshakeContext_, appendToTranscript(_))
       .InSequence(contextSeq);
   EXPECT_CALL(*mockHandshakeContext_, getFinishedData(RangeMatches("sht")))
       .InSequence(contextSeq)
-      .WillRepeatedly(
-          InvokeWithoutArgs([]() { return IOBuf::copyBuffer("verifydata"); }));
+      .WillRepeatedly(InvokeWithoutArgs(
+          []() { return folly::IOBuf::copyBuffer("verifydata"); }));
   EXPECT_CALL(*mockHandshakeContext_, appendToTranscript(_))
       .InSequence(contextSeq);
   EXPECT_CALL(*mockHandshakeContext_, getHandshakeContext())
       .InSequence(contextSeq)
       .WillRepeatedly(InvokeWithoutArgs(
-          []() { return IOBuf::copyBuffer("chlo_shlo_sfin"); }));
+          []() { return folly::IOBuf::copyBuffer("chlo_shlo_sfin"); }));
   EXPECT_CALL(*mockKeyScheduler_, deriveMasterSecret());
   EXPECT_CALL(
       *mockKeyScheduler_,
@@ -2241,8 +2286,8 @@ TEST_F(ServerProtocolTest, TestClientHelloPskDheFlow) {
   EXPECT_CALL(*mockKeyScheduler_, getTrafficKey(RangeMatches("sat"), _, _))
       .WillOnce(InvokeWithoutArgs([]() {
         return TrafficKey{
-            IOBuf::copyBuffer("serverappkey"),
-            IOBuf::copyBuffer("serverappiv")};
+            folly::IOBuf::copyBuffer("serverappkey"),
+            folly::IOBuf::copyBuffer("serverappiv")};
       }));
 
   auto actions =
@@ -2253,19 +2298,23 @@ TEST_F(ServerProtocolTest, TestClientHelloPskDheFlow) {
   ASSERT_EQ(write.contents.size(), 2);
   EXPECT_EQ(write.contents[0].encryptionLevel, EncryptionLevel::Plaintext);
   EXPECT_EQ(write.contents[0].contentType, ContentType::handshake);
-  EXPECT_TRUE(
-      IOBufEqualTo()(write.contents[0].data, IOBuf::copyBuffer("writtenshlo")));
+  EXPECT_TRUE(folly::IOBufEqualTo()(
+      write.contents[0].data, folly::IOBuf::copyBuffer("writtenshlo")));
 
   EXPECT_EQ(write.contents[1].encryptionLevel, EncryptionLevel::Handshake);
   EXPECT_EQ(write.contents[1].contentType, ContentType::handshake);
-  EXPECT_TRUE(
-      IOBufEqualTo()(write.contents[1].data, IOBuf::copyBuffer("handshake")));
+  EXPECT_TRUE(folly::IOBufEqualTo()(
+      write.contents[1].data, folly::IOBuf::copyBuffer("handshake")));
   expectSecret(
-      actions, HandshakeSecrets::ClientHandshakeTraffic, StringPiece("cht"));
+      actions,
+      HandshakeSecrets::ClientHandshakeTraffic,
+      folly::StringPiece("cht"));
   expectSecret(
-      actions, HandshakeSecrets::ServerHandshakeTraffic, StringPiece("sht"));
+      actions,
+      HandshakeSecrets::ServerHandshakeTraffic,
+      folly::StringPiece("sht"));
   expectSecret(
-      actions, AppTrafficSecrets::ServerAppTraffic, StringPiece("sat"));
+      actions, AppTrafficSecrets::ServerAppTraffic, folly::StringPiece("sat"));
   processStateMutations(actions);
   EXPECT_EQ(state_.state(), StateEnum::ExpectingFinished);
   EXPECT_EQ(state_.readRecordLayer().get(), rrl);
@@ -2289,10 +2338,10 @@ TEST_F(ServerProtocolTest, TestClientHelloPskDheFlow) {
   EXPECT_EQ(state_.replayCacheResult(), ReplayCacheResult::NotChecked);
   EXPECT_TRUE(state_.clientClockSkew().has_value());
   EXPECT_EQ(*state_.alpn(), "h2");
-  EXPECT_TRUE(IOBufEqualTo()(
-      *state_.clientHandshakeSecret(), IOBuf::copyBuffer("cht")));
-  EXPECT_TRUE(IOBufEqualTo()(
-      *state_.exporterMasterSecret(), IOBuf::copyBuffer("expm")));
+  EXPECT_TRUE(folly::IOBufEqualTo()(
+      *state_.clientHandshakeSecret(), folly::IOBuf::copyBuffer("cht")));
+  EXPECT_TRUE(folly::IOBufEqualTo()(
+      *state_.exporterMasterSecret(), folly::IOBuf::copyBuffer("expm")));
   EXPECT_FALSE(state_.earlyExporterMasterSecret().has_value());
 }
 
@@ -2313,7 +2362,8 @@ TEST_F(ServerProtocolTest, TestClientHelloHelloRetryRequestFlow) {
       .InSequence(firstContextSeq);
   EXPECT_CALL(*firstHandshakeContext, getHandshakeContext())
       .InSequence(firstContextSeq)
-      .WillRepeatedly(Invoke([]() { return IOBuf::copyBuffer("chlo_hash"); }));
+      .WillRepeatedly(
+          Invoke([]() { return folly::IOBuf::copyBuffer("chlo_hash"); }));
   auto secondHandshakeContext = new MockHandshakeContext();
   EXPECT_CALL(
       *factory_, makeHandshakeContext(CipherSuite::TLS_AES_128_GCM_SHA256))
@@ -2328,9 +2378,9 @@ TEST_F(ServerProtocolTest, TestClientHelloHelloRetryRequestFlow) {
         content.contentType = msg.type;
         content.encryptionLevel = mockWrite_->getEncryptionLevel();
         EXPECT_EQ(msg.type, ContentType::handshake);
-        EXPECT_TRUE(IOBufEqualTo()(
+        EXPECT_TRUE(folly::IOBufEqualTo()(
             msg.fragment, encodeHandshake(TestMessages::helloRetryRequest())));
-        content.data = IOBuf::copyBuffer("writtenhrr");
+        content.data = folly::IOBuf::copyBuffer("writtenhrr");
         return content;
       }));
   auto newRrl = new MockPlaintextReadRecordLayer();
@@ -2349,8 +2399,8 @@ TEST_F(ServerProtocolTest, TestClientHelloHelloRetryRequestFlow) {
   ASSERT_EQ(write.contents.size(), 1);
   EXPECT_EQ(write.contents[0].encryptionLevel, EncryptionLevel::Plaintext);
   EXPECT_EQ(write.contents[0].contentType, ContentType::handshake);
-  EXPECT_TRUE(
-      IOBufEqualTo()(write.contents[0].data, IOBuf::copyBuffer("writtenhrr")));
+  EXPECT_TRUE(folly::IOBufEqualTo()(
+      write.contents[0].data, folly::IOBuf::copyBuffer("writtenhrr")));
   processStateMutations(actions);
   EXPECT_EQ(state_.state(), StateEnum::ExpectingClientHello);
   EXPECT_EQ(state_.readRecordLayer().get(), newRrl);
@@ -2389,9 +2439,9 @@ TEST_F(ServerProtocolTest, TestRetryClientHelloFullHandshakeFlow) {
         EXPECT_CALL(*ret, generateKeyPair());
         EXPECT_CALL(*ret, generateSharedSecret(RangeMatches("keyshare")))
             .WillOnce(InvokeWithoutArgs(
-                []() { return IOBuf::copyBuffer("sharedsecret"); }));
+                []() { return folly::IOBuf::copyBuffer("sharedsecret"); }));
         EXPECT_CALL(*ret, getKeyShare()).WillOnce(InvokeWithoutArgs([]() {
-          return IOBuf::copyBuffer("servershare");
+          return folly::IOBuf::copyBuffer("servershare");
         }));
         return ret;
       }));
@@ -2399,7 +2449,8 @@ TEST_F(ServerProtocolTest, TestRetryClientHelloFullHandshakeFlow) {
       .InSequence(contextSeq);
   EXPECT_CALL(*mockHandshakeContext_, getHandshakeContext())
       .InSequence(contextSeq)
-      .WillRepeatedly(Invoke([]() { return IOBuf::copyBuffer("chlo_shlo"); }));
+      .WillRepeatedly(
+          Invoke([]() { return folly::IOBuf::copyBuffer("chlo_shlo"); }));
   EXPECT_CALL(
       *mockKeyScheduler_, deriveHandshakeSecret(RangeMatches("sharedsecret")));
   EXPECT_CALL(*factory_, makeRandom()).WillOnce(Invoke([]() {
@@ -2413,9 +2464,9 @@ TEST_F(ServerProtocolTest, TestRetryClientHelloFullHandshakeFlow) {
         content.contentType = msg.type;
         content.encryptionLevel = mockWrite_->getEncryptionLevel();
         EXPECT_EQ(msg.type, ContentType::handshake);
-        EXPECT_TRUE(IOBufEqualTo()(
+        EXPECT_TRUE(folly::IOBufEqualTo()(
             msg.fragment, encodeHandshake(TestMessages::serverHello())));
-        content.data = IOBuf::copyBuffer("writtenshlo");
+        content.data = folly::IOBuf::copyBuffer("writtenshlo");
         return content;
       }));
   EXPECT_CALL(
@@ -2439,12 +2490,14 @@ TEST_F(ServerProtocolTest, TestRetryClientHelloFullHandshakeFlow) {
   EXPECT_CALL(*mockKeyScheduler_, getTrafficKey(RangeMatches("sht"), _, _))
       .WillOnce(InvokeWithoutArgs([]() {
         return TrafficKey{
-            IOBuf::copyBuffer("serverkey"), IOBuf::copyBuffer("serveriv")};
+            folly::IOBuf::copyBuffer("serverkey"),
+            folly::IOBuf::copyBuffer("serveriv")};
       }));
   EXPECT_CALL(*mockKeyScheduler_, getTrafficKey(RangeMatches("cht"), _, _))
       .WillOnce(InvokeWithoutArgs([]() {
         return TrafficKey{
-            IOBuf::copyBuffer("clientkey"), IOBuf::copyBuffer("clientiv")};
+            folly::IOBuf::copyBuffer("clientkey"),
+            folly::IOBuf::copyBuffer("clientiv")};
       }));
   MockAead* raead;
   MockAead* waead;
@@ -2457,15 +2510,15 @@ TEST_F(ServerProtocolTest, TestRetryClientHelloFullHandshakeFlow) {
        {"serverkey", &waead},
        {"serverappkey", &appwaead}});
   expectEncryptedReadRecordLayerCreation(
-      &rrl, &raead, StringPiece("cht"), false);
+      &rrl, &raead, folly::StringPiece("cht"), false);
   Sequence recSeq;
   expectEncryptedWriteRecordLayerCreation(
       &wrl,
       &waead,
-      StringPiece("sht"),
+      folly::StringPiece("sht"),
       [](TLSMessage& msg, auto writeRecord) {
         EXPECT_EQ(msg.type, ContentType::handshake);
-        EXPECT_TRUE(IOBufEqualTo()(
+        EXPECT_TRUE(folly::IOBufEqualTo()(
             msg.fragment,
             getEncryptedHandshakeWrite(
                 TestMessages::encryptedExt(),
@@ -2480,7 +2533,7 @@ TEST_F(ServerProtocolTest, TestRetryClientHelloFullHandshakeFlow) {
       },
       &recSeq);
   expectEncryptedWriteRecordLayerCreation(
-      &appwrl, &appwaead, StringPiece("sat"), nullptr, &recSeq);
+      &appwrl, &appwaead, folly::StringPiece("sat"), nullptr, &recSeq);
   EXPECT_CALL(*mockHandshakeContext_, appendToTranscript(_))
       .InSequence(contextSeq);
   EXPECT_CALL(*certManager_, getCert(_, _, _, _))
@@ -2504,28 +2557,28 @@ TEST_F(ServerProtocolTest, TestRetryClientHelloFullHandshakeFlow) {
       .InSequence(contextSeq);
   EXPECT_CALL(*mockHandshakeContext_, getHandshakeContext())
       .InSequence(contextSeq)
-      .WillRepeatedly(
-          Invoke([]() { return IOBuf::copyBuffer("chlo_shlo_ee_cert"); }));
+      .WillRepeatedly(Invoke(
+          []() { return folly::IOBuf::copyBuffer("chlo_shlo_ee_cert"); }));
   EXPECT_CALL(
       *cert_,
       sign(
           SignatureScheme::ecdsa_secp256r1_sha256,
           CertificateVerifyContext::Server,
           RangeMatches("chlo_shlo_ee_cert")))
-      .WillOnce(
-          InvokeWithoutArgs([]() { return IOBuf::copyBuffer("signature"); }));
+      .WillOnce(InvokeWithoutArgs(
+          []() { return folly::IOBuf::copyBuffer("signature"); }));
   EXPECT_CALL(*mockHandshakeContext_, appendToTranscript(_))
       .InSequence(contextSeq);
   EXPECT_CALL(*mockHandshakeContext_, getFinishedData(RangeMatches("sht")))
       .InSequence(contextSeq)
-      .WillRepeatedly(
-          InvokeWithoutArgs([]() { return IOBuf::copyBuffer("verifydata"); }));
+      .WillRepeatedly(InvokeWithoutArgs(
+          []() { return folly::IOBuf::copyBuffer("verifydata"); }));
   EXPECT_CALL(*mockHandshakeContext_, appendToTranscript(_))
       .InSequence(contextSeq);
   EXPECT_CALL(*mockHandshakeContext_, getHandshakeContext())
       .InSequence(contextSeq)
       .WillRepeatedly(InvokeWithoutArgs(
-          []() { return IOBuf::copyBuffer("chlo_shlo_ee_cert_sfin"); }));
+          []() { return folly::IOBuf::copyBuffer("chlo_shlo_ee_cert_sfin"); }));
   EXPECT_CALL(*mockKeyScheduler_, deriveMasterSecret());
   EXPECT_CALL(
       *mockKeyScheduler_,
@@ -2550,8 +2603,8 @@ TEST_F(ServerProtocolTest, TestRetryClientHelloFullHandshakeFlow) {
   EXPECT_CALL(*mockKeyScheduler_, getTrafficKey(RangeMatches("sat"), _, _))
       .WillOnce(InvokeWithoutArgs([]() {
         return TrafficKey{
-            IOBuf::copyBuffer("serverappkey"),
-            IOBuf::copyBuffer("serverappiv")};
+            folly::IOBuf::copyBuffer("serverappkey"),
+            folly::IOBuf::copyBuffer("serverappiv")};
       }));
 
   auto actions =
@@ -2562,19 +2615,23 @@ TEST_F(ServerProtocolTest, TestRetryClientHelloFullHandshakeFlow) {
   ASSERT_EQ(write.contents.size(), 2);
   EXPECT_EQ(write.contents[0].encryptionLevel, EncryptionLevel::Plaintext);
   EXPECT_EQ(write.contents[0].contentType, ContentType::handshake);
-  EXPECT_TRUE(
-      IOBufEqualTo()(write.contents[0].data, IOBuf::copyBuffer("writtenshlo")));
+  EXPECT_TRUE(folly::IOBufEqualTo()(
+      write.contents[0].data, folly::IOBuf::copyBuffer("writtenshlo")));
 
   EXPECT_EQ(write.contents[1].encryptionLevel, EncryptionLevel::Handshake);
   EXPECT_EQ(write.contents[1].contentType, ContentType::handshake);
-  EXPECT_TRUE(
-      IOBufEqualTo()(write.contents[1].data, IOBuf::copyBuffer("handshake")));
+  EXPECT_TRUE(folly::IOBufEqualTo()(
+      write.contents[1].data, folly::IOBuf::copyBuffer("handshake")));
   expectSecret(
-      actions, HandshakeSecrets::ClientHandshakeTraffic, StringPiece("cht"));
+      actions,
+      HandshakeSecrets::ClientHandshakeTraffic,
+      folly::StringPiece("cht"));
   expectSecret(
-      actions, HandshakeSecrets::ServerHandshakeTraffic, StringPiece("sht"));
+      actions,
+      HandshakeSecrets::ServerHandshakeTraffic,
+      folly::StringPiece("sht"));
   expectSecret(
-      actions, AppTrafficSecrets::ServerAppTraffic, StringPiece("sat"));
+      actions, AppTrafficSecrets::ServerAppTraffic, folly::StringPiece("sat"));
   processStateMutations(actions);
   EXPECT_EQ(state_.state(), StateEnum::ExpectingFinished);
   EXPECT_EQ(state_.readRecordLayer().get(), rrl);
@@ -2593,10 +2650,10 @@ TEST_F(ServerProtocolTest, TestRetryClientHelloFullHandshakeFlow) {
   EXPECT_EQ(state_.replayCacheResult(), ReplayCacheResult::NotChecked);
   EXPECT_FALSE(state_.clientClockSkew().has_value());
   EXPECT_EQ(*state_.alpn(), "h2");
-  EXPECT_TRUE(IOBufEqualTo()(
-      *state_.clientHandshakeSecret(), IOBuf::copyBuffer("cht")));
-  EXPECT_TRUE(IOBufEqualTo()(
-      *state_.exporterMasterSecret(), IOBuf::copyBuffer("expm")));
+  EXPECT_TRUE(folly::IOBufEqualTo()(
+      *state_.clientHandshakeSecret(), folly::IOBuf::copyBuffer("cht")));
+  EXPECT_TRUE(folly::IOBufEqualTo()(
+      *state_.exporterMasterSecret(), folly::IOBuf::copyBuffer("expm")));
   EXPECT_FALSE(state_.earlyExporterMasterSecret().has_value());
   ASSERT_TRUE(state_.clientRandom().hasValue());
   auto cr = state_.clientRandom().value();
@@ -2629,8 +2686,8 @@ TEST_F(ServerProtocolTest, TestRetryClientHelloPskDheFlow) {
       .InSequence(contextSeq);
   EXPECT_CALL(*mockHandshakeContext_, getFinishedData(RangeMatches("bdr")))
       .InSequence(contextSeq)
-      .WillRepeatedly(
-          InvokeWithoutArgs([]() { return IOBuf::copyBuffer("verifydata"); }));
+      .WillRepeatedly(InvokeWithoutArgs(
+          []() { return folly::IOBuf::copyBuffer("verifydata"); }));
   EXPECT_CALL(
       *mockHandshakeContext_, appendToTranscript(BufMatches("helloencoding")))
       .InSequence(contextSeq);
@@ -2648,9 +2705,9 @@ TEST_F(ServerProtocolTest, TestRetryClientHelloPskDheFlow) {
         EXPECT_CALL(*ret, generateKeyPair());
         EXPECT_CALL(*ret, generateSharedSecret(RangeMatches("keyshare")))
             .WillOnce(InvokeWithoutArgs(
-                []() { return IOBuf::copyBuffer("sharedsecret"); }));
+                []() { return folly::IOBuf::copyBuffer("sharedsecret"); }));
         EXPECT_CALL(*ret, getKeyShare()).WillOnce(InvokeWithoutArgs([]() {
-          return IOBuf::copyBuffer("servershare");
+          return folly::IOBuf::copyBuffer("servershare");
         }));
         return ret;
       }));
@@ -2658,7 +2715,8 @@ TEST_F(ServerProtocolTest, TestRetryClientHelloPskDheFlow) {
       .InSequence(contextSeq);
   EXPECT_CALL(*mockHandshakeContext_, getHandshakeContext())
       .InSequence(contextSeq)
-      .WillRepeatedly(Invoke([]() { return IOBuf::copyBuffer("chlo_shlo"); }));
+      .WillRepeatedly(
+          Invoke([]() { return folly::IOBuf::copyBuffer("chlo_shlo"); }));
   EXPECT_CALL(
       *mockKeyScheduler_, deriveHandshakeSecret(RangeMatches("sharedsecret")));
   EXPECT_CALL(*factory_, makeRandom()).WillOnce(Invoke([]() {
@@ -2676,9 +2734,9 @@ TEST_F(ServerProtocolTest, TestRetryClientHelloPskDheFlow) {
         ServerPresharedKey serverPsk;
         serverPsk.selected_identity = 0;
         shlo.extensions.push_back(encodeExtension(std::move(serverPsk)));
-        EXPECT_TRUE(
-            IOBufEqualTo()(msg.fragment, encodeHandshake(std::move(shlo))));
-        content.data = IOBuf::copyBuffer("writtenshlo");
+        EXPECT_TRUE(folly::IOBufEqualTo()(
+            msg.fragment, encodeHandshake(std::move(shlo))));
+        content.data = folly::IOBuf::copyBuffer("writtenshlo");
         return content;
       }));
   EXPECT_CALL(
@@ -2702,12 +2760,14 @@ TEST_F(ServerProtocolTest, TestRetryClientHelloPskDheFlow) {
   EXPECT_CALL(*mockKeyScheduler_, getTrafficKey(RangeMatches("sht"), _, _))
       .WillOnce(InvokeWithoutArgs([]() {
         return TrafficKey{
-            IOBuf::copyBuffer("serverkey"), IOBuf::copyBuffer("serveriv")};
+            folly::IOBuf::copyBuffer("serverkey"),
+            folly::IOBuf::copyBuffer("serveriv")};
       }));
   EXPECT_CALL(*mockKeyScheduler_, getTrafficKey(RangeMatches("cht"), _, _))
       .WillOnce(InvokeWithoutArgs([]() {
         return TrafficKey{
-            IOBuf::copyBuffer("clientkey"), IOBuf::copyBuffer("clientiv")};
+            folly::IOBuf::copyBuffer("clientkey"),
+            folly::IOBuf::copyBuffer("clientiv")};
       }));
   MockAead* raead;
   MockAead* waead;
@@ -2720,15 +2780,15 @@ TEST_F(ServerProtocolTest, TestRetryClientHelloPskDheFlow) {
        {"serverkey", &waead},
        {"serverappkey", &appwaead}});
   expectEncryptedReadRecordLayerCreation(
-      &rrl, &raead, StringPiece("cht"), false);
+      &rrl, &raead, folly::StringPiece("cht"), false);
   Sequence recSeq;
   expectEncryptedWriteRecordLayerCreation(
       &wrl,
       &waead,
-      StringPiece("sht"),
+      folly::StringPiece("sht"),
       [](TLSMessage& msg, auto writeRecord) {
         EXPECT_EQ(msg.type, ContentType::handshake);
-        EXPECT_TRUE(IOBufEqualTo()(
+        EXPECT_TRUE(folly::IOBufEqualTo()(
             msg.fragment,
             getEncryptedHandshakeWrite(
                 TestMessages::encryptedExt(), TestMessages::finished())));
@@ -2740,19 +2800,19 @@ TEST_F(ServerProtocolTest, TestRetryClientHelloPskDheFlow) {
       },
       &recSeq);
   expectEncryptedWriteRecordLayerCreation(
-      &appwrl, &appwaead, StringPiece("sat"), nullptr, &recSeq);
+      &appwrl, &appwaead, folly::StringPiece("sat"), nullptr, &recSeq);
   EXPECT_CALL(*mockHandshakeContext_, appendToTranscript(_))
       .InSequence(contextSeq);
   EXPECT_CALL(*mockHandshakeContext_, getFinishedData(RangeMatches("sht")))
       .InSequence(contextSeq)
-      .WillRepeatedly(
-          InvokeWithoutArgs([]() { return IOBuf::copyBuffer("verifydata"); }));
+      .WillRepeatedly(InvokeWithoutArgs(
+          []() { return folly::IOBuf::copyBuffer("verifydata"); }));
   EXPECT_CALL(*mockHandshakeContext_, appendToTranscript(_))
       .InSequence(contextSeq);
   EXPECT_CALL(*mockHandshakeContext_, getHandshakeContext())
       .InSequence(contextSeq)
       .WillRepeatedly(InvokeWithoutArgs(
-          []() { return IOBuf::copyBuffer("chlo_shlo_sfin"); }));
+          []() { return folly::IOBuf::copyBuffer("chlo_shlo_sfin"); }));
   EXPECT_CALL(*mockKeyScheduler_, deriveMasterSecret());
   EXPECT_CALL(
       *mockKeyScheduler_,
@@ -2775,8 +2835,8 @@ TEST_F(ServerProtocolTest, TestRetryClientHelloPskDheFlow) {
   EXPECT_CALL(*mockKeyScheduler_, getTrafficKey(RangeMatches("sat"), _, _))
       .WillOnce(InvokeWithoutArgs([]() {
         return TrafficKey{
-            IOBuf::copyBuffer("serverappkey"),
-            IOBuf::copyBuffer("serverappiv")};
+            folly::IOBuf::copyBuffer("serverappkey"),
+            folly::IOBuf::copyBuffer("serverappiv")};
       }));
 
   auto actions =
@@ -2787,19 +2847,23 @@ TEST_F(ServerProtocolTest, TestRetryClientHelloPskDheFlow) {
   ASSERT_EQ(write.contents.size(), 2);
   EXPECT_EQ(write.contents[0].encryptionLevel, EncryptionLevel::Plaintext);
   EXPECT_EQ(write.contents[0].contentType, ContentType::handshake);
-  EXPECT_TRUE(
-      IOBufEqualTo()(write.contents[0].data, IOBuf::copyBuffer("writtenshlo")));
+  EXPECT_TRUE(folly::IOBufEqualTo()(
+      write.contents[0].data, folly::IOBuf::copyBuffer("writtenshlo")));
 
   EXPECT_EQ(write.contents[1].encryptionLevel, EncryptionLevel::Handshake);
   EXPECT_EQ(write.contents[1].contentType, ContentType::handshake);
-  EXPECT_TRUE(
-      IOBufEqualTo()(write.contents[1].data, IOBuf::copyBuffer("handshake")));
+  EXPECT_TRUE(folly::IOBufEqualTo()(
+      write.contents[1].data, folly::IOBuf::copyBuffer("handshake")));
   expectSecret(
-      actions, HandshakeSecrets::ClientHandshakeTraffic, StringPiece("cht"));
+      actions,
+      HandshakeSecrets::ClientHandshakeTraffic,
+      folly::StringPiece("cht"));
   expectSecret(
-      actions, HandshakeSecrets::ServerHandshakeTraffic, StringPiece("sht"));
+      actions,
+      HandshakeSecrets::ServerHandshakeTraffic,
+      folly::StringPiece("sht"));
   expectSecret(
-      actions, AppTrafficSecrets::ServerAppTraffic, StringPiece("sat"));
+      actions, AppTrafficSecrets::ServerAppTraffic, folly::StringPiece("sat"));
   processStateMutations(actions);
   EXPECT_EQ(state_.state(), StateEnum::ExpectingFinished);
   EXPECT_EQ(state_.readRecordLayer().get(), rrl);
@@ -2817,10 +2881,10 @@ TEST_F(ServerProtocolTest, TestRetryClientHelloPskDheFlow) {
   EXPECT_EQ(state_.replayCacheResult(), ReplayCacheResult::NotChecked);
   EXPECT_TRUE(state_.clientClockSkew().has_value());
   EXPECT_EQ(*state_.alpn(), "h2");
-  EXPECT_TRUE(IOBufEqualTo()(
-      *state_.clientHandshakeSecret(), IOBuf::copyBuffer("cht")));
-  EXPECT_TRUE(IOBufEqualTo()(
-      *state_.exporterMasterSecret(), IOBuf::copyBuffer("expm")));
+  EXPECT_TRUE(folly::IOBufEqualTo()(
+      *state_.clientHandshakeSecret(), folly::IOBuf::copyBuffer("cht")));
+  EXPECT_TRUE(folly::IOBufEqualTo()(
+      *state_.exporterMasterSecret(), folly::IOBuf::copyBuffer("expm")));
   EXPECT_FALSE(state_.earlyExporterMasterSecret().has_value());
 }
 
@@ -2860,14 +2924,15 @@ TEST_F(ServerProtocolTest, TestClientHelloPskDheEarlyFlow) {
       .InSequence(contextSeq);
   EXPECT_CALL(*mockHandshakeContext_, getFinishedData(RangeMatches("bdr")))
       .InSequence(contextSeq)
-      .WillRepeatedly(
-          InvokeWithoutArgs([]() { return IOBuf::copyBuffer("verifydata"); }));
+      .WillRepeatedly(InvokeWithoutArgs(
+          []() { return folly::IOBuf::copyBuffer("verifydata"); }));
   EXPECT_CALL(
       *mockHandshakeContext_, appendToTranscript(BufMatches("helloencoding")))
       .InSequence(contextSeq);
   EXPECT_CALL(*mockHandshakeContext_, getHandshakeContext())
       .InSequence(contextSeq)
-      .WillRepeatedly(Invoke([]() { return IOBuf::copyBuffer("chlo"); }));
+      .WillRepeatedly(
+          Invoke([]() { return folly::IOBuf::copyBuffer("chlo"); }));
   EXPECT_CALL(
       *mockKeyScheduler_,
       getSecret(EarlySecrets::ResumptionPskBinder, RangeMatches("")))
@@ -2897,9 +2962,9 @@ TEST_F(ServerProtocolTest, TestClientHelloPskDheEarlyFlow) {
         EXPECT_CALL(*ret, generateKeyPair());
         EXPECT_CALL(*ret, generateSharedSecret(RangeMatches("keyshare")))
             .WillOnce(InvokeWithoutArgs(
-                []() { return IOBuf::copyBuffer("sharedsecret"); }));
+                []() { return folly::IOBuf::copyBuffer("sharedsecret"); }));
         EXPECT_CALL(*ret, getKeyShare()).WillOnce(InvokeWithoutArgs([]() {
-          return IOBuf::copyBuffer("servershare");
+          return folly::IOBuf::copyBuffer("servershare");
         }));
         return ret;
       }));
@@ -2907,7 +2972,8 @@ TEST_F(ServerProtocolTest, TestClientHelloPskDheEarlyFlow) {
       .InSequence(contextSeq);
   EXPECT_CALL(*mockHandshakeContext_, getHandshakeContext())
       .InSequence(contextSeq)
-      .WillRepeatedly(Invoke([]() { return IOBuf::copyBuffer("chlo_shlo"); }));
+      .WillRepeatedly(
+          Invoke([]() { return folly::IOBuf::copyBuffer("chlo_shlo"); }));
   EXPECT_CALL(
       *mockKeyScheduler_, deriveHandshakeSecret(RangeMatches("sharedsecret")));
   EXPECT_CALL(*factory_, makeRandom()).WillOnce(Invoke([]() {
@@ -2925,9 +2991,9 @@ TEST_F(ServerProtocolTest, TestClientHelloPskDheEarlyFlow) {
         ServerPresharedKey serverPsk;
         serverPsk.selected_identity = 0;
         shlo.extensions.push_back(encodeExtension(std::move(serverPsk)));
-        EXPECT_TRUE(
-            IOBufEqualTo()(msg.fragment, encodeHandshake(std::move(shlo))));
-        content.data = IOBuf::copyBuffer("writtenshlo");
+        EXPECT_TRUE(folly::IOBufEqualTo()(
+            msg.fragment, encodeHandshake(std::move(shlo))));
+        content.data = folly::IOBuf::copyBuffer("writtenshlo");
         return content;
       }));
   EXPECT_CALL(
@@ -2951,17 +3017,20 @@ TEST_F(ServerProtocolTest, TestClientHelloPskDheEarlyFlow) {
   EXPECT_CALL(*mockKeyScheduler_, getTrafficKey(RangeMatches("cet"), _, _))
       .WillOnce(InvokeWithoutArgs([]() {
         return TrafficKey{
-            IOBuf::copyBuffer("earlykey"), IOBuf::copyBuffer("earlyiv")};
+            folly::IOBuf::copyBuffer("earlykey"),
+            folly::IOBuf::copyBuffer("earlyiv")};
       }));
   EXPECT_CALL(*mockKeyScheduler_, getTrafficKey(RangeMatches("sht"), _, _))
       .WillOnce(InvokeWithoutArgs([]() {
         return TrafficKey{
-            IOBuf::copyBuffer("serverkey"), IOBuf::copyBuffer("serveriv")};
+            folly::IOBuf::copyBuffer("serverkey"),
+            folly::IOBuf::copyBuffer("serveriv")};
       }));
   EXPECT_CALL(*mockKeyScheduler_, getTrafficKey(RangeMatches("cht"), _, _))
       .WillOnce(InvokeWithoutArgs([]() {
         return TrafficKey{
-            IOBuf::copyBuffer("clientkey"), IOBuf::copyBuffer("clientiv")};
+            folly::IOBuf::copyBuffer("clientkey"),
+            folly::IOBuf::copyBuffer("clientiv")};
       }));
   MockAead* earlyaead;
   MockAead* raead;
@@ -2978,17 +3047,21 @@ TEST_F(ServerProtocolTest, TestClientHelloPskDheEarlyFlow) {
        {"serverappkey", &appwaead}});
   Sequence readRecSeq;
   expectEncryptedReadRecordLayerCreation(
-      &earlyrrl, &earlyaead, StringPiece("cet"), folly::none, &readRecSeq);
+      &earlyrrl,
+      &earlyaead,
+      folly::StringPiece("cet"),
+      folly::none,
+      &readRecSeq);
   expectEncryptedReadRecordLayerCreation(
-      &handshakerrl, &raead, StringPiece("cht"), false, &readRecSeq);
+      &handshakerrl, &raead, folly::StringPiece("cht"), false, &readRecSeq);
   Sequence recSeq;
   expectEncryptedWriteRecordLayerCreation(
       &wrl,
       &waead,
-      StringPiece("sht"),
+      folly::StringPiece("sht"),
       [](TLSMessage& msg, auto writeRecord) {
         EXPECT_EQ(msg.type, ContentType::handshake);
-        EXPECT_TRUE(IOBufEqualTo()(
+        EXPECT_TRUE(folly::IOBufEqualTo()(
             msg.fragment,
             getEncryptedHandshakeWrite(
                 TestMessages::encryptedExtEarly(), TestMessages::finished())));
@@ -3000,19 +3073,19 @@ TEST_F(ServerProtocolTest, TestClientHelloPskDheEarlyFlow) {
       },
       &recSeq);
   expectEncryptedWriteRecordLayerCreation(
-      &appwrl, &appwaead, StringPiece("sat"), nullptr, &recSeq);
+      &appwrl, &appwaead, folly::StringPiece("sat"), nullptr, &recSeq);
   EXPECT_CALL(*mockHandshakeContext_, appendToTranscript(_))
       .InSequence(contextSeq);
   EXPECT_CALL(*mockHandshakeContext_, getFinishedData(RangeMatches("sht")))
       .InSequence(contextSeq)
-      .WillRepeatedly(
-          InvokeWithoutArgs([]() { return IOBuf::copyBuffer("verifydata"); }));
+      .WillRepeatedly(InvokeWithoutArgs(
+          []() { return folly::IOBuf::copyBuffer("verifydata"); }));
   EXPECT_CALL(*mockHandshakeContext_, appendToTranscript(_))
       .InSequence(contextSeq);
   EXPECT_CALL(*mockHandshakeContext_, getHandshakeContext())
       .InSequence(contextSeq)
       .WillRepeatedly(InvokeWithoutArgs(
-          []() { return IOBuf::copyBuffer("chlo_shlo_sfin"); }));
+          []() { return folly::IOBuf::copyBuffer("chlo_shlo_sfin"); }));
   EXPECT_CALL(*mockKeyScheduler_, deriveMasterSecret());
   EXPECT_CALL(
       *mockKeyScheduler_,
@@ -3035,8 +3108,8 @@ TEST_F(ServerProtocolTest, TestClientHelloPskDheEarlyFlow) {
   EXPECT_CALL(*mockKeyScheduler_, getTrafficKey(RangeMatches("sat"), _, _))
       .WillOnce(InvokeWithoutArgs([]() {
         return TrafficKey{
-            IOBuf::copyBuffer("serverappkey"),
-            IOBuf::copyBuffer("serverappiv")};
+            folly::IOBuf::copyBuffer("serverappkey"),
+            folly::IOBuf::copyBuffer("serverappiv")};
       }));
 
   std::chrono::milliseconds age =
@@ -3053,21 +3126,25 @@ TEST_F(ServerProtocolTest, TestClientHelloPskDheEarlyFlow) {
   ASSERT_EQ(write.contents.size(), 2);
   EXPECT_EQ(write.contents[0].encryptionLevel, EncryptionLevel::Plaintext);
   EXPECT_EQ(write.contents[0].contentType, ContentType::handshake);
-  EXPECT_TRUE(
-      IOBufEqualTo()(write.contents[0].data, IOBuf::copyBuffer("writtenshlo")));
+  EXPECT_TRUE(folly::IOBufEqualTo()(
+      write.contents[0].data, folly::IOBuf::copyBuffer("writtenshlo")));
 
   EXPECT_EQ(write.contents[1].encryptionLevel, EncryptionLevel::Handshake);
   EXPECT_EQ(write.contents[1].contentType, ContentType::handshake);
-  EXPECT_TRUE(
-      IOBufEqualTo()(write.contents[1].data, IOBuf::copyBuffer("handshake")));
+  EXPECT_TRUE(folly::IOBufEqualTo()(
+      write.contents[1].data, folly::IOBuf::copyBuffer("handshake")));
   expectSecret(
       actions, EarlySecrets::ClientEarlyTraffic, folly::StringPiece("cet"));
   expectSecret(
-      actions, HandshakeSecrets::ClientHandshakeTraffic, StringPiece("cht"));
+      actions,
+      HandshakeSecrets::ClientHandshakeTraffic,
+      folly::StringPiece("cht"));
   expectSecret(
-      actions, HandshakeSecrets::ServerHandshakeTraffic, StringPiece("sht"));
+      actions,
+      HandshakeSecrets::ServerHandshakeTraffic,
+      folly::StringPiece("sht"));
   expectSecret(
-      actions, AppTrafficSecrets::ServerAppTraffic, StringPiece("sat"));
+      actions, AppTrafficSecrets::ServerAppTraffic, folly::StringPiece("sat"));
   processStateMutations(actions);
   EXPECT_EQ(state_.state(), StateEnum::AcceptingEarlyData);
   EXPECT_EQ(
@@ -3095,12 +3172,12 @@ TEST_F(ServerProtocolTest, TestClientHelloPskDheEarlyFlow) {
   EXPECT_EQ(state_.replayCacheResult(), ReplayCacheResult::NotReplay);
   EXPECT_TRUE(state_.clientClockSkew().has_value());
   EXPECT_EQ(*state_.alpn(), "h2");
-  EXPECT_TRUE(IOBufEqualTo()(
-      *state_.clientHandshakeSecret(), IOBuf::copyBuffer("cht")));
-  EXPECT_TRUE(IOBufEqualTo()(
-      *state_.exporterMasterSecret(), IOBuf::copyBuffer("expm")));
-  EXPECT_TRUE(IOBufEqualTo()(
-      *state_.earlyExporterMasterSecret(), IOBuf::copyBuffer("eem")));
+  EXPECT_TRUE(folly::IOBufEqualTo()(
+      *state_.clientHandshakeSecret(), folly::IOBuf::copyBuffer("cht")));
+  EXPECT_TRUE(folly::IOBufEqualTo()(
+      *state_.exporterMasterSecret(), folly::IOBuf::copyBuffer("expm")));
+  EXPECT_TRUE(folly::IOBufEqualTo()(
+      *state_.earlyExporterMasterSecret(), folly::IOBuf::copyBuffer("eem")));
 }
 
 TEST_F(ServerProtocolTest, TestClientHelloPskEarlyFlow) {
@@ -3139,14 +3216,15 @@ TEST_F(ServerProtocolTest, TestClientHelloPskEarlyFlow) {
       .InSequence(contextSeq);
   EXPECT_CALL(*mockHandshakeContext_, getFinishedData(RangeMatches("bdr")))
       .InSequence(contextSeq)
-      .WillRepeatedly(
-          InvokeWithoutArgs([]() { return IOBuf::copyBuffer("verifydata"); }));
+      .WillRepeatedly(InvokeWithoutArgs(
+          []() { return folly::IOBuf::copyBuffer("verifydata"); }));
   EXPECT_CALL(
       *mockHandshakeContext_, appendToTranscript(BufMatches("helloencoding")))
       .InSequence(contextSeq);
   EXPECT_CALL(*mockHandshakeContext_, getHandshakeContext())
       .InSequence(contextSeq)
-      .WillRepeatedly(Invoke([]() { return IOBuf::copyBuffer("chlo"); }));
+      .WillRepeatedly(
+          Invoke([]() { return folly::IOBuf::copyBuffer("chlo"); }));
   EXPECT_CALL(
       *mockKeyScheduler_,
       getSecret(EarlySecrets::ResumptionPskBinder, RangeMatches("")))
@@ -3174,7 +3252,8 @@ TEST_F(ServerProtocolTest, TestClientHelloPskEarlyFlow) {
       .InSequence(contextSeq);
   EXPECT_CALL(*mockHandshakeContext_, getHandshakeContext())
       .InSequence(contextSeq)
-      .WillRepeatedly(Invoke([]() { return IOBuf::copyBuffer("chlo_shlo"); }));
+      .WillRepeatedly(
+          Invoke([]() { return folly::IOBuf::copyBuffer("chlo_shlo"); }));
   EXPECT_CALL(*mockKeyScheduler_, deriveHandshakeSecret());
   EXPECT_CALL(*factory_, makeRandom()).WillOnce(Invoke([]() {
     Random random;
@@ -3192,9 +3271,9 @@ TEST_F(ServerProtocolTest, TestClientHelloPskEarlyFlow) {
         ServerPresharedKey serverPsk;
         serverPsk.selected_identity = 0;
         shlo.extensions.push_back(encodeExtension(std::move(serverPsk)));
-        EXPECT_TRUE(
-            IOBufEqualTo()(msg.fragment, encodeHandshake(std::move(shlo))));
-        content.data = IOBuf::copyBuffer("writtenshlo");
+        EXPECT_TRUE(folly::IOBufEqualTo()(
+            msg.fragment, encodeHandshake(std::move(shlo))));
+        content.data = folly::IOBuf::copyBuffer("writtenshlo");
         return content;
       }));
   EXPECT_CALL(
@@ -3218,17 +3297,20 @@ TEST_F(ServerProtocolTest, TestClientHelloPskEarlyFlow) {
   EXPECT_CALL(*mockKeyScheduler_, getTrafficKey(RangeMatches("cet"), _, _))
       .WillOnce(InvokeWithoutArgs([]() {
         return TrafficKey{
-            IOBuf::copyBuffer("earlykey"), IOBuf::copyBuffer("earlyiv")};
+            folly::IOBuf::copyBuffer("earlykey"),
+            folly::IOBuf::copyBuffer("earlyiv")};
       }));
   EXPECT_CALL(*mockKeyScheduler_, getTrafficKey(RangeMatches("sht"), _, _))
       .WillOnce(InvokeWithoutArgs([]() {
         return TrafficKey{
-            IOBuf::copyBuffer("serverkey"), IOBuf::copyBuffer("serveriv")};
+            folly::IOBuf::copyBuffer("serverkey"),
+            folly::IOBuf::copyBuffer("serveriv")};
       }));
   EXPECT_CALL(*mockKeyScheduler_, getTrafficKey(RangeMatches("cht"), _, _))
       .WillOnce(InvokeWithoutArgs([]() {
         return TrafficKey{
-            IOBuf::copyBuffer("clientkey"), IOBuf::copyBuffer("clientiv")};
+            folly::IOBuf::copyBuffer("clientkey"),
+            folly::IOBuf::copyBuffer("clientiv")};
       }));
   MockAead* earlyaead;
   MockAead* raead;
@@ -3245,17 +3327,21 @@ TEST_F(ServerProtocolTest, TestClientHelloPskEarlyFlow) {
        {"serverappkey", &appwaead}});
   Sequence readRecSeq;
   expectEncryptedReadRecordLayerCreation(
-      &earlyrrl, &earlyaead, StringPiece("cet"), folly::none, &readRecSeq);
+      &earlyrrl,
+      &earlyaead,
+      folly::StringPiece("cet"),
+      folly::none,
+      &readRecSeq);
   expectEncryptedReadRecordLayerCreation(
-      &handshakerrl, &raead, StringPiece("cht"), false, &readRecSeq);
+      &handshakerrl, &raead, folly::StringPiece("cht"), false, &readRecSeq);
   Sequence recSeq;
   expectEncryptedWriteRecordLayerCreation(
       &wrl,
       &waead,
-      StringPiece("sht"),
+      folly::StringPiece("sht"),
       [](TLSMessage& msg, auto writeRecord) {
         EXPECT_EQ(msg.type, ContentType::handshake);
-        EXPECT_TRUE(IOBufEqualTo()(
+        EXPECT_TRUE(folly::IOBufEqualTo()(
             msg.fragment,
             getEncryptedHandshakeWrite(
                 TestMessages::encryptedExtEarly(), TestMessages::finished())));
@@ -3267,19 +3353,19 @@ TEST_F(ServerProtocolTest, TestClientHelloPskEarlyFlow) {
       },
       &recSeq);
   expectEncryptedWriteRecordLayerCreation(
-      &appwrl, &appwaead, StringPiece("sat"), nullptr, &recSeq);
+      &appwrl, &appwaead, folly::StringPiece("sat"), nullptr, &recSeq);
   EXPECT_CALL(*mockHandshakeContext_, appendToTranscript(_))
       .InSequence(contextSeq);
   EXPECT_CALL(*mockHandshakeContext_, getFinishedData(RangeMatches("sht")))
       .InSequence(contextSeq)
-      .WillRepeatedly(
-          InvokeWithoutArgs([]() { return IOBuf::copyBuffer("verifydata"); }));
+      .WillRepeatedly(InvokeWithoutArgs(
+          []() { return folly::IOBuf::copyBuffer("verifydata"); }));
   EXPECT_CALL(*mockHandshakeContext_, appendToTranscript(_))
       .InSequence(contextSeq);
   EXPECT_CALL(*mockHandshakeContext_, getHandshakeContext())
       .InSequence(contextSeq)
       .WillRepeatedly(InvokeWithoutArgs(
-          []() { return IOBuf::copyBuffer("chlo_shlo_sfin"); }));
+          []() { return folly::IOBuf::copyBuffer("chlo_shlo_sfin"); }));
   EXPECT_CALL(*mockKeyScheduler_, deriveMasterSecret());
   EXPECT_CALL(
       *mockKeyScheduler_,
@@ -3302,8 +3388,8 @@ TEST_F(ServerProtocolTest, TestClientHelloPskEarlyFlow) {
   EXPECT_CALL(*mockKeyScheduler_, getTrafficKey(RangeMatches("sat"), _, _))
       .WillOnce(InvokeWithoutArgs([]() {
         return TrafficKey{
-            IOBuf::copyBuffer("serverappkey"),
-            IOBuf::copyBuffer("serverappiv")};
+            folly::IOBuf::copyBuffer("serverappkey"),
+            folly::IOBuf::copyBuffer("serverappiv")};
       }));
 
   std::chrono::milliseconds age =
@@ -3320,19 +3406,23 @@ TEST_F(ServerProtocolTest, TestClientHelloPskEarlyFlow) {
   expectSecret(
       actions, EarlySecrets::ClientEarlyTraffic, folly::StringPiece("cet"));
   expectSecret(
-      actions, HandshakeSecrets::ClientHandshakeTraffic, StringPiece("cht"));
+      actions,
+      HandshakeSecrets::ClientHandshakeTraffic,
+      folly::StringPiece("cht"));
   expectSecret(
-      actions, HandshakeSecrets::ServerHandshakeTraffic, StringPiece("sht"));
+      actions,
+      HandshakeSecrets::ServerHandshakeTraffic,
+      folly::StringPiece("sht"));
   expectSecret(
-      actions, AppTrafficSecrets::ServerAppTraffic, StringPiece("sat"));
+      actions, AppTrafficSecrets::ServerAppTraffic, folly::StringPiece("sat"));
   ASSERT_EQ(write.contents.size(), 2);
-  EXPECT_TRUE(
-      IOBufEqualTo()(write.contents[0].data, IOBuf::copyBuffer("writtenshlo")));
+  EXPECT_TRUE(folly::IOBufEqualTo()(
+      write.contents[0].data, folly::IOBuf::copyBuffer("writtenshlo")));
   EXPECT_EQ(write.contents[0].contentType, ContentType::handshake);
   EXPECT_EQ(write.contents[0].encryptionLevel, EncryptionLevel::Plaintext);
 
-  EXPECT_TRUE(
-      IOBufEqualTo()(write.contents[1].data, IOBuf::copyBuffer("handshake")));
+  EXPECT_TRUE(folly::IOBufEqualTo()(
+      write.contents[1].data, folly::IOBuf::copyBuffer("handshake")));
   EXPECT_EQ(write.contents[1].contentType, ContentType::handshake);
   EXPECT_EQ(write.contents[1].encryptionLevel, EncryptionLevel::Handshake);
 
@@ -3364,12 +3454,12 @@ TEST_F(ServerProtocolTest, TestClientHelloPskEarlyFlow) {
   EXPECT_EQ(state_.replayCacheResult(), ReplayCacheResult::NotReplay);
   EXPECT_TRUE(state_.clientClockSkew().has_value());
   EXPECT_EQ(*state_.alpn(), "h2");
-  EXPECT_TRUE(IOBufEqualTo()(
-      *state_.clientHandshakeSecret(), IOBuf::copyBuffer("cht")));
-  EXPECT_TRUE(IOBufEqualTo()(
-      *state_.exporterMasterSecret(), IOBuf::copyBuffer("expm")));
-  EXPECT_TRUE(IOBufEqualTo()(
-      *state_.earlyExporterMasterSecret(), IOBuf::copyBuffer("eem")));
+  EXPECT_TRUE(folly::IOBufEqualTo()(
+      *state_.clientHandshakeSecret(), folly::IOBuf::copyBuffer("cht")));
+  EXPECT_TRUE(folly::IOBufEqualTo()(
+      *state_.exporterMasterSecret(), folly::IOBuf::copyBuffer("expm")));
+  EXPECT_TRUE(folly::IOBufEqualTo()(
+      *state_.earlyExporterMasterSecret(), folly::IOBuf::copyBuffer("eem")));
 }
 
 TEST_F(ServerProtocolTest, TestClientHelloNullExtensions) {
@@ -3385,7 +3475,7 @@ TEST_F(ServerProtocolTest, TestClientHelloNullExtensions) {
 TEST_F(ServerProtocolTest, TestClientHelloLegacySessionId) {
   setUpExpectingClientHello();
   auto chloWithLegacy = TestMessages::clientHello();
-  chloWithLegacy.legacy_session_id = IOBuf::copyBuffer("middleboxes");
+  chloWithLegacy.legacy_session_id = folly::IOBuf::copyBuffer("middleboxes");
   auto actions =
       getActions(detail::processEvent(state_, std::move(chloWithLegacy)));
   expectActions<MutateState, WriteToSocket, SecretAvailable>(actions);
@@ -3402,7 +3492,7 @@ TEST_F(ServerProtocolTest, TestClientHelloLegacySessionId) {
 TEST_F(ServerProtocolTest, TestClientHelloLegacyHrr) {
   setUpExpectingClientHello();
   auto chloWithLegacy = TestMessages::clientHello();
-  chloWithLegacy.legacy_session_id = IOBuf::copyBuffer("middleboxes");
+  chloWithLegacy.legacy_session_id = folly::IOBuf::copyBuffer("middleboxes");
   context_->setSupportedGroups({NamedGroup::secp256r1, NamedGroup::x25519});
   auto actions =
       getActions(detail::processEvent(state_, std::move(chloWithLegacy)));
@@ -3462,7 +3552,7 @@ TEST_F(ServerProtocolTest, TestClientHelloNoSni) {
 TEST_F(ServerProtocolTest, TestClientHelloFullHandshakeRejectedPsk) {
   setUpExpectingClientHello();
   EXPECT_CALL(*mockTicketCipher_, _decrypt(_)).WillOnce(InvokeWithoutArgs([]() {
-    return std::make_pair(PskType::Rejected, none);
+    return std::make_pair(PskType::Rejected, folly::none);
   }));
 
   auto actions =
@@ -3863,8 +3953,8 @@ TEST_F(ServerProtocolTest, TestClientHelloAcceptEarlyDataWithValidAppToken) {
 
   EXPECT_CALL(*validatorPtr, validate(_))
       .WillOnce(Invoke([&appTokenStr](const ResumptionState& resumptionState) {
-        EXPECT_TRUE(IOBufEqualTo()(
-            resumptionState.appToken, IOBuf::copyBuffer(appTokenStr)));
+        EXPECT_TRUE(folly::IOBufEqualTo()(
+            resumptionState.appToken, folly::IOBuf::copyBuffer(appTokenStr)));
         return true;
       }));
   EXPECT_CALL(*mockTicketCipher_, _decrypt(_))
@@ -3877,7 +3967,7 @@ TEST_F(ServerProtocolTest, TestClientHelloAcceptEarlyDataWithValidAppToken) {
         res.ticketAgeAdd = 0xffffffff;
         res.ticketIssueTime =
             std::chrono::system_clock::time_point(std::chrono::seconds(10));
-        res.appToken = IOBuf::copyBuffer(appTokenStr);
+        res.appToken = folly::IOBuf::copyBuffer(appTokenStr);
         res.handshakeTime =
             std::chrono::system_clock::time_point(std::chrono::seconds(1));
         return std::make_pair(PskType::Resumption, std::move(res));
@@ -3901,8 +3991,8 @@ TEST_F(ServerProtocolTest, TestClientHelloAcceptEarlyDataWithValidAppToken) {
   EXPECT_EQ(state_.earlyDataType(), EarlyDataType::Accepted);
   EXPECT_EQ(state_.replayCacheResult(), ReplayCacheResult::NotReplay);
   EXPECT_TRUE(state_.appToken().has_value());
-  EXPECT_TRUE(
-      IOBufEqualTo()(*state_.appToken(), IOBuf::copyBuffer(appTokenStr)));
+  EXPECT_TRUE(folly::IOBufEqualTo()(
+      *state_.appToken(), folly::IOBuf::copyBuffer(appTokenStr)));
 }
 
 TEST_F(ServerProtocolTest, TestClientHelloRejectEarlyData) {
@@ -3965,7 +4055,7 @@ TEST_F(ServerProtocolTest, TestClientHelloCookieRejectEarlyData) {
   auto chlo = TestMessages::clientHello();
   chlo.extensions.push_back(encodeExtension(ClientEarlyData()));
   Cookie c;
-  c.cookie = IOBuf::copyBuffer("cookie");
+  c.cookie = folly::IOBuf::copyBuffer("cookie");
   chlo.extensions.push_back(encodeExtension(std::move(c)));
   TestMessages::addPsk(chlo);
 
@@ -3989,7 +4079,7 @@ TEST_F(ServerProtocolTest, TestClientHelloRejectEarlyDataPskRejected) {
   setUpExpectingClientHello();
 
   EXPECT_CALL(*mockTicketCipher_, _decrypt(_)).WillOnce(InvokeWithoutArgs([]() {
-    return std::make_pair(PskType::Rejected, none);
+    return std::make_pair(PskType::Rejected, folly::none);
   }));
 
   std::chrono::milliseconds age =
@@ -4210,8 +4300,8 @@ TEST_F(ServerProtocolTest, TestClientHelloRejectEarlyDataInvalidAppToken) {
 
   EXPECT_CALL(*validatorPtr, validate(_))
       .WillOnce(Invoke([&appTokenStr](const ResumptionState& resumptionState) {
-        EXPECT_TRUE(IOBufEqualTo()(
-            resumptionState.appToken, IOBuf::copyBuffer(appTokenStr)));
+        EXPECT_TRUE(folly::IOBufEqualTo()(
+            resumptionState.appToken, folly::IOBuf::copyBuffer(appTokenStr)));
         return false;
       }));
 
@@ -4225,7 +4315,7 @@ TEST_F(ServerProtocolTest, TestClientHelloRejectEarlyDataInvalidAppToken) {
         res.ticketAgeAdd = 0xffffffff;
         res.ticketIssueTime =
             std::chrono::system_clock::time_point(std::chrono::seconds(10));
-        res.appToken = IOBuf::copyBuffer(appTokenStr);
+        res.appToken = folly::IOBuf::copyBuffer(appTokenStr);
         res.handshakeTime =
             std::chrono::system_clock::time_point(std::chrono::seconds(1));
         return std::make_pair(PskType::Resumption, std::move(res));
@@ -4241,8 +4331,8 @@ TEST_F(ServerProtocolTest, TestClientHelloRejectEarlyDataInvalidAppToken) {
   EXPECT_EQ(state_.pskType(), PskType::Resumption);
   EXPECT_EQ(state_.earlyDataType(), EarlyDataType::Rejected);
   EXPECT_TRUE(state_.appToken().has_value());
-  EXPECT_TRUE(
-      IOBufEqualTo()(*state_.appToken(), IOBuf::copyBuffer(appTokenStr)));
+  EXPECT_TRUE(folly::IOBufEqualTo()(
+      *state_.appToken(), folly::IOBuf::copyBuffer(appTokenStr)));
 }
 
 TEST_F(ServerProtocolTest, TestClientHelloHandshakeLogging) {
@@ -4367,7 +4457,7 @@ TEST_F(ServerProtocolTest, TestRetryClientHelloCookie) {
   expectCookie();
   auto clientHello = TestMessages::clientHello();
   Cookie c;
-  c.cookie = IOBuf::copyBuffer("cookie");
+  c.cookie = folly::IOBuf::copyBuffer("cookie");
   clientHello.extensions.push_back(encodeExtension(std::move(c)));
   auto actions =
       getActions(detail::processEvent(state_, std::move(clientHello)));
@@ -4450,7 +4540,7 @@ TEST_F(ServerProtocolTest, TestClientHelloCookie) {
 
   auto chlo = TestMessages::clientHello();
   Cookie c;
-  c.cookie = IOBuf::copyBuffer("cookie");
+  c.cookie = folly::IOBuf::copyBuffer("cookie");
   chlo.extensions.push_back(encodeExtension(std::move(c)));
 
   auto actions = getActions(detail::processEvent(state_, std::move(chlo)));
@@ -4466,7 +4556,7 @@ TEST_F(ServerProtocolTest, TestClientHelloCookieFail) {
 
   auto chlo = TestMessages::clientHello();
   Cookie c;
-  c.cookie = IOBuf::copyBuffer("xyz");
+  c.cookie = folly::IOBuf::copyBuffer("xyz");
   chlo.extensions.push_back(encodeExtension(std::move(c)));
 
   auto actions = getActions(detail::processEvent(state_, std::move(chlo)));
@@ -4479,7 +4569,7 @@ TEST_F(ServerProtocolTest, TestClientHelloCookieNoCipher) {
 
   auto chlo = TestMessages::clientHello();
   Cookie c;
-  c.cookie = IOBuf::copyBuffer("cookie");
+  c.cookie = folly::IOBuf::copyBuffer("cookie");
   chlo.extensions.push_back(encodeExtension(std::move(c)));
 
   auto actions = getActions(detail::processEvent(state_, std::move(chlo)));
@@ -4492,18 +4582,19 @@ TEST_F(ServerProtocolTest, TestClientHelloCookieVersionMismatch) {
   acceptCookies();
 
   EXPECT_CALL(*mockCookieCipher_, _decrypt(_)).WillOnce(Invoke([](Buf& cookie) {
-    EXPECT_TRUE(IOBufEqualTo()(cookie, IOBuf::copyBuffer("cookie")));
+    EXPECT_TRUE(
+        folly::IOBufEqualTo()(cookie, folly::IOBuf::copyBuffer("cookie")));
     CookieState cs;
     cs.version = ProtocolVersion::tls_1_2;
     cs.cipher = CipherSuite::TLS_AES_128_GCM_SHA256;
-    cs.chloHash = IOBuf::copyBuffer("chlohash");
-    cs.appToken = IOBuf::create(0);
+    cs.chloHash = folly::IOBuf::copyBuffer("chlohash");
+    cs.appToken = folly::IOBuf::create(0);
     return folly::Optional<CookieState>(std::move(cs));
   }));
 
   auto chlo = TestMessages::clientHello();
   Cookie c;
-  c.cookie = IOBuf::copyBuffer("cookie");
+  c.cookie = folly::IOBuf::copyBuffer("cookie");
   chlo.extensions.push_back(encodeExtension(std::move(c)));
 
   auto actions = getActions(detail::processEvent(state_, std::move(chlo)));
@@ -4518,18 +4609,19 @@ TEST_F(ServerProtocolTest, TestClientHelloCookieCipherMismatch) {
   acceptCookies();
 
   EXPECT_CALL(*mockCookieCipher_, _decrypt(_)).WillOnce(Invoke([](Buf& cookie) {
-    EXPECT_TRUE(IOBufEqualTo()(cookie, IOBuf::copyBuffer("cookie")));
+    EXPECT_TRUE(
+        folly::IOBufEqualTo()(cookie, folly::IOBuf::copyBuffer("cookie")));
     CookieState cs;
     cs.version = TestProtocolVersion;
     cs.cipher = CipherSuite::TLS_AES_256_GCM_SHA384;
-    cs.chloHash = IOBuf::copyBuffer("chlohash");
-    cs.appToken = IOBuf::create(0);
+    cs.chloHash = folly::IOBuf::copyBuffer("chlohash");
+    cs.appToken = folly::IOBuf::create(0);
     return folly::Optional<CookieState>(std::move(cs));
   }));
 
   auto chlo = TestMessages::clientHello();
   Cookie c;
-  c.cookie = IOBuf::copyBuffer("cookie");
+  c.cookie = folly::IOBuf::copyBuffer("cookie");
   chlo.extensions.push_back(encodeExtension(std::move(c)));
 
   auto actions = getActions(detail::processEvent(state_, std::move(chlo)));
@@ -4544,19 +4636,20 @@ TEST_F(ServerProtocolTest, TestClientHelloCookieGroupMismatch) {
   acceptCookies();
 
   EXPECT_CALL(*mockCookieCipher_, _decrypt(_)).WillOnce(Invoke([](Buf& cookie) {
-    EXPECT_TRUE(IOBufEqualTo()(cookie, IOBuf::copyBuffer("cookie")));
+    EXPECT_TRUE(
+        folly::IOBufEqualTo()(cookie, folly::IOBuf::copyBuffer("cookie")));
     CookieState cs;
     cs.version = TestProtocolVersion;
     cs.cipher = CipherSuite::TLS_AES_128_GCM_SHA256;
     cs.group = NamedGroup::secp256r1;
-    cs.chloHash = IOBuf::copyBuffer("chlohash");
-    cs.appToken = IOBuf::create(0);
+    cs.chloHash = folly::IOBuf::copyBuffer("chlohash");
+    cs.appToken = folly::IOBuf::create(0);
     return folly::Optional<CookieState>(std::move(cs));
   }));
 
   auto chlo = TestMessages::clientHello();
   Cookie c;
-  c.cookie = IOBuf::copyBuffer("cookie");
+  c.cookie = folly::IOBuf::copyBuffer("cookie");
   chlo.extensions.push_back(encodeExtension(std::move(c)));
 
   auto actions = getActions(detail::processEvent(state_, std::move(chlo)));
@@ -4572,7 +4665,7 @@ TEST_F(ServerProtocolTest, TestClientHelloCookieNoGroup) {
 
   auto chlo = TestMessages::clientHello();
   Cookie c;
-  c.cookie = IOBuf::copyBuffer("cookie");
+  c.cookie = folly::IOBuf::copyBuffer("cookie");
   chlo.extensions.push_back(encodeExtension(std::move(c)));
   TestMessages::removeExtension(chlo, ExtensionType::key_share);
   ClientKeyShare keyShare;
@@ -4628,8 +4721,9 @@ TEST_F(ServerProtocolTest, TestEarlyAppWrite) {
         content.contentType = msg.type;
         content.encryptionLevel = mockWrite_->getEncryptionLevel();
         EXPECT_EQ(msg.type, ContentType::application_data);
-        EXPECT_TRUE(IOBufEqualTo()(msg.fragment, IOBuf::copyBuffer("appdata")));
-        content.data = IOBuf::copyBuffer("writtenappdata");
+        EXPECT_TRUE(folly::IOBufEqualTo()(
+            msg.fragment, folly::IOBuf::copyBuffer("appdata")));
+        content.data = folly::IOBuf::copyBuffer("writtenappdata");
         return content;
       }));
 
@@ -4637,8 +4731,8 @@ TEST_F(ServerProtocolTest, TestEarlyAppWrite) {
       getActions(detail::processEvent(state_, TestMessages::appWrite()));
 
   auto write = expectSingleAction<WriteToSocket>(std::move(actions));
-  EXPECT_TRUE(IOBufEqualTo()(
-      write.contents[0].data, IOBuf::copyBuffer("writtenappdata")));
+  EXPECT_TRUE(folly::IOBufEqualTo()(
+      write.contents[0].data, folly::IOBuf::copyBuffer("writtenappdata")));
 }
 
 TEST_F(ServerProtocolTest, TestEndOfEarlyData) {
@@ -4678,12 +4772,12 @@ TEST_F(ServerProtocolTest, TestFullHandshakeFinished) {
   EXPECT_CALL(
       *mockHandshakeContext_, getFinishedData(RangeMatches("clihandsec")))
       .InSequence(contextSeq)
-      .WillOnce(
-          InvokeWithoutArgs([]() { return IOBuf::copyBuffer("verifydata"); }));
+      .WillOnce(InvokeWithoutArgs(
+          []() { return folly::IOBuf::copyBuffer("verifydata"); }));
   EXPECT_CALL(*mockHandshakeContext_, getHandshakeContext())
       .InSequence(contextSeq)
       .WillRepeatedly(
-          Invoke([]() { return IOBuf::copyBuffer("sfincontext"); }));
+          Invoke([]() { return folly::IOBuf::copyBuffer("sfincontext"); }));
   EXPECT_CALL(
       *mockHandshakeContext_,
       appendToTranscript(BufMatches("finishedencoding")))
@@ -4691,7 +4785,7 @@ TEST_F(ServerProtocolTest, TestFullHandshakeFinished) {
   EXPECT_CALL(*mockHandshakeContext_, getHandshakeContext())
       .InSequence(contextSeq)
       .WillRepeatedly(
-          Invoke([]() { return IOBuf::copyBuffer("clifincontext"); }));
+          Invoke([]() { return folly::IOBuf::copyBuffer("clifincontext"); }));
   EXPECT_CALL(
       *mockKeyScheduler_,
       getSecret(MasterSecrets::ResumptionMaster, RangeMatches("clifincontext")))
@@ -4710,30 +4804,33 @@ TEST_F(ServerProtocolTest, TestFullHandshakeFinished) {
   EXPECT_CALL(*mockKeyScheduler_, getTrafficKey(RangeMatches("cat"), _, _))
       .WillOnce(InvokeWithoutArgs([]() {
         return TrafficKey{
-            IOBuf::copyBuffer("clientkey"), IOBuf::copyBuffer("clientiv")};
+            folly::IOBuf::copyBuffer("clientkey"),
+            folly::IOBuf::copyBuffer("clientiv")};
       }));
   EXPECT_CALL(
       *mockKeyScheduler_,
       getResumptionSecret(RangeMatches("rsec"), RangeMatches("")))
-      .WillOnce(
-          InvokeWithoutArgs([]() { return IOBuf::copyBuffer("derivedrsec"); }));
+      .WillOnce(InvokeWithoutArgs(
+          []() { return folly::IOBuf::copyBuffer("derivedrsec"); }));
 
   MockAead* raead;
   MockEncryptedReadRecordLayer* rrl;
   expectAeadCreation(&raead, nullptr);
-  expectEncryptedReadRecordLayerCreation(&rrl, &raead, StringPiece("cat"));
+  expectEncryptedReadRecordLayerCreation(
+      &rrl, &raead, folly::StringPiece("cat"));
   EXPECT_CALL(*factory_, makeTicketAgeAdd()).WillOnce(Return(0x44444444));
   EXPECT_CALL(*mockTicketCipher_, _encrypt(_))
       .WillOnce(Invoke([=](ResumptionState& resState) {
         EXPECT_EQ(resState.version, TestProtocolVersion);
         EXPECT_EQ(resState.cipher, CipherSuite::TLS_AES_128_GCM_SHA256);
-        EXPECT_TRUE(IOBufEqualTo()(
-            resState.resumptionSecret, IOBuf::copyBuffer("derivedrsec")));
+        EXPECT_TRUE(folly::IOBufEqualTo()(
+            resState.resumptionSecret,
+            folly::IOBuf::copyBuffer("derivedrsec")));
         EXPECT_EQ(resState.serverCert, cert_);
         EXPECT_EQ(*resState.alpn, "h2");
         EXPECT_EQ(resState.ticketAgeAdd, 0x44444444);
         return std::make_pair(
-            IOBuf::copyBuffer("ticket"), std::chrono::seconds(100));
+            folly::IOBuf::copyBuffer("ticket"), std::chrono::seconds(100));
       }));
   EXPECT_CALL(*mockWrite_, _write(_, _))
       .WillOnce(Invoke([&](TLSMessage& msg, Aead::AeadOptions) {
@@ -4741,7 +4838,7 @@ TEST_F(ServerProtocolTest, TestFullHandshakeFinished) {
         content.contentType = msg.type;
         content.encryptionLevel = mockWrite_->getEncryptionLevel();
         EXPECT_EQ(msg.type, ContentType::handshake);
-        EXPECT_TRUE(IOBufEqualTo()(
+        EXPECT_TRUE(folly::IOBufEqualTo()(
             msg.fragment, encodeHandshake(TestMessages::newSessionTicket())));
         content.data = folly::IOBuf::copyBuffer("handshake");
         return content;
@@ -4758,7 +4855,7 @@ TEST_F(ServerProtocolTest, TestFullHandshakeFinished) {
       SecretAvailable>(actions);
 
   expectSecret(
-      actions, AppTrafficSecrets::ClientAppTraffic, StringPiece("cat"));
+      actions, AppTrafficSecrets::ClientAppTraffic, folly::StringPiece("cat"));
   processStateMutations(actions);
   EXPECT_EQ(state_.state(), StateEnum::AcceptingData);
   EXPECT_EQ(state_.readRecordLayer().get(), rrl);
@@ -4776,7 +4873,7 @@ TEST_F(ServerProtocolTest, TestFullHandshakeFinished) {
 TEST_F(ServerProtocolTest, TestFinishedNoTicket) {
   setUpExpectingFinished();
   EXPECT_CALL(*mockTicketCipher_, _encrypt(_)).WillOnce(InvokeWithoutArgs([]() {
-    return none;
+    return folly::none;
   }));
 
   auto actions =
@@ -4801,8 +4898,8 @@ TEST_F(ServerProtocolTest, TestFinishedTicketEarly) {
         TicketEarlyData early;
         early.max_early_data_size = 0xffffffff;
         nst.extensions.push_back(encodeExtension(std::move(early)));
-        EXPECT_TRUE(
-            IOBufEqualTo()(msg.fragment, encodeHandshake(std::move(nst))));
+        EXPECT_TRUE(folly::IOBufEqualTo()(
+            msg.fragment, encodeHandshake(std::move(nst))));
         content.data = folly::IOBuf::copyBuffer("handshake");
         return content;
       }));
@@ -4846,12 +4943,12 @@ TEST_F(ServerProtocolTest, TestFinishedMismatch) {
   EXPECT_CALL(
       *mockHandshakeContext_, getFinishedData(RangeMatches("clihandsec")))
       .WillOnce(InvokeWithoutArgs(
-          []() { return IOBuf::copyBuffer("wrongverifydata"); }));
+          []() { return folly::IOBuf::copyBuffer("wrongverifydata"); }));
 
   auto actions =
       getActions(detail::processEvent(state_, TestMessages::finished()));
 
-  expectError<FizzException>(actions, none, "finished verify failure");
+  expectError<FizzException>(actions, folly::none, "finished verify failure");
 }
 
 TEST_F(ServerProtocolTest, TestFinishedExtraData) {
@@ -4862,7 +4959,7 @@ TEST_F(ServerProtocolTest, TestFinishedExtraData) {
   auto actions =
       getActions(detail::processEvent(state_, TestMessages::finished()));
 
-  expectError<FizzException>(actions, none, "data after finished");
+  expectError<FizzException>(actions, folly::none, "data after finished");
 }
 
 TEST_F(ServerProtocolTest, TestExpectingFinishedAppWrite) {
@@ -4873,8 +4970,9 @@ TEST_F(ServerProtocolTest, TestExpectingFinishedAppWrite) {
         content.contentType = msg.type;
         content.encryptionLevel = mockWrite_->getEncryptionLevel();
         EXPECT_EQ(msg.type, ContentType::application_data);
-        EXPECT_TRUE(IOBufEqualTo()(msg.fragment, IOBuf::copyBuffer("appdata")));
-        content.data = IOBuf::copyBuffer("writtenappdata");
+        EXPECT_TRUE(folly::IOBufEqualTo()(
+            msg.fragment, folly::IOBuf::copyBuffer("appdata")));
+        content.data = folly::IOBuf::copyBuffer("writtenappdata");
         return content;
       }));
 
@@ -4882,8 +4980,8 @@ TEST_F(ServerProtocolTest, TestExpectingFinishedAppWrite) {
       getActions(detail::processEvent(state_, TestMessages::appWrite()));
 
   auto write = expectSingleAction<WriteToSocket>(std::move(actions));
-  EXPECT_TRUE(IOBufEqualTo()(
-      write.contents[0].data, IOBuf::copyBuffer("writtenappdata")));
+  EXPECT_TRUE(folly::IOBufEqualTo()(
+      write.contents[0].data, folly::IOBuf::copyBuffer("writtenappdata")));
 }
 
 TEST_F(ServerProtocolTest, TestWriteNewSessionTicket) {
@@ -4893,25 +4991,26 @@ TEST_F(ServerProtocolTest, TestWriteNewSessionTicket) {
 
   EXPECT_CALL(*mockHandshakeContext_, getHandshakeContext())
       .WillRepeatedly(
-          Invoke([]() { return IOBuf::copyBuffer("clifincontext"); }));
+          Invoke([]() { return folly::IOBuf::copyBuffer("clifincontext"); }));
   EXPECT_CALL(
       *mockKeyScheduler_,
       getResumptionSecret(RangeMatches("rsec"), RangeMatches("")))
-      .WillOnce(
-          InvokeWithoutArgs([]() { return IOBuf::copyBuffer("derivedrsec"); }));
+      .WillOnce(InvokeWithoutArgs(
+          []() { return folly::IOBuf::copyBuffer("derivedrsec"); }));
 
   EXPECT_CALL(*factory_, makeTicketAgeAdd()).WillOnce(Return(0x44444444));
   EXPECT_CALL(*mockTicketCipher_, _encrypt(_))
       .WillOnce(Invoke([=](ResumptionState& resState) {
         EXPECT_EQ(resState.version, TestProtocolVersion);
         EXPECT_EQ(resState.cipher, CipherSuite::TLS_AES_128_GCM_SHA256);
-        EXPECT_TRUE(IOBufEqualTo()(
-            resState.resumptionSecret, IOBuf::copyBuffer("derivedrsec")));
+        EXPECT_TRUE(folly::IOBufEqualTo()(
+            resState.resumptionSecret,
+            folly::IOBuf::copyBuffer("derivedrsec")));
         EXPECT_EQ(resState.serverCert, cert_);
         EXPECT_EQ(*resState.alpn, "h2");
         EXPECT_EQ(resState.ticketAgeAdd, 0x44444444);
         return std::make_pair(
-            IOBuf::copyBuffer("ticket"), std::chrono::seconds(100));
+            folly::IOBuf::copyBuffer("ticket"), std::chrono::seconds(100));
       }));
   auto nstBuf = folly::IOBuf::copyBuffer("nst");
   EXPECT_CALL(*appWrite_, _write(_, _))
@@ -4920,7 +5019,7 @@ TEST_F(ServerProtocolTest, TestWriteNewSessionTicket) {
         content.contentType = msg.type;
         content.encryptionLevel = appWrite_->getEncryptionLevel();
         EXPECT_EQ(msg.type, ContentType::handshake);
-        EXPECT_TRUE(IOBufEqualTo()(
+        EXPECT_TRUE(folly::IOBufEqualTo()(
             msg.fragment, encodeHandshake(TestMessages::newSessionTicket())));
         content.data = nstBuf->clone();
         return content;
@@ -4931,7 +5030,7 @@ TEST_F(ServerProtocolTest, TestWriteNewSessionTicket) {
   auto write = expectSingleAction<WriteToSocket>(std::move(actions));
   EXPECT_EQ(write.contents[0].contentType, ContentType::handshake);
   EXPECT_EQ(write.contents[0].encryptionLevel, EncryptionLevel::AppTraffic);
-  EXPECT_TRUE(IOBufEqualTo()(nstBuf, write.contents[0].data));
+  EXPECT_TRUE(folly::IOBufEqualTo()(nstBuf, write.contents[0].data));
 }
 
 TEST_F(ServerProtocolTest, TestWriteNewSessionTicketWithTicketEarly) {
@@ -4949,8 +5048,8 @@ TEST_F(ServerProtocolTest, TestWriteNewSessionTicketWithTicketEarly) {
         TicketEarlyData early;
         early.max_early_data_size = 0xffffffff;
         nst.extensions.push_back(encodeExtension(std::move(early)));
-        EXPECT_TRUE(
-            IOBufEqualTo()(msg.fragment, encodeHandshake(std::move(nst))));
+        EXPECT_TRUE(folly::IOBufEqualTo()(
+            msg.fragment, encodeHandshake(std::move(nst))));
         content.data = folly::IOBuf::copyBuffer("handshake");
         return content;
       }));
@@ -4972,14 +5071,14 @@ TEST_F(ServerProtocolTest, TestWriteNewSessionTicketWithAppToken) {
         EXPECT_EQ(resState.serverCert, cert_);
         EXPECT_EQ(*resState.alpn, "h2");
         EXPECT_EQ(resState.ticketAgeAdd, 0x44444444);
-        EXPECT_TRUE(
-            IOBufEqualTo()(resState.appToken, IOBuf::copyBuffer(appToken)));
+        EXPECT_TRUE(folly::IOBufEqualTo()(
+            resState.appToken, folly::IOBuf::copyBuffer(appToken)));
         return std::make_pair(
-            IOBuf::copyBuffer("ticket"), std::chrono::seconds(100));
+            folly::IOBuf::copyBuffer("ticket"), std::chrono::seconds(100));
       }));
 
   WriteNewSessionTicket writeNewSessionTicket;
-  writeNewSessionTicket.appToken = IOBuf::copyBuffer(appToken);
+  writeNewSessionTicket.appToken = folly::IOBuf::copyBuffer(appToken);
   auto actions = getActions(
       detail::processEvent(state_, std::move(writeNewSessionTicket)));
   expectSingleAction<WriteToSocket>(std::move(actions));
@@ -5000,7 +5099,7 @@ TEST_F(
         EXPECT_EQ(resState.ticketAgeAdd, 0x44444444);
         EXPECT_FALSE(resState.appToken);
         return std::make_pair(
-            IOBuf::copyBuffer("ticket"), std::chrono::seconds(100));
+            folly::IOBuf::copyBuffer("ticket"), std::chrono::seconds(100));
       }));
   auto actions =
       getActions(detail::processEvent(state_, TestMessages::finished()));
@@ -5020,13 +5119,13 @@ TEST_F(
         EXPECT_EQ(resState.serverCert, cert_);
         EXPECT_EQ(*resState.alpn, "h2");
         EXPECT_EQ(resState.ticketAgeAdd, 0x44444444);
-        EXPECT_TRUE(
-            IOBufEqualTo()(resState.appToken, IOBuf::copyBuffer(appToken)));
+        EXPECT_TRUE(folly::IOBufEqualTo()(
+            resState.appToken, folly::IOBuf::copyBuffer(appToken)));
         return std::make_pair(
-            IOBuf::copyBuffer("ticket"), std::chrono::seconds(100));
+            folly::IOBuf::copyBuffer("ticket"), std::chrono::seconds(100));
       }));
   WriteNewSessionTicket writeNewSessionTicket;
-  writeNewSessionTicket.appToken = IOBuf::copyBuffer(appToken);
+  writeNewSessionTicket.appToken = folly::IOBuf::copyBuffer(appToken);
   auto writeNewSessionTicketActions = getActions(
       detail::processEvent(state_, std::move(writeNewSessionTicket)));
   expectSingleAction<WriteToSocket>(std::move(writeNewSessionTicketActions));
@@ -5037,7 +5136,7 @@ TEST_F(ServerProtocolTest, TestWriteNewSessionTicketNoTicket) {
   context_->setSendNewSessionTicket(false);
 
   EXPECT_CALL(*mockTicketCipher_, _encrypt(_)).WillOnce(InvokeWithoutArgs([]() {
-    return none;
+    return folly::none;
   }));
 
   auto actions =
@@ -5072,8 +5171,9 @@ TEST_F(ServerProtocolTest, TestAppWrite) {
         content.contentType = msg.type;
         content.encryptionLevel = appWrite_->getEncryptionLevel();
         EXPECT_EQ(msg.type, ContentType::application_data);
-        EXPECT_TRUE(IOBufEqualTo()(msg.fragment, IOBuf::copyBuffer("appdata")));
-        content.data = IOBuf::copyBuffer("writtenappdata");
+        EXPECT_TRUE(folly::IOBufEqualTo()(
+            msg.fragment, folly::IOBuf::copyBuffer("appdata")));
+        content.data = folly::IOBuf::copyBuffer("writtenappdata");
         return content;
       }));
 
@@ -5081,8 +5181,8 @@ TEST_F(ServerProtocolTest, TestAppWrite) {
       getActions(detail::processEvent(state_, TestMessages::appWrite()));
 
   auto write = expectSingleAction<WriteToSocket>(std::move(actions));
-  EXPECT_TRUE(IOBufEqualTo()(
-      write.contents[0].data, IOBuf::copyBuffer("writtenappdata")));
+  EXPECT_TRUE(folly::IOBufEqualTo()(
+      write.contents[0].data, folly::IOBuf::copyBuffer("writtenappdata")));
   EXPECT_EQ(write.contents[0].encryptionLevel, EncryptionLevel::AppTraffic);
   EXPECT_EQ(write.contents[0].contentType, ContentType::application_data);
 }
@@ -5103,14 +5203,16 @@ TEST_F(ServerProtocolTest, TestKeyUpdateNotRequested) {
   EXPECT_CALL(*mockKeyScheduler_, getTrafficKey(RangeMatches("cat"), _, _))
       .WillOnce(InvokeWithoutArgs([]() {
         return TrafficKey{
-            IOBuf::copyBuffer("clientkey"), IOBuf::copyBuffer("clientiv")};
+            folly::IOBuf::copyBuffer("clientkey"),
+            folly::IOBuf::copyBuffer("clientiv")};
       }));
 
   MockAead* raead;
   MockEncryptedReadRecordLayer* rrl;
 
   expectAeadCreation({{"clientkey", &raead}});
-  expectEncryptedReadRecordLayerCreation(&rrl, &raead, StringPiece("cat"));
+  expectEncryptedReadRecordLayerCreation(
+      &rrl, &raead, folly::StringPiece("cat"));
 
   auto actions =
       getActions(detail::processEvent(state_, TestMessages::keyUpdate(false)));
@@ -5118,7 +5220,7 @@ TEST_F(ServerProtocolTest, TestKeyUpdateNotRequested) {
   EXPECT_EQ(getNumActions<WriteToSocket>(actions, false), 0);
 
   expectSecret(
-      actions, AppTrafficSecrets::ClientAppTraffic, StringPiece("cat"));
+      actions, AppTrafficSecrets::ClientAppTraffic, folly::StringPiece("cat"));
 
   processStateMutations(actions);
   EXPECT_EQ(state_.readRecordLayer().get(), rrl);
@@ -5132,7 +5234,7 @@ TEST_F(ServerProtocolTest, TestKeyUpdateExtraData) {
   auto actions =
       getActions(detail::processEvent(state_, TestMessages::keyUpdate(false)));
 
-  expectError<FizzException>(actions, none, "data after key_update");
+  expectError<FizzException>(actions, folly::none, "data after key_update");
 }
 
 TEST_F(ServerProtocolTest, TestKeyUpdateRequest) {
@@ -5154,7 +5256,7 @@ TEST_F(ServerProtocolTest, TestKeyUpdateRequest) {
         content.contentType = msg.type;
         content.encryptionLevel = appWrite_->getEncryptionLevel();
         EXPECT_EQ(msg.type, ContentType::handshake);
-        EXPECT_TRUE(IOBufEqualTo()(
+        EXPECT_TRUE(folly::IOBufEqualTo()(
             msg.fragment, encodeHandshake(TestMessages::keyUpdate(false))));
         content.data = folly::IOBuf::copyBuffer("keyupdated");
         return content;
@@ -5172,13 +5274,15 @@ TEST_F(ServerProtocolTest, TestKeyUpdateRequest) {
   EXPECT_CALL(*mockKeyScheduler_, getTrafficKey(RangeMatches("cat"), _, _))
       .WillOnce(InvokeWithoutArgs([]() {
         return TrafficKey{
-            IOBuf::copyBuffer("clientkey"), IOBuf::copyBuffer("clientiv")};
+            folly::IOBuf::copyBuffer("clientkey"),
+            folly::IOBuf::copyBuffer("clientiv")};
       }));
 
   EXPECT_CALL(*mockKeyScheduler_, getTrafficKey(RangeMatches("sat"), _, _))
       .WillOnce(InvokeWithoutArgs([]() {
         return TrafficKey{
-            IOBuf::copyBuffer("serverkey"), IOBuf::copyBuffer("serveriv")};
+            folly::IOBuf::copyBuffer("serverkey"),
+            folly::IOBuf::copyBuffer("serveriv")};
       }));
 
   MockAead* raead;
@@ -5187,19 +5291,21 @@ TEST_F(ServerProtocolTest, TestKeyUpdateRequest) {
   MockEncryptedWriteRecordLayer* wrl;
 
   expectAeadCreation(&raead, &waead);
-  expectEncryptedReadRecordLayerCreation(&rrl, &raead, StringPiece("cat"));
-  expectEncryptedWriteRecordLayerCreation(&wrl, &waead, StringPiece("sat"));
+  expectEncryptedReadRecordLayerCreation(
+      &rrl, &raead, folly::StringPiece("cat"));
+  expectEncryptedWriteRecordLayerCreation(
+      &wrl, &waead, folly::StringPiece("sat"));
   auto actions =
       getActions(detail::processEvent(state_, TestMessages::keyUpdate(true)));
   expectActions<MutateState, WriteToSocket, SecretAvailable>(actions);
   auto write = expectAction<WriteToSocket>(actions);
-  EXPECT_TRUE(
-      IOBufEqualTo()(write.contents[0].data, IOBuf::copyBuffer("keyupdated")));
+  EXPECT_TRUE(folly::IOBufEqualTo()(
+      write.contents[0].data, folly::IOBuf::copyBuffer("keyupdated")));
 
   expectSecret(
-      actions, AppTrafficSecrets::ClientAppTraffic, StringPiece("cat"));
+      actions, AppTrafficSecrets::ClientAppTraffic, folly::StringPiece("cat"));
   expectSecret(
-      actions, AppTrafficSecrets::ServerAppTraffic, StringPiece("sat"));
+      actions, AppTrafficSecrets::ServerAppTraffic, folly::StringPiece("sat"));
   processStateMutations(actions);
   EXPECT_EQ(state_.readRecordLayer().get(), rrl);
   EXPECT_EQ(state_.writeRecordLayer().get(), wrl);
@@ -5289,7 +5395,7 @@ TEST_F(ServerProtocolTest, TestCertificateVerifyNoVerifier) {
   EXPECT_CALL(*mockHandshakeContext_, getHandshakeContext())
       .InSequence(contextSeq)
       .WillRepeatedly(
-          Invoke([]() { return IOBuf::copyBuffer("certcontext"); }));
+          Invoke([]() { return folly::IOBuf::copyBuffer("certcontext"); }));
 
   EXPECT_CALL(
       *clientLeafCert_,
@@ -5321,7 +5427,7 @@ TEST_F(ServerProtocolTest, TestCertificateVerifyWithVerifier) {
   EXPECT_CALL(*mockHandshakeContext_, getHandshakeContext())
       .InSequence(contextSeq)
       .WillRepeatedly(
-          Invoke([]() { return IOBuf::copyBuffer("certcontext"); }));
+          Invoke([]() { return folly::IOBuf::copyBuffer("certcontext"); }));
 
   EXPECT_CALL(
       *clientLeafCert_,
@@ -5376,7 +5482,7 @@ TEST_F(ServerProtocolTest, TestCertificateVerifySignatureFailure) {
   EXPECT_CALL(*mockHandshakeContext_, getHandshakeContext())
       .InSequence(contextSeq)
       .WillRepeatedly(
-          Invoke([]() { return IOBuf::copyBuffer("certcontext"); }));
+          Invoke([]() { return folly::IOBuf::copyBuffer("certcontext"); }));
 
   EXPECT_CALL(
       *clientLeafCert_,
@@ -5402,7 +5508,7 @@ TEST_F(ServerProtocolTest, TestCertificateVerifyVerifierFailure) {
   EXPECT_CALL(*mockHandshakeContext_, getHandshakeContext())
       .InSequence(contextSeq)
       .WillRepeatedly(
-          Invoke([]() { return IOBuf::copyBuffer("certcontext"); }));
+          Invoke([]() { return folly::IOBuf::copyBuffer("certcontext"); }));
 
   EXPECT_CALL(
       *clientLeafCert_,
@@ -5432,7 +5538,7 @@ TEST_F(ServerProtocolTest, TestOptionalCertificateVerifySignatureFailure) {
   EXPECT_CALL(*mockHandshakeContext_, getHandshakeContext())
       .InSequence(contextSeq)
       .WillRepeatedly(
-          Invoke([]() { return IOBuf::copyBuffer("certcontext"); }));
+          Invoke([]() { return folly::IOBuf::copyBuffer("certcontext"); }));
 
   EXPECT_CALL(
       *clientLeafCert_,
@@ -5459,7 +5565,7 @@ TEST_F(ServerProtocolTest, TestOptionalCertificateVerifyVerifierFailure) {
   EXPECT_CALL(*mockHandshakeContext_, getHandshakeContext())
       .InSequence(contextSeq)
       .WillRepeatedly(
-          Invoke([]() { return IOBuf::copyBuffer("certcontext"); }));
+          Invoke([]() { return folly::IOBuf::copyBuffer("certcontext"); }));
 
   EXPECT_CALL(
       *clientLeafCert_,
@@ -5488,7 +5594,7 @@ TEST_F(ServerProtocolTest, TestCertificateVerifyVerifierGenericFailure) {
   EXPECT_CALL(*mockHandshakeContext_, getHandshakeContext())
       .InSequence(contextSeq)
       .WillRepeatedly(
-          Invoke([]() { return IOBuf::copyBuffer("certcontext"); }));
+          Invoke([]() { return folly::IOBuf::copyBuffer("certcontext"); }));
 
   EXPECT_CALL(
       *clientLeafCert_,
