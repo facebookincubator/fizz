@@ -58,7 +58,9 @@ bool Aead128GCMTokenCipher::setSecrets(
   return true;
 }
 
-folly::Optional<Buf> Aead128GCMTokenCipher::encrypt(Buf plaintext) const {
+folly::Optional<Buf> Aead128GCMTokenCipher::encrypt(
+    Buf plaintext,
+    folly::IOBuf* associatedData) const {
   if (secrets_.empty()) {
     return folly::none;
   }
@@ -72,12 +74,15 @@ folly::Optional<Buf> Aead128GCMTokenCipher::encrypt(Buf plaintext) const {
   folly::io::Appender appender(token.get(), kTokenHeaderLength);
   appender.push(folly::range(salt));
   appender.writeBE(seqNum);
-  token->prependChain(aead->encrypt(std::move(plaintext), nullptr, seqNum));
+  token->prependChain(
+      aead->encrypt(std::move(plaintext), associatedData, seqNum));
 
   return std::move(token);
 }
 
-folly::Optional<Buf> Aead128GCMTokenCipher::decrypt(Buf token) const {
+folly::Optional<Buf> Aead128GCMTokenCipher::decrypt(
+    Buf token,
+    folly::IOBuf* associatedData) const {
   folly::io::Cursor cursor(token.get());
   if (secrets_.empty() || !cursor.canAdvance(kTokenHeaderLength)) {
     return folly::none;
@@ -91,7 +96,7 @@ folly::Optional<Buf> Aead128GCMTokenCipher::decrypt(Buf token) const {
 
   for (const auto& secret : secrets_) {
     auto aead = createAead(folly::range(secret), folly::range(salt));
-    auto result = aead->tryDecrypt(ciphertext->clone(), nullptr, seqNum);
+    auto result = aead->tryDecrypt(ciphertext->clone(), associatedData, seqNum);
     if (result) {
       return result;
     }

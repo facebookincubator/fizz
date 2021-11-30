@@ -49,9 +49,12 @@ class Aead128GCMTokenCipher {
    */
   bool setSecrets(const std::vector<folly::ByteRange>& tokenSecrets);
 
-  folly::Optional<Buf> encrypt(Buf plaintext) const;
+  folly::Optional<Buf> encrypt(
+      Buf plaintext,
+      folly::IOBuf* associatedData = nullptr) const;
 
-  folly::Optional<Buf> decrypt(Buf) const;
+  folly::Optional<Buf> decrypt(Buf, folly::IOBuf* associatedData = nullptr)
+      const;
 
  private:
   using Secret = std::vector<uint8_t>;
