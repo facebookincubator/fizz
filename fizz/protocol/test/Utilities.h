@@ -32,7 +32,7 @@ void throwIfNull(const A& a, const std::string& msg) {
   }
 }
 
-CertAndKey createCert(std::string cn, bool ca, CertAndKey* issuer) {
+inline CertAndKey createCert(std::string cn, bool ca, CertAndKey* issuer) {
   folly::ssl::EvpPkeyUniquePtr pk(EVP_PKEY_new());
   throwIfNull(pk, "private key creation failed");
 
@@ -119,7 +119,7 @@ CertAndKey createCert(std::string cn, bool ca, CertAndKey* issuer) {
   return {std::move(crt), std::move(pk)};
 }
 
-std::shared_ptr<PeerCert> getPeerCert(const CertAndKey& cert) {
+inline std::shared_ptr<PeerCert> getPeerCert(const CertAndKey& cert) {
   return std::make_shared<PeerCertImpl<KeyType::P256>>(
       folly::ssl::X509UniquePtr(X509_dup(cert.cert.get())));
 }
