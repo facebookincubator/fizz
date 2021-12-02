@@ -74,7 +74,13 @@ class FizzTestServer : public folly::AsyncServerSocket::AcceptCallback {
     std::shared_ptr<AsyncFizzServer> transport = AsyncFizzServer::UniquePtr(
         new AsyncFizzServer(folly::AsyncSocket::UniquePtr(sock), ctx_));
     auto callback = factory_->getCallback(transport);
-    transport->accept(callback);
+    if (startHandshakeOnAccept_) {
+      transport->accept(callback);
+    }
+  }
+
+  void setStartHandshakeOnAccept(bool enable) {
+    startHandshakeOnAccept_ = enable;
   }
 
   void setResumption(bool enable) {
@@ -159,6 +165,7 @@ class FizzTestServer : public folly::AsyncServerSocket::AcceptCallback {
   std::shared_ptr<FizzServerContext> ctx_;
   CallbackFactory* factory_;
   folly::EventBase& evb_;
+  bool startHandshakeOnAccept_{true};
 };
 
 } // namespace test
