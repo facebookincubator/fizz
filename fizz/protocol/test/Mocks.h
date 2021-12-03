@@ -304,6 +304,9 @@ class MockAsyncFizzBase : public AsyncFizzBase {
   MOCK_CONST_METHOD0(getPeerCertificate, const Cert*());
   MOCK_CONST_METHOD0(getApplicationProtocol_, std::string());
 
+  MOCK_METHOD1(setReadCB, void(ReadCallback*));
+  MOCK_METHOD1(setEndOfTLSCallback, void(EndOfTLSCallback*));
+
   std::string getApplicationProtocol() const noexcept override {
     return getApplicationProtocol_();
   }

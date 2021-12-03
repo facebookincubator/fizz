@@ -242,7 +242,7 @@ class AsyncFizzBase : public folly::WriteChainAsyncTransportWrapper<
   // 3. Depending on when the tls connection is closed, there may be pending
   // data that exists past the close notify, this is passed along to the caller
   // in the endOfTLS method and the caller must decide what to do with the data
-  void setEndOfTLSCallback(EndOfTLSCallback* cb) {
+  virtual void setEndOfTLSCallback(EndOfTLSCallback* cb) {
     endOfTLSCallback_ = cb;
   }
 
