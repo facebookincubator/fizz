@@ -575,6 +575,48 @@ TEST_F(FizzBaseTest, TestErrorPendingEvents) {
   EXPECT_TRUE(testFizz_->inTerminalState());
 }
 
+TEST_F(FizzBaseTest, TestErrorWhileErroring) {
+  EXPECT_CALL(
+      *TestStateMachine::instance, processAppWrite_(_, WriteMatches("write1")))
+      .WillOnce(InvokeWithoutArgs([]() {
+        Actions actions;
+        actions.push_back(A1());
+        return actions;
+      }));
+  StrictMock<MockWriteCallback> wcb3;
+  StrictMock<MockWriteCallback> wcb4;
+  EXPECT_CALL(testFizz_->visitor_, a1()).WillOnce(Invoke([&]() {
+    testFizz_->appWrite(appWrite("write2"));
+    auto w3 = appWrite("write3");
+    w3.callback = &wcb3;
+    testFizz_->appWrite(std::move(w3));
+    auto w4 = appWrite("write4");
+    w4.callback = &wcb4;
+    testFizz_->appWrite(std::move(w4));
+  }));
+  EXPECT_CALL(
+      *TestStateMachine::instance, processAppWrite_(_, WriteMatches("write2")))
+      .WillOnce(InvokeWithoutArgs([]() {
+        Actions actions;
+        actions.push_back(A2());
+        return actions;
+      }));
+  EXPECT_CALL(testFizz_->visitor_, a2()).WillOnce(Invoke([&]() {
+    testFizz_->moveToErrorState(
+        AsyncSocketException{AsyncSocketException::UNKNOWN, "unit test"});
+  }));
+  EXPECT_CALL(wcb3, writeErr_(0, _)).WillOnce(InvokeWithoutArgs([&]() {
+    testFizz_->moveToErrorState(
+        AsyncSocketException{AsyncSocketException::UNKNOWN, "unit test"});
+    EXPECT_CALL(wcb4, writeErr_(0, _));
+  }));
+  EXPECT_FALSE(testFizz_->inErrorState());
+  EXPECT_FALSE(testFizz_->inTerminalState());
+  testFizz_->appWrite(appWrite("write1"));
+  EXPECT_FALSE(testFizz_->inErrorState());
+  EXPECT_TRUE(testFizz_->inTerminalState());
+}
+
 TEST_F(FizzBaseTest, EventAfterErrorState) {
   EXPECT_CALL(*TestStateMachine::instance, processSocketData(_, _, _))
       .WillOnce(InvokeWithoutArgs([this]() {

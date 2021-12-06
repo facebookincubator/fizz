@@ -55,6 +55,13 @@ void FizzBase<Derived, ActionMoveVisitor, StateMachine>::newTransportData() {
 template <typename Derived, typename ActionMoveVisitor, typename StateMachine>
 void FizzBase<Derived, ActionMoveVisitor, StateMachine>::moveToErrorState(
     const folly::AsyncSocketException& ex) {
+  // If we're already in error state, skip delivering additional error
+  // callbacks. This prevents recursion if we are invoked within an earlier
+  // error callback.
+  if (externalError_) {
+    return;
+  }
+
   // We use a separate flag here rather than just moving the state to Error
   // since there may be a currently processing action.
   externalError_ = true;
