@@ -294,8 +294,4 @@ IdentityCert::IdentityCert(std::string identity) : identity_(identity) {}
 std::string IdentityCert::getIdentity() const {
   return identity_;
 }
-
-folly::ssl::X509UniquePtr IdentityCert::getX509() const {
-  return nullptr;
-}
 } // namespace fizz

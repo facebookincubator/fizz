@@ -35,8 +35,6 @@ class IdentityCert : public Cert {
 
   std::string getIdentity() const override;
 
-  folly::ssl::X509UniquePtr getX509() const override;
-
  private:
   std::string identity_;
 };
