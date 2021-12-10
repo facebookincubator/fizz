@@ -126,7 +126,7 @@ TEST_F(FizzServerTest, TestSSLV2AfterData) {
         return AsyncActions(Actions());
       }));
   fizzServer_->fizzServer_.newTransportData();
-  fizzServer_->queue_.clear();
+  fizzServer_->queue_.reset();
   fizzServer_->queue_.append(getV2ClientHello());
   EXPECT_CALL(
       *MockServerStateMachineInstance::instance, _processSocketData(_, _, _))
