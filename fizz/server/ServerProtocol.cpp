@@ -1175,11 +1175,11 @@ EventHandler<ServerTypes, StateEnum::ExpectingClientHello, Event::ClientHello>::
 
           earlyReadSecretAvailable =
               SecretAvailable(std::move(earlyReadSecret));
-          earlyExporterMaster = folly::IOBuf::copyBuffer(folly::range(
+          earlyExporterMaster = folly::IOBuf::copyBuffer(
               scheduler
                   ->getSecret(
                       EarlySecrets::EarlyExporter, earlyContext->coalesce())
-                  .secret));
+                  .secret);
         }
 
         Optional<NamedGroup> group;
@@ -1340,7 +1340,7 @@ EventHandler<ServerTypes, StateEnum::ExpectingClientHello, Event::ClientHello>::
             *state.context()->getFactory(),
             *scheduler);
         auto clientHandshakeSecret =
-            folly::IOBuf::copyBuffer(folly::range(handshakeReadSecret.secret));
+            folly::IOBuf::copyBuffer(handshakeReadSecret.secret);
 
         auto encodedEncryptedExt = getEncryptedExt(
             *handshakeContext,

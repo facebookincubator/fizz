@@ -796,7 +796,7 @@ EventHandler<ClientTypes, StateEnum::Uninitialized, Event::Connect>::handle(
           EarlySecrets::EarlyExporter,
           handshakeContext->getHandshakeContext()->coalesce());
       earlyDataParams->earlyExporterSecret =
-          folly::IOBuf::copyBuffer(folly::range(earlyExporterVector.secret));
+          folly::IOBuf::copyBuffer(earlyExporterVector.secret);
 
       reportEarlySuccess = ReportEarlyHandshakeSuccess();
       reportEarlySuccess->maxEarlyDataSize = psk->maxEarlyDataSize;
@@ -1227,9 +1227,9 @@ EventHandler<ClientTypes, StateEnum::ExpectingServerHello, Event::ServerHello>::
       *scheduler);
 
   auto clientHandshakeSecret =
-      folly::IOBuf::copyBuffer(folly::range(handshakeWriteSecret.secret));
+      folly::IOBuf::copyBuffer(handshakeWriteSecret.secret);
   auto serverHandshakeSecret =
-      folly::IOBuf::copyBuffer(folly::range(handshakeReadSecret.secret));
+      folly::IOBuf::copyBuffer(handshakeReadSecret.secret);
 
   folly::Optional<ClientAuthType> authType;
   if (negotiatedPsk.clientCert) {
@@ -1886,17 +1886,16 @@ EventHandler<ClientTypes, StateEnum::ExpectingFinished, Event::Finished>::
 
   auto exporterMasterVector = state.keyScheduler()->getSecret(
       MasterSecrets::ExporterMaster, clientFinishedContext->coalesce());
-  auto exporterMaster =
-      folly::IOBuf::copyBuffer(folly::range(exporterMasterVector.secret));
+  auto exporterMaster = folly::IOBuf::copyBuffer(exporterMasterVector.secret);
 
   auto encodedFinished = Protocol::getFinished(
       state.clientHandshakeSecret()->coalesce(), *state.handshakeContext());
-  auto resumptionSecret = folly::IOBuf::copyBuffer(folly::range(
+  auto resumptionSecret = folly::IOBuf::copyBuffer(
       state.keyScheduler()
           ->getSecret(
               MasterSecrets::ResumptionMaster,
               state.handshakeContext()->getHandshakeContext()->coalesce())
-          .secret));
+          .secret);
 
   WriteToSocket clientFlight;
 
