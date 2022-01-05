@@ -41,7 +41,7 @@ class IdentityCert : public Cert {
 
 class SelfCert : public OpenSSLCert {
  public:
-  virtual ~SelfCert() = default;
+  virtual ~SelfCert() override = default;
 
   /**
    * Returns additional identities this certificate can also represent (for
@@ -68,7 +68,7 @@ class SelfCert : public OpenSSLCert {
 
 class PeerCert : public OpenSSLCert {
  public:
-  virtual ~PeerCert() = default;
+  virtual ~PeerCert() override = default;
 
   /**
    * Verifies that signature is a valid signature of toBeSigned. Throws if it's
