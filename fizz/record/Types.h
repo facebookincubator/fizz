@@ -401,4 +401,11 @@ struct hash<fizz::ExtensionType> {
 } // namespace std
 #endif
 
+template <>
+struct fmt::formatter<fizz::ExtensionType> : formatter<unsigned> {
+  auto format(fizz::ExtensionType t, format_context& ctx) {
+    return formatter<unsigned>::format(folly::to_underlying(t), ctx);
+  }
+};
+
 #include <fizz/record/Types-inl.h>
