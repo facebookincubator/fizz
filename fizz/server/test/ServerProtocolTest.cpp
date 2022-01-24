@@ -81,8 +81,10 @@ class ServerProtocolTest : public ProtocolTest<ServerTypes, Actions> {
 
  protected:
   Actions getActions(AsyncActions asyncActions, bool immediate = true) {
-    while (executor_.run())
-      ;
+    if (!immediate) {
+      while (executor_.run()) {
+      }
+    }
     return folly::variant_match(
         asyncActions,
         ::fizz::detail::result_type<Actions>(),
