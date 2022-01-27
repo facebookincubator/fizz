@@ -183,7 +183,7 @@ class KTLSReadTest : public KTLSTest {
     serverSocket->detachNetworkSocket();
 
     serverConn_.reset(new fizz::AsyncKTLSSocket(
-        &evb_, ktlsFDResult.value(), std::move(tlsCb)));
+        &evb_, ktlsFDResult.value(), std::move(tlsCb), nullptr, nullptr));
 
     clientWrite_ = clientToServer.write();
     clientRead_ = serverToClient.read();
@@ -332,6 +332,8 @@ TEST_F(KTLSReadTest, NoTLSCallbackCausesReadErrOnHandshake) {
   conn.reset(new fizz::AsyncKTLSSocket(
       &evb_,
       fizz::KTLSNetworkSocket::unsafeFromExistingKTLSSocket(serverfd),
+      nullptr,
+      nullptr,
       nullptr));
 
   // Client writes a NewSessionTicket to server.

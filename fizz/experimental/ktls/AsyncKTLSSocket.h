@@ -88,14 +88,28 @@ class AsyncKTLSSocket final : public folly::AsyncSocket {
    *
    * This could be the case if:
    *  * You are taking over a detached file descriptor from another
-   * AsyncKTLSSocket
+   *    AsyncKTLSSocket
    *  * You have established a ktls 1.3 connection out of band
+   *
+   * @param evb         The eventbase that the AsyncKTLSSocket will initially
+   *                    be attached to.
+   * @param fd          The kTLS enabled file descriptor.
+   * @param tlsCallback An instance of `TLSCallback` which will be used to
+   *                    handle non-application data events.
+   * @param selfCert    The certificate used to authenticate *to* the peer.
+   * @param peerCert    The certificate that the *peer* presented and
+   *                    *we* authenticated.
    */
   AsyncKTLSSocket(
       folly::EventBase* evb,
       KTLSNetworkSocket fd,
-      std::unique_ptr<TLSCallback> tlsCallback)
-      : AsyncSocket(evb, fd), tlsCallback_(std::move(tlsCallback)) {}
+      std::unique_ptr<TLSCallback> tlsCallback,
+      std::shared_ptr<const Cert> selfCert,
+      std::shared_ptr<const Cert> peerCert)
+      : AsyncSocket(evb, fd),
+        tlsCallback_(std::move(tlsCallback)),
+        selfCert_(std::move(selfCert)),
+        peerCert_(std::move(peerCert)) {}
 
   bool hasBufferedHandshakeData() const {
     return unparsedHandshakeData_ != nullptr;
@@ -103,6 +117,22 @@ class AsyncKTLSSocket final : public folly::AsyncSocket {
 
   std::string getSecurityProtocol() const override {
     return "Fizz/KTLS";
+  }
+
+  const folly::AsyncTransportCertificate* getPeerCertificate() const override {
+    return peerCert_.get();
+  }
+
+  const folly::AsyncTransportCertificate* getSelfCertificate() const override {
+    return selfCert_.get();
+  }
+
+  void dropPeerCertificate() noexcept override {
+    peerCert_.reset();
+  }
+
+  void dropSelfCertificate() noexcept override {
+    selfCert_.reset();
   }
 
  private:
@@ -125,6 +155,8 @@ class AsyncKTLSSocket final : public folly::AsyncSocket {
   AsyncSocket::ReadResult processHandshakeData(folly::ByteRange payload);
 
   std::unique_ptr<TLSCallback> tlsCallback_;
+  std::shared_ptr<const Cert> selfCert_;
+  std::shared_ptr<const Cert> peerCert_;
 
   // This is unlikely to be used (see
   // [note.handshake_fits_in_record_assumption])

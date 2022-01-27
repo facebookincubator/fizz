@@ -272,6 +272,13 @@ TEST(AsyncFizzBaseKTLSTest, TestFizzClientKTLSServer) {
         .thenValue([](AsyncFizzServer::UniquePtr fizzSock) {
           VLOG(1) << "finished handshaking";
           auto ktlsSocket = mustConvertKTLS(*fizzSock);
+
+          EXPECT_NE(ktlsSocket->getSelfCertificate(), nullptr);
+          EXPECT_EQ(ktlsSocket->getSelfCertificate()->getIdentity(), "Fizz");
+          EXPECT_EQ(ktlsSocket->getPeerCertificate(), nullptr);
+          ktlsSocket->dropSelfCertificate();
+          EXPECT_EQ(ktlsSocket->getSelfCertificate(), nullptr);
+
           ktlsSocket->write(
               nullptr, "hello from ktls", sizeof("hello from ktls") - 1);
           auto read =
@@ -370,6 +377,12 @@ TEST(AsyncFizzBaseKTLSTest, TestKTLSClientFizzServer) {
         .thenValue([](AsyncFizzClient::UniquePtr fizzSock) {
           VLOG(1) << "fizz client connected";
           auto ktlsSocket = mustConvertKTLS(*fizzSock);
+
+          EXPECT_EQ(ktlsSocket->getSelfCertificate(), nullptr);
+          EXPECT_NE(ktlsSocket->getPeerCertificate(), nullptr);
+          EXPECT_EQ(ktlsSocket->getPeerCertificate()->getIdentity(), "Fizz");
+          ktlsSocket->dropPeerCertificate();
+          EXPECT_EQ(ktlsSocket->getPeerCertificate(), nullptr);
           auto read =
               new OneshotRead<AsyncKTLSSocket>(std::move(ktlsSocket), 512);
           return read->await();

@@ -29,6 +29,12 @@ class PskCache;
 class State;
 } // namespace client
 
+namespace server {
+template <class SM>
+class AsyncFizzServerT;
+class State;
+} // namespace server
+
 namespace detail {
 KTLSCallbackImpl::TicketHandler makeTicketHandler(
     std::string&& pskIdentity,
@@ -55,6 +61,20 @@ KTLSCallbackImpl::TicketHandler getTicketHandler(
   return makeTicketHandler(
       std::move(pskIdentity).value(), client.getState(), std::move(pskCache));
 }
+
+template <class SM>
+std::pair<std::shared_ptr<const Cert>, std::shared_ptr<const Cert>>
+getSelfPeerCertificateShared(const fizz::client::AsyncFizzClientT<SM>& client) {
+  return std::make_pair(
+      client.getState().clientCert(), client.getState().serverCert());
+}
+template <class SM>
+std::pair<std::shared_ptr<const Cert>, std::shared_ptr<const Cert>>
+getSelfPeerCertificateShared(const fizz::server::AsyncFizzServerT<SM>& server) {
+  return std::make_pair(
+      server.getState().serverCert(), server.getState().clientCert());
+}
+
 } // namespace detail
 
 /**
@@ -128,6 +148,10 @@ tryConvertKTLS(FizzSocket& fizzSock) {
   DCHECK(state.readRecordLayer());
   DCHECK(state.writeRecordLayer());
 
+  std::shared_ptr<const Cert> selfCert;
+  std::shared_ptr<const Cert> peerCert;
+  std::tie(selfCert, peerCert) = detail::getSelfPeerCertificateShared(fizzSock);
+
   auto ciphersuite = *state.cipher();
   auto rstate = (*state.readRecordLayer()).getRecordLayerState();
   auto wstate = (*state.writeRecordLayer()).getRecordLayerState();
@@ -156,7 +180,12 @@ tryConvertKTLS(FizzSocket& fizzSock) {
 
   (void)sock->detachNetworkSocket();
   AsyncKTLSSocket::UniquePtr ret;
-  ret.reset(new AsyncKTLSSocket(evb, result.value(), std::move(callbackImpl)));
+  ret.reset(new AsyncKTLSSocket(
+      evb,
+      result.value(),
+      std::move(callbackImpl),
+      std::move(selfCert),
+      std::move(peerCert)));
   ret->setReadCB(readCb);
   return ret;
 #else
