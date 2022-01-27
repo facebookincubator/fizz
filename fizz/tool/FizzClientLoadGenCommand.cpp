@@ -230,7 +230,7 @@ int fizzClientLoadGenCommand(const std::vector<std::string>& args) {
       config.threadNum,
       std::make_shared<NamedThreadFactory>("LoadGenClientPool"),
       folly::EventBaseManager::get(),
-      true);
+      IOThreadPoolExecutor::Options().setWaitForAll(true));
 
   // Prepare FizzClientContext
   auto clientContext = std::make_shared<FizzClientContext>();

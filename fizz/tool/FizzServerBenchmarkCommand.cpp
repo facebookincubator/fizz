@@ -215,7 +215,7 @@ int fizzServerBenchmarkCommand(const std::vector<std::string>& args) {
       threadNum,
       std::make_shared<NamedThreadFactory>("ServerBenchmarkPool"),
       folly::EventBaseManager::get(),
-      true);
+      IOThreadPoolExecutor::Options().setWaitForAll(true));
 
   // prepare FizzServerContext
   auto serverContext = std::make_shared<FizzServerContext>();
