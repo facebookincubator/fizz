@@ -21,6 +21,7 @@
 #include <folly/String.h>
 
 #include <list>
+#include <stdexcept>
 
 using namespace folly;
 
@@ -739,6 +740,32 @@ TEST_P(OpenSSLEVPCipherTest, TestTryDecrypt) {
     } else {
       EXPECT_FALSE(GetParam().valid);
     }
+  }
+}
+
+TEST_P(OpenSSLEVPCipherTest, TestOutputBufferSizeOverflow) {
+  for (auto opts : getOptionPairs()) {
+    // new output buffer is only allocated when the plaintext input buffer is
+    // shared and when we are allowed to allocate more memory
+    if (opts.bufferOpt != Aead::BufferOption::RespectSharedPolicy ||
+        opts.allocOpt != Aead::AllocationOption::Allow) {
+      continue;
+    }
+    auto cipher = getTestCipher(GetParam());
+    constexpr size_t kLargeHeadroom = 0xFFFFFFFFFFFFFFFF;
+    cipher->setEncryptedBufferHeadroom(kLargeHeadroom);
+    auto plaintext = toIOBuf(GetParam().plaintext);
+    plaintext->markExternallyShared();
+
+    EXPECT_TRUE(plaintext->isShared());
+    EXPECT_THROW(
+        callEncrypt(
+            cipher,
+            GetParam(),
+            std::move(plaintext),
+            opts.bufferOpt,
+            opts.allocOpt),
+        std::overflow_error);
   }
 }
 

@@ -7,6 +7,7 @@
  */
 
 #include <fizz/crypto/aead/OpenSSLEVPCipher.h>
+#include <folly/lang/CheckedMath.h>
 #include <functional>
 
 namespace fizz {
@@ -216,7 +217,12 @@ std::unique_ptr<folly::IOBuf> evpEncrypt(
     input = output.get();
   } else {
     // create enough to also fit the tag and headroom
-    output = folly::IOBuf::create(headroom + inputLength + tagLen);
+    size_t totalSize{0};
+    if (!folly::checked_add<size_t>(&totalSize, headroom, inputLength) ||
+        !folly::checked_add<size_t>(&totalSize, totalSize, tagLen)) {
+      throw std::overflow_error("Output buffer size");
+    }
+    output = folly::IOBuf::create(totalSize);
     output->advance(headroom);
     output->append(inputLength);
     input = plaintext.get();
