@@ -10,7 +10,7 @@
 
 namespace fizz {
 
-Buf Exporter::getEkm(
+Buf Exporter::getExportedKeyingMaterial(
     const Factory& factory,
     CipherSuite cipher,
     folly::ByteRange exporterMaster,

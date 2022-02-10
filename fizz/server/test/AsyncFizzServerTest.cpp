@@ -204,12 +204,13 @@ TEST_F(AsyncFizzServerTest, TestHandshake) {
 
 TEST_F(AsyncFizzServerTest, TestExporterAPISimple) {
   completeHandshake();
-  server_->getEkm(kTokenBindingExporterLabel, nullptr, 32);
+  server_->getExportedKeyingMaterial(kTokenBindingExporterLabel, nullptr, 32);
 }
 
 TEST_F(AsyncFizzServerTest, TestExporterAPIIncompleteHandshake) {
   EXPECT_THROW(
-      server_->getEkm(kTokenBindingExporterLabel, nullptr, 32),
+      server_->getExportedKeyingMaterial(
+          kTokenBindingExporterLabel, nullptr, 32),
       std::runtime_error);
 }
 

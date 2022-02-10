@@ -193,12 +193,13 @@ void FizzBase<Derived, ActionMoveVisitor, StateMachine>::
 }
 
 template <typename Derived, typename ActionMoveVisitor, typename StateMachine>
-Buf FizzBase<Derived, ActionMoveVisitor, StateMachine>::getEkm(
-    const Factory& factory,
-    folly::StringPiece label,
-    const Buf& context,
-    uint16_t length) const {
-  return Exporter::getEkm(
+Buf FizzBase<Derived, ActionMoveVisitor, StateMachine>::
+    getExportedKeyingMaterial(
+        const Factory& factory,
+        folly::StringPiece label,
+        const Buf& context,
+        uint16_t length) const {
+  return Exporter::getExportedKeyingMaterial(
       factory,
       *state_.cipher(),
       (*state_.exporterMasterSecret())->coalesce(),

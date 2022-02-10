@@ -136,8 +136,10 @@ class AsyncFizzClientT : public AsyncFizzBase,
 
   std::vector<SignatureScheme> getSupportedSigSchemes() const override;
 
-  Buf getEkm(folly::StringPiece label, const Buf& context, uint16_t length)
-      const override;
+  Buf getExportedKeyingMaterial(
+      folly::StringPiece label,
+      const Buf& context,
+      uint16_t length) const override;
 
   Buf getEarlyEkm(folly::StringPiece label, const Buf& context, uint16_t length)
       const;

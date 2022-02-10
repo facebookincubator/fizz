@@ -312,8 +312,10 @@ TEST_F(HandshakeTest, ResumeChangeCipher) {
 TEST_F(HandshakeTest, TestEkmSame) {
   expectSuccess();
   doHandshake();
-  auto clientEkm = client_->getEkm("EXPORTER-Some-Label", nullptr, 32);
-  auto serverEkm = server_->getEkm("EXPORTER-Some-Label", nullptr, 32);
+  auto clientEkm =
+      client_->getExportedKeyingMaterial("EXPORTER-Some-Label", nullptr, 32);
+  auto serverEkm =
+      server_->getExportedKeyingMaterial("EXPORTER-Some-Label", nullptr, 32);
   EXPECT_TRUE(IOBufEqualTo()(clientEkm, serverEkm));
   EXPECT_THROW(
       client_->getEarlyEkm("EXPORTER-Some-Label", nullptr, 32), std::exception);

@@ -39,14 +39,14 @@ Buf ExportedAuthenticator::getAuthenticator(
   Buf handshakeContext;
   Buf finishedMacKey;
   if (dir == Direction::UPSTREAM) {
-    handshakeContext = transport.getEkm(
+    handshakeContext = transport.getExportedKeyingMaterial(
         "EXPORTER-client authenticator handshake context", nullptr, hashLength);
-    finishedMacKey = transport.getEkm(
+    finishedMacKey = transport.getExportedKeyingMaterial(
         "EXPORTER-client authenticator finished key", nullptr, hashLength);
   } else {
-    handshakeContext = transport.getEkm(
+    handshakeContext = transport.getExportedKeyingMaterial(
         "EXPORTER-server authenticator handshake context", nullptr, hashLength);
-    finishedMacKey = transport.getEkm(
+    finishedMacKey = transport.getExportedKeyingMaterial(
         "EXPORTER-server authenticator finished key", nullptr, hashLength);
   }
   return makeAuthenticator(
@@ -82,14 +82,14 @@ ExportedAuthenticator::validateAuthenticator(
   Buf handshakeContext;
   Buf finishedMacKey;
   if (dir == Direction::UPSTREAM) {
-    handshakeContext = transport.getEkm(
+    handshakeContext = transport.getExportedKeyingMaterial(
         "EXPORTER-server authenticator handshake context", nullptr, hashLength);
-    finishedMacKey = transport.getEkm(
+    finishedMacKey = transport.getExportedKeyingMaterial(
         "EXPORTER-server authenticator finished key", nullptr, hashLength);
   } else {
-    handshakeContext = transport.getEkm(
+    handshakeContext = transport.getExportedKeyingMaterial(
         "EXPORTER-client authenticator handshake context", nullptr, hashLength);
-    finishedMacKey = transport.getEkm(
+    finishedMacKey = transport.getExportedKeyingMaterial(
         "EXPORTER-client authenticator finished key", nullptr, hashLength);
   }
   auto certs = validate(

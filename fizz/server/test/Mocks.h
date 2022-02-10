@@ -184,7 +184,9 @@ class MockAsyncFizzServerT : public AsyncFizzServerT<SM> {
   using UniquePtr = std::
       unique_ptr<MockAsyncFizzServerT, folly::DelayedDestruction::Destructor>;
 
-  MOCK_CONST_METHOD3(getEkm, Buf(folly::StringPiece, const Buf&, uint16_t));
+  MOCK_CONST_METHOD3(
+      getExportedKeyingMaterial,
+      Buf(folly::StringPiece, const Buf&, uint16_t));
 };
 
 using MockAsyncFizzServer = MockAsyncFizzServerT<ServerStateMachine>;

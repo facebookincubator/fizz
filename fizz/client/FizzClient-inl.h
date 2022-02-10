@@ -48,7 +48,7 @@ Buf FizzClient<ActionMoveVisitor, SM>::getEarlyEkm(
   if (!this->state_.earlyDataParams()) {
     throw std::runtime_error("early ekm not available");
   }
-  return Exporter::getEkm(
+  return Exporter::getExportedKeyingMaterial(
       factory,
       this->state_.earlyDataParams()->cipher,
       this->state_.earlyDataParams()->earlyExporterSecret->coalesce(),

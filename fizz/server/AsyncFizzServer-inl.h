@@ -159,11 +159,11 @@ std::vector<SignatureScheme> AsyncFizzServerT<SM>::getSupportedSigSchemes()
 }
 
 template <typename SM>
-Buf AsyncFizzServerT<SM>::getEkm(
+Buf AsyncFizzServerT<SM>::getExportedKeyingMaterial(
     folly::StringPiece label,
     const Buf& context,
     uint16_t length) const {
-  return fizzServer_.getEkm(
+  return fizzServer_.getExportedKeyingMaterial(
       *fizzContext_->getFactory(), label, context, length);
 }
 

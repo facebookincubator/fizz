@@ -80,7 +80,7 @@ class AsyncFizzServerT : public AsyncFizzBase {
 
   std::vector<SignatureScheme> getSupportedSigSchemes() const override;
 
-  Buf getEkm(
+  Buf getExportedKeyingMaterial(
       folly::StringPiece label,
       const Buf& hashedContext,
       uint16_t length) const override;

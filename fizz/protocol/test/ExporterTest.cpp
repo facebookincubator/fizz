@@ -23,7 +23,7 @@ StringPiece basic_expected_ekm = {
 
 TEST(ExporterTest, TestExporterBasic) {
   OpenSSLFactory factory;
-  auto ekm = Exporter::getEkm(
+  auto ekm = Exporter::getExportedKeyingMaterial(
       factory,
       CipherSuite::TLS_AES_128_GCM_SHA256,
       folly::Range<const char*>(exporter_master),

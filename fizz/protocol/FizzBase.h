@@ -137,7 +137,7 @@ class FizzBase {
    * Returns an exported key material derived from the 1-RTT secret of the TLS
    * connection.
    */
-  Buf getEkm(
+  Buf getExportedKeyingMaterial(
       const Factory& factory,
       folly::StringPiece label,
       const Buf& context,
