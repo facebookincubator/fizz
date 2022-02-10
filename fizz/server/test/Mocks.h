@@ -186,7 +186,7 @@ class MockAsyncFizzServerT : public AsyncFizzServerT<SM> {
 
   MOCK_CONST_METHOD3(
       getExportedKeyingMaterial,
-      Buf(folly::StringPiece, const Buf&, uint16_t));
+      Buf(folly::StringPiece, Buf, uint16_t));
 };
 
 using MockAsyncFizzServer = MockAsyncFizzServerT<ServerStateMachine>;

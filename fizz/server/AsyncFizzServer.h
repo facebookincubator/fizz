@@ -82,7 +82,7 @@ class AsyncFizzServerT : public AsyncFizzBase {
 
   Buf getExportedKeyingMaterial(
       folly::StringPiece label,
-      const Buf& hashedContext,
+      Buf hashedContext,
       uint16_t length) const override;
 
   virtual Buf getEarlyEkm(

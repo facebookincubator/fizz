@@ -197,14 +197,14 @@ Buf FizzBase<Derived, ActionMoveVisitor, StateMachine>::
     getExportedKeyingMaterial(
         const Factory& factory,
         folly::StringPiece label,
-        const Buf& context,
+        Buf context,
         uint16_t length) const {
   return Exporter::getExportedKeyingMaterial(
       factory,
       *state_.cipher(),
       (*state_.exporterMasterSecret())->coalesce(),
       label,
-      context ? context->clone() : nullptr,
+      std::move(context),
       length);
 }
 } // namespace fizz

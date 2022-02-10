@@ -314,8 +314,16 @@ class MockAsyncFizzBase : public AsyncFizzBase {
   MOCK_CONST_METHOD0(getCipher, folly::Optional<CipherSuite>());
   MOCK_CONST_METHOD0(getSupportedSigSchemes, std::vector<SignatureScheme>());
   MOCK_CONST_METHOD3(
-      getExportedKeyingMaterial,
-      Buf(folly::StringPiece, const Buf&, uint16_t));
+      _getExportedKeyingMaterial,
+      Buf(folly::StringPiece, Buf&, uint16_t));
+
+  Buf getExportedKeyingMaterial(
+      folly::StringPiece label,
+      Buf context,
+      uint16_t length) const override {
+    return _getExportedKeyingMaterial(label, context, length);
+  }
+
   MOCK_CONST_METHOD0(getClientRandom, folly::Optional<Random>());
   MOCK_METHOD0(tlsShutdown, void());
 

@@ -138,7 +138,7 @@ class AsyncFizzClientT : public AsyncFizzBase,
 
   Buf getExportedKeyingMaterial(
       folly::StringPiece label,
-      const Buf& context,
+      Buf context,
       uint16_t length) const override;
 
   Buf getEarlyEkm(folly::StringPiece label, const Buf& context, uint16_t length)

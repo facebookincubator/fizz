@@ -140,7 +140,7 @@ class FizzBase {
   Buf getExportedKeyingMaterial(
       const Factory& factory,
       folly::StringPiece label,
-      const Buf& context,
+      Buf context,
       uint16_t length) const;
 
  protected:

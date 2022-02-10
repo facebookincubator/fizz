@@ -630,10 +630,10 @@ std::vector<SignatureScheme> AsyncFizzClientT<SM>::getSupportedSigSchemes()
 template <typename SM>
 Buf AsyncFizzClientT<SM>::getExportedKeyingMaterial(
     folly::StringPiece label,
-    const Buf& context,
+    Buf context,
     uint16_t length) const {
   return fizzClient_.getExportedKeyingMaterial(
-      *fizzContext_->getFactory(), label, context, length);
+      *fizzContext_->getFactory(), label, std::move(context), length);
 }
 
 template <typename SM>

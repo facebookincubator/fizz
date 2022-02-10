@@ -178,7 +178,7 @@ class AsyncFizzBase : public folly::WriteChainAsyncTransportWrapper<
    */
   virtual Buf getExportedKeyingMaterial(
       folly::StringPiece label,
-      const Buf& context,
+      Buf context,
       uint16_t length) const = 0;
 
   /**

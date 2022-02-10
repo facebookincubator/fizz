@@ -68,7 +68,7 @@ class AsyncFizzBaseTest : public testing::Test, public AsyncFizzBase {
   MOCK_CONST_METHOD0(getSupportedSigSchemes, std::vector<SignatureScheme>());
   MOCK_CONST_METHOD3(
       getExportedKeyingMaterial,
-      Buf(folly::StringPiece, const Buf&, uint16_t));
+      Buf(folly::StringPiece, Buf, uint16_t));
 
   MOCK_METHOD3(
       writeAppDataInternal,
