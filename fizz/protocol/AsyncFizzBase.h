@@ -176,10 +176,10 @@ class AsyncFizzBase : public folly::WriteChainAsyncTransportWrapper<
   /**
    * Get the exported material.
    */
-  virtual Buf getExportedKeyingMaterial(
+  Buf getExportedKeyingMaterial(
       folly::StringPiece label,
       Buf context,
-      uint16_t length) const = 0;
+      uint16_t length) const override = 0;
 
   /**
    * Clean up transport on destruction
