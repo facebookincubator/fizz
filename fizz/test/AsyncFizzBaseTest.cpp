@@ -1042,7 +1042,10 @@ TYPED_TEST(AsyncFizzBaseTest, TestAlignedRecordReads) {
   this->updateReadHint(5);
 
   this->transportReadCallback_->getReadBuffer(&buf, &len);
-  EXPECT_EQ(4000, len);
+
+  // Not caring about record alignment, we should be able to get a buffer of
+  // at least AsyncFizzBase::kMinReadSize
+  EXPECT_GE(len, 1460);
 }
 
 } // namespace test
