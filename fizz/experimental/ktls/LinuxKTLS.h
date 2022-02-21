@@ -39,10 +39,11 @@
 
 #if defined(__linux__) && !FOLLY_MOBILE
 #include <linux/version.h>
+#include <gnu/libc-version.h>
 
 // Minimum version of linux uapi headers we require; this is when linux/tls.h
 // was introduced
-#if LINUX_VERSION_CODE < 265216
+#if (LINUX_VERSION_CODE < 265216) || (__GLIBC__ < 2) || (__GLIBC__ == 2 && __GLIBC_MINOR__ < 27)
 #define FIZZ_PLATFORM_CAPABLE_KTLS 0
 #else
 #define FIZZ_PLATFORM_CAPABLE_KTLS 1
