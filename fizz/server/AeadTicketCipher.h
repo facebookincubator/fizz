@@ -71,8 +71,8 @@ class Aead128GCMTicketCipher : public TicketCipher {
     policy_ = std::move(policy);
   }
 
-  folly::Future<folly::Optional<std::pair<Buf, std::chrono::seconds>>> encrypt(
-      ResumptionState resState) const override {
+  folly::SemiFuture<folly::Optional<std::pair<Buf, std::chrono::seconds>>>
+  encrypt(ResumptionState resState) const override {
     auto validity = policy_.remainingValidity(resState);
     if (validity <= std::chrono::system_clock::duration::zero()) {
       return folly::none;
@@ -86,8 +86,8 @@ class Aead128GCMTicketCipher : public TicketCipher {
     return std::make_pair(std::move(*ticket), validity);
   }
 
-  folly::Future<std::pair<PskType, folly::Optional<ResumptionState>>> decrypt(
-      std::unique_ptr<folly::IOBuf> encryptedTicket) const override {
+  folly::SemiFuture<std::pair<PskType, folly::Optional<ResumptionState>>>
+  decrypt(std::unique_ptr<folly::IOBuf> encryptedTicket) const override {
     auto plaintext = tokenCipher_.decrypt(std::move(encryptedTicket));
     if (!plaintext) {
       return std::make_pair(PskType::Rejected, folly::none);

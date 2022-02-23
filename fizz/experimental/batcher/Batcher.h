@@ -98,22 +98,22 @@ class Batcher {
   }
 
  protected:
-  folly::Future<SignedTree> signMerkleTree(
+  folly::SemiFuture<SignedTree> signMerkleTree(
       std::shared_ptr<BatchSignatureMerkleTree<Hash>>&& tree) {
     tree->finalizeTree();
     auto toBeSigned =
         BatchSignature::encodeToBeSigned(tree->getRootValue(), batchScheme_);
     auto asyncSigner = dynamic_cast<const AsyncSelfCert*>(signer_.get());
-    folly::Future<folly::Optional<Buf>> signatureFut = folly::none;
+    folly::SemiFuture<folly::Optional<Buf>> signatureFut = folly::none;
     if (asyncSigner) {
       signatureFut = asyncSigner->signFuture(
           baseScheme_, context_, toBeSigned->coalesce());
     } else {
-      signatureFut = folly::makeFuture(
-          signer_->sign(baseScheme_, context_, toBeSigned->coalesce()));
+      signatureFut = folly::makeSemiFuture(folly::Optional(
+          signer_->sign(baseScheme_, context_, toBeSigned->coalesce())));
     }
     return std::move(signatureFut)
-        .thenValue(
+        .deferValue(
             [treeCapture = std::move(tree)](folly::Optional<Buf>&& signature) {
               if (!signature.has_value()) {
                 throw std::runtime_error(
@@ -174,6 +174,7 @@ class SynchronizedBatcher : public Batcher<Hash> {
       VLOG(5) << "Batcher reached message threshold. batcher=" << this
               << ", threshold=" << this->numMsgThreshold_;
       this->signMerkleTree(std::move(oldTree))
+          .toUnsafeFuture()
           .thenTry([promiseCapture = std::move(oldPromise)](
                        folly::Try<typename Batcher<Hash>::SignedTree>&&
                            signedTree) mutable {
@@ -226,6 +227,7 @@ class ThreadLocalBatcher : public Batcher<Hash> {
       VLOG(5) << "Batcher reached message threshold. batcher=" << this
               << ", threshold=" << this->numMsgThreshold_;
       this->signMerkleTree(std::move(oldTree))
+          .toUnsafeFuture()
           .thenTry([promiseCapture = std::move(oldPromise)](
                        folly::Try<typename Batcher<Hash>::SignedTree>&&
                            signedTree) mutable {

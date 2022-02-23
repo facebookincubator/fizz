@@ -34,7 +34,7 @@ class ReplayCache {
  public:
   virtual ~ReplayCache() = default;
 
-  virtual folly::Future<ReplayCacheResult> check(
+  virtual folly::SemiFuture<ReplayCacheResult> check(
       folly::ByteRange identifier) = 0;
 };
 
@@ -45,7 +45,7 @@ class AllowAllReplayReplayCache : public ReplayCache {
  public:
   ~AllowAllReplayReplayCache() override = default;
 
-  folly::Future<ReplayCacheResult> check(folly::ByteRange) override {
+  folly::SemiFuture<ReplayCacheResult> check(folly::ByteRange) override {
     return ReplayCacheResult::NotReplay;
   }
 };

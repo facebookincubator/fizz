@@ -26,25 +26,24 @@ class DualTicketCipher : public TicketCipher {
       : cipher_(std::move(cipher)),
         fallbackCipher_(std::move(fallbackCipher)) {}
 
-  folly::Future<folly::Optional<
+  folly::SemiFuture<folly::Optional<
       std::pair<std::unique_ptr<folly::IOBuf>, std::chrono::seconds>>>
   encrypt(ResumptionState resState) const override {
     return cipher_->encrypt(std::move(resState));
   }
 
-  folly::Future<std::pair<PskType, folly::Optional<ResumptionState>>> decrypt(
-      std::unique_ptr<folly::IOBuf> encryptedTicket) const override {
+  folly::SemiFuture<std::pair<PskType, folly::Optional<ResumptionState>>>
+  decrypt(std::unique_ptr<folly::IOBuf> encryptedTicket) const override {
     auto bufClone = encryptedTicket->clone();
     return cipher_->decrypt(std::move(encryptedTicket))
-        .thenValueInline(
-            [this, ticket = std::move(bufClone)](
-                std::pair<PskType, folly::Optional<ResumptionState>>
-                    res) mutable {
-              if (std::get<0>(res) == PskType::Rejected) {
-                return fallbackCipher_->decrypt(std::move(ticket));
-              }
-              return folly::makeFuture(std::move(res));
-            });
+        .deferValue([this, ticket = std::move(bufClone)](
+                        std::pair<PskType, folly::Optional<ResumptionState>>
+                            res) mutable {
+          if (std::get<0>(res) == PskType::Rejected) {
+            return fallbackCipher_->decrypt(std::move(ticket));
+          }
+          return folly::makeSemiFuture(std::move(res));
+        });
   }
 
  private:

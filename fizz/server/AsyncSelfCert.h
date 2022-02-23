@@ -22,7 +22,7 @@ class State;
  */
 class AsyncSelfCert : public SelfCert {
  public:
-  virtual folly::Future<folly::Optional<Buf>> signFuture(
+  virtual folly::SemiFuture<folly::Optional<Buf>> signFuture(
       SignatureScheme scheme,
       CertificateVerifyContext context,
       folly::ByteRange toBeSigned) const = 0;

@@ -51,7 +51,7 @@ class SlidingBloomReplayCache : public ReplayCache,
   bool test(folly::ByteRange query) const;
   bool testAndSet(folly::ByteRange query);
 
-  folly::Future<ReplayCacheResult> check(folly::ByteRange) override;
+  folly::SemiFuture<ReplayCacheResult> check(folly::ByteRange) override;
 
  private:
   void clearBucket(size_t bucket);

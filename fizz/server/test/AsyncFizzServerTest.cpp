@@ -95,7 +95,12 @@ class AsyncFizzServerTest : public Test {
     expectTransportReadCallback();
     EXPECT_CALL(*socket_, getEventBase()).WillOnce(Return(&evb_));
     EXPECT_CALL(*machine_, _processAccept(_, &evb_, _, _))
-        .WillOnce(InvokeWithoutArgs([]() { return actions(); }));
+        .WillOnce(InvokeWithoutArgs([evb = &evb_]() {
+          return actions(MutateState([evb](State& newState) {
+            // need an executor to drive async actions
+            newState.executor() = evb;
+          }));
+        }));
     server_->accept(&handshakeCallback_);
   }
 
@@ -309,16 +314,18 @@ TEST_F(AsyncFizzServerTest, TestDeleteAsyncEvent) {
   accept();
   Promise<Actions> p1;
   EXPECT_CALL(*machine_, _processSocketData(_, _, _))
-      .WillOnce(
-          InvokeWithoutArgs([&p1]() { return AsyncActions(p1.getFuture()); }));
+      .WillOnce(InvokeWithoutArgs(
+          [&p1]() { return AsyncActions(p1.getSemiFuture()); }));
   socketReadCallback_->readBufferAvailable(IOBuf::copyBuffer("ClientHello"));
   server_.reset();
   Promise<Actions> p2;
   EXPECT_CALL(*machine_, _processSocketData(_, _, _))
-      .WillOnce(
-          InvokeWithoutArgs([&p2]() { return AsyncActions(p2.getFuture()); }));
+      .WillOnce(InvokeWithoutArgs(
+          [&p2]() { return AsyncActions(p2.getSemiFuture()); }));
   p1.setValue(detail::actions());
   p2.setValue(detail::actions(WaitForData()));
+  // necessary to drive the async actions to completion
+  evb_.loopOnce();
 }
 
 TEST_F(AsyncFizzServerTest, TestCloseHandshake) {
@@ -341,8 +348,8 @@ TEST_F(AsyncFizzServerTest, TestCloseNowInFlightAction) {
   server_->setReadCB(&readCallback_);
   Promise<Actions> p;
   EXPECT_CALL(*machine_, _processSocketData(_, _, _))
-      .WillOnce(
-          InvokeWithoutArgs([&p]() { return AsyncActions(p.getFuture()); }));
+      .WillOnce(InvokeWithoutArgs(
+          [&p]() { return AsyncActions(p.getSemiFuture()); }));
   socketReadCallback_->readBufferAvailable(IOBuf::copyBuffer("Data"));
   server_->writeChain(&writeCallback_, IOBuf::copyBuffer("queued write"));
   EXPECT_CALL(writeCallback_, writeErr_(0, _));
@@ -357,8 +364,8 @@ TEST_F(AsyncFizzServerTest, TestCloseInFlightAction) {
   server_->setReadCB(&readCallback_);
   Promise<Actions> p;
   EXPECT_CALL(*machine_, _processSocketData(_, _, _))
-      .WillOnce(
-          InvokeWithoutArgs([&p]() { return AsyncActions(p.getFuture()); }));
+      .WillOnce(InvokeWithoutArgs(
+          [&p]() { return AsyncActions(p.getSemiFuture()); }));
   socketReadCallback_->readBufferAvailable(IOBuf::copyBuffer("Data"));
   server_->writeChain(&writeCallback_, IOBuf::copyBuffer("queued write"));
   server_->close();
@@ -379,12 +386,35 @@ TEST_F(AsyncFizzServerTest, TestIsDetachable) {
   Promise<Actions> p;
 
   EXPECT_CALL(*machine_, _processSocketData(_, _, _))
-      .WillOnce(
-          InvokeWithoutArgs([&p]() { return AsyncActions(p.getFuture()); }));
+      .WillOnce(InvokeWithoutArgs(
+          [&p]() { return AsyncActions(p.getSemiFuture()); }));
   socket_->setReadCB(readCb);
   socketReadCallback_->readBufferAvailable(IOBuf::copyBuffer("Data"));
   EXPECT_FALSE(server_->isDetachable());
   p.setValue(detail::actions(WaitForData()));
+  // necessary to drive all async actions to completion so there aren't any
+  // still in processing when we check whether it's detachable
+  evb_.loopOnce();
+  EXPECT_TRUE(server_->isDetachable());
+}
+
+// Similar to TestIsDetachable but verifies that a completed future async action
+// will complete inline and won't bloack the detach
+TEST_F(AsyncFizzServerTest, TestIsDetachableCompletedFuture) {
+  completeHandshake();
+  AsyncTransportWrapper::ReadCallback* readCb = socketReadCallback_;
+  ON_CALL(*socket_, isDetachable()).WillByDefault(Return(false));
+  EXPECT_FALSE(server_->isDetachable());
+  ON_CALL(*socket_, isDetachable()).WillByDefault(Return(true));
+  EXPECT_TRUE(server_->isDetachable());
+  EXPECT_CALL(*machine_, _processSocketData(_, _, _))
+      .WillOnce(InvokeWithoutArgs([]() {
+        // action should run immediately since future is completed
+        return AsyncActions(
+            folly::makeSemiFuture(detail::actions(WaitForData())));
+      }));
+  socket_->setReadCB(readCb);
+  socketReadCallback_->readBufferAvailable(IOBuf::copyBuffer("Data"));
   EXPECT_TRUE(server_->isDetachable());
 }
 

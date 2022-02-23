@@ -101,19 +101,19 @@ class MockTicketCipher : public TicketCipher {
  public:
   MOCK_CONST_METHOD1(
       _encrypt,
-      folly::Future<folly::Optional<std::pair<Buf, std::chrono::seconds>>>(
+      folly::SemiFuture<folly::Optional<std::pair<Buf, std::chrono::seconds>>>(
           ResumptionState&));
-  folly::Future<folly::Optional<std::pair<Buf, std::chrono::seconds>>> encrypt(
-      ResumptionState resState) const override {
+  folly::SemiFuture<folly::Optional<std::pair<Buf, std::chrono::seconds>>>
+  encrypt(ResumptionState resState) const override {
     return _encrypt(resState);
   }
 
   MOCK_CONST_METHOD1(
       _decrypt,
-      folly::Future<std::pair<PskType, folly::Optional<ResumptionState>>>(
+      folly::SemiFuture<std::pair<PskType, folly::Optional<ResumptionState>>>(
           std::unique_ptr<folly::IOBuf>& encryptedTicket));
-  folly::Future<std::pair<PskType, folly::Optional<ResumptionState>>> decrypt(
-      std::unique_ptr<folly::IOBuf> encryptedTicket) const override {
+  folly::SemiFuture<std::pair<PskType, folly::Optional<ResumptionState>>>
+  decrypt(std::unique_ptr<folly::IOBuf> encryptedTicket) const override {
     return _decrypt(encryptedTicket);
   }
 
@@ -212,7 +212,7 @@ class MockServerExtensions : public ServerExtensions {
 
 class MockReplayCache : public ReplayCache {
  public:
-  MOCK_METHOD1(check, folly::Future<ReplayCacheResult>(folly::ByteRange));
+  MOCK_METHOD1(check, folly::SemiFuture<ReplayCacheResult>(folly::ByteRange));
 };
 
 class MockAppTokenValidator : public AppTokenValidator {
@@ -242,7 +242,7 @@ class MockAsyncSelfCert : public AsyncSelfCert {
   MOCK_CONST_METHOD0(getX509, folly::ssl::X509UniquePtr());
   MOCK_CONST_METHOD3(
       signFuture,
-      folly::Future<folly::Optional<Buf>>(
+      folly::SemiFuture<folly::Optional<Buf>>(
           SignatureScheme scheme,
           CertificateVerifyContext context,
           folly::ByteRange toBeSigned));

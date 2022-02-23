@@ -22,8 +22,8 @@
 #include <folly/Overload.h>
 #include <algorithm>
 
-using folly::Future;
 using folly::Optional;
+using folly::SemiFuture;
 
 using namespace fizz::server;
 using namespace fizz::server::detail;
@@ -218,9 +218,13 @@ AsyncActions processEvent(const State& state, Param param) {
     return folly::variant_match(
         actions,
         ::fizz::detail::result_type<AsyncActions>(),
-        [&state](folly::Future<Actions>& futureActions) -> AsyncActions {
+        [&state](SemiFuture<Actions>& futureActions) -> AsyncActions {
+          if (futureActions.isReady()) {
+            // any exception thrown by get will be caught below
+            return std::move(futureActions).get();
+          }
           return std::move(futureActions)
-              .thenError([&state](folly::exception_wrapper ew) {
+              .deferError([&state](folly::exception_wrapper ew) {
                 auto ex = ew.get_exception<FizzException>();
                 if (ex) {
                   return detail::handleError(
@@ -333,16 +337,19 @@ Actions handleInvalidEvent(const State& state, Event event, Param param) {
 }
 
 template <typename T, typename F>
-folly::Future<
+SemiFuture<
     typename folly::futures::detail::valueCallableResult<T, F>::value_type>
 runOnCallerIfComplete(
     folly::Executor* executor,
-    folly::Future<T> future,
+    SemiFuture<T> future,
     F&& func) {
   if (future.isReady()) {
     return func(std::move(future).get());
   } else {
-    return future.via(executor).thenValue(std::forward<F>(func));
+    return std::move(future)
+        .via(executor)
+        .thenValueInline(std::forward<F>(func))
+        .semi();
   }
 }
 
@@ -467,14 +474,15 @@ static Optional<CookieState> getCookieState(
 namespace {
 struct ResumptionStateResult {
   explicit ResumptionStateResult(
-      Future<std::pair<PskType, Optional<ResumptionState>>> futureResStateArg,
+      SemiFuture<std::pair<PskType, Optional<ResumptionState>>>
+          futureResStateArg,
       Optional<PskKeyExchangeMode> pskModeArg = folly::none,
       Optional<uint32_t> obfuscatedAgeArg = folly::none)
       : futureResState(std::move(futureResStateArg)),
         pskMode(std::move(pskModeArg)),
         obfuscatedAge(std::move(obfuscatedAgeArg)) {}
 
-  Future<std::pair<PskType, Optional<ResumptionState>>> futureResState;
+  SemiFuture<std::pair<PskType, Optional<ResumptionState>>> futureResState;
   Optional<PskKeyExchangeMode> pskMode;
   Optional<uint32_t> obfuscatedAge;
 };
@@ -517,7 +525,7 @@ static ResumptionStateResult getResumptionState(
   }
 }
 
-static Future<ReplayCacheResult> getReplayCacheResult(
+static SemiFuture<ReplayCacheResult> getReplayCacheResult(
     const ClientHello& chlo,
     bool zeroRttEnabled,
     ReplayCache* replayCache) {
@@ -1069,7 +1077,7 @@ EventHandler<ServerTypes, StateEnum::ExpectingClientHello, Event::ClientHello>::
       state.context()->getReplayCache());
 
   auto results =
-      collectAllUnsafe(resStateResult.futureResState, replayCacheResultFuture);
+      collectAll(resStateResult.futureResState, replayCacheResultFuture);
 
   using FutureResultType = std::tuple<
       folly::Try<std::pair<PskType, Optional<ResumptionState>>>,
@@ -1238,7 +1246,7 @@ EventHandler<ServerTypes, StateEnum::ExpectingClientHello, Event::ClientHello>::
             newReadRecordLayer->setSkipEncryptedRecords(
                 earlyDataType == EarlyDataType::Rejected);
 
-            return Future<Actions>(actions(
+            return SemiFuture<Actions>(actions(
                 MutateState([handshakeContext = std::move(handshakeContext),
                              version,
                              cipher,
@@ -1369,7 +1377,7 @@ EventHandler<ServerTypes, StateEnum::ExpectingClientHello, Event::ClientHello>::
          * transcript.
          */
         Optional<Buf> encodedCertificate;
-        Future<Optional<Buf>> signature = folly::none;
+        SemiFuture<Optional<Buf>> signature = folly::none;
         Optional<SignatureScheme> sigScheme;
         Optional<std::shared_ptr<const Cert>> serverCert;
         std::shared_ptr<const Cert> clientCert;
@@ -1391,10 +1399,11 @@ EventHandler<ServerTypes, StateEnum::ExpectingClientHello, Event::ClientHello>::
                 CertificateVerifyContext::Server,
                 toBeSigned->coalesce());
           } else {
-            signature = originalSelfCert->sign(
-                *sigScheme,
-                CertificateVerifyContext::Server,
-                toBeSigned->coalesce());
+            signature =
+                folly::makeSemiFuture<Optional<Buf>>(originalSelfCert->sign(
+                    *sigScheme,
+                    CertificateVerifyContext::Server,
+                    toBeSigned->coalesce()));
           }
           serverCert = std::move(originalSelfCert);
         } else {
@@ -1742,7 +1751,7 @@ static WriteToSocket writeNewSessionTicket(
   return nstWrite;
 }
 
-static Future<Optional<WriteToSocket>> generateTicket(
+static SemiFuture<Optional<WriteToSocket>> generateTicket(
     const State& state,
     const std::vector<uint8_t>& resumptionMasterSecret,
     Buf appToken = nullptr) {

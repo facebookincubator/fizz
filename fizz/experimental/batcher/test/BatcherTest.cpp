@@ -25,10 +25,10 @@ TEST(BatchSignatureTest, TestWhenSignerIsAsync) {
       1, mockBaseCert, CertificateVerifyContext::Server);
   auto [promise, semiFuture] =
       folly::makePromiseContract<folly::Optional<Buf>>();
-  auto future = std::move(semiFuture).toUnsafeFuture();
+  auto future = std::move(semiFuture);
   EXPECT_CALL(*mockBaseCert, signFuture(_, _, _))
       .Times(1)
-      .WillOnce(InvokeWithoutArgs([&]() { return std::move(future); }));
+      .WillOnce(Return(ByMove(std::move(future))));
   auto futureTree =
       batcher->addMessageAndSign(folly::range(folly::StringPiece("Message1")));
   EXPECT_FALSE(futureTree.future_.isReady());
@@ -44,7 +44,8 @@ TEST(BatchSignatureTest, TestWhenSignerFails) {
       1, mockBaseCert, CertificateVerifyContext::Server);
   EXPECT_CALL(*mockBaseCert, signFuture(_, _, _))
       .Times(1)
-      .WillOnce(InvokeWithoutArgs([]() { return folly::none; }));
+      .WillOnce(Return(
+          ByMove(folly::makeSemiFuture<folly::Optional<Buf>>(folly::none))));
   auto futureTree =
       batcher->addMessageAndSign(folly::range(folly::StringPiece("Message1")));
   EXPECT_TRUE(futureTree.future_.isReady());

@@ -75,7 +75,7 @@ class ServerProtocolTest : public ProtocolTest<ServerTypes, Actions> {
 
     replayCache_ = std::make_shared<MockReplayCache>();
     ON_CALL(*replayCache_, check(_)).WillByDefault(InvokeWithoutArgs([] {
-      return folly::makeFuture(ReplayCacheResult::NotReplay);
+      return folly::makeSemiFuture(ReplayCacheResult::NotReplay);
     }));
   }
 
@@ -88,7 +88,7 @@ class ServerProtocolTest : public ProtocolTest<ServerTypes, Actions> {
     return folly::variant_match(
         asyncActions,
         ::fizz::detail::result_type<Actions>(),
-        [immediate](folly::Future<Actions>& futureActions) {
+        [immediate](folly::SemiFuture<Actions>& futureActions) {
           if (immediate) {
             EXPECT_TRUE(futureActions.hasValue());
           }
@@ -487,7 +487,7 @@ TEST_F(ServerProtocolTest, TestAppClose) {
         EXPECT_EQ(eod.postTlsData->coalesce(), expected->coalesce());
         EXPECT_EQ(state_.state(), StateEnum::Closed);
       },
-      [](folly::Future<Actions>& futActions) { FAIL(); });
+      [](folly::SemiFuture<Actions>& /* ignore */) { FAIL(); });
 }
 
 TEST_F(ServerProtocolTest, TestAppCloseNoWrite) {
@@ -4106,7 +4106,7 @@ TEST_F(ServerProtocolTest, TestClientHelloRejectEarlyDataReplayCache) {
   setUpExpectingClientHello();
 
   EXPECT_CALL(*replayCache_, check(_)).WillOnce(InvokeWithoutArgs([] {
-    return folly::makeFuture(ReplayCacheResult::DefinitelyReplay);
+    return folly::makeSemiFuture(ReplayCacheResult::DefinitelyReplay);
   }));
 
   std::chrono::milliseconds age =

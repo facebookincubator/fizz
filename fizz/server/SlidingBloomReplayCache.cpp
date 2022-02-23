@@ -155,13 +155,17 @@ bool SlidingBloomReplayCache::testAndSet(folly::ByteRange query) {
   return (ret != 0);
 }
 
-folly::Future<ReplayCacheResult> SlidingBloomReplayCache::check(
+folly::SemiFuture<ReplayCacheResult> SlidingBloomReplayCache::check(
     folly::ByteRange query) {
-  return folly::via(executor_, [this, query]() {
-    const auto result = testAndSet(query) ? ReplayCacheResult::MaybeReplay
-                                          : ReplayCacheResult::NotReplay;
-    return result;
-  });
+  return folly::via(
+             executor_,
+             [this, query]() {
+               const auto result = testAndSet(query)
+                   ? ReplayCacheResult::MaybeReplay
+                   : ReplayCacheResult::NotReplay;
+               return result;
+             })
+      .semi();
 }
 
 void SlidingBloomReplayCache::clearBucket(size_t bucket) {

@@ -56,7 +56,7 @@ struct ReportHandshakeSuccess {};
 FIZZ_DECLARE_VARIANT_TYPE(Action, FIZZ_SERVER_ACTIONS)
 
 using Actions = folly::small_vector<Action, 4>;
-using AsyncActions = boost::variant<Actions, folly::Future<Actions>>;
+using AsyncActions = boost::variant<Actions, folly::SemiFuture<Actions>>;
 
 namespace detail {
 

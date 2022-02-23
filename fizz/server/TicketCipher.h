@@ -26,7 +26,8 @@ class TicketCipher {
   /**
    * Returns an opaque PSK for ResumptionState, and its validity time.
    */
-  virtual folly::Future<folly::Optional<std::pair<Buf, std::chrono::seconds>>>
+  virtual folly::SemiFuture<
+      folly::Optional<std::pair<Buf, std::chrono::seconds>>>
   encrypt(ResumptionState resState) const = 0;
 
   /**
@@ -35,7 +36,8 @@ class TicketCipher {
    *
    * Returns Rejected if the PSK is not recognized or not valid.
    */
-  virtual folly::Future<std::pair<PskType, folly::Optional<ResumptionState>>>
+  virtual folly::SemiFuture<
+      std::pair<PskType, folly::Optional<ResumptionState>>>
   decrypt(std::unique_ptr<folly::IOBuf> encryptedTicket) const = 0;
 };
 } // namespace server

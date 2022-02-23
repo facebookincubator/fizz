@@ -70,7 +70,7 @@ class BatchSignatureAsyncSelfCert : public AsyncSelfCert {
     return signer_->sign(scheme, context, toBeSigned);
   }
 
-  folly::Future<folly::Optional<Buf>> signFuture(
+  folly::SemiFuture<folly::Optional<Buf>> signFuture(
       SignatureScheme scheme,
       CertificateVerifyContext context,
       folly::ByteRange message) const override {
@@ -96,21 +96,18 @@ class BatchSignatureAsyncSelfCert : public AsyncSelfCert {
   }
 
  private:
-  folly::Future<folly::Optional<Buf>> batchSigSign(
+  folly::SemiFuture<folly::Optional<Buf>> batchSigSign(
       folly::ByteRange message) const {
     // Add message into the merkle tree and get the root value and path
     auto batchResult = batcher_->addMessageAndSign(message);
     auto index = batchResult.index_;
-    return std::move(batchResult.future_)
-        .toUnsafeFuture()
-        .thenValue([=](auto&& signedTree) {
-          BatchSignature sig(
-              signedTree.tree_->getPath(index),
-              folly::IOBuf::wrapBuffer(
-                  signedTree.signature_->data(),
-                  signedTree.signature_->size()));
-          return sig.encode();
-        });
+    return std::move(batchResult.future_).deferValue([=](auto&& signedTree) {
+      BatchSignature sig(
+          signedTree.tree_->getPath(index),
+          folly::IOBuf::wrapBuffer(
+              signedTree.signature_->data(), signedTree.signature_->size()));
+      return folly::Optional(sig.encode());
+    });
   }
 
   std::shared_ptr<const SelfCert> signer_;

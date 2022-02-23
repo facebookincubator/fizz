@@ -69,10 +69,18 @@ void FizzServer<ActionMoveVisitor, SM>::startActions(AsyncActions actions) {
   folly::variant_match(
       actions,
       ::fizz::detail::result_type<void>(),
-      [this](folly::Future<Actions>& futureActions) {
-        std::move(futureActions).thenValueInline([this](Actions a) {
-          this->processActions(std::move(a));
-        });
+      [this](folly::SemiFuture<Actions>& futureActions) {
+        if (futureActions.isReady()) {
+          auto result = std::move(futureActions).getTry();
+          if (result.hasValue()) {
+            this->processActions(std::move(result).value());
+          }
+        } else {
+          std::move(futureActions)
+              .via(this->state_.executor())
+              .thenValueInline(
+                  [this](Actions&& a) { this->processActions(std::move(a)); });
+        }
       },
       [this](Actions& immediateActions) {
         this->processActions(std::move(immediateActions));
