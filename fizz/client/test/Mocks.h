@@ -19,16 +19,16 @@ namespace test {
 
 class MockClientStateMachine : public ClientStateMachine {
  public:
-  MOCK_METHOD(
-      folly::Optional<Actions>,
+  MOCK_METHOD7(
       _processConnect,
-      (const State&,
-       std::shared_ptr<const FizzClientContext> context,
-       std::shared_ptr<const CertificateVerifier>,
-       folly::Optional<std::string> host,
-       folly::Optional<CachedPsk> cachedPsk,
-       const std::shared_ptr<ClientExtensions>& extensions,
-       const folly::Optional<std::vector<ech::ECHConfig>>& echConfigs));
+      folly::Optional<Actions>(
+          const State&,
+          std::shared_ptr<const FizzClientContext> context,
+          std::shared_ptr<const CertificateVerifier>,
+          folly::Optional<std::string> host,
+          folly::Optional<CachedPsk> cachedPsk,
+          const std::shared_ptr<ClientExtensions>& extensions,
+          const folly::Optional<std::vector<ech::ECHConfig>>& echConfigs));
   Actions processConnect(
       const State& state,
       std::shared_ptr<const FizzClientContext> context,
@@ -41,10 +41,12 @@ class MockClientStateMachine : public ClientStateMachine {
         state, context, verifier, host, cachedPsk, extensions, echConfigs);
   }
 
-  MOCK_METHOD(
-      folly::Optional<Actions>,
+  MOCK_METHOD3(
       _processSocketData,
-      (const State&, folly::IOBufQueue&, Aead::AeadOptions));
+      folly::Optional<Actions>(
+          const State&,
+          folly::IOBufQueue&,
+          Aead::AeadOptions));
   Actions processSocketData(
       const State& state,
       folly::IOBufQueue& queue,
@@ -52,32 +54,29 @@ class MockClientStateMachine : public ClientStateMachine {
     return *_processSocketData(state, queue, options);
   }
 
-  MOCK_METHOD(
-      folly::Optional<Actions>,
+  MOCK_METHOD2(
       _processAppWrite,
-      (const State&, AppWrite&));
+      folly::Optional<Actions>(const State&, AppWrite&));
   Actions processAppWrite(const State& state, AppWrite appWrite) override {
     return *_processAppWrite(state, appWrite);
   }
 
-  MOCK_METHOD(
-      folly::Optional<Actions>,
+  MOCK_METHOD2(
       _processEarlyAppWrite,
-      (const State&, EarlyAppWrite&));
+      folly::Optional<Actions>(const State&, EarlyAppWrite&));
   Actions processEarlyAppWrite(const State& state, EarlyAppWrite appWrite)
       override {
     return *_processEarlyAppWrite(state, appWrite);
   }
 
-  MOCK_METHOD(folly::Optional<Actions>, _processAppClose, (const State&));
+  MOCK_METHOD1(_processAppClose, folly::Optional<Actions>(const State&));
   Actions processAppClose(const State& state) override {
     return *_processAppClose(state);
   }
 
-  MOCK_METHOD(
-      folly::Optional<Actions>,
+  MOCK_METHOD1(
       _processAppCloseImmediate,
-      (const State&));
+      folly::Optional<Actions>(const State&));
   Actions processAppCloseImmediate(const State& state) override {
     return *_processAppCloseImmediate(state);
   }
@@ -86,12 +85,12 @@ class MockClientStateMachine : public ClientStateMachine {
 template <typename SM>
 class MockHandshakeCallbackT : public AsyncFizzClientT<SM>::HandshakeCallback {
  public:
-  MOCK_METHOD(void, _fizzHandshakeSuccess, ());
+  MOCK_METHOD0(_fizzHandshakeSuccess, void());
   void fizzHandshakeSuccess(AsyncFizzClientT<SM>*) noexcept override {
     _fizzHandshakeSuccess();
   }
 
-  MOCK_METHOD(void, _fizzHandshakeError, (folly::exception_wrapper));
+  MOCK_METHOD1(_fizzHandshakeError, void(folly::exception_wrapper));
   void fizzHandshakeError(
       AsyncFizzClientT<SM>*,
       folly::exception_wrapper ew) noexcept override {
@@ -108,34 +107,31 @@ class MockAsyncFizzClient : public AsyncFizzClient {
             folly::AsyncTransportWrapper::UniquePtr(
                 new folly::test::MockAsyncTransport()),
             std::make_shared<FizzClientContext>()) {}
-  MOCK_METHOD(
-      void,
+  MOCK_METHOD6(
       connect,
-      (HandshakeCallback*,
-       std::shared_ptr<const CertificateVerifier>,
-       folly::Optional<std::string>,
-       folly::Optional<std::string>,
-       folly::Optional<std::vector<ech::ECHConfig>>,
-       std::chrono::milliseconds));
-  MOCK_METHOD(void, close, ());
-  MOCK_METHOD(void, closeWithReset, ());
-  MOCK_METHOD(void, closeNow, ());
+      void(
+          HandshakeCallback*,
+          std::shared_ptr<const CertificateVerifier>,
+          folly::Optional<std::string>,
+          folly::Optional<std::string>,
+          folly::Optional<std::vector<ech::ECHConfig>>,
+          std::chrono::milliseconds));
+  MOCK_METHOD0(close, void());
+  MOCK_METHOD0(closeWithReset, void());
+  MOCK_METHOD0(closeNow, void());
 };
 
 class MockPskCache : public PskCache {
  public:
-  MOCK_METHOD(
-      folly::Optional<CachedPsk>,
-      getPsk,
-      (const std::string& identity));
-  MOCK_METHOD(void, putPsk, (const std::string& identity, CachedPsk));
-  MOCK_METHOD(void, removePsk, (const std::string& identity));
+  MOCK_METHOD1(getPsk, folly::Optional<CachedPsk>(const std::string& identity));
+  MOCK_METHOD2(putPsk, void(const std::string& identity, CachedPsk));
+  MOCK_METHOD1(removePsk, void(const std::string& identity));
 };
 
 class MockClientExtensions : public ClientExtensions {
  public:
-  MOCK_METHOD(std::vector<Extension>, getClientHelloExtensions, (), (const));
-  MOCK_METHOD(void, onEncryptedExtensions, (const std::vector<Extension>&));
+  MOCK_CONST_METHOD0(getClientHelloExtensions, std::vector<Extension>());
+  MOCK_METHOD1(onEncryptedExtensions, void(const std::vector<Extension>&));
 };
 } // namespace test
 } // namespace client

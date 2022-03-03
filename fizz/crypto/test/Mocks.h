@@ -16,19 +16,17 @@ namespace fizz {
 
 class MockKeyDerivation : public KeyDerivation {
  public:
-  MOCK_METHOD(size_t, hashLength, (), (const));
-  MOCK_METHOD(folly::ByteRange, blankHash, (), (const));
-  MOCK_METHOD(
-      Buf,
+  MOCK_CONST_METHOD0(hashLength, size_t());
+  MOCK_CONST_METHOD0(blankHash, folly::ByteRange());
+  MOCK_METHOD4(
       _expandLabel,
-      (folly::ByteRange secret,
-       folly::StringPiece label,
-       Buf& hashValue,
-       uint16_t length));
-  MOCK_METHOD(
-      Buf,
+      Buf(folly::ByteRange secret,
+          folly::StringPiece label,
+          Buf& hashValue,
+          uint16_t length));
+  MOCK_METHOD3(
       _hkdfExpand,
-      (folly::ByteRange secret, Buf& info, uint16_t length));
+      Buf(folly::ByteRange secret, Buf& info, uint16_t length));
   Buf expandLabel(
       folly::ByteRange secret,
       folly::StringPiece label,
@@ -39,27 +37,23 @@ class MockKeyDerivation : public KeyDerivation {
   Buf hkdfExpand(folly::ByteRange secret, Buf info, uint16_t length) override {
     return _hkdfExpand(secret, info, length);
   }
-  MOCK_METHOD(
-      std::vector<uint8_t>,
+  MOCK_METHOD3(
       deriveSecret,
-      (folly::ByteRange secret,
-       folly::StringPiece label,
-       folly::ByteRange messageHash));
-  MOCK_METHOD(
-      std::vector<uint8_t>,
+      std::vector<uint8_t>(
+          folly::ByteRange secret,
+          folly::StringPiece label,
+          folly::ByteRange messageHash));
+  MOCK_METHOD2(
       hkdfExtract,
-      (folly::ByteRange salt, folly::ByteRange ikm));
-  MOCK_METHOD(
-      void,
-      hash,
-      (const folly::IOBuf& in, folly::MutableByteRange out));
-  MOCK_METHOD(
-      void,
+      std::vector<uint8_t>(folly::ByteRange salt, folly::ByteRange ikm));
+  MOCK_METHOD2(hash, void(const folly::IOBuf& in, folly::MutableByteRange out));
+  MOCK_METHOD3(
       hmac,
-      (folly::ByteRange key,
-       const folly::IOBuf& in,
-       folly::MutableByteRange out));
-  MOCK_METHOD(std::unique_ptr<KeyDerivation>, clone, (), (const));
+      void(
+          folly::ByteRange key,
+          const folly::IOBuf& in,
+          folly::MutableByteRange out));
+  MOCK_CONST_METHOD0(clone, std::unique_ptr<KeyDerivation>());
 };
 
 } // namespace fizz

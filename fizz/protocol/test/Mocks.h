@@ -33,40 +33,33 @@ class MockKeyScheduler : public KeyScheduler {
  public:
   MockKeyScheduler() : KeyScheduler(std::make_unique<MockKeyDerivation>()) {}
 
-  MOCK_METHOD(void, deriveEarlySecret, (folly::ByteRange psk));
-  MOCK_METHOD(void, deriveHandshakeSecret, ());
-  MOCK_METHOD(void, deriveHandshakeSecret, (folly::ByteRange ecdhe));
-  MOCK_METHOD(void, deriveMasterSecret, ());
-  MOCK_METHOD(void, deriveAppTrafficSecrets, (folly::ByteRange transcript));
-  MOCK_METHOD(void, clearMasterSecret, ());
-  MOCK_METHOD(uint32_t, clientKeyUpdate, ());
-  MOCK_METHOD(uint32_t, serverKeyUpdate, ());
-  MOCK_METHOD(
-      DerivedSecret,
+  MOCK_METHOD1(deriveEarlySecret, void(folly::ByteRange psk));
+  MOCK_METHOD0(deriveHandshakeSecret, void());
+  MOCK_METHOD1(deriveHandshakeSecret, void(folly::ByteRange ecdhe));
+  MOCK_METHOD0(deriveMasterSecret, void());
+  MOCK_METHOD1(deriveAppTrafficSecrets, void(folly::ByteRange transcript));
+  MOCK_METHOD0(clearMasterSecret, void());
+  MOCK_METHOD0(clientKeyUpdate, uint32_t());
+  MOCK_METHOD0(serverKeyUpdate, uint32_t());
+  MOCK_CONST_METHOD2(
       getSecret,
-      (EarlySecrets s, folly::ByteRange transcript),
-      (const));
-  MOCK_METHOD(
-      DerivedSecret,
+      DerivedSecret(EarlySecrets s, folly::ByteRange transcript));
+  MOCK_CONST_METHOD2(
       getSecret,
-      (HandshakeSecrets s, folly::ByteRange transcript),
-      (const));
-  MOCK_METHOD(
-      DerivedSecret,
+      DerivedSecret(HandshakeSecrets s, folly::ByteRange transcript));
+  MOCK_CONST_METHOD2(
       getSecret,
-      (MasterSecrets s, folly::ByteRange transcript),
-      (const));
-  MOCK_METHOD(DerivedSecret, getSecret, (AppTrafficSecrets s), (const));
-  MOCK_METHOD(
-      TrafficKey,
+      DerivedSecret(MasterSecrets s, folly::ByteRange transcript));
+  MOCK_CONST_METHOD1(getSecret, DerivedSecret(AppTrafficSecrets s));
+  MOCK_CONST_METHOD3(
       getTrafficKey,
-      (folly::ByteRange trafficSecret, size_t keyLength, size_t ivLength),
-      (const));
-  MOCK_METHOD(
-      Buf,
+      TrafficKey(
+          folly::ByteRange trafficSecret,
+          size_t keyLength,
+          size_t ivLength));
+  MOCK_CONST_METHOD2(
       getResumptionSecret,
-      (folly::ByteRange, folly::ByteRange),
-      (const));
+      Buf(folly::ByteRange, folly::ByteRange));
 
   void setDefaults() {
     ON_CALL(*this, getTrafficKey(_, _, _))
@@ -98,11 +91,11 @@ class MockKeyScheduler : public KeyScheduler {
 
 class MockHandshakeContext : public HandshakeContext {
  public:
-  MOCK_METHOD(void, appendToTranscript, (const Buf& transcript));
-  MOCK_METHOD(Buf, getHandshakeContext, (), (const));
-  MOCK_METHOD(Buf, getFinishedData, (folly::ByteRange baseKey), (const));
-  MOCK_METHOD(folly::ByteRange, getBlankContext, (), (const));
-  MOCK_METHOD(std::unique_ptr<HandshakeContext>, clone, (), (const));
+  MOCK_METHOD1(appendToTranscript, void(const Buf& transcript));
+  MOCK_CONST_METHOD0(getHandshakeContext, Buf());
+  MOCK_CONST_METHOD1(getFinishedData, Buf(folly::ByteRange baseKey));
+  MOCK_CONST_METHOD0(getBlankContext, folly::ByteRange());
+  MOCK_CONST_METHOD0(clone, std::unique_ptr<HandshakeContext>());
 
   void setDefaults() {
     ON_CALL(*this, getHandshakeContext()).WillByDefault(InvokeWithoutArgs([]() {
@@ -121,111 +114,86 @@ class MockHandshakeContext : public HandshakeContext {
 
 class MockCert : public Cert {
  public:
-  MOCK_METHOD(std::string, getIdentity, (), (const));
-  MOCK_METHOD(folly::ssl::X509UniquePtr, getX509, (), (const));
+  MOCK_CONST_METHOD0(getIdentity, std::string());
+  MOCK_CONST_METHOD0(getX509, folly::ssl::X509UniquePtr());
 };
 
 class MockSelfCert : public SelfCert {
  public:
-  MOCK_METHOD(std::string, getIdentity, (), (const));
-  MOCK_METHOD(std::vector<std::string>, getAltIdentities, (), (const));
-  MOCK_METHOD(std::vector<SignatureScheme>, getSigSchemes, (), (const));
+  MOCK_CONST_METHOD0(getIdentity, std::string());
+  MOCK_CONST_METHOD0(getAltIdentities, std::vector<std::string>());
+  MOCK_CONST_METHOD0(getSigSchemes, std::vector<SignatureScheme>());
 
-  MOCK_METHOD(CertificateMsg, _getCertMessage, (Buf&), (const));
+  MOCK_CONST_METHOD1(_getCertMessage, CertificateMsg(Buf&));
   CertificateMsg getCertMessage(Buf buf) const override {
     return _getCertMessage(buf);
   }
-  MOCK_METHOD(
-      CompressedCertificate,
+  MOCK_CONST_METHOD1(
       getCompressedCert,
-      (CertificateCompressionAlgorithm),
-      (const));
+      CompressedCertificate(CertificateCompressionAlgorithm));
 
-  MOCK_METHOD(
-      Buf,
+  MOCK_CONST_METHOD3(
       sign,
-      (SignatureScheme scheme,
-       CertificateVerifyContext context,
-       folly::ByteRange toBeSigned),
-      (const));
-  MOCK_METHOD(folly::ssl::X509UniquePtr, getX509, (), (const));
+      Buf(SignatureScheme scheme,
+          CertificateVerifyContext context,
+          folly::ByteRange toBeSigned));
+  MOCK_CONST_METHOD0(getX509, folly::ssl::X509UniquePtr());
 };
 
 class MockPeerCert : public PeerCert {
  public:
-  MOCK_METHOD(std::string, getIdentity, (), (const));
-  MOCK_METHOD(
-      void,
+  MOCK_CONST_METHOD0(getIdentity, std::string());
+  MOCK_CONST_METHOD4(
       verify,
-      (SignatureScheme scheme,
-       CertificateVerifyContext context,
-       folly::ByteRange toBeSigned,
-       folly::ByteRange signature),
-      (const));
-  MOCK_METHOD(folly::ssl::X509UniquePtr, getX509, (), (const));
+      void(
+          SignatureScheme scheme,
+          CertificateVerifyContext context,
+          folly::ByteRange toBeSigned,
+          folly::ByteRange signature));
+  MOCK_CONST_METHOD0(getX509, folly::ssl::X509UniquePtr());
 };
 
 class MockCertificateVerifier : public CertificateVerifier {
  public:
-  MOCK_METHOD(
-      void,
+  MOCK_CONST_METHOD1(
       verify,
-      (const std::vector<std::shared_ptr<const PeerCert>>&),
-      (const));
+      void(const std::vector<std::shared_ptr<const PeerCert>>&));
 
-  MOCK_METHOD(
-      std::vector<Extension>,
-      getCertificateRequestExtensions,
-      (),
-      (const));
+  MOCK_CONST_METHOD0(getCertificateRequestExtensions, std::vector<Extension>());
 };
 
 class MockFactory : public OpenSSLFactory {
  public:
-  MOCK_METHOD(
-      std::unique_ptr<PlaintextReadRecordLayer>,
+  MOCK_CONST_METHOD0(
       makePlaintextReadRecordLayer,
-      (),
-      (const));
-  MOCK_METHOD(
-      std::unique_ptr<PlaintextWriteRecordLayer>,
+      std::unique_ptr<PlaintextReadRecordLayer>());
+  MOCK_CONST_METHOD0(
       makePlaintextWriteRecordLayer,
-      (),
-      (const));
-  MOCK_METHOD(
-      std::unique_ptr<EncryptedReadRecordLayer>,
+      std::unique_ptr<PlaintextWriteRecordLayer>());
+  MOCK_CONST_METHOD1(
       makeEncryptedReadRecordLayer,
-      (EncryptionLevel encryptionLevel),
-      (const));
-  MOCK_METHOD(
-      std::unique_ptr<EncryptedWriteRecordLayer>,
+      std::unique_ptr<EncryptedReadRecordLayer>(
+          EncryptionLevel encryptionLevel));
+  MOCK_CONST_METHOD1(
       makeEncryptedWriteRecordLayer,
-      (EncryptionLevel encryptionLevel),
-      (const));
-  MOCK_METHOD(
-      std::unique_ptr<KeyScheduler>,
+      std::unique_ptr<EncryptedWriteRecordLayer>(
+          EncryptionLevel encryptionLevel));
+  MOCK_CONST_METHOD1(
       makeKeyScheduler,
-      (CipherSuite cipher),
-      (const));
-  MOCK_METHOD(
-      std::unique_ptr<HandshakeContext>,
+      std::unique_ptr<KeyScheduler>(CipherSuite cipher));
+  MOCK_CONST_METHOD1(
       makeHandshakeContext,
-      (CipherSuite cipher),
-      (const));
-  MOCK_METHOD(
-      std::unique_ptr<KeyExchange>,
+      std::unique_ptr<HandshakeContext>(CipherSuite cipher));
+  MOCK_CONST_METHOD1(
       makeKeyExchange,
-      (NamedGroup group),
-      (const));
-  MOCK_METHOD(std::unique_ptr<Aead>, makeAead, (CipherSuite cipher), (const));
-  MOCK_METHOD(Random, makeRandom, (), (const));
-  MOCK_METHOD(uint32_t, makeTicketAgeAdd, (), (const));
+      std::unique_ptr<KeyExchange>(NamedGroup group));
+  MOCK_CONST_METHOD1(makeAead, std::unique_ptr<Aead>(CipherSuite cipher));
+  MOCK_CONST_METHOD0(makeRandom, Random());
+  MOCK_CONST_METHOD0(makeTicketAgeAdd, uint32_t());
 
-  MOCK_METHOD(
-      std::shared_ptr<PeerCert>,
+  MOCK_CONST_METHOD2(
       _makePeerCert,
-      (CertificateEntry & entry, bool leaf),
-      (const));
+      std::shared_ptr<PeerCert>(CertificateEntry& entry, bool leaf));
   std::shared_ptr<PeerCert> makePeerCert(CertificateEntry entry, bool leaf)
       const override {
     return _makePeerCert(entry, leaf);
@@ -295,8 +263,8 @@ class MockFactory : public OpenSSLFactory {
 
 class MockCertificateDecompressor : public CertificateDecompressor {
  public:
-  MOCK_METHOD(CertificateCompressionAlgorithm, getAlgorithm, (), (const));
-  MOCK_METHOD(CertificateMsg, decompress, (const CompressedCertificate&));
+  MOCK_CONST_METHOD0(getAlgorithm, CertificateCompressionAlgorithm());
+  MOCK_METHOD1(decompress, CertificateMsg(const CompressedCertificate&));
   void setDefaults() {
     ON_CALL(*this, getAlgorithm()).WillByDefault(InvokeWithoutArgs([]() {
       return CertificateCompressionAlgorithm::zlib;
@@ -306,8 +274,8 @@ class MockCertificateDecompressor : public CertificateDecompressor {
 
 class MockCertificateCompressor : public CertificateCompressor {
  public:
-  MOCK_METHOD(CertificateCompressionAlgorithm, getAlgorithm, (), (const));
-  MOCK_METHOD(CompressedCertificate, compress, (const CertificateMsg&));
+  MOCK_CONST_METHOD0(getAlgorithm, CertificateCompressionAlgorithm());
+  MOCK_METHOD1(compress, CompressedCertificate(const CertificateMsg&));
   void setDefaults() {
     ON_CALL(*this, getAlgorithm()).WillByDefault(InvokeWithoutArgs([]() {
       return CertificateCompressionAlgorithm::zlib;
@@ -322,39 +290,32 @@ class MockAsyncFizzBase : public AsyncFizzBase {
             folly::AsyncTransport::UniquePtr(
                 new folly::test::MockAsyncTransport()),
             AsyncFizzBase::TransportOptions()) {}
-  MOCK_METHOD(bool, good, (), (const));
-  MOCK_METHOD(bool, readable, (), (const));
-  MOCK_METHOD(bool, connecting, (), (const));
-  MOCK_METHOD(bool, error, (), (const));
-  MOCK_METHOD(folly::ssl::X509UniquePtr, getPeerCert, (), (const));
-  MOCK_METHOD(const X509*, getSelfCert, (), (const));
-  MOCK_METHOD(bool, isReplaySafe, (), (const));
-  MOCK_METHOD(
-      void,
+  MOCK_CONST_METHOD0(good, bool());
+  MOCK_CONST_METHOD0(readable, bool());
+  MOCK_CONST_METHOD0(connecting, bool());
+  MOCK_CONST_METHOD0(error, bool());
+  MOCK_CONST_METHOD0(getPeerCert, folly::ssl::X509UniquePtr());
+  MOCK_CONST_METHOD0(getSelfCert, const X509*());
+  MOCK_CONST_METHOD0(isReplaySafe, bool());
+  MOCK_METHOD1(
       setReplaySafetyCallback,
-      (folly::AsyncTransport::ReplaySafetyCallback * callback));
-  MOCK_METHOD(const Cert*, getSelfCertificate, (), (const));
-  MOCK_METHOD(const Cert*, getPeerCertificate, (), (const));
-  MOCK_METHOD(std::string, getApplicationProtocol_, (), (const));
+      void(folly::AsyncTransport::ReplaySafetyCallback* callback));
+  MOCK_CONST_METHOD0(getSelfCertificate, const Cert*());
+  MOCK_CONST_METHOD0(getPeerCertificate, const Cert*());
+  MOCK_CONST_METHOD0(getApplicationProtocol_, std::string());
 
-  MOCK_METHOD(void, setReadCB, (ReadCallback*));
-  MOCK_METHOD(void, setEndOfTLSCallback, (EndOfTLSCallback*));
+  MOCK_METHOD1(setReadCB, void(ReadCallback*));
+  MOCK_METHOD1(setEndOfTLSCallback, void(EndOfTLSCallback*));
 
   std::string getApplicationProtocol() const noexcept override {
     return getApplicationProtocol_();
   }
 
-  MOCK_METHOD(folly::Optional<CipherSuite>, getCipher, (), (const));
-  MOCK_METHOD(
-      std::vector<SignatureScheme>,
-      getSupportedSigSchemes,
-      (),
-      (const));
-  MOCK_METHOD(
-      Buf,
+  MOCK_CONST_METHOD0(getCipher, folly::Optional<CipherSuite>());
+  MOCK_CONST_METHOD0(getSupportedSigSchemes, std::vector<SignatureScheme>());
+  MOCK_CONST_METHOD3(
       _getExportedKeyingMaterial,
-      (folly::StringPiece, Buf&, uint16_t),
-      (const));
+      Buf(folly::StringPiece, Buf&, uint16_t));
 
   Buf getExportedKeyingMaterial(
       folly::StringPiece label,
@@ -363,15 +324,15 @@ class MockAsyncFizzBase : public AsyncFizzBase {
     return _getExportedKeyingMaterial(label, context, length);
   }
 
-  MOCK_METHOD(folly::Optional<Random>, getClientRandom, (), (const));
-  MOCK_METHOD(void, tlsShutdown, ());
+  MOCK_CONST_METHOD0(getClientRandom, folly::Optional<Random>());
+  MOCK_METHOD0(tlsShutdown, void());
 
-  MOCK_METHOD(
-      void,
+  MOCK_METHOD3(
       writeAppDataInternal,
-      (folly::AsyncTransport::WriteCallback*,
-       std::shared_ptr<folly::IOBuf>,
-       folly::WriteFlags));
+      void(
+          folly::AsyncTransport::WriteCallback*,
+          std::shared_ptr<folly::IOBuf>,
+          folly::WriteFlags));
 
   void writeAppData(
       folly::AsyncTransport::WriteCallback* callback,
@@ -381,11 +342,11 @@ class MockAsyncFizzBase : public AsyncFizzBase {
         callback, std::shared_ptr<folly::IOBuf>(buf.release()), flags);
   }
 
-  MOCK_METHOD(void, transportError, (const folly::AsyncSocketException&));
+  MOCK_METHOD1(transportError, void(const folly::AsyncSocketException&));
 
-  MOCK_METHOD(void, transportDataAvailable, ());
-  MOCK_METHOD(void, pauseEvents, ());
-  MOCK_METHOD(void, resumeEvents, ());
+  MOCK_METHOD0(transportDataAvailable, void());
+  MOCK_METHOD0(pauseEvents, void());
+  MOCK_METHOD0(resumeEvents, void());
 };
 
 } // namespace test

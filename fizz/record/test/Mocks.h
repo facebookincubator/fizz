@@ -45,13 +45,12 @@ void setWriteDefaults(T* obj) {
 
 class MockPlaintextReadRecordLayer : public PlaintextReadRecordLayer {
  public:
-  MOCK_METHOD(
-      ReadResult<TLSMessage>,
+  MOCK_METHOD2(
       read,
-      (folly::IOBufQueue & buf, Aead::AeadOptions));
-  MOCK_METHOD(bool, hasUnparsedHandshakeData, (), (const));
-  MOCK_METHOD(void, setSkipEncryptedRecords, (bool));
-  MOCK_METHOD(ReadResult<Param>, mockReadEvent, ());
+      ReadResult<TLSMessage>(folly::IOBufQueue& buf, Aead::AeadOptions));
+  MOCK_CONST_METHOD0(hasUnparsedHandshakeData, bool());
+  MOCK_METHOD1(setSkipEncryptedRecords, void(bool));
+  MOCK_METHOD0(mockReadEvent, ReadResult<Param>());
 
   ReadResult<Param> readEvent(folly::IOBufQueue& buf, Aead::AeadOptions options)
       override {
@@ -75,20 +74,21 @@ class MockEncryptedReadRecordLayer : public EncryptedReadRecordLayer {
   explicit MockEncryptedReadRecordLayer(EncryptionLevel encryptionLevel)
       : EncryptedReadRecordLayer(encryptionLevel) {}
 
-  MOCK_METHOD(
-      ReadResult<TLSMessage>,
+  MOCK_METHOD2(
       read,
-      (folly::IOBufQueue & buf, Aead::AeadOptions options));
-  MOCK_METHOD(bool, hasUnparsedHandshakeData, (), (const));
+      ReadResult<TLSMessage>(
+          folly::IOBufQueue& buf,
+          Aead::AeadOptions options));
+  MOCK_CONST_METHOD0(hasUnparsedHandshakeData, bool());
 
-  MOCK_METHOD(void, _setAead, (folly::ByteRange, Aead*));
+  MOCK_METHOD2(_setAead, void(folly::ByteRange, Aead*));
   void setAead(folly::ByteRange baseSecret, std::unique_ptr<Aead> aead)
       override {
     _setAead(baseSecret, aead.get());
   }
 
-  MOCK_METHOD(void, setSkipFailedDecryption, (bool));
-  MOCK_METHOD(ReadResult<Param>, mockReadEvent, ());
+  MOCK_METHOD1(setSkipFailedDecryption, void(bool));
+  MOCK_METHOD0(mockReadEvent, ReadResult<Param>());
 
   ReadResult<Param> readEvent(folly::IOBufQueue& buf, Aead::AeadOptions options)
       override {
@@ -109,16 +109,14 @@ class MockEncryptedReadRecordLayer : public EncryptedReadRecordLayer {
 
 class MockPlaintextWriteRecordLayer : public PlaintextWriteRecordLayer {
  public:
-  MOCK_METHOD(
-      TLSContent,
+  MOCK_CONST_METHOD2(
       _write,
-      (TLSMessage & msg, Aead::AeadOptions options),
-      (const));
+      TLSContent(TLSMessage& msg, Aead::AeadOptions options));
   TLSContent write(TLSMessage&& msg, Aead::AeadOptions options) const override {
     return _write(msg, options);
   }
 
-  MOCK_METHOD(TLSContent, _writeInitialClientHello, (Buf&), (const));
+  MOCK_CONST_METHOD1(_writeInitialClientHello, TLSContent(Buf&));
   TLSContent writeInitialClientHello(Buf encoded) const override {
     return _writeInitialClientHello(encoded);
   }
@@ -141,16 +139,14 @@ class MockEncryptedWriteRecordLayer : public EncryptedWriteRecordLayer {
   MockEncryptedWriteRecordLayer(EncryptionLevel encryptionLevel)
       : EncryptedWriteRecordLayer(encryptionLevel) {}
 
-  MOCK_METHOD(
-      TLSContent,
+  MOCK_CONST_METHOD2(
       _write,
-      (TLSMessage & msg, Aead::AeadOptions options),
-      (const));
+      TLSContent(TLSMessage& msg, Aead::AeadOptions options));
   TLSContent write(TLSMessage&& msg, Aead::AeadOptions options) const override {
     return _write(msg, options);
   }
 
-  MOCK_METHOD(void, _setAead, (folly::ByteRange, Aead*));
+  MOCK_METHOD2(_setAead, void(folly::ByteRange, Aead*));
   void setAead(folly::ByteRange baseSecret, std::unique_ptr<Aead> aead)
       override {
     _setAead(baseSecret, aead.get());

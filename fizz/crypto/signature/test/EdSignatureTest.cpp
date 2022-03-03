@@ -102,7 +102,7 @@ TEST_P(Ed25519Test, TestOpenSSLSignature) {
 }
 
 // Test vectors from RFC8032
-INSTANTIATE_TEST_SUITE_P(
+INSTANTIATE_TEST_CASE_P(
     TestVectors,
     EdDSATest,
     ::testing::Values(
@@ -113,7 +113,7 @@ INSTANTIATE_TEST_SUITE_P(
         ED25519_FIXTURE(5)));
 
 // Test vectors from RFC8032
-INSTANTIATE_TEST_SUITE_P(
+INSTANTIATE_TEST_CASE_P(
     TestVectors,
     Ed25519Test,
     ::testing::Values(

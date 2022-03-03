@@ -29,10 +29,9 @@ namespace test {
 
 class MockDecrypter : public ech::Decrypter {
  public:
-  MOCK_METHOD(
-      folly::Optional<ClientHello>,
+  MOCK_METHOD1(
       decryptClientHello,
-      (const ClientHello& chlo));
+      folly::Optional<ClientHello>(const ClientHello& chlo));
 };
 
 class ServerProtocolTest : public ProtocolTest<ServerTypes, Actions> {

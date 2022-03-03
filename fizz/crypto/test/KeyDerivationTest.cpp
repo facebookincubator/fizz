@@ -67,7 +67,7 @@ TEST(KeyDerivation, Sha256BlankHash) {
 }
 
 // These are taken by dumping mint's internal state
-INSTANTIATE_TEST_SUITE_P(
+INSTANTIATE_TEST_CASE_P(
     KeyDerivation,
     KeyDerivationTest,
     ::testing::Values(

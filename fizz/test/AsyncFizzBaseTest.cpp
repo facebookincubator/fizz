@@ -46,43 +46,36 @@ class AsyncFizzBaseTest : public testing::Test, public AsyncFizzBase {
     EXPECT_CALL(*socket_, setReadCB(nullptr));
   }
 
-  MOCK_METHOD(bool, good, (), (const));
-  MOCK_METHOD(bool, readable, (), (const));
-  MOCK_METHOD(bool, connecting, (), (const));
-  MOCK_METHOD(bool, error, (), (const));
-  MOCK_METHOD(folly::ssl::X509UniquePtr, getPeerCert, (), (const));
-  MOCK_METHOD(const X509*, getSelfCert, (), (const));
-  MOCK_METHOD(bool, isReplaySafe, (), (const));
-  MOCK_METHOD(
-      void,
+  MOCK_CONST_METHOD0(good, bool());
+  MOCK_CONST_METHOD0(readable, bool());
+  MOCK_CONST_METHOD0(connecting, bool());
+  MOCK_CONST_METHOD0(error, bool());
+  MOCK_CONST_METHOD0(getPeerCert, folly::ssl::X509UniquePtr());
+  MOCK_CONST_METHOD0(getSelfCert, const X509*());
+  MOCK_CONST_METHOD0(isReplaySafe, bool());
+  MOCK_METHOD1(
       setReplaySafetyCallback,
-      (folly::AsyncTransport::ReplaySafetyCallback * callback));
-  MOCK_METHOD(const Cert*, getSelfCertificate, (), (const));
-  MOCK_METHOD(const Cert*, getPeerCertificate, (), (const));
-  MOCK_METHOD(std::string, getApplicationProtocol_, (), (const));
+      void(folly::AsyncTransport::ReplaySafetyCallback* callback));
+  MOCK_CONST_METHOD0(getSelfCertificate, const Cert*());
+  MOCK_CONST_METHOD0(getPeerCertificate, const Cert*());
+  MOCK_CONST_METHOD0(getApplicationProtocol_, std::string());
 
   std::string getApplicationProtocol() const noexcept override {
     return getApplicationProtocol_();
   }
 
-  MOCK_METHOD(folly::Optional<CipherSuite>, getCipher, (), (const));
-  MOCK_METHOD(
-      std::vector<SignatureScheme>,
-      getSupportedSigSchemes,
-      (),
-      (const));
-  MOCK_METHOD(
-      Buf,
+  MOCK_CONST_METHOD0(getCipher, folly::Optional<CipherSuite>());
+  MOCK_CONST_METHOD0(getSupportedSigSchemes, std::vector<SignatureScheme>());
+  MOCK_CONST_METHOD3(
       getExportedKeyingMaterial,
-      (folly::StringPiece, Buf, uint16_t),
-      (const));
+      Buf(folly::StringPiece, Buf, uint16_t));
 
-  MOCK_METHOD(
-      void,
+  MOCK_METHOD3(
       writeAppDataInternal,
-      (folly::AsyncTransportWrapper::WriteCallback*,
-       std::shared_ptr<folly::IOBuf>,
-       folly::WriteFlags));
+      void(
+          folly::AsyncTransportWrapper::WriteCallback*,
+          std::shared_ptr<folly::IOBuf>,
+          folly::WriteFlags));
 
   void writeAppData(
       folly::AsyncTransportWrapper::WriteCallback* callback,
@@ -92,13 +85,13 @@ class AsyncFizzBaseTest : public testing::Test, public AsyncFizzBase {
         callback, std::shared_ptr<folly::IOBuf>(buf.release()), flags);
   }
 
-  MOCK_METHOD(void, transportError, (const folly::AsyncSocketException&));
-  MOCK_METHOD(void, transportDataAvailable, ());
-  MOCK_METHOD(void, pauseEvents, ());
-  MOCK_METHOD(void, resumeEvents, ());
+  MOCK_METHOD1(transportError, void(const folly::AsyncSocketException&));
+  MOCK_METHOD0(transportDataAvailable, void());
+  MOCK_METHOD0(pauseEvents, void());
+  MOCK_METHOD0(resumeEvents, void());
 
-  MOCK_METHOD(folly::Optional<Random>, getClientRandom, (), (const));
-  MOCK_METHOD(void, tlsShutdown, ());
+  MOCK_CONST_METHOD0(getClientRandom, folly::Optional<Random>());
+  MOCK_METHOD0(tlsShutdown, void());
 
  protected:
   void expectReadBufRequest(size_t sizeToGive) {
@@ -183,79 +176,70 @@ std::unique_ptr<folly::IOBuf> getBuf(char repeatedData, size_t len) {
 
 class MockSecretCallback : public AsyncFizzBase::SecretCallback {
  public:
-  MOCK_METHOD(void, externalPskBinderAvailable_, (const std::vector<uint8_t>&));
+  MOCK_METHOD1(externalPskBinderAvailable_, void(const std::vector<uint8_t>&));
   void externalPskBinderAvailable(
       const std::vector<uint8_t>& secret) noexcept override {
     externalPskBinderAvailable_(secret);
   }
-  MOCK_METHOD(
-      void,
+  MOCK_METHOD1(
       resumptionPskBinderAvailable_,
-      (const std::vector<uint8_t>&));
+      void(const std::vector<uint8_t>&));
   void resumptionPskBinderAvailable(
       const std::vector<uint8_t>& secret) noexcept override {
     resumptionPskBinderAvailable_(secret);
   }
-  MOCK_METHOD(
-      void,
+  MOCK_METHOD1(
       earlyExporterSecretAvailable_,
-      (const std::vector<uint8_t>&));
+      void(const std::vector<uint8_t>&));
   void earlyExporterSecretAvailable(
       const std::vector<uint8_t>& secret) noexcept override {
     earlyExporterSecretAvailable_(secret);
   }
-  MOCK_METHOD(
-      void,
+  MOCK_METHOD1(
       clientEarlyTrafficSecretAvailable_,
-      (const std::vector<uint8_t>&));
+      void(const std::vector<uint8_t>&));
   void clientEarlyTrafficSecretAvailable(
       const std::vector<uint8_t>& secret) noexcept override {
     clientEarlyTrafficSecretAvailable_(secret);
   }
-  MOCK_METHOD(
-      void,
+  MOCK_METHOD1(
       clientHandshakeTrafficSecretAvailable_,
-      (const std::vector<uint8_t>&));
+      void(const std::vector<uint8_t>&));
   void clientHandshakeTrafficSecretAvailable(
       const std::vector<uint8_t>& secret) noexcept override {
     clientHandshakeTrafficSecretAvailable_(secret);
   }
-  MOCK_METHOD(
-      void,
+  MOCK_METHOD1(
       serverHandshakeTrafficSecretAvailable_,
-      (const std::vector<uint8_t>&));
+      void(const std::vector<uint8_t>&));
   void serverHandshakeTrafficSecretAvailable(
       const std::vector<uint8_t>& secret) noexcept override {
     serverHandshakeTrafficSecretAvailable_(secret);
   }
-  MOCK_METHOD(
-      void,
+  MOCK_METHOD1(
       exporterMasterSecretAvailable_,
-      (const std::vector<uint8_t>&));
+      void(const std::vector<uint8_t>&));
   void exporterMasterSecretAvailable(
       const std::vector<uint8_t>& secret) noexcept override {
     exporterMasterSecretAvailable_(secret);
   }
-  MOCK_METHOD(
-      void,
+  MOCK_METHOD1(
       resumptionMasterSecretAvailable_,
-      (const std::vector<uint8_t>&));
+      void(const std::vector<uint8_t>&));
   void resumptionMasterSecretAvailable(
       const std::vector<uint8_t>& secret) noexcept override {
     resumptionMasterSecretAvailable_(secret);
   }
-  MOCK_METHOD(
-      void,
+  MOCK_METHOD1(
       clientAppTrafficSecretAvailable_,
-      (const std::vector<uint8_t>&));
+      void(const std::vector<uint8_t>&));
   void clientAppTrafficSecretAvailable(
       const std::vector<uint8_t>& secret) noexcept override {
     clientAppTrafficSecretAvailable_(secret);
   }
-  MOCK_METHOD(
-      void,
+  MOCK_METHOD1(
       serverAppTrafficSecretAvailable_,
-      (const std::vector<uint8_t>&));
+      void(const std::vector<uint8_t>&));
   void serverAppTrafficSecretAvailable(
       const std::vector<uint8_t>& secret) noexcept override {
     serverAppTrafficSecretAvailable_(secret);

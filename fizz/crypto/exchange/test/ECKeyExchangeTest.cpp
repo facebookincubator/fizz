@@ -330,7 +330,7 @@ TEST_P(ECDHTest, TestKexClone) {
  * These are NIST test vectors.
  */
 // clang-format off
-INSTANTIATE_TEST_SUITE_P(
+INSTANTIATE_TEST_CASE_P(
     TestVectors,
     ECDHTest,
     ::testing::

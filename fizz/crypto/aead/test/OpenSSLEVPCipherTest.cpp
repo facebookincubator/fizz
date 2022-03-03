@@ -770,7 +770,7 @@ TEST_P(OpenSSLEVPCipherTest, TestOutputBufferSizeOverflow) {
 }
 
 // Adapted from draft-thomson-tls-tls13-vectors
-INSTANTIATE_TEST_SUITE_P(
+INSTANTIATE_TEST_CASE_P(
     AESGCM128TestVectors,
     OpenSSLEVPCipherTest,
     ::testing::Values(
@@ -839,7 +839,7 @@ INSTANTIATE_TEST_SUITE_P(
             false,
             CipherSuite::TLS_AES_128_GCM_SHA256}));
 
-INSTANTIATE_TEST_SUITE_P(
+INSTANTIATE_TEST_CASE_P(
     AESGCM256TestVectors,
     OpenSSLEVPCipherTest,
     ::testing::Values(
@@ -864,7 +864,7 @@ INSTANTIATE_TEST_SUITE_P(
 
 #if FOLLY_OPENSSL_HAS_CHACHA
 // Adapted from libressl's chacha20-poly1305 aead tests
-INSTANTIATE_TEST_SUITE_P(
+INSTANTIATE_TEST_CASE_P(
     ChaChaTestVectors,
     OpenSSLEVPCipherTest,
     ::testing::
@@ -962,7 +962,7 @@ INSTANTIATE_TEST_SUITE_P(
 #endif
 #if FOLLY_OPENSSL_IS_110 && !defined(OPENSSL_NO_OCB)
 // Adapted from openssl's evptests.txt AES OCB Test vectors
-INSTANTIATE_TEST_SUITE_P(
+INSTANTIATE_TEST_CASE_P(
     OCBTestVectors,
     OpenSSLEVPCipherTest,
     ::testing::Values(

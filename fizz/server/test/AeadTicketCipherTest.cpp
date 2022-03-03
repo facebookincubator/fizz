@@ -52,12 +52,13 @@ namespace test {
 
 class MockTicketCodecInstance {
  public:
-  MOCK_METHOD(Buf, _encode, (ResumptionState & state), (const));
-  MOCK_METHOD(
-      ResumptionState,
+  MOCK_CONST_METHOD1(_encode, Buf(ResumptionState& state));
+  MOCK_CONST_METHOD3(
       _decode,
-      (Buf & encoded, const Factory& factory, const CertManager& certManager),
-      (const));
+      ResumptionState(
+          Buf& encoded,
+          const Factory& factory,
+          const CertManager& certManager));
 };
 
 class MockTicketCodec {

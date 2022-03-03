@@ -29,8 +29,8 @@ class MockAeadCipher : public Aead {
     return actualCipher_->ivLength();
   }
 
-  MOCK_METHOD(folly::Optional<TrafficKey>, getKey, (), (const));
-  MOCK_METHOD(void, _setKey, (TrafficKey * key));
+  MOCK_CONST_METHOD0(getKey, folly::Optional<TrafficKey>());
+  MOCK_METHOD1(_setKey, void(TrafficKey* key));
   void setKey(TrafficKey key) override {
     _setKey(&key);
     actualCipher_->setKey(std::move(key));

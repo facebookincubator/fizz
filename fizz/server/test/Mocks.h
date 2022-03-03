@@ -32,13 +32,13 @@ using namespace fizz::test;
 
 class MockServerStateMachine : public ServerStateMachine {
  public:
-  MOCK_METHOD(
-      folly::Optional<AsyncActions>,
+  MOCK_METHOD4(
       _processAccept,
-      (const State&,
-       folly::Executor*,
-       std::shared_ptr<const FizzServerContext> context,
-       const std::shared_ptr<ServerExtensions>& extensions));
+      folly::Optional<AsyncActions>(
+          const State&,
+          folly::Executor*,
+          std::shared_ptr<const FizzServerContext> context,
+          const std::shared_ptr<ServerExtensions>& extensions));
   AsyncActions processAccept(
       const State& state,
       folly::Executor* executor,
@@ -47,10 +47,12 @@ class MockServerStateMachine : public ServerStateMachine {
     return *_processAccept(state, executor, std::move(context), extensions);
   }
 
-  MOCK_METHOD(
-      folly::Optional<AsyncActions>,
+  MOCK_METHOD3(
       _processSocketData,
-      (const State&, folly::IOBufQueue&, Aead::AeadOptions));
+      folly::Optional<AsyncActions>(
+          const State&,
+          folly::IOBufQueue&,
+          Aead::AeadOptions));
   AsyncActions processSocketData(
       const State& state,
       folly::IOBufQueue& queue,
@@ -58,42 +60,38 @@ class MockServerStateMachine : public ServerStateMachine {
     return *_processSocketData(state, queue, options);
   }
 
-  MOCK_METHOD(
-      folly::Optional<AsyncActions>,
+  MOCK_METHOD2(
       _processWriteNewSessionTicket,
-      (const State&, WriteNewSessionTicket&));
+      folly::Optional<AsyncActions>(const State&, WriteNewSessionTicket&));
   AsyncActions processWriteNewSessionTicket(
       const State& state,
       WriteNewSessionTicket write) override {
     return *_processWriteNewSessionTicket(state, write);
   }
 
-  MOCK_METHOD(
-      folly::Optional<AsyncActions>,
+  MOCK_METHOD2(
       _processAppWrite,
-      (const State&, AppWrite&));
+      folly::Optional<AsyncActions>(const State&, AppWrite&));
   AsyncActions processAppWrite(const State& state, AppWrite appWrite) override {
     return *_processAppWrite(state, appWrite);
   }
 
-  MOCK_METHOD(
-      folly::Optional<AsyncActions>,
+  MOCK_METHOD2(
       _processEarlyAppWrite,
-      (const State&, EarlyAppWrite&));
+      folly::Optional<AsyncActions>(const State&, EarlyAppWrite&));
   AsyncActions processEarlyAppWrite(const State& state, EarlyAppWrite appWrite)
       override {
     return *_processEarlyAppWrite(state, appWrite);
   }
 
-  MOCK_METHOD(folly::Optional<Actions>, _processAppClose, (const State&));
+  MOCK_METHOD1(_processAppClose, folly::Optional<Actions>(const State&));
   Actions processAppClose(const State& state) override {
     return *_processAppClose(state);
   }
 
-  MOCK_METHOD(
-      folly::Optional<Actions>,
+  MOCK_METHOD1(
       _processAppCloseImmediate,
-      (const State&));
+      folly::Optional<Actions>(const State&));
   Actions processAppCloseImmediate(const State& state) override {
     return *_processAppCloseImmediate(state);
   }
@@ -101,22 +99,19 @@ class MockServerStateMachine : public ServerStateMachine {
 
 class MockTicketCipher : public TicketCipher {
  public:
-  MOCK_METHOD(
-      (folly::SemiFuture<
-          folly::Optional<std::pair<Buf, std::chrono::seconds>>>),
+  MOCK_CONST_METHOD1(
       _encrypt,
-      (ResumptionState&),
-      (const));
+      folly::SemiFuture<folly::Optional<std::pair<Buf, std::chrono::seconds>>>(
+          ResumptionState&));
   folly::SemiFuture<folly::Optional<std::pair<Buf, std::chrono::seconds>>>
   encrypt(ResumptionState resState) const override {
     return _encrypt(resState);
   }
 
-  MOCK_METHOD(
-      (folly::SemiFuture<std::pair<PskType, folly::Optional<ResumptionState>>>),
+  MOCK_CONST_METHOD1(
       _decrypt,
-      (std::unique_ptr<folly::IOBuf> & encryptedTicket),
-      (const));
+      folly::SemiFuture<std::pair<PskType, folly::Optional<ResumptionState>>>(
+          std::unique_ptr<folly::IOBuf>& encryptedTicket));
   folly::SemiFuture<std::pair<PskType, folly::Optional<ResumptionState>>>
   decrypt(std::unique_ptr<folly::IOBuf> encryptedTicket) const override {
     return _decrypt(encryptedTicket);
@@ -146,7 +141,7 @@ class MockTicketCipher : public TicketCipher {
 
 class MockCookieCipher : public CookieCipher {
  public:
-  MOCK_METHOD(folly::Optional<CookieState>, _decrypt, (Buf&), (const));
+  MOCK_CONST_METHOD1(_decrypt, folly::Optional<CookieState>(Buf&));
   folly::Optional<CookieState> decrypt(Buf cookie) const override {
     return _decrypt(cookie);
   }
@@ -155,22 +150,21 @@ class MockCookieCipher : public CookieCipher {
 template <typename SM>
 class MockHandshakeCallbackT : public AsyncFizzServerT<SM>::HandshakeCallback {
  public:
-  MOCK_METHOD(void, _fizzHandshakeSuccess, ());
+  MOCK_METHOD0(_fizzHandshakeSuccess, void());
   void fizzHandshakeSuccess(AsyncFizzServerT<SM>*) noexcept override {
     _fizzHandshakeSuccess();
   }
 
-  MOCK_METHOD(void, _fizzHandshakeError, (folly::exception_wrapper));
+  MOCK_METHOD1(_fizzHandshakeError, void(folly::exception_wrapper));
   void fizzHandshakeError(
       AsyncFizzServerT<SM>*,
       folly::exception_wrapper ew) noexcept override {
     _fizzHandshakeError(std::move(ew));
   }
 
-  MOCK_METHOD(
-      void,
+  MOCK_METHOD1(
       _fizzHandshakeAttemptFallback,
-      (std::unique_ptr<folly::IOBuf>&));
+      void(std::unique_ptr<folly::IOBuf>&));
   void fizzHandshakeAttemptFallback(
       std::unique_ptr<folly::IOBuf> clientHello) override {
     return _fizzHandshakeAttemptFallback(clientHello);
@@ -190,78 +184,68 @@ class MockAsyncFizzServerT : public AsyncFizzServerT<SM> {
   using UniquePtr = std::
       unique_ptr<MockAsyncFizzServerT, folly::DelayedDestruction::Destructor>;
 
-  MOCK_METHOD(
-      Buf,
+  MOCK_CONST_METHOD3(
       getExportedKeyingMaterial,
-      (folly::StringPiece, Buf, uint16_t),
-      (const));
+      Buf(folly::StringPiece, Buf, uint16_t));
 };
 
 using MockAsyncFizzServer = MockAsyncFizzServerT<ServerStateMachine>;
 
 class MockCertManager : public CertManager {
  public:
-  MOCK_METHOD(
-      CertMatch,
+  MOCK_CONST_METHOD4(
       getCert,
-      (const folly::Optional<std::string>& sni,
-       const std::vector<SignatureScheme>& supportedSigSchemes,
-       const std::vector<SignatureScheme>& peerSigSchemes,
-       const std::vector<Extension>& peerExtensions),
-      (const));
-  MOCK_METHOD(
-      std::shared_ptr<SelfCert>,
+      CertMatch(
+          const folly::Optional<std::string>& sni,
+          const std::vector<SignatureScheme>& supportedSigSchemes,
+          const std::vector<SignatureScheme>& peerSigSchemes,
+          const std::vector<Extension>& peerExtensions));
+  MOCK_CONST_METHOD1(
       getCert,
-      (const std::string& identity),
-      (const));
+      std::shared_ptr<SelfCert>(const std::string& identity));
 };
 
 class MockServerExtensions : public ServerExtensions {
  public:
-  MOCK_METHOD(std::vector<Extension>, getExtensions, (const ClientHello& chlo));
+  MOCK_METHOD1(getExtensions, std::vector<Extension>(const ClientHello& chlo));
 };
 
 class MockReplayCache : public ReplayCache {
  public:
-  MOCK_METHOD(folly::SemiFuture<ReplayCacheResult>, check, (folly::ByteRange));
+  MOCK_METHOD1(check, folly::SemiFuture<ReplayCacheResult>(folly::ByteRange));
 };
 
 class MockAppTokenValidator : public AppTokenValidator {
  public:
-  MOCK_METHOD(bool, validate, (const ResumptionState&), (const));
+  MOCK_CONST_METHOD1(validate, bool(const ResumptionState&));
 };
 
 class MockAsyncSelfCert : public AsyncSelfCert {
  public:
-  MOCK_METHOD(std::string, getIdentity, (), (const));
-  MOCK_METHOD(std::vector<std::string>, getAltIdentities, (), (const));
-  MOCK_METHOD(std::vector<SignatureScheme>, getSigSchemes, (), (const));
+  MOCK_CONST_METHOD0(getIdentity, std::string());
+  MOCK_CONST_METHOD0(getAltIdentities, std::vector<std::string>());
+  MOCK_CONST_METHOD0(getSigSchemes, std::vector<SignatureScheme>());
 
-  MOCK_METHOD(CertificateMsg, _getCertMessage, (Buf&), (const));
+  MOCK_CONST_METHOD1(_getCertMessage, CertificateMsg(Buf&));
   CertificateMsg getCertMessage(Buf buf) const override {
     return _getCertMessage(buf);
   }
-  MOCK_METHOD(
-      CompressedCertificate,
+  MOCK_CONST_METHOD1(
       getCompressedCert,
-      (CertificateCompressionAlgorithm),
-      (const));
+      CompressedCertificate(CertificateCompressionAlgorithm));
 
-  MOCK_METHOD(
-      Buf,
+  MOCK_CONST_METHOD3(
       sign,
-      (SignatureScheme scheme,
-       CertificateVerifyContext context,
-       folly::ByteRange toBeSigned),
-      (const));
-  MOCK_METHOD(folly::ssl::X509UniquePtr, getX509, (), (const));
-  MOCK_METHOD(
-      folly::SemiFuture<folly::Optional<Buf>>,
+      Buf(SignatureScheme scheme,
+          CertificateVerifyContext context,
+          folly::ByteRange toBeSigned));
+  MOCK_CONST_METHOD0(getX509, folly::ssl::X509UniquePtr());
+  MOCK_CONST_METHOD3(
       signFuture,
-      (SignatureScheme scheme,
-       CertificateVerifyContext context,
-       folly::ByteRange toBeSigned),
-      (const));
+      folly::SemiFuture<folly::Optional<Buf>>(
+          SignatureScheme scheme,
+          CertificateVerifyContext context,
+          folly::ByteRange toBeSigned));
 };
 } // namespace test
 } // namespace server

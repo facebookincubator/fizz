@@ -169,10 +169,9 @@ class KTLSTest : public ::testing::Test {
 
 class MockTLSCallback : public fizz::AsyncKTLSSocket::TLSCallback {
  public:
-  MOCK_METHOD(
-      void,
+  MOCK_METHOD2(
       receivedNewSessionTicket,
-      (fizz::AsyncKTLSSocket*, fizz::NewSessionTicket));
+      void(fizz::AsyncKTLSSocket*, fizz::NewSessionTicket));
 };
 
 // Tests where we test the read path for AsyncKTLSSocket.
