@@ -19,18 +19,19 @@ namespace test {
 
 class ConcreteReadRecordLayer : public PlaintextReadRecordLayer {
  public:
-  MOCK_METHOD2(
+  MOCK_METHOD(
+      ReadRecordLayer::ReadResult<TLSMessage>,
       read,
-      ReadRecordLayer::ReadResult<TLSMessage>(
-          folly::IOBufQueue& buf,
-          Aead::AeadOptions options));
+      (folly::IOBufQueue & buf, Aead::AeadOptions options));
 };
 
 class ConcreteWriteRecordLayer : public PlaintextWriteRecordLayer {
  public:
-  MOCK_CONST_METHOD2(
+  MOCK_METHOD(
+      TLSContent,
       _write,
-      TLSContent(TLSMessage& msg, Aead::AeadOptions options));
+      (TLSMessage & msg, Aead::AeadOptions options),
+      (const));
   TLSContent write(TLSMessage&& msg, Aead::AeadOptions options) const override {
     return _write(msg, options);
   }

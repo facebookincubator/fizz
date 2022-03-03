@@ -27,7 +27,7 @@ MockServerStateMachineInstance* MockServerStateMachineInstance::instance;
 
 class ActionMoveVisitor {
  public:
-  MOCK_METHOD0(fallback, void());
+  MOCK_METHOD(void, fallback, ());
 
   template <typename T>
   void operator()(T&) {}

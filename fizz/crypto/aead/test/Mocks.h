@@ -19,23 +19,24 @@ using namespace testing;
 
 class MockAead : public Aead {
  public:
-  MOCK_CONST_METHOD0(keyLength, size_t());
-  MOCK_CONST_METHOD0(ivLength, size_t());
-  MOCK_CONST_METHOD0(getCipherOverhead, size_t());
-  MOCK_METHOD1(setEncryptedBufferHeadroom, void(size_t));
+  MOCK_METHOD(size_t, keyLength, (), (const));
+  MOCK_METHOD(size_t, ivLength, (), (const));
+  MOCK_METHOD(size_t, getCipherOverhead, (), (const));
+  MOCK_METHOD(void, setEncryptedBufferHeadroom, (size_t));
 
-  MOCK_METHOD1(_setKey, void(TrafficKey& key));
+  MOCK_METHOD(void, _setKey, (TrafficKey & key));
   void setKey(TrafficKey key) override {
     return _setKey(key);
   }
 
-  MOCK_CONST_METHOD4(
+  MOCK_METHOD(
+      std::unique_ptr<folly::IOBuf>,
       _encrypt,
-      std::unique_ptr<folly::IOBuf>(
-          std::unique_ptr<folly::IOBuf>& plaintext,
-          const folly::IOBuf* associatedData,
-          uint64_t seqNum,
-          Aead::AeadOptions options));
+      (std::unique_ptr<folly::IOBuf> & plaintext,
+       const folly::IOBuf* associatedData,
+       uint64_t seqNum,
+       Aead::AeadOptions options),
+      (const));
   std::unique_ptr<folly::IOBuf> encrypt(
       std::unique_ptr<folly::IOBuf>&& plaintext,
       const folly::IOBuf* associatedData,
@@ -44,12 +45,13 @@ class MockAead : public Aead {
     return _encrypt(plaintext, associatedData, seqNum, options);
   }
 
-  MOCK_CONST_METHOD3(
+  MOCK_METHOD(
+      std::unique_ptr<folly::IOBuf>,
       _inplaceEncrypt,
-      std::unique_ptr<folly::IOBuf>(
-          std::unique_ptr<folly::IOBuf>& plaintext,
-          const folly::IOBuf* associatedData,
-          uint64_t seqNum));
+      (std::unique_ptr<folly::IOBuf> & plaintext,
+       const folly::IOBuf* associatedData,
+       uint64_t seqNum),
+      (const));
   std::unique_ptr<folly::IOBuf> inplaceEncrypt(
       std::unique_ptr<folly::IOBuf>&& plaintext,
       const folly::IOBuf* associatedData,
@@ -57,13 +59,14 @@ class MockAead : public Aead {
     return _inplaceEncrypt(plaintext, associatedData, seqNum);
   }
 
-  MOCK_CONST_METHOD4(
+  MOCK_METHOD(
+      std::unique_ptr<folly::IOBuf>,
       _decrypt,
-      std::unique_ptr<folly::IOBuf>(
-          std::unique_ptr<folly::IOBuf>& ciphertext,
-          const folly::IOBuf* associatedData,
-          uint64_t seqNum,
-          Aead::AeadOptions options));
+      (std::unique_ptr<folly::IOBuf> & ciphertext,
+       const folly::IOBuf* associatedData,
+       uint64_t seqNum,
+       Aead::AeadOptions options),
+      (const));
   std::unique_ptr<folly::IOBuf> decrypt(
       std::unique_ptr<folly::IOBuf>&& ciphertext,
       const folly::IOBuf* associatedData,
@@ -72,13 +75,14 @@ class MockAead : public Aead {
     return _decrypt(ciphertext, associatedData, seqNum, options);
   }
 
-  MOCK_CONST_METHOD4(
+  MOCK_METHOD(
+      folly::Optional<std::unique_ptr<folly::IOBuf>>,
       _tryDecrypt,
-      folly::Optional<std::unique_ptr<folly::IOBuf>>(
-          std::unique_ptr<folly::IOBuf>& ciphertext,
-          const folly::IOBuf* associatedData,
-          uint64_t seqNum,
-          Aead::AeadOptions options));
+      (std::unique_ptr<folly::IOBuf> & ciphertext,
+       const folly::IOBuf* associatedData,
+       uint64_t seqNum,
+       Aead::AeadOptions options),
+      (const));
   folly::Optional<std::unique_ptr<folly::IOBuf>> tryDecrypt(
       std::unique_ptr<folly::IOBuf>&& ciphertext,
       const folly::IOBuf* associatedData,
@@ -87,7 +91,7 @@ class MockAead : public Aead {
     return _tryDecrypt(ciphertext, associatedData, seqNum, options);
   }
 
-  MOCK_CONST_METHOD0(getKey, folly::Optional<TrafficKey>());
+  MOCK_METHOD(folly::Optional<TrafficKey>, getKey, (), (const));
 
   void setDefaults() {
     ON_CALL(*this, _encrypt(_, _, _, _)).WillByDefault(InvokeWithoutArgs([]() {

@@ -876,7 +876,7 @@ class MockAsyncFizzClient : public AsyncFizzClient {
       const std::shared_ptr<ClientExtensions>& extensions)
       : AsyncFizzClient(std::move(socket), std::move(fizzContext), extensions) {
   }
-  MOCK_CONST_METHOD0(connecting, bool());
+  MOCK_METHOD(bool, connecting, (), (const));
 };
 
 TEST_F(HandshakeTest, TestFailureOnInvalidCloseNotify) {
@@ -917,7 +917,7 @@ TEST_F(HandshakeTest, TestFailureOnInvalidCloseNotify) {
   EXPECT_TRUE(serverKCB.isCalled());
 }
 
-INSTANTIATE_TEST_CASE_P(
+INSTANTIATE_TEST_SUITE_P(
     SignatureSchemes,
     SigSchemeTest,
     ::testing::Values(

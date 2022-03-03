@@ -71,7 +71,7 @@ MATCHER_P(TrafficKeyMatcher, expectedKey, "") {
 
 class HpkeMockX25519KeyExchange : public X25519KeyExchange {
  public:
-  MOCK_METHOD0(generateKeyPair, void());
+  MOCK_METHOD(void, generateKeyPair, ());
 };
 
 SetupParam getSetupParam(
@@ -216,7 +216,7 @@ TEST_P(HpkeTest, TestKeySchedule) {
  */
 // clang-format off
 
-INSTANTIATE_TEST_CASE_P(
+INSTANTIATE_TEST_SUITE_P(
     TestVectors,
     HpkeTest,
     ::testing::
