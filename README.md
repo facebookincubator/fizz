@@ -2,6 +2,7 @@
   <img width="500" height="216" alt="Fizz" src="logo2x.png">
 </p>
 
+[![Support Ukraine](https://img.shields.io/badge/Support-Ukraine-FFD500?style=flat&labelColor=005BBB)](https://opensource.fb.com/support-ukraine)
 ![linux](https://github.com/facebookincubator/fizz/workflows/linux/badge.svg?branch=main)
 ![mac](https://github.com/facebookincubator/fizz/workflows/mac/badge.svg?branch=main)
 ![windows](https://github.com/facebookincubator/fizz/workflows/windows/badge.svg?branch=main)
