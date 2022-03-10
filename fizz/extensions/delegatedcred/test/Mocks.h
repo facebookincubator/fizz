@@ -21,29 +21,33 @@ using namespace testing;
 
 class MockSelfDelegatedCredential : public SelfDelegatedCredential {
  public:
-  MOCK_CONST_METHOD0(getIdentity, std::string());
-  MOCK_CONST_METHOD0(getAltIdentities, std::vector<std::string>());
-  MOCK_CONST_METHOD0(getSigSchemes, std::vector<SignatureScheme>());
-  MOCK_CONST_METHOD0(_getDelegatedCredential, const DelegatedCredential&());
+  MOCK_METHOD(std::string, getIdentity, (), (const));
+  MOCK_METHOD(std::vector<std::string>, getAltIdentities, (), (const));
+  MOCK_METHOD(std::vector<SignatureScheme>, getSigSchemes, (), (const));
+  MOCK_METHOD(const DelegatedCredential&, _getDelegatedCredential, (), (const));
 
   const DelegatedCredential& getDelegatedCredential() const override {
     return _getDelegatedCredential();
   }
 
-  MOCK_CONST_METHOD1(_getCertMessage, CertificateMsg(Buf&));
+  MOCK_METHOD(CertificateMsg, _getCertMessage, (Buf&), (const));
   CertificateMsg getCertMessage(Buf buf) const override {
     return _getCertMessage(buf);
   }
-  MOCK_CONST_METHOD1(
+  MOCK_METHOD(
+      CompressedCertificate,
       getCompressedCert,
-      CompressedCertificate(CertificateCompressionAlgorithm));
+      (CertificateCompressionAlgorithm),
+      (const));
 
-  MOCK_CONST_METHOD3(
+  MOCK_METHOD(
+      Buf,
       sign,
-      Buf(SignatureScheme scheme,
-          CertificateVerifyContext context,
-          folly::ByteRange toBeSigned));
-  MOCK_CONST_METHOD0(getX509, folly::ssl::X509UniquePtr());
+      (SignatureScheme scheme,
+       CertificateVerifyContext context,
+       folly::ByteRange toBeSigned),
+      (const));
+  MOCK_METHOD(folly::ssl::X509UniquePtr, getX509, (), (const));
 };
 
 } // namespace test

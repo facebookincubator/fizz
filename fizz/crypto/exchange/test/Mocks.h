@@ -19,12 +19,14 @@ using namespace testing;
 
 class MockKeyExchange : public KeyExchange {
  public:
-  MOCK_METHOD0(generateKeyPair, void());
-  MOCK_CONST_METHOD0(getKeyShare, std::unique_ptr<folly::IOBuf>());
-  MOCK_CONST_METHOD1(
+  MOCK_METHOD(void, generateKeyPair, ());
+  MOCK_METHOD(std::unique_ptr<folly::IOBuf>, getKeyShare, (), (const));
+  MOCK_METHOD(
+      std::unique_ptr<folly::IOBuf>,
       generateSharedSecret,
-      std::unique_ptr<folly::IOBuf>(folly::ByteRange keyShare));
-  MOCK_CONST_METHOD0(clone, std::unique_ptr<KeyExchange>());
+      (folly::ByteRange keyShare),
+      (const));
+  MOCK_METHOD(std::unique_ptr<KeyExchange>, clone, (), (const));
 
   void setDefaults() {
     ON_CALL(*this, getKeyShare()).WillByDefault(InvokeWithoutArgs([]() {

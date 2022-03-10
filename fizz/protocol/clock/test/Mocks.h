@@ -16,7 +16,11 @@ namespace test {
 
 class MockClock : public Clock {
  public:
-  MOCK_CONST_METHOD0(getCurrentTime, std::chrono::system_clock::time_point());
+  MOCK_METHOD(
+      std::chrono::system_clock::time_point,
+      getCurrentTime,
+      (),
+      (const));
 };
 
 } // namespace test

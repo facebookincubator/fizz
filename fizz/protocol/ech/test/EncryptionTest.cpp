@@ -36,7 +36,7 @@ static std::vector<hpke::AeadId> supportedAeads{
 
 class MockOpenSSLECKeyExchange256 : public OpenSSLECKeyExchange<P256> {
  public:
-  MOCK_METHOD0(generateKeyPair, void());
+  MOCK_METHOD(void, generateKeyPair, ());
 };
 
 void checkDecodedChlo(ClientHello decodedChlo, ClientHello expectedChlo) {

@@ -41,7 +41,7 @@ TEST_P(HkdfTest, TestHkdfSha256Expand) {
 }
 
 // Test cases from https://tools.ietf.org/html/rfc5869
-INSTANTIATE_TEST_CASE_P(
+INSTANTIATE_TEST_SUITE_P(
     TestVectors,
     HkdfTest,
     ::testing::Values(

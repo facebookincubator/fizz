@@ -73,9 +73,10 @@ class TestStateMachine {
     instance = this;
   }
 
-  MOCK_METHOD3(
+  MOCK_METHOD(
+      Future<Actions>,
       processSocketData,
-      Future<Actions>(const State&, IOBufQueue&, Aead::AeadOptions));
+      (const State&, IOBufQueue&, Aead::AeadOptions));
 
   Future<Actions> processAppWrite(const State& state, AppWrite&& write) {
     return processAppWrite_(state, write);
@@ -87,20 +88,22 @@ class TestStateMachine {
     return processEarlyAppWrite_(state, write);
   }
 
-  MOCK_METHOD2(
+  MOCK_METHOD(
+      Future<Actions>,
       processWriteNewSessionTicket_,
-      Future<Actions>(const State&, WriteNewSessionTicket&));
+      (const State&, WriteNewSessionTicket&));
   Future<Actions> processWriteNewSessionTicket(
       const State& state,
       WriteNewSessionTicket ticket) {
     return processWriteNewSessionTicket_(state, ticket);
   }
-  MOCK_METHOD2(processAppWrite_, Future<Actions>(const State&, AppWrite&));
-  MOCK_METHOD2(
+  MOCK_METHOD(Future<Actions>, processAppWrite_, (const State&, AppWrite&));
+  MOCK_METHOD(
+      Future<Actions>,
       processEarlyAppWrite_,
-      Future<Actions>(const State&, EarlyAppWrite&));
-  MOCK_METHOD1(processAppClose, Future<Actions>(const State&));
-  MOCK_METHOD1(processAppCloseImmediate, Future<Actions>(const State&));
+      (const State&, EarlyAppWrite&));
+  MOCK_METHOD(Future<Actions>, processAppClose, (const State&));
+  MOCK_METHOD(Future<Actions>, processAppCloseImmediate, (const State&));
 
   static TestStateMachine* instance;
 };
@@ -108,8 +111,8 @@ TestStateMachine* TestStateMachine::instance;
 
 class ActionMoveVisitor {
  public:
-  MOCK_METHOD0(a1, void());
-  MOCK_METHOD0(a2, void());
+  MOCK_METHOD(void, a1, ());
+  MOCK_METHOD(void, a2, ());
 
   void operator()(A1&) {
     a1();

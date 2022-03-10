@@ -38,8 +38,8 @@ MockClientStateMachineInstance* MockClientStateMachineInstance::instance;
 
 class MockConnectCallback : public AsyncSocket::ConnectCallback {
  public:
-  MOCK_METHOD0(_connectSuccess, void());
-  MOCK_METHOD1(_connectErr, void(const AsyncSocketException&));
+  MOCK_METHOD(void, _connectSuccess, ());
+  MOCK_METHOD(void, _connectErr, (const AsyncSocketException&));
 
   void connectSuccess() noexcept override {
     _connectSuccess();
