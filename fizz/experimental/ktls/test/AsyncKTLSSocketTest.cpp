@@ -231,7 +231,7 @@ TEST_F(KTLSReadTest, BasicReadWrite) {
         contents->computeChainDataLength(),
         ::send(client_, contents->data(), contents->length(), 0));
 
-    std::array<char, 64> buf;
+    std::array<char, 64> buf = {};
     EXPECT_CALL(mockReadCB_, getReadBuffer(_, _))
         .WillOnce(Invoke([&](void** ret, size_t* size) {
           *ret = buf.data();
