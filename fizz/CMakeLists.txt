@@ -168,6 +168,7 @@ set(FIZZ_SOURCES
   record/RecordLayer.cpp
   record/EncryptedRecordLayer.cpp
   record/PlaintextRecordLayer.cpp
+  record/BufAndPaddingPolicy.cpp
   server/AeadTokenCipher.cpp
   server/AeadCookieCipher.cpp
   server/ServerProtocol.cpp

@@ -9,9 +9,9 @@
 #include <folly/portability/GMock.h>
 #include <folly/portability/GTest.h>
 
-#include <fizz/record/EncryptedRecordLayer.h>
-
 #include <fizz/crypto/aead/test/Mocks.h>
+#include <fizz/record/BufAndPaddingPolicy.h>
+#include <fizz/record/EncryptedRecordLayer.h>
 #include <folly/String.h>
 
 using namespace folly;
@@ -20,6 +20,7 @@ namespace fizz {
 namespace test {
 
 constexpr size_t kEncryptedHeaderSize = 1 + 2 + 2;
+const uint16_t paddingModulo = 50;
 
 class EncryptedRecordTest : public testing::Test {
   void SetUp() override {
@@ -444,7 +445,6 @@ TEST_F(EncryptedRecordTest, TestWriteMaxSize) {
 }
 
 TEST_F(EncryptedRecordTest, TestWriteMinSize) {
-  write_.setMinDesiredRecord(1700);
   TLSMessage msg{ContentType::application_data, IOBuf::create(1000)};
   msg.fragment->append(1000);
   memset(msg.fragment->writableData(), 0x1, msg.fragment->length());
@@ -460,7 +460,7 @@ TEST_F(EncryptedRecordTest, TestWriteMinSize) {
                           uint64_t,
                           Aead::AeadOptions) {
         // one byte for footer
-        EXPECT_EQ(buf->computeChainDataLength(), 1701);
+        EXPECT_EQ(buf->computeChainDataLength(), 1501);
         return getBuf("aaaa");
       }))
       .WillOnce(Invoke([](std::unique_ptr<IOBuf>& buf,
@@ -468,7 +468,7 @@ TEST_F(EncryptedRecordTest, TestWriteMinSize) {
                           uint64_t,
                           Aead::AeadOptions) {
         // one byte for footer
-        EXPECT_EQ(buf->computeChainDataLength(), 301);
+        EXPECT_EQ(buf->computeChainDataLength(), 501);
         return getBuf("bbbb");
       }));
   write_.write(std::move(msg), Aead::AeadOptions());
@@ -503,65 +503,117 @@ TEST_F(EncryptedRecordTest, TestRecordState) {
 }
 
 TEST_F(EncryptedRecordTest, TestWritePaddingWithoutTailroom) {
-  const size_t paddingLength = 50;
-  const size_t recordLength = 2000;
+  const uint16_t recordLength1 = 2000;
+  const uint16_t recordLength2 = 2001;
+  const uint16_t maxRecord = 0x4000;
 
-  write_.setMaxRecord(0x4000);
-  write_.setMinDesiredRecord(1500);
-  write_.setRecordPadding(paddingLength);
+  write_.setMaxRecord(maxRecord);
+  write_.setBufAndPaddingPolicy(
+      std::make_unique<BufAndModuloPaddingPolicy>(paddingModulo));
 
-  TLSMessage msg{ContentType::application_data, IOBuf::create(recordLength)};
-  msg.fragment->append(recordLength);
-  memset(msg.fragment->writableData(), 0x1, msg.fragment->length());
+  const uint16_t expectedPadding1 = (maxRecord - recordLength1) % paddingModulo;
+  const uint16_t expectedPadding2 = (maxRecord - recordLength2) % paddingModulo;
+
+  TLSMessage msg1{ContentType::application_data, IOBuf::create(recordLength1)};
+  msg1.fragment->append(recordLength1);
+  memset(msg1.fragment->writableData(), 0x1, msg1.fragment->length());
+
+  TLSMessage msg2{ContentType::application_data, IOBuf::create(recordLength2)};
+  msg2.fragment->append(recordLength2);
+  memset(msg2.fragment->writableData(), 0x1, msg2.fragment->length());
 
   EXPECT_CALL(*writeAead_, _encrypt(_, _, _, _))
-      .WillOnce(Invoke([](std::unique_ptr<IOBuf>& buf,
+      .WillOnce(Invoke([](std::unique_ptr<IOBuf>& buf1,
                           const IOBuf*,
                           uint64_t,
                           Aead::AeadOptions) {
         // Record size + 1 byte footer + padding
         EXPECT_EQ(
-            buf->computeChainDataLength(), recordLength + paddingLength + 1);
-        EXPECT_EQ(buf->countChainElements(), 2);
+            buf1->computeChainDataLength(),
+            recordLength1 + expectedPadding1 + 1);
+        EXPECT_EQ(buf1->countChainElements(), 2);
         return getBuf("aaaa");
       }));
-  write_.write(std::move(msg), Aead::AeadOptions());
+  write_.write(std::move(msg1), Aead::AeadOptions());
+
+  EXPECT_CALL(*writeAead_, _encrypt(_, _, _, _))
+      .WillOnce(Invoke([](std::unique_ptr<IOBuf>& buf2,
+                          const IOBuf*,
+                          uint64_t,
+                          Aead::AeadOptions) {
+        // Record size + 1 byte footer + padding
+        EXPECT_EQ(
+            buf2->computeChainDataLength(),
+            recordLength2 + expectedPadding2 + 1);
+        EXPECT_EQ(buf2->countChainElements(), 2);
+        return getBuf("aaaa");
+      }));
+  write_.write(std::move(msg2), Aead::AeadOptions());
+
+  // ensure the two message lengths are padded up the same value
+  EXPECT_EQ(recordLength1 + expectedPadding1, recordLength2 + expectedPadding2);
 }
 
 TEST_F(EncryptedRecordTest, TestWritePaddingWithTailroom) {
-  const size_t paddingLength = 50;
-  const size_t recordLength = 2000;
+  const uint16_t recordLength1 = 2000;
+  const uint16_t recordLength2 = 2001;
+  const uint16_t maxRecord = 0x4000;
 
-  write_.setMaxRecord(0x4000);
-  write_.setMinDesiredRecord(1500);
-  write_.setRecordPadding(paddingLength);
+  write_.setMaxRecord(maxRecord);
+  write_.setBufAndPaddingPolicy(
+      std::make_unique<BufAndModuloPaddingPolicy>(paddingModulo));
 
-  TLSMessage msg{
-      ContentType::application_data, IOBuf::create(recordLength + 1000)};
-  msg.fragment->append(recordLength);
-  memset(msg.fragment->writableData(), 0x1, msg.fragment->length());
+  const uint16_t expectedPadding1 = (maxRecord - recordLength1) % paddingModulo;
+  const uint16_t expectedPadding2 = (maxRecord - recordLength2) % paddingModulo;
+
+  TLSMessage msg1{
+      ContentType::application_data, IOBuf::create(recordLength1 + 1000)};
+  msg1.fragment->append(recordLength1);
+  memset(msg1.fragment->writableData(), 0x1, msg1.fragment->length());
+
+  TLSMessage msg2{
+      ContentType::application_data, IOBuf::create(recordLength2 + 1000)};
+  msg2.fragment->append(recordLength1);
+  memset(msg2.fragment->writableData(), 0x1, msg2.fragment->length());
 
   EXPECT_CALL(*writeAead_, _encrypt(_, _, _, _))
-      .WillOnce(Invoke([](std::unique_ptr<IOBuf>& buf,
+      .WillOnce(Invoke([](std::unique_ptr<IOBuf>& buf1,
                           const IOBuf*,
                           uint64_t,
                           Aead::AeadOptions) {
         // Record size + 1 byte footer + padding
         EXPECT_EQ(
-            buf->computeChainDataLength(), recordLength + paddingLength + 1);
-        EXPECT_EQ(buf->countChainElements(), 1);
+            buf1->computeChainDataLength(),
+            recordLength1 + expectedPadding1 + 1);
+        EXPECT_EQ(buf1->countChainElements(), 1);
         return getBuf("aaaa");
       }));
-  write_.write(std::move(msg), Aead::AeadOptions());
+  write_.write(std::move(msg1), Aead::AeadOptions());
+
+  EXPECT_CALL(*writeAead_, _encrypt(_, _, _, _))
+      .WillOnce(Invoke([](std::unique_ptr<IOBuf>& buf2,
+                          const IOBuf*,
+                          uint64_t,
+                          Aead::AeadOptions) {
+        // Record size + 1 byte footer + padding
+        EXPECT_EQ(
+            buf2->computeChainDataLength(),
+            recordLength2 + expectedPadding2 + 1);
+        EXPECT_EQ(buf2->countChainElements(), 1);
+        return getBuf("aaaa");
+      }));
+  write_.write(std::move(msg2), Aead::AeadOptions());
+
+  // ensure the two message lengths are padded up the same value
+  EXPECT_EQ(recordLength1 + expectedPadding1, recordLength2 + expectedPadding2);
 }
 
 TEST_F(EncryptedRecordTest, TestWritePaddingAtMaxRecord) {
-  const size_t paddingLength = 50;
-  const size_t recordLength = 2000;
+  const uint16_t recordLength = 2000;
 
   write_.setMaxRecord(recordLength);
-  write_.setMinDesiredRecord(1500);
-  write_.setRecordPadding(paddingLength);
+  write_.setBufAndPaddingPolicy(
+      std::make_unique<BufAndModuloPaddingPolicy>(paddingModulo));
 
   TLSMessage msg{ContentType::application_data, IOBuf::create(recordLength)};
   msg.fragment->append(recordLength);
@@ -580,13 +632,12 @@ TEST_F(EncryptedRecordTest, TestWritePaddingAtMaxRecord) {
 }
 
 TEST_F(EncryptedRecordTest, TestWritePaddingNearMaxRecord) {
-  const size_t paddingLength = 50;
-  const size_t recordLength = 2000;
-  const size_t truncatedPadding = 20;
+  const uint16_t recordLength = 2000;
+  const uint16_t truncatedPadding = 20;
 
   write_.setMaxRecord(recordLength + truncatedPadding);
-  write_.setMinDesiredRecord(1500);
-  write_.setRecordPadding(paddingLength);
+  write_.setBufAndPaddingPolicy(
+      std::make_unique<BufAndModuloPaddingPolicy>(paddingModulo));
 
   TLSMessage msg{ContentType::application_data, IOBuf::create(recordLength)};
   msg.fragment->append(recordLength);

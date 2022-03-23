@@ -177,8 +177,9 @@ TLSContent EncryptedWriteRecordLayer::write(
   aead_->setEncryptedBufferHeadroom(kEncryptedHeaderSize);
   while (!queue.empty()) {
     Buf dataBuf;
-    size_t paddingSize;
-    std::tie(dataBuf, paddingSize) = getBufAndPaddingToEncrypt(queue);
+    uint16_t paddingSize;
+    std::tie(dataBuf, paddingSize) =
+        bufAndPaddingPolicy_->getBufAndPaddingToEncrypt(queue, maxRecord_);
 
     // check if we have enough room to add padding and the encrypted footer.
     if (!dataBuf->isShared() &&
@@ -250,22 +251,6 @@ TLSContent EncryptedWriteRecordLayer::write(
   content.contentType = msg.type;
   content.encryptionLevel = encryptionLevel_;
   return content;
-}
-
-std::pair<Buf, size_t> EncryptedWriteRecordLayer::getBufAndPaddingToEncrypt(
-    folly::IOBufQueue& queue) const {
-  Buf dataBuf;
-  if (queue.front()->length() > maxRecord_) {
-    dataBuf = queue.splitAtMost(maxRecord_);
-  } else if (queue.front()->length() >= desiredMinRecord_) {
-    dataBuf = queue.pop_front();
-  } else {
-    dataBuf = queue.splitAtMost(desiredMinRecord_);
-  }
-  size_t paddingSize = recordPadding_ > 0
-      ? std::min(recordPadding_, maxRecord_ - dataBuf->computeChainDataLength())
-      : 0;
-  return std::make_pair(std::move(dataBuf), paddingSize);
 }
 
 EncryptionLevel EncryptedWriteRecordLayer::getEncryptionLevel() const {

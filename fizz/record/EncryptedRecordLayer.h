@@ -8,14 +8,13 @@
 
 #pragma once
 
-#include <fizz/record/RecordLayer.h>
-
 #include <fizz/crypto/aead/Aead.h>
+#include <fizz/record/BufAndPaddingPolicy.h>
+#include <fizz/record/RecordLayer.h>
 
 namespace fizz {
 
 constexpr size_t kMaxPlaintextRecordSize = 0x4000; // 16k
-constexpr size_t kMinSuggestedRecordSize = 1500;
 
 class EncryptedReadRecordLayer : public ReadRecordLayer {
  public:
@@ -99,22 +98,15 @@ class EncryptedWriteRecordLayer : public WriteRecordLayer {
     aead_ = std::move(aead);
   }
 
-  void setMaxRecord(size_t size) {
+  virtual void setBufAndPaddingPolicy(
+      std::unique_ptr<const BufAndPaddingPolicy> bufAndPaddingPolicy) {
+    bufAndPaddingPolicy_ = std::move(bufAndPaddingPolicy);
+  }
+
+  void setMaxRecord(uint16_t size) {
     CHECK_GT(size, 0);
     DCHECK_LE(size, kMaxPlaintextRecordSize);
-    DCHECK_GE(maxRecord_, desiredMinRecord_);
     maxRecord_ = size;
-  }
-
-  void setMinDesiredRecord(size_t size) {
-    CHECK_GT(size, 0);
-    DCHECK_LE(size, kMaxPlaintextRecordSize);
-    DCHECK_LE(desiredMinRecord_, maxRecord_);
-    desiredMinRecord_ = size;
-  }
-
-  void setRecordPadding(size_t size) {
-    recordPadding_ = size;
   }
 
   void setSequenceNumber(uint64_t seq) {
@@ -137,18 +129,12 @@ class EncryptedWriteRecordLayer : public WriteRecordLayer {
   }
 
  private:
-  /**
-   * Returns the buffer to encrypt and the size of the padding to add.
-   */
-  std::pair<Buf, size_t> getBufAndPaddingToEncrypt(
-      folly::IOBufQueue& queue) const;
-
   EncryptionLevel encryptionLevel_;
   std::unique_ptr<Aead> aead_;
+  std::unique_ptr<const BufAndPaddingPolicy> bufAndPaddingPolicy_{
+      std::make_unique<BufAndConstPaddingPolicy>(0)};
   mutable uint64_t seqNum_{0};
 
-  size_t maxRecord_{kMaxPlaintextRecordSize};
-  size_t desiredMinRecord_{kMinSuggestedRecordSize};
-  size_t recordPadding_{0};
+  uint16_t maxRecord_{kMaxPlaintextRecordSize};
 };
 } // namespace fizz
