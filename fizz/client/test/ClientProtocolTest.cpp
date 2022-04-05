@@ -10,6 +10,7 @@
 #include <folly/portability/GTest.h>
 
 #include <fizz/client/ClientProtocol.h>
+#include <fizz/client/FizzClientContext.h>
 #include <fizz/client/test/Mocks.h>
 #include <fizz/client/test/Utilities.h>
 #include <fizz/protocol/clock/test/Mocks.h>
@@ -1915,6 +1916,7 @@ TEST_F(ClientProtocolTest, TestServerHelloBadSessionId) {
 
 TEST_F(ClientProtocolTest, TestConnectPskKeNoShares) {
   Connect connect;
+  context_->setSendKeyShare(SendKeyShare::WhenNecessary);
   connect.context = context_;
   auto psk = getCachedPsk();
   psk.group = folly::none;
@@ -1932,6 +1934,28 @@ TEST_F(ClientProtocolTest, TestConnectPskKeNoShares) {
   auto keyShare = getExtension<ClientKeyShare>(decodedHello.extensions);
   EXPECT_TRUE(keyShare->client_shares.empty());
   EXPECT_TRUE(state_.keyExchangers()->empty());
+}
+
+TEST_F(ClientProtocolTest, TestConnectPskKeAlwaysShares) {
+  Connect connect;
+  context_->setSendKeyShare(SendKeyShare::Always);
+  connect.context = context_;
+  auto psk = getCachedPsk();
+  psk.group = folly::none;
+  connect.cachedPsk = psk;
+  auto actions = detail::processEvent(state_, std::move(connect));
+  expectActions<MutateState, WriteToSocket>(actions);
+  processStateMutations(actions);
+  EXPECT_EQ(state_.state(), StateEnum::ExpectingServerHello);
+
+  auto& encodedHello = *state_.encodedClientHello();
+
+  // Get rid of handshake header (type + version)
+  encodedHello->trimStart(4);
+  auto decodedHello = decode<ClientHello>(std::move(encodedHello));
+  auto keyShare = getExtension<ClientKeyShare>(decodedHello.extensions);
+  EXPECT_TRUE(!keyShare->client_shares.empty());
+  EXPECT_TRUE(!state_.keyExchangers()->empty());
 }
 
 TEST_F(ClientProtocolTest, TestHelloRetryRequestFlow) {

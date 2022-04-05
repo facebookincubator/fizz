@@ -19,6 +19,11 @@
 namespace fizz {
 namespace client {
 
+enum class SendKeyShare {
+  Always,
+  WhenNecessary,
+};
+
 class FizzClientContext {
  public:
   FizzClientContext()
@@ -267,6 +272,20 @@ class FizzClientContext {
     return clock_;
   }
 
+  /**
+   * Option to turn off psk_ke optimzation.
+   * When PSK is being used to resume and if psk exists but the group is unset,
+   * we send an empty key_share. This way we avoid generating a group if the
+   * server is likely to prefer psk_ke.
+   */
+  void setSendKeyShare(SendKeyShare option) {
+    sendKeyShare_ = option;
+  }
+
+  SendKeyShare getSendKeyShare() const {
+    return sendKeyShare_;
+  }
+
  private:
   std::shared_ptr<Factory> factory_;
 
@@ -298,6 +317,8 @@ class FizzClientContext {
   bool omitEarlyRecordLayer_{false};
 
   bool requireAlpn_{false};
+
+  SendKeyShare sendKeyShare_{SendKeyShare::WhenNecessary};
 
   std::shared_ptr<PskCache> pskCache_;
   std::shared_ptr<const SelfCert> clientCert_;

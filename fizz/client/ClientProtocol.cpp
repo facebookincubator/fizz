@@ -8,6 +8,7 @@
 
 #include <fizz/client/ClientProtocol.h>
 
+#include <fizz/client/FizzClientContext.h>
 #include <fizz/client/PskCache.h>
 #include <fizz/client/State.h>
 #include <fizz/crypto/Utils.h>
@@ -703,7 +704,9 @@ EventHandler<ClientTypes, StateEnum::Uninitialized, Event::Connect>::handle(
           *psk->group) != context->getSupportedGroups().end()) {
     // key exchange done last time
     selectedShares = {*psk->group};
-  } else if (psk && !psk->group) {
+  } else if (
+      context->getSendKeyShare() == SendKeyShare::WhenNecessary && psk &&
+      !psk->group) {
     // psk_ke last time
     selectedShares = {};
   } else {
