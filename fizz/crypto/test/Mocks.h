@@ -44,7 +44,8 @@ class MockKeyDerivation : public KeyDerivation {
       deriveSecret,
       (folly::ByteRange secret,
        folly::StringPiece label,
-       folly::ByteRange messageHash));
+       folly::ByteRange messageHash,
+       uint16_t length));
   MOCK_METHOD(
       std::vector<uint8_t>,
       hkdfExtract,

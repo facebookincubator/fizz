@@ -45,19 +45,21 @@ Buf KeyDerivationImpl::hkdfExpand(
 std::vector<uint8_t> KeyDerivationImpl::deriveSecret(
     folly::ByteRange secret,
     folly::StringPiece label,
-    folly::ByteRange messageHash) {
+    folly::ByteRange messageHash,
+    uint16_t length) {
   CHECK_EQ(secret.size(), hashLength_);
   CHECK_EQ(messageHash.size(), hashLength_);
+  CHECK_GT(length, 0);
   // Copying the buffer to avoid violating constness of the data.
   auto hashBuf = folly::IOBuf::copyBuffer(messageHash);
-  auto out = expandLabel(secret, label, std::move(hashBuf), hashLength_);
-  std::vector<uint8_t> prk(hashLength_);
+  auto out = expandLabel(secret, label, std::move(hashBuf), length);
+  std::vector<uint8_t> prk(length);
   size_t offset = 0;
   for (auto buf : *out) {
-    size_t remaining = hashLength_ - offset;
-    size_t length = std::min(buf.size(), remaining);
-    memcpy(prk.data() + offset, buf.data(), length);
-    offset += length;
+    size_t remaining = length - offset;
+    size_t copyLength = std::min(buf.size(), remaining);
+    memcpy(prk.data() + offset, buf.data(), copyLength);
+    offset += copyLength;
   }
   return prk;
 }

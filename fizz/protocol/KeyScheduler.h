@@ -22,7 +22,11 @@ enum class EarlySecrets {
   EarlyExporter
 };
 
-enum class HandshakeSecrets { ClientHandshakeTraffic, ServerHandshakeTraffic };
+enum class HandshakeSecrets {
+  ClientHandshakeTraffic,
+  ServerHandshakeTraffic,
+  ECHAcceptConfirmation
+};
 
 enum class MasterSecrets { ExporterMaster, ResumptionMaster };
 
@@ -146,7 +150,7 @@ class KeyScheduler {
   /**
    * Clones the state of the KeyScheduler
    */
-  std::unique_ptr<KeyScheduler> clone() const;
+  [[nodiscard]] virtual std::unique_ptr<KeyScheduler> clone() const;
 
  private:
   struct EarlySecret {

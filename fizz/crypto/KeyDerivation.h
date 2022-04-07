@@ -36,7 +36,8 @@ class KeyDerivation {
   virtual std::vector<uint8_t> deriveSecret(
       folly::ByteRange secret,
       folly::StringPiece label,
-      folly::ByteRange messageHash) = 0;
+      folly::ByteRange messageHash,
+      uint16_t length) = 0;
 
   /**
    * Performs HDKF expansion.
@@ -113,7 +114,8 @@ class KeyDerivationImpl : public KeyDerivation {
   std::vector<uint8_t> deriveSecret(
       folly::ByteRange secret,
       folly::StringPiece label,
-      folly::ByteRange messageHash) override;
+      folly::ByteRange messageHash,
+      uint16_t length) override;
 
   virtual Buf hkdfExpand(folly::ByteRange secret, Buf info, uint16_t length)
       override;

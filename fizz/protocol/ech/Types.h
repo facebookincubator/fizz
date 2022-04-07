@@ -19,6 +19,8 @@ namespace ech {
 using Buf = std::unique_ptr<folly::IOBuf>;
 using HpkePublicKey = Buf;
 
+constexpr size_t kEchAcceptConfirmationSize = 8;
+
 enum class ECHVersion : uint16_t {
   Draft9 = 0xfe09,
 };

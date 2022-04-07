@@ -24,8 +24,8 @@ Buf Exporter::getExportedKeyingMaterial(
   std::vector<uint8_t> base(deriver->hashLength());
   folly::MutableByteRange hashedContext(base.data(), base.size());
   deriver->hash(*context, hashedContext);
-  auto secret =
-      deriver->deriveSecret(exporterMaster, label, deriver->blankHash());
+  auto secret = deriver->deriveSecret(
+      exporterMaster, label, deriver->blankHash(), deriver->hashLength());
   return deriver->expandLabel(
       folly::range(secret),
       "exporter",

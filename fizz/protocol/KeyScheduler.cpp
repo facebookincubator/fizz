@@ -7,6 +7,7 @@
  */
 
 #include <fizz/protocol/KeyScheduler.h>
+#include <fizz/protocol/ech/Types.h>
 
 using folly::StringPiece;
 
@@ -26,6 +27,7 @@ static constexpr StringPiece kResumptionMaster{"res master"};
 static constexpr StringPiece kDerivedSecret{"derived"};
 static constexpr StringPiece kTrafficKeyUpdate{"traffic upd"};
 static constexpr StringPiece kResumption{"resumption"};
+static constexpr StringPiece kECHAcceptConfirmation{"ech accept confirmation"};
 
 namespace fizz {
 
@@ -42,7 +44,10 @@ void KeyScheduler::deriveHandshakeSecret() {
   auto& earlySecret = *secret_->asEarlySecret();
   auto zeros = std::vector<uint8_t>(deriver_->hashLength(), 0);
   auto preSecret = deriver_->deriveSecret(
-      folly::range(earlySecret.secret), kDerivedSecret, deriver_->blankHash());
+      folly::range(earlySecret.secret),
+      kDerivedSecret,
+      deriver_->blankHash(),
+      deriver_->hashLength());
   secret_.emplace(HandshakeSecret{
       deriver_->hkdfExtract(folly::range(preSecret), folly::range(zeros))});
 }
@@ -56,7 +61,10 @@ void KeyScheduler::deriveHandshakeSecret(folly::ByteRange ecdhe) {
 
   auto& earlySecret = secret_->tryAsEarlySecret();
   auto preSecret = deriver_->deriveSecret(
-      folly::range(earlySecret.secret), kDerivedSecret, deriver_->blankHash());
+      folly::range(earlySecret.secret),
+      kDerivedSecret,
+      deriver_->blankHash(),
+      deriver_->hashLength());
   secret_.emplace(
       HandshakeSecret{deriver_->hkdfExtract(folly::range(preSecret), ecdhe)});
 }
@@ -67,7 +75,8 @@ void KeyScheduler::deriveMasterSecret() {
   auto preSecret = deriver_->deriveSecret(
       folly::range(handshakeSecret.secret),
       kDerivedSecret,
-      deriver_->blankHash());
+      deriver_->blankHash(),
+      deriver_->hashLength());
   secret_.emplace(MasterSecret{
       deriver_->hkdfExtract(folly::range(preSecret), folly::range(zeros))});
 }
@@ -76,9 +85,15 @@ void KeyScheduler::deriveAppTrafficSecrets(folly::ByteRange transcript) {
   auto& masterSecret = *secret_->asMasterSecret();
   AppTrafficSecret trafficSecret;
   trafficSecret.client = deriver_->deriveSecret(
-      folly::range(masterSecret.secret), kClientAppTraffic, transcript);
+      folly::range(masterSecret.secret),
+      kClientAppTraffic,
+      transcript,
+      deriver_->hashLength());
   trafficSecret.server = deriver_->deriveSecret(
-      folly::range(masterSecret.secret), kServerAppTraffic, transcript);
+      folly::range(masterSecret.secret),
+      kServerAppTraffic,
+      transcript,
+      deriver_->hashLength());
   appTrafficSecret_ = std::move(trafficSecret);
 }
 
@@ -137,7 +152,10 @@ DerivedSecret KeyScheduler::getSecret(
   auto& earlySecret = *secret_->asEarlySecret();
   return DerivedSecret(
       deriver_->deriveSecret(
-          folly::range(earlySecret.secret), label, transcript),
+          folly::range(earlySecret.secret),
+          label,
+          transcript,
+          deriver_->hashLength()),
       SecretType(s));
 }
 
@@ -145,12 +163,19 @@ DerivedSecret KeyScheduler::getSecret(
     HandshakeSecrets s,
     folly::ByteRange transcript) const {
   StringPiece label;
+  uint16_t secretLength;
   switch (s) {
     case HandshakeSecrets::ClientHandshakeTraffic:
       label = kClientHandshakeTraffic;
+      secretLength = deriver_->hashLength();
       break;
     case HandshakeSecrets::ServerHandshakeTraffic:
       label = kServerHandshakeTraffic;
+      secretLength = deriver_->hashLength();
+      break;
+    case HandshakeSecrets::ECHAcceptConfirmation:
+      label = kECHAcceptConfirmation;
+      secretLength = ech::kEchAcceptConfirmationSize;
       break;
     default:
       LOG(FATAL) << "unknown secret";
@@ -159,7 +184,10 @@ DerivedSecret KeyScheduler::getSecret(
   auto& handshakeSecret = *secret_->asHandshakeSecret();
   return DerivedSecret(
       deriver_->deriveSecret(
-          folly::range(handshakeSecret.secret), label, transcript),
+          folly::range(handshakeSecret.secret),
+          label,
+          transcript,
+          secretLength),
       SecretType(s));
 }
 
@@ -181,7 +209,10 @@ DerivedSecret KeyScheduler::getSecret(
   auto& masterSecret = *secret_->asMasterSecret();
   return DerivedSecret(
       deriver_->deriveSecret(
-          folly::range(masterSecret.secret), label, transcript),
+          folly::range(masterSecret.secret),
+          label,
+          transcript,
+          deriver_->hashLength()),
       SecretType(s));
 }
 

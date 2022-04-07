@@ -52,7 +52,8 @@ TEST(KeyDerivation, DeriveSecret) {
   std::vector<uint8_t> messageHash(
       KeyDerivationImpl::create<Sha256>(kHkdfLabelPrefix.str()).hashLength());
   auto deriver = KeyDerivationImpl::create<Sha256>(kHkdfLabelPrefix.str());
-  deriver.deriveSecret(range(secret), "hey", range(messageHash));
+  deriver.deriveSecret(
+      range(secret), "hey", range(messageHash), deriver.hashLength());
 }
 
 TEST(KeyDerivation, Sha256BlankHash) {

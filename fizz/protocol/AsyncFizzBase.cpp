@@ -552,6 +552,9 @@ class SecretVisitor {
       case HandshakeSecrets::ServerHandshakeTraffic:
         callback_->serverHandshakeTrafficSecretAvailable(secretBuf_);
         return;
+      case HandshakeSecrets::ECHAcceptConfirmation:
+        // Not an actual encryption secret
+        return;
     }
   }
   void operator()(const MasterSecrets& secret) {
