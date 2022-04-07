@@ -69,14 +69,22 @@ ClientECH encryptClientHello(
     const ClientHello& clientHelloOuter,
     hpke::SetupResult& setupResult);
 
-folly::Optional<ClientHello> tryToDecryptECH(
+ClientHello decryptECHWithContext(
     const ClientHello& clientHelloOuter,
     const ECHConfig& echConfig,
-    ECHCipherSuite cipherSuite,
+    ECHCipherSuite& cipherSuite,
     std::unique_ptr<folly::IOBuf> encapsulatedKey,
+    std::unique_ptr<folly::IOBuf> configId,
     std::unique_ptr<folly::IOBuf> encryptedCh,
+    ECHVersion version,
+    std::unique_ptr<hpke::HpkeContext>& context);
+
+std::unique_ptr<hpke::HpkeContext> setupDecryptionContext(
+    const ECHConfig& echConfig,
+    ECHCipherSuite cipherSuite,
+    const std::unique_ptr<folly::IOBuf>& encapsulatedKey,
     std::unique_ptr<KeyExchange> kex,
-    ECHVersion version);
+    uint64_t seqNum);
 
 std::unique_ptr<folly::IOBuf> constructConfigId(
     hpke::KDFId kdfId,

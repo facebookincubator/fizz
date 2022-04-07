@@ -361,14 +361,48 @@ ClientECH encryptClientHello(
   return echExtension;
 }
 
-folly::Optional<ClientHello> tryToDecryptECH(
+ClientHello decryptECHWithContext(
     const ClientHello& clientHelloOuter,
     const ECHConfig& echConfig,
-    ECHCipherSuite cipherSuite,
+    ECHCipherSuite& cipherSuite,
     std::unique_ptr<folly::IOBuf> encapsulatedKey,
+    std::unique_ptr<folly::IOBuf> configId,
     std::unique_ptr<folly::IOBuf> encryptedCh,
+    ECHVersion version,
+    std::unique_ptr<hpke::HpkeContext>& context) {
+  auto encodedClientHelloInner = extractEncodedClientHelloInner(
+      version,
+      std::move(configId),
+      cipherSuite,
+      encapsulatedKey,
+      std::move(encryptedCh),
+      context,
+      clientHelloOuter);
+
+  // Set actual client hello, ECH acceptance
+  folly::io::Cursor encodedECHInnerCursor(encodedClientHelloInner.get());
+  auto decodedChlo = decode<ClientHello>(encodedECHInnerCursor);
+
+  // Replace legacy_session_id that got removed during encryption
+  decodedChlo.legacy_session_id = clientHelloOuter.legacy_session_id->clone();
+
+  // Expand extensions
+  auto expandedExtensions = substituteOuterExtensions(
+      std::move(decodedChlo.extensions), clientHelloOuter.extensions);
+  decodedChlo.extensions = std::move(expandedExtensions);
+
+  // Update encoding
+  decodedChlo.originalEncoding = encodeHandshake(decodedChlo);
+
+  return decodedChlo;
+}
+
+std::unique_ptr<hpke::HpkeContext> setupDecryptionContext(
+    const ECHConfig& echConfig,
+    ECHCipherSuite cipherSuite,
+    const std::unique_ptr<folly::IOBuf>& encapsulatedKey,
     std::unique_ptr<KeyExchange> kex,
-    ECHVersion version) {
+    uint64_t seqNum) {
   const std::unique_ptr<folly::IOBuf> prefix =
       folly::IOBuf::copyBuffer("HPKE-07");
 
@@ -379,50 +413,27 @@ folly::Optional<ClientHello> tryToDecryptECH(
   auto kemId = decodedConfigContent.kem_id;
   NamedGroup group = hpke::getKexGroup(kemId);
 
-  // Try to decrypt and get the client hello inner
-  try {
-    auto dhkem = std::make_unique<DHKEM>(
-        std::move(kex), group, hpke::makeHpkeHkdf(prefix->clone(), kdfId));
-    auto aeadId = cipherSuite.aead_id;
-    auto suiteId = hpke::generateHpkeSuiteId(
-        group, hpke::getHashFunction(kdfId), hpke::getCipherSuite(aeadId));
+  auto dhkem = std::make_unique<DHKEM>(
+      std::move(kex), group, hpke::makeHpkeHkdf(prefix->clone(), kdfId));
+  auto aeadId = cipherSuite.aead_id;
+  auto suiteId = hpke::generateHpkeSuiteId(
+      group, hpke::getHashFunction(kdfId), hpke::getCipherSuite(aeadId));
 
-    hpke::SetupParam setupParam{
-        std::move(dhkem),
-        makeCipher(aeadId),
-        hpke::makeHpkeHkdf(prefix->clone(), kdfId),
-        std::move(suiteId)};
+  hpke::SetupParam setupParam{
+      std::move(dhkem),
+      makeCipher(aeadId),
+      hpke::makeHpkeHkdf(prefix->clone(), kdfId),
+      std::move(suiteId),
+      seqNum};
 
-    std::unique_ptr<folly::IOBuf> info = makeHpkeContextInfoParam(echConfig);
-    auto context = hpke::setupWithDecap(
-        hpke::Mode::Base,
-        encapsulatedKey->coalesce(),
-        std::move(info),
-        folly::none,
-        std::move(setupParam));
+  std::unique_ptr<folly::IOBuf> info = makeHpkeContextInfoParam(echConfig);
 
-    auto encodedClientHelloInner = extractEncodedClientHelloInner(
-        version,
-        constructConfigId(cipherSuite.kdf_id, echConfig),
-        cipherSuite,
-        encapsulatedKey,
-        std::move(encryptedCh),
-        context,
-        clientHelloOuter);
-
-    // Set actual client hello, ECH acceptance
-    folly::io::Cursor encodedECHInnerCursor(encodedClientHelloInner.get());
-    auto decodedChlo = decode<ClientHello>(encodedECHInnerCursor);
-    decodedChlo.originalEncoding = encodeHandshake(decodedChlo);
-
-    // Replace legacy_session_id that got removed during encryption
-    decodedChlo.legacy_session_id = clientHelloOuter.legacy_session_id->clone();
-
-    return decodedChlo;
-  } catch (const std::exception&) {
-  }
-
-  return folly::none;
+  return hpke::setupWithDecap(
+      hpke::Mode::Base,
+      encapsulatedKey->coalesce(),
+      std::move(info),
+      folly::none,
+      std::move(setupParam));
 }
 
 std::vector<Extension> substituteOuterExtensions(

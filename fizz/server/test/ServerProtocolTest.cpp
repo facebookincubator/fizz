@@ -10,6 +10,7 @@
 #include <folly/portability/GTest.h>
 
 #include <fizz/crypto/exchange/test/Mocks.h>
+#include <fizz/crypto/hpke/test/Mocks.h>
 #include <fizz/crypto/test/TestUtil.h>
 #include <fizz/protocol/clock/test/Mocks.h>
 #include <fizz/protocol/ech/test/TestUtil.h>
@@ -30,9 +31,37 @@ namespace test {
 class MockDecrypter : public ech::Decrypter {
  public:
   MOCK_METHOD(
-      folly::Optional<ClientHello>,
+      folly::Optional<ech::DecrypterResult>,
       decryptClientHello,
       (const ClientHello& chlo));
+
+  MOCK_METHOD(
+      ClientHello,
+      _decryptClientHelloHRR_Stateful,
+      (const ClientHello& chlo,
+       const std::unique_ptr<folly::IOBuf>& configId,
+       std::unique_ptr<hpke::HpkeContext>& context));
+
+  ClientHello decryptClientHelloHRR(
+      const ClientHello& chlo,
+      const std::unique_ptr<folly::IOBuf>& configId,
+      std::unique_ptr<hpke::HpkeContext>& context) override {
+    return _decryptClientHelloHRR_Stateful(chlo, configId, context);
+  }
+
+  MOCK_METHOD(
+      ClientHello,
+      _decryptClientHelloHRR_Stateless,
+      (const ClientHello& chlo,
+       const std::unique_ptr<folly::IOBuf>& configId,
+       const std::unique_ptr<folly::IOBuf>& encapsulatedKey));
+
+  ClientHello decryptClientHelloHRR(
+      const ClientHello& chlo,
+      const std::unique_ptr<folly::IOBuf>& configId,
+      const std::unique_ptr<folly::IOBuf>& encapsulatedKey) override {
+    return _decryptClientHelloHRR_Stateless(chlo, configId, encapsulatedKey);
+  }
 };
 
 class ServerProtocolTest : public ProtocolTest<ServerTypes, Actions> {
@@ -1075,7 +1104,12 @@ TEST_F(ServerProtocolTest, TestECHDecryptionSuccess) {
   auto decrypter = std::make_shared<MockDecrypter>();
   EXPECT_CALL(*decrypter, decryptClientHello(_))
       .WillOnce(
-          InvokeWithoutArgs([=]() { return TestMessages::clientHello(); }));
+          InvokeWithoutArgs([=]() -> folly::Optional<ech::DecrypterResult> {
+            return ech::DecrypterResult{
+                TestMessages::clientHello(),
+                folly::IOBuf::copyBuffer("configid"),
+                std::make_unique<hpke::test::MockHpkeContext>()};
+          }));
   context_->setECHDecrypter(decrypter);
 
   mockKeyScheduler_ = new MockKeyScheduler();

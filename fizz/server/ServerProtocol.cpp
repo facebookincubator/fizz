@@ -1010,7 +1010,7 @@ EventHandler<ServerTypes, StateEnum::ExpectingClientHello, Event::ClientHello>::
     auto gotChlo = decrypter->decryptClientHello(chlo);
     if (gotChlo.has_value()) {
       acceptedECH = true;
-      chlo = std::move(gotChlo.value());
+      chlo = std::move(gotChlo->chlo);
     }
   }
 
