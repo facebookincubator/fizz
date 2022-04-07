@@ -1080,6 +1080,7 @@ TEST_F(ServerProtocolTest, TestECHDecryptionSuccess) {
 
   mockKeyScheduler_ = new MockKeyScheduler();
   mockHandshakeContext_ = new MockHandshakeContext();
+  auto mockEchContext = new MockHandshakeContext();
   EXPECT_CALL(*factory_, makeKeyScheduler(CipherSuite::TLS_AES_128_GCM_SHA256))
       .WillOnce(InvokeWithoutArgs(
           [=]() { return std::unique_ptr<KeyScheduler>(mockKeyScheduler_); }));
@@ -1092,6 +1093,27 @@ TEST_F(ServerProtocolTest, TestECHDecryptionSuccess) {
       *mockHandshakeContext_,
       appendToTranscript(BufMatches("clienthelloencoding")))
       .InSequence(contextSeq);
+  EXPECT_CALL(*mockHandshakeContext_, clone())
+      .InSequence(contextSeq)
+      .WillOnce(Invoke(
+          [&]() { return std::unique_ptr<HandshakeContext>(mockEchContext); }));
+  EXPECT_CALL(*mockEchContext, appendToTranscript(_)).InSequence(contextSeq);
+  EXPECT_CALL(*mockEchContext, getHandshakeContext())
+      .InSequence(contextSeq)
+      .WillOnce(
+          Invoke([]() { return folly::IOBuf::copyBuffer("chlo_shloech"); }));
+  EXPECT_CALL(
+      *mockKeyScheduler_,
+      getSecret(
+          HandshakeSecrets::ECHAcceptConfirmation,
+          RangeMatches("chlo_shloech")))
+      .InSequence(contextSeq)
+      .WillOnce(InvokeWithoutArgs([]() {
+        return DerivedSecret(
+            std::vector<uint8_t>({'e', 'c', 'h', 'a', 'c', 'c', 'e', 'p', 't'}),
+            HandshakeSecrets::ServerHandshakeTraffic);
+      }));
+
   EXPECT_CALL(*mockHandshakeContext_, appendToTranscript(_))
       .InSequence(contextSeq);
   EXPECT_CALL(*mockHandshakeContext_, getHandshakeContext())
@@ -1111,8 +1133,11 @@ TEST_F(ServerProtocolTest, TestECHDecryptionSuccess) {
         content.contentType = msg.type;
         content.encryptionLevel = mockWrite_->getEncryptionLevel();
         EXPECT_EQ(msg.type, ContentType::handshake);
+        const std::string echAcceptFragment = "echaccep";
+        auto expected = TestMessages::serverHello();
+        memcpy(expected.random.data() + 24, echAcceptFragment.data(), 8);
         EXPECT_TRUE(folly::IOBufEqualTo()(
-            msg.fragment, encodeHandshake(TestMessages::serverHello())));
+            msg.fragment, encodeHandshake(std::move(expected))));
         content.data = folly::IOBuf::copyBuffer("writtenshlo");
         return content;
       }));

@@ -396,11 +396,13 @@ class Connection : public AsyncSocket::ConnectCallback,
   }
 
   void printECHSuccess(const State& state) {
-    LOG(INFO) << "  Encrypted client hello (ECH) enabled: ";
-    auto echResult = state.encodedECH().has_value()
-        ? "    Successfully sent the server an ECH"
-        : "    Unable to send server an ECH";
-    LOG(INFO) << echResult;
+    LOG(INFO) << "  Encrypted client hello (ECH) requested: "
+              << (state.encodedECH().has_value() ? "Yes" : "No");
+    LOG(INFO) << "  Encrypted client hello (ECH) accepted: "
+              << ((state.sni() == state.echSni()) &&
+                          state.encodedECH().has_value()
+                      ? "Yes"
+                      : "No");
 
     // Get ECH config content
     const auto& echConfig = echConfigs_.value()[0];

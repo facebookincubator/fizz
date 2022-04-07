@@ -229,6 +229,75 @@ std::unique_ptr<folly::IOBuf> makeClientHelloAad(
   return aad;
 }
 
+ServerHello makeDummyServerHello(const ServerHello& shlo) {
+  std::vector<Extension> extensionCopies;
+  for (auto& ext : shlo.extensions) {
+    extensionCopies.push_back(ext.clone());
+  }
+  ServerHello shloEch;
+  shloEch.legacy_version = shlo.legacy_version;
+  shloEch.random = shlo.random;
+  shloEch.legacy_session_id_echo = shlo.legacy_session_id_echo->clone();
+  shloEch.cipher_suite = shlo.cipher_suite;
+  shloEch.legacy_compression_method = shlo.legacy_compression_method;
+  shloEch.extensions = std::move(extensionCopies);
+  // Zero the acceptance confirmation bytes
+  memset(
+      shloEch.random.data() +
+          (shloEch.random.size() - kEchAcceptConfirmationSize),
+      0,
+      kEchAcceptConfirmationSize);
+  return shloEch;
+}
+
+namespace {
+
+std::vector<uint8_t> calculateAcceptConfirmation(
+    const ServerHello& shlo,
+    std::unique_ptr<HandshakeContext> context,
+    std::unique_ptr<KeyScheduler>& scheduler) {
+  // Acceptance is done by feeding a dummy hello into the transcript and
+  // deriving a secret from it.
+  auto shloEch = makeDummyServerHello(shlo);
+  context->appendToTranscript(encodeHandshake(std::move(shloEch)));
+
+  auto hsc = context->getHandshakeContext();
+  auto echAcceptance = scheduler->getSecret(
+      HandshakeSecrets::ECHAcceptConfirmation, hsc->coalesce());
+
+  return std::move(echAcceptance.secret);
+}
+
+} // namespace
+
+bool checkECHAccepted(
+    const ServerHello& shlo,
+    std::unique_ptr<HandshakeContext> context,
+    std::unique_ptr<KeyScheduler>& scheduler) {
+  auto acceptConfirmation =
+      calculateAcceptConfirmation(shlo, std::move(context), scheduler);
+  // ECH accepted if the 8 bytes match the accept_confirmation
+  return memcmp(
+             shlo.random.data() +
+                 (shlo.random.size() - kEchAcceptConfirmationSize),
+             acceptConfirmation.data(),
+             kEchAcceptConfirmationSize) == 0;
+}
+
+void setAcceptConfirmation(
+    ServerHello& shlo,
+    std::unique_ptr<HandshakeContext> context,
+    std::unique_ptr<KeyScheduler>& scheduler) {
+  auto acceptConfirmation =
+      calculateAcceptConfirmation(shlo, std::move(context), scheduler);
+
+  // Copy the acceptance confirmation bytes to the end
+  memcpy(
+      shlo.random.data() + (shlo.random.size() - kEchAcceptConfirmationSize),
+      acceptConfirmation.data(),
+      kEchAcceptConfirmationSize);
+}
+
 ClientECH encryptClientHello(
     const SupportedECHConfig& supportedConfig,
     const ClientHello& clientHelloInner,

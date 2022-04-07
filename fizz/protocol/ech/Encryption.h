@@ -37,6 +37,18 @@ std::unique_ptr<folly::IOBuf> makeClientHelloAad(
     const std::unique_ptr<folly::IOBuf>& enc,
     const std::unique_ptr<folly::IOBuf>& clientHello);
 
+ServerHello makeDummyServerHello(const ServerHello& shlo);
+
+bool checkECHAccepted(
+    const ServerHello& shlo,
+    std::unique_ptr<HandshakeContext> context,
+    std::unique_ptr<KeyScheduler>& scheduler);
+
+void setAcceptConfirmation(
+    ServerHello& shlo,
+    std::unique_ptr<HandshakeContext> context,
+    std::unique_ptr<KeyScheduler>& scheduler);
+
 ClientECH encryptClientHello(
     const SupportedECHConfig& supportedConfig,
     const ClientHello& clientHelloInner,

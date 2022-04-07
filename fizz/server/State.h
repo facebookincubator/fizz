@@ -37,6 +37,8 @@ enum class StateEnum {
   NUM_STATES
 };
 
+enum class ECHStatus { NotRequested, Accepted, Rejected };
+
 struct HandshakeLogging {
   folly::Optional<ProtocolVersion> clientLegacyVersion;
   std::vector<ProtocolVersion> clientSupportedVersions;
@@ -307,6 +309,10 @@ class State {
     return clientRandom_;
   }
 
+  const ECHStatus& echStatus() const {
+    return echStatus_;
+  }
+
   /*
    * State setters.
    */
@@ -410,6 +416,10 @@ class State {
     return clientRandom_;
   }
 
+  auto& echStatus() {
+    return echStatus_;
+  }
+
  private:
   StateEnum state_{StateEnum::Uninitialized};
 
@@ -451,6 +461,7 @@ class State {
   std::shared_ptr<ServerExtensions> extensions_;
   std::vector<uint8_t> resumptionMasterSecret_;
   folly::Optional<std::chrono::system_clock::time_point> handshakeTime_;
+  ECHStatus echStatus_{ECHStatus::NotRequested};
 
   std::unique_ptr<HandshakeLogging> handshakeLogging_;
 
@@ -459,6 +470,7 @@ class State {
 };
 
 folly::StringPiece toString(server::StateEnum state);
+folly::StringPiece toString(server::ECHStatus status);
 
 inline std::ostream& operator<<(std::ostream& os, StateEnum state) {
   os << toString(state);

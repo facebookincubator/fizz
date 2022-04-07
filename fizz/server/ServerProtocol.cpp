@@ -722,15 +722,14 @@ static Buf getHelloRetryRequest(
   return encodedHelloRetryRequest;
 }
 
-static Buf getServerHello(
+static ServerHello getServerHello(
     ProtocolVersion version,
     Random random,
     CipherSuite cipher,
     bool psk,
     Optional<NamedGroup> group,
     Optional<Buf> serverShare,
-    Buf legacySessionId,
-    HandshakeContext& handshakeContext) {
+    Buf legacySessionId) {
   ServerHello serverHello;
 
   serverHello.legacy_version = ProtocolVersion::tls_1_2;
@@ -754,9 +753,7 @@ static Buf getServerHello(
     serverPsk.selected_identity = kPskIndex;
     serverHello.extensions.push_back(encodeExtension(std::move(serverPsk)));
   }
-  auto encodedServerHello = encodeHandshake(std::move(serverHello));
-  handshakeContext.appendToTranscript(encodedServerHello);
-  return encodedServerHello;
+  return serverHello;
 }
 
 static Optional<std::string> negotiateAlpn(
@@ -998,24 +995,24 @@ static Buf getCertificateRequest(
   return encodedCertificateRequest;
 }
 
-static void updateClientHelloIfECH(
-    std::shared_ptr<ech::Decrypter> decrypter,
-    ClientHello& chlo) {
-  if (decrypter) {
-    auto gotChlo = decrypter->decryptClientHello(chlo);
-    if (gotChlo.has_value()) {
-      chlo = std::move(gotChlo.value());
-    }
-  }
-}
-
 AsyncActions
 EventHandler<ServerTypes, StateEnum::ExpectingClientHello, Event::ClientHello>::
     handle(const State& state, Param param) {
   ClientHello chlo = std::move(*param.asClientHello());
 
   // Update the client hello if we are using ECH
-  updateClientHelloIfECH(state.context()->getECHDecrypter(), chlo);
+  auto decrypter = state.context()->getECHDecrypter();
+  bool acceptedECH = false;
+  bool requestedECH =
+      findExtension(chlo.extensions, ExtensionType::encrypted_client_hello) !=
+      chlo.extensions.end();
+  if (decrypter) {
+    auto gotChlo = decrypter->decryptClientHello(chlo);
+    if (gotChlo.has_value()) {
+      acceptedECH = true;
+      chlo = std::move(gotChlo.value());
+    }
+  }
 
   addHandshakeLogging(state, chlo);
 
@@ -1091,6 +1088,8 @@ EventHandler<ServerTypes, StateEnum::ExpectingClientHello, Event::ClientHello>::
        version = *version,
        cipher,
        pskMode = resStateResult.pskMode,
+       acceptedECH,
+       requestedECH,
        obfuscatedAge =
            resStateResult.obfuscatedAge](FutureResultType result) mutable {
         auto& resumption = *std::get<0>(result);
@@ -1307,15 +1306,24 @@ EventHandler<ServerTypes, StateEnum::ExpectingClientHello, Event::ClientHello>::
               AlertDescription::illegal_parameter);
         }
 
-        auto encodedServerHello = getServerHello(
+        auto serverHello = getServerHello(
             version,
             state.context()->getFactory()->makeRandom(),
             cipher,
             resState.has_value(),
             group,
             std::move(serverShare),
-            legacySessionId ? legacySessionId->clone() : nullptr,
-            *handshakeContext);
+            legacySessionId ? legacySessionId->clone() : nullptr);
+
+        if (acceptedECH) {
+          // If accepted, go ahead and set the last random bytes to the
+          // accept_confirmation
+          ech::setAcceptConfirmation(
+              serverHello, handshakeContext->clone(), scheduler);
+        }
+
+        auto encodedServerHello = encodeHandshake(std::move(serverHello));
+        handshakeContext->appendToTranscript(encodedServerHello);
 
         // Derive handshake keys.
         auto handshakeWriteRecordLayer =
@@ -1412,6 +1420,11 @@ EventHandler<ServerTypes, StateEnum::ExpectingClientHello, Event::ClientHello>::
         }
 
         auto clientRandom = std::move(chlo.random);
+
+        ECHStatus echStatus = ECHStatus::NotRequested;
+        if (requestedECH) {
+          echStatus = acceptedECH ? ECHStatus::Accepted : ECHStatus::Rejected;
+        }
         return runOnCallerIfComplete(
             state.executor(),
             std::move(signature),
@@ -1421,6 +1434,7 @@ EventHandler<ServerTypes, StateEnum::ExpectingClientHello, Event::ClientHello>::
              cipher,
              clientRandom = std::move(clientRandom),
              group,
+             echStatus,
              encodedServerHello = std::move(encodedServerHello),
              handshakeWriteRecordLayer = std::move(handshakeWriteRecordLayer),
              handshakeWriteSecret = std::move(handshakeWriteSecret),
@@ -1567,6 +1581,7 @@ EventHandler<ServerTypes, StateEnum::ExpectingClientHello, Event::ClientHello>::
                    clockSkew,
                    appToken = std::move(appToken),
                    serverCertCompAlgo,
+                   echStatus,
                    clientRandom = std::move(clientRandom),
                    handshakeTime =
                        std::move(handshakeTime)](State& newState) mutable {
@@ -1594,6 +1609,7 @@ EventHandler<ServerTypes, StateEnum::ExpectingClientHello, Event::ClientHello>::
                     newState.serverCertCompAlgo() = serverCertCompAlgo;
                     newState.handshakeTime() = std::move(handshakeTime);
                     newState.clientRandom() = std::move(clientRandom);
+                    newState.echStatus() = echStatus;
                   });
 
               if (earlyDataType == EarlyDataType::Accepted) {

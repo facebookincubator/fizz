@@ -334,10 +334,7 @@ class FizzExampleServer : public AsyncFizzServer::HandshakeCallback,
         folly::to<std::string>(
             "    Server Traffic: ", secretStr(serverAppTrafficSecret_)),
         folly::to<std::string>(
-            "",
-            state.context()->getECHDecrypter()
-                ? "Encrypted client hello (ECH) is successful."
-                : "")};
+            "    ECH Status: ", toString(state.echStatus()))};
   }
 
   std::vector<std::string> fallbackSuccessLog() {

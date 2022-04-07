@@ -96,5 +96,17 @@ folly::StringPiece toString(StateEnum state) {
   }
   return "Invalid state";
 }
+
+folly::StringPiece toString(ECHStatus status) {
+  switch (status) {
+    case ECHStatus::NotRequested:
+      return "Not requested";
+    case ECHStatus::Accepted:
+      return "Accepted";
+    case ECHStatus::Rejected:
+      return "Rejected";
+  }
+  return "Invalid status";
+}
 } // namespace server
 } // namespace fizz

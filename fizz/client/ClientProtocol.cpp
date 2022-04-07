@@ -1150,20 +1150,6 @@ EventHandler<ClientTypes, StateEnum::ExpectingServerHello, Event::ServerHello>::
         "server did not send share", AlertDescription::handshake_failure);
   }
 
-  std::unique_ptr<HandshakeContext> handshakeContext;
-  if (state.handshakeContext()) {
-    handshakeContext = std::move(state.handshakeContext());
-  } else {
-    handshakeContext =
-        state.context()->getFactory()->makeHandshakeContext(cipher);
-    if (state.encodedECH().has_value()) {
-      handshakeContext->appendToTranscript(state.encodedECH().value());
-    } else {
-      handshakeContext->appendToTranscript(state.encodedClientHello());
-    }
-  }
-  handshakeContext->appendToTranscript(*shlo.originalEncoding);
-
   auto scheduler = state.context()->getFactory()->makeKeyScheduler(cipher);
 
   if (negotiatedPsk.mode) {
@@ -1194,8 +1180,48 @@ EventHandler<ClientTypes, StateEnum::ExpectingServerHello, Event::ServerHello>::
     scheduler->deriveHandshakeSecret();
   }
 
-  // TODO: Implement ECH acceptance confirmation
+  // At this point there are two possible contexts at play: the main one (which
+  // is the only one in the non-ECH case), and the "inner" one.
+  //
+  // The main one is based on the client hello sent over the wire, and the
+  // inner one is based on the encrypted client hello (rather than the dummy
+  // outer one).
+  //
+  // Once we've verified acceptance/rejection, the appropriate context will be
+  // used for traffic key derivation.
+
+  std::unique_ptr<HandshakeContext> handshakeContext;
+  std::unique_ptr<HandshakeContext> echHandshakeContext;
+  if (state.handshakeContext()) {
+    handshakeContext = std::move(state.handshakeContext());
+    // TODO: Handle HRR correctly for ECH
+    echHandshakeContext = handshakeContext->clone();
+  } else {
+    handshakeContext =
+        state.context()->getFactory()->makeHandshakeContext(cipher);
+    if (state.encodedECH().has_value()) {
+      echHandshakeContext =
+          state.context()->getFactory()->makeHandshakeContext(cipher);
+      echHandshakeContext->appendToTranscript(state.encodedECH().value());
+    }
+    handshakeContext->appendToTranscript(state.encodedClientHello());
+  }
+
   bool acceptedECH = false;
+  if (state.encodedECH().has_value()) {
+    VLOG(8) << "Checking if ECH was accepted...";
+
+    acceptedECH =
+        ech::checkECHAccepted(shlo, echHandshakeContext->clone(), scheduler);
+
+    if (acceptedECH) {
+      handshakeContext = std::move(echHandshakeContext);
+    }
+    VLOG(8) << "ECH was " << (acceptedECH ? "accepted" : "not accepted");
+  }
+
+  handshakeContext->appendToTranscript(*shlo.originalEncoding);
+
   if (state.readRecordLayer()->hasUnparsedHandshakeData()) {
     throw FizzException(
         "data after server hello", AlertDescription::unexpected_message);
