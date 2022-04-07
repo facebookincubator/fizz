@@ -31,6 +31,9 @@ struct ECHCipherSuite {
   bool operator==(const ECHCipherSuite& other) const {
     return kdf_id == other.kdf_id && aead_id == other.aead_id;
   }
+  bool operator!=(const ECHCipherSuite& other) const {
+    return kdf_id != other.kdf_id || aead_id != other.aead_id;
+  }
 };
 
 struct ECHConfigContentDraft {
