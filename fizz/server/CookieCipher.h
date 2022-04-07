@@ -9,6 +9,7 @@
 #pragma once
 
 #include <fizz/protocol/Factory.h>
+#include <fizz/protocol/ech/Types.h>
 #include <fizz/record/Types.h>
 
 namespace fizz {
@@ -22,6 +23,10 @@ struct CookieState {
   Buf chloHash;
 
   Buf appToken;
+
+  folly::Optional<ech::ECHCipherSuite> echCipherSuite;
+  Buf echConfigId;
+  Buf echEnc;
 };
 
 /**

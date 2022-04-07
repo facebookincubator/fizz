@@ -13,7 +13,12 @@ namespace fizz {
 namespace server {
 namespace detail {
 
-enum CookieHasGroup : uint8_t {
+enum class CookieHasGroup : uint8_t {
+  No = 0,
+  Yes = 1,
+};
+
+enum class CookieHasEch : uint8_t {
   No = 0,
   Yes = 1,
 };
@@ -35,6 +40,14 @@ inline Buf encodeCookie(const CookieState& state) {
   fizz::detail::writeBuf<uint16_t>(state.chloHash, appender);
   fizz::detail::writeBuf<uint16_t>(state.appToken, appender);
 
+  if (state.echCipherSuite) {
+    fizz::detail::write(CookieHasEch::Yes, appender);
+    fizz::detail::write(*state.echCipherSuite, appender);
+    fizz::detail::writeBuf<uint8_t>(state.echConfigId, appender);
+    fizz::detail::writeBuf<uint16_t>(state.echEnc, appender);
+  } else {
+    fizz::detail::write(CookieHasEch::No, appender);
+  }
   return buf;
 }
 
@@ -56,6 +69,15 @@ inline CookieState decodeCookie(Buf cookie) {
   fizz::detail::readBuf<uint16_t>(state.chloHash, cursor);
   fizz::detail::readBuf<uint16_t>(state.appToken, cursor);
 
+  CookieHasEch hasEch;
+  fizz::detail::read(hasEch, cursor);
+  if (hasEch == CookieHasEch::Yes) {
+    ech::ECHCipherSuite cs;
+    fizz::detail::read(cs, cursor);
+    state.echCipherSuite = std::move(cs);
+    fizz::detail::readBuf<uint8_t>(state.echConfigId, cursor);
+    fizz::detail::readBuf<uint16_t>(state.echEnc, cursor);
+  }
   return state;
 }
 } // namespace detail
