@@ -49,11 +49,17 @@ void setAcceptConfirmation(
     std::unique_ptr<HandshakeContext> context,
     std::unique_ptr<KeyScheduler>& scheduler);
 
+ClientECH encryptClientHelloHRR(
+    const SupportedECHConfig& supportedConfig,
+    const ClientHello& clientHelloInner,
+    const ClientHello& clientHelloOuter,
+    hpke::SetupResult& setupResult);
+
 ClientECH encryptClientHello(
     const SupportedECHConfig& supportedConfig,
     const ClientHello& clientHelloInner,
     const ClientHello& clientHelloOuter,
-    hpke::SetupResult setupResult);
+    hpke::SetupResult& setupResult);
 
 folly::Optional<ClientHello> tryToDecryptECH(
     const ClientHello& clientHelloOuter,

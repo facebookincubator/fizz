@@ -427,7 +427,6 @@ static ClientHello getClientHello(
     const Optional<EarlyDataParams>& earlyDataParams,
     const Buf& legacySessionId,
     ClientExtensions* extensions,
-    Optional<Extension> encodedECHExtension,
     Buf cookie = nullptr) {
   ClientHello chlo;
   chlo.legacy_version = ProtocolVersion::tls_1_2;
@@ -458,11 +457,9 @@ static ClientHello getClientHello(
   chlo.extensions.push_back(encodeExtension(std::move(sigAlgs)));
 
   if (hostname) {
-    ServerNameList sni;
-    ServerName sn;
-    sn.hostname = folly::IOBuf::copyBuffer(*hostname);
-    sni.server_name_list.push_back(std::move(sn));
-    chlo.extensions.push_back(encodeExtension(std::move(sni)));
+    auto hostnameBuf = folly::IOBuf::copyBuffer(*hostname);
+    auto sni = ServerNameList(ServerName(std::move(hostnameBuf)));
+    chlo.extensions.push_back(encodeExtension(sni));
   }
 
   if (!supportedAlpns.empty()) {
@@ -504,10 +501,6 @@ static ClientHello getClientHello(
     }
   }
 
-  if (encodedECHExtension.has_value()) {
-    chlo.extensions.push_back(std::move(encodedECHExtension.value()));
-  }
-
   return chlo;
 }
 
@@ -538,8 +531,8 @@ static ClientPresharedKey getPskExtension(
 
 /**
  * Returns the encoded client hello after updating the binder.
- * Will derive the early secret on the key scheduler and append the client hello
- * to the handshake context.
+ * Will derive the early secret on the key scheduler and create the binder
+ * using the passed in context.
  */
 static Buf encodeAndAddBinders(
     ClientHello& chlo,
@@ -677,6 +670,77 @@ static folly::Optional<ECHParams> setupECH(
       std::move(fakeSni)};
 }
 
+static void removeExtension(ClientHello& chlo, ExtensionType type) {
+  auto it = std::find_if(
+      chlo.extensions.begin(), chlo.extensions.end(), [type](auto& ext) {
+        return ext.extension_type == type;
+      });
+  if (it != chlo.extensions.end()) {
+    chlo.extensions.erase(it);
+  }
+}
+
+template <typename T>
+static void replaceOrAddExtension(std::vector<Extension>& arr, T extension) {
+  auto it = std::find_if(
+      arr.begin(), arr.end(), [type = T::extension_type](auto& ext) {
+        return ext.extension_type == type;
+      });
+  if (it == arr.end()) {
+    // Just add it
+    arr.push_back(encodeExtension(std::move(extension)));
+  } else {
+    // Replace it.
+    *it = encodeExtension(std::move(extension));
+  }
+}
+
+static ClientHello constructEncryptedClientHello(
+    Event e,
+    ClientHello&& chlo,
+    const ech::SupportedECHConfig& supportedConfig,
+    hpke::SetupResult& hpkeSetup,
+    const Random& outerRandom,
+    Buf fakeSni) {
+  DCHECK(e == Event::ClientHello || e == Event::HelloRetryRequest);
+
+  auto chloOuter = chlo.clone();
+  removeExtension(chloOuter, ExtensionType::ech_is_inner);
+  removeExtension(chloOuter, ExtensionType::pre_shared_key);
+
+  // ClientHello might have early data
+  if (e == Event::ClientHello) {
+    removeExtension(chloOuter, ExtensionType::early_data);
+  }
+
+  // Put in the fake SNI
+  replaceOrAddExtension(
+      chloOuter.extensions, ServerNameList(ServerName(std::move(fakeSni))));
+
+  // Substitute in outer random
+  chloOuter.random = outerRandom;
+
+  Extension encodedECHExtension;
+  // Create the encrypted client hello inner extension.
+  switch (supportedConfig.config.version) {
+    case (ech::ECHVersion::Draft9): {
+      ech::ClientECH clientECHExtension;
+      if (e == Event::ClientHello) {
+        clientECHExtension = encryptClientHello(
+            supportedConfig, std::move(chlo), chloOuter.clone(), hpkeSetup);
+      } else {
+        clientECHExtension = encryptClientHelloHRR(
+            supportedConfig, std::move(chlo), chloOuter.clone(), hpkeSetup);
+      }
+      chloOuter.extensions.push_back(
+          encodeExtension(std::move(clientECHExtension)));
+      break;
+    }
+  }
+
+  return chloOuter;
+}
+
 Actions
 EventHandler<ClientTypes, StateEnum::Uninitialized, Event::Connect>::handle(
     const State& /*state*/,
@@ -692,7 +756,7 @@ EventHandler<ClientTypes, StateEnum::Uninitialized, Event::Connect>::handle(
   folly::Optional<CachedPsk> psk =
       validatePsk(*context, std::move(connect.cachedPsk));
 
-  auto random = context->getFactory()->makeRandom();
+  Random random = context->getFactory()->makeRandom();
 
   // If we have a saved PSK, use the group to choose which groups to
   // send by default
@@ -734,14 +798,6 @@ EventHandler<ClientTypes, StateEnum::Uninitialized, Event::Connect>::handle(
       context->getSupportedGroups(),
       *context->getFactory());
 
-  folly::Optional<Extension> encodedInnerECHExt = folly::none;
-  if (echParams.has_value() &&
-      echParams.value().supportedECHConfig.config.version ==
-          ech::ECHVersion::Draft9) {
-    ech::ECHIsInner chloIsInnerExt;
-    encodedInnerECHExt = encodeExtension(std::move(chloIsInnerExt));
-  }
-
   auto chlo = getClientHello(
       *context->getFactory(),
       random,
@@ -756,12 +812,19 @@ EventHandler<ClientTypes, StateEnum::Uninitialized, Event::Connect>::handle(
       context->getSupportedCertDecompressionAlgorithms(),
       earlyDataParams,
       legacySessionId,
-      connect.extensions.get(),
-      std::move(encodedInnerECHExt));
+      connect.extensions.get());
 
   std::vector<ExtensionType> requestedExtensions;
   for (const auto& extension : chlo.extensions) {
     requestedExtensions.push_back(extension.extension_type);
+  }
+
+  if (echParams.has_value() &&
+      echParams.value().supportedECHConfig.config.version ==
+          ech::ECHVersion::Draft9) {
+    ech::ECHIsInner chloIsInnerExt;
+    chlo.extensions.push_back(encodeExtension(std::move(chloIsInnerExt)));
+    requestedExtensions.push_back(ExtensionType::encrypted_client_hello);
   }
 
   Buf encodedClientHello;
@@ -811,76 +874,31 @@ EventHandler<ClientTypes, StateEnum::Uninitialized, Event::Connect>::handle(
   // Create the ECH (both the client hello inner and client hello outer)
   Buf encodedECH;
 
+  // Random used in the inner (encrypted) client hello.
+  folly::Optional<Random> echRandom;
+
   if (echParams.has_value()) {
-    auto newFakeRandom = context->getFactory()->makeRandom();
-    auto newFakeSni =
-        echParams->fakeSni->clone()->moveToFbString().toStdString();
+    // Swap out randoms first.
+    echRandom = std::move(random);
+    random = context->getFactory()->makeRandom();
 
-    Extension encodedECHExtension;
-    // Create the encrypted client hello inner extension.
-    switch (echParams->supportedECHConfig.config.version) {
-      case (ech::ECHVersion::Draft9): {
-        // Generate a client hello outer to be used for
-        // encrypting the ECH extension.
-        auto chloOuterNoECHExt = getClientHello(
-            *context->getFactory(),
-            newFakeRandom,
-            context->getSupportedCiphers(),
-            context->getSupportedVersions(),
-            context->getSupportedGroups(),
-            keyExchangers,
-            context->getSupportedSigSchemes(),
-            context->getSupportedPskModes(),
-            newFakeSni,
-            context->getSupportedAlpns(),
-            context->getSupportedCertDecompressionAlgorithms(),
-            folly::none,
-            legacySessionId,
-            connect.extensions.get(),
-            Optional<Extension>(folly::none));
-        ech::ClientECH clientECHExtension = encryptClientHello(
-            echParams->supportedECHConfig,
-            std::move(chlo),
-            std::move(chloOuterNoECHExt),
-            std::move(echParams->setupResult));
-        encodedECHExtension = encodeExtension(std::move(clientECHExtension));
-        requestedExtensions.push_back(ExtensionType::encrypted_client_hello);
-        break;
-      }
-    }
+    chlo = constructEncryptedClientHello(
+        Event::ClientHello,
+        std::move(chlo),
+        echParams->supportedECHConfig,
+        echParams->setupResult,
+        random,
+        echParams->fakeSni->clone());
 
-    // Set client hello outer with ECH extension to be the client hello that is
-    // sent
-    chlo = getClientHello(
-        *context->getFactory(),
-        newFakeRandom,
-        context->getSupportedCiphers(),
-        context->getSupportedVersions(),
-        context->getSupportedGroups(),
-        keyExchangers,
-        context->getSupportedSigSchemes(),
-        context->getSupportedPskModes(),
-        newFakeSni,
-        context->getSupportedAlpns(),
-        context->getSupportedCertDecompressionAlgorithms(),
-        folly::none,
-        // The legacy_session_id field MUST be copied from the client hello
-        // inner (chlo). This allows the server to echo the correct session ID
-        // for TLS 1.3's compatibility mode (see Appendix D.4 of [RFC8446]) when
-        // ECH is negotiated.
-        legacySessionId,
-        connect.extensions.get(),
-        std::move(encodedECHExtension));
+    // Update SNI now
+    echSni = std::move(sni);
+    sni = echParams->fakeSni->clone()->moveToFbString().toStdString();
 
     // Save client hello inner
     encodedECH = std::move(encodedClientHello);
 
     // Update the client hello with the ECH client hello outer
     encodedClientHello = encodeHandshake(chlo);
-
-    // Assume the server will reject by default; set sni to fakeSni and store
-    // the real one.
-    echSni = std::exchange(sni, std::move(newFakeSni));
   }
 
   auto readRecordLayer = context->getFactory()->makePlaintextReadRecordLayer();
@@ -904,6 +922,7 @@ EventHandler<ClientTypes, StateEnum::Uninitialized, Event::Connect>::handle(
                          sni = std::move(sni),
                          echSni = std::move(echSni),
                          echParams = std::move(echParams),
+                         echRandom = std::move(echRandom),
                          random = std::move(random),
                          legacySessionId = std::move(legacySessionId),
                          psk = std::move(psk),
@@ -916,6 +935,10 @@ EventHandler<ClientTypes, StateEnum::Uninitialized, Event::Connect>::handle(
       newState.echState().emplace();
       newState.echState()->sni = std::move(echSni);
       newState.echState()->encodedECH = std::move(encodedECH);
+      newState.echState()->supportedConfig =
+          std::move(echParams->supportedECHConfig);
+      newState.echState()->hpkeSetup = std::move(echParams->setupResult);
+      newState.echState()->random = std::move(*echRandom);
     }
     newState.encodedClientHello() = std::move(encodedClientHello);
     newState.readRecordLayer() = std::move(readRecordLayer);
@@ -1417,23 +1440,51 @@ Actions EventHandler<
   auto keyExchangers = getHrrKeyExchangers(
       *state.context()->getFactory(), std::move(*state.keyExchangers()), group);
 
+  std::vector<ExtensionType> requestedExtensions;
+
+  folly::Optional<Extension> encodedInnerECHExt = folly::none;
+  auto sni = state.sni();
+  auto random = *state.clientRandom();
+
+  // In the ECH case, we're constructing the inner client hello again, and the
+  // state contains the outer client hello's values. As such, we'll replace the
+  // SNI and random values with the saved inner values. We'll also add the inner
+  // ECH extension required.
+  if (state.echState().has_value() &&
+      state.echState()->supportedConfig.config.version ==
+          ech::ECHVersion::Draft9) {
+    ech::ECHIsInner chloIsInnerExt;
+    encodedInnerECHExt = encodeExtension(std::move(chloIsInnerExt));
+    requestedExtensions.push_back(ExtensionType::encrypted_client_hello);
+
+    sni = state.echState()->sni;
+    random = state.echState()->random;
+  }
+
   auto chlo = getClientHello(
       *state.context()->getFactory(),
-      *state.clientRandom(),
+      std::move(random),
       state.context()->getSupportedCiphers(),
       state.context()->getSupportedVersions(),
       state.context()->getSupportedGroups(),
       keyExchangers,
       state.context()->getSupportedSigSchemes(),
       state.context()->getSupportedPskModes(),
-      state.sni(),
+      std::move(sni),
       state.context()->getSupportedAlpns(),
       state.context()->getSupportedCertDecompressionAlgorithms(),
       folly::none,
       state.legacySessionId(),
       state.extensions(),
-      Optional<Extension>(folly::none),
-      cookie ? std::move(cookie->cookie) : nullptr);
+      cookie ? cookie->cookie->clone() : nullptr);
+
+  for (const auto& extension : chlo.extensions) {
+    requestedExtensions.push_back(extension.extension_type);
+  }
+
+  if (encodedInnerECHExt) {
+    chlo.extensions.push_back(std::move(*encodedInnerECHExt));
+  }
 
   auto firstHandshakeContext =
       state.context()->getFactory()->makeHandshakeContext(cipher);
@@ -1447,9 +1498,22 @@ Actions EventHandler<
   handshakeContext->appendToTranscript(encodeHandshake(std::move(chloHash)));
   handshakeContext->appendToTranscript(*hrr.originalEncoding);
 
-  std::vector<ExtensionType> requestedExtensions;
-  for (const auto& extension : chlo.extensions) {
-    requestedExtensions.push_back(extension.extension_type);
+  // Now, in the ECH case, the context above is the outer context. We have to
+  // construct the inner context using the inner client hello we sent before.
+  std::unique_ptr<HandshakeContext> echHandshakeContext;
+  if (state.echState().has_value()) {
+    auto firstEchHandshakeContext =
+        state.context()->getFactory()->makeHandshakeContext(cipher);
+    firstEchHandshakeContext->appendToTranscript(state.echState()->encodedECH);
+
+    message_hash echChloHash;
+    echChloHash.hash = firstEchHandshakeContext->getHandshakeContext();
+
+    echHandshakeContext =
+        state.context()->getFactory()->makeHandshakeContext(cipher);
+    echHandshakeContext->appendToTranscript(
+        encodeHandshake(std::move(echChloHash)));
+    echHandshakeContext->appendToTranscript(*hrr.originalEncoding);
   }
 
   Buf encodedClientHello;
@@ -1457,16 +1521,50 @@ Actions EventHandler<
     requestedExtensions.push_back(ExtensionType::pre_shared_key);
     auto keyScheduler = state.context()->getFactory()->makeKeyScheduler(cipher);
 
+    // PSK is applied to inner client hello (in ECH case)
+    auto pskContext =
+        (echHandshakeContext ? echHandshakeContext : handshakeContext)->clone();
+
     encodedClientHello = encodeAndAddBinders(
         chlo,
         *attemptedPsk,
         *keyScheduler,
-        *handshakeContext,
+        *pskContext,
         *state.context()->getClock());
   } else {
-    encodedClientHello = encodeHandshake(std::move(chlo));
-    handshakeContext->appendToTranscript(encodedClientHello);
+    encodedClientHello = encodeHandshake(chlo);
   }
+
+  Buf encodedECH;
+
+  // In the HRR case, we reuse the previous HPKE context to bind this to the
+  // previous ECH we sent. We reuse the fake SNI and dummy random we sent
+  // earlier (as expected for an HRR client hello).
+  //
+  // At this point, it's not clear whether or not HRR has been accepted, thus
+  // we maintain both contexts until acceptance is verified on receipt of the
+  // server hello.
+  if (state.echState().has_value()) {
+    // Construct HRR ECH
+    chlo = constructEncryptedClientHello(
+        Event::HelloRetryRequest,
+        std::move(chlo),
+        state.echState()->supportedConfig,
+        state.echState()->hpkeSetup,
+        *state.clientRandom(),
+        folly::IOBuf::copyBuffer(*state.sni()));
+
+    // Save client hello inner
+    encodedECH = std::move(encodedClientHello);
+
+    // Update the client hello with the ECH client hello outer
+    encodedClientHello = encodeHandshake(chlo);
+
+    // Write to ECH transcript
+    echHandshakeContext->appendToTranscript(encodedECH);
+  }
+
+  handshakeContext->appendToTranscript(encodedClientHello);
 
   auto earlyDataType = state.earlyDataType() == EarlyDataType::Attempted
       ? EarlyDataType::Rejected
@@ -1495,6 +1593,8 @@ Actions EventHandler<
                    encodedClientHello = std::move(encodedClientHello),
                    keyExchangers = std::move(keyExchangers),
                    handshakeContext = std::move(handshakeContext),
+                   echHandshakeContext = std::move(echHandshakeContext),
+                   encodedECH = std::move(encodedECH),
                    attemptedPsk = std::move(attemptedPsk),
                    requestedExtensions = std::move(requestedExtensions),
                    sentCCS](State& newState) mutable {
@@ -1503,11 +1603,12 @@ Actions EventHandler<
         newState.earlyDataType() = earlyDataType;
         newState.earlyWriteRecordLayer() = nullptr;
         newState.encodedClientHello() = std::move(encodedClientHello);
-        newState.keyExchangers() = std::move(keyExchangers);
-        // TODO: Properly handle HRR. This prevents a crash but doesn't work.
         if (newState.echState().has_value()) {
-          newState.echState()->handshakeContext = handshakeContext->clone();
+          newState.echState()->encodedECH = std::move(encodedECH);
+          newState.echState()->handshakeContext =
+              std::move(echHandshakeContext);
         }
+        newState.keyExchangers() = std::move(keyExchangers);
         newState.handshakeContext() = std::move(handshakeContext);
         newState.keyExchangeType() = KeyExchangeType::HelloRetryRequest;
         newState.attemptedPsk() = std::move(attemptedPsk);

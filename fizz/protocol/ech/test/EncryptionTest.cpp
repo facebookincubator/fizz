@@ -91,7 +91,7 @@ ClientECH getTestClientECH() {
       supportedConfig,
       std::move(chloInner),
       getClientHelloOuter(),
-      std::move(setupResult));
+      setupResult);
 }
 
 void checkSupportedConfigValid(

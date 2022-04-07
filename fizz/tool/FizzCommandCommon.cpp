@@ -226,7 +226,7 @@ folly::Optional<std::vector<ech::ECHConfig>> parseECHConfigs(
     ech::ECHConfig parsedConfig;
     parsedConfig.version = echVersion;
     parsedConfig.ech_config_content = encode(std::move(configContent));
-    echConfigs.push_back(parsedConfig);
+    echConfigs.push_back(std::move(parsedConfig));
   }
   return std::move(echConfigs);
 }

@@ -45,10 +45,29 @@ struct ECHConfigContentDraft {
 struct ECHConfig {
   ECHVersion version;
   Buf ech_config_content;
+
   ECHConfig() {}
   ECHConfig(const ECHConfig& other) {
     version = other.version;
     ech_config_content = other.ech_config_content->clone();
+  }
+  ECHConfig(ECHConfig&& other) noexcept {
+    version = other.version;
+    ech_config_content = std::move(other.ech_config_content);
+  }
+  ECHConfig& operator=(const ECHConfig& other) {
+    if (this != &other) {
+      version = other.version;
+      ech_config_content = other.ech_config_content->clone();
+    }
+    return *this;
+  }
+  ECHConfig& operator=(ECHConfig&& other) noexcept {
+    if (this != &other) {
+      version = other.version;
+      ech_config_content = std::move(other.ech_config_content);
+    }
+    return *this;
   }
 };
 

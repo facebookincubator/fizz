@@ -70,7 +70,7 @@ struct ECHState {
   // ECH parameters selected for use.
   ech::SupportedECHConfig supportedConfig;
   // HPKE context saved for use with HRR, if needed.
-  std::unique_ptr<hpke::SetupResult> hpkeSetup;
+  mutable hpke::SetupResult hpkeSetup;
   // ECH random (for HRR, if needed).
   Random random;
   // ECH handshake context (initialized during HRR)

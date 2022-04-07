@@ -298,18 +298,13 @@ void setAcceptConfirmation(
       kEchAcceptConfirmationSize);
 }
 
-ClientECH encryptClientHello(
-    const SupportedECHConfig& supportedConfig,
+namespace {
+
+void encryptClientHelloShared(
+    ClientECH& echExtension,
     const ClientHello& clientHelloInner,
     const ClientHello& clientHelloOuter,
-    hpke::SetupResult setupResult) {
-  // Create ECH extension
-  ClientECH echExtension;
-  echExtension.cipher_suite = supportedConfig.cipherSuite;
-  echExtension.config_id = constructConfigId(
-      supportedConfig.cipherSuite.kdf_id, supportedConfig.config);
-  echExtension.enc = std::move(setupResult.enc);
-
+    hpke::SetupResult& setupResult) {
   // Remove legacy_session_id and serialize the client hello inner
   auto chloInnerCopy = clientHelloInner.clone();
   chloInnerCopy.legacy_session_id = folly::IOBuf::copyBuffer("");
@@ -318,7 +313,7 @@ ClientECH encryptClientHello(
   // Compute the AAD for sealing
   auto clientHelloOuterEnc = encode(clientHelloOuter);
   auto clientHelloOuterAad = makeClientHelloAad(
-      supportedConfig.cipherSuite,
+      echExtension.cipher_suite,
       echExtension.config_id,
       echExtension.enc,
       clientHelloOuterEnc);
@@ -326,6 +321,42 @@ ClientECH encryptClientHello(
   // Encrypt inner client hello
   echExtension.payload = setupResult.context->seal(
       clientHelloOuterAad.get(), std::move(encodedClientHelloInner));
+}
+
+} // namespace
+
+ClientECH encryptClientHelloHRR(
+    const SupportedECHConfig& supportedConfig,
+    const ClientHello& clientHelloInner,
+    const ClientHello& clientHelloOuter,
+    hpke::SetupResult& setupResult) {
+  // Create ECH extension with blank config ID and enc for HRR
+  ClientECH echExtension;
+  echExtension.cipher_suite = supportedConfig.cipherSuite;
+  echExtension.config_id = folly::IOBuf::create(0);
+  echExtension.enc = folly::IOBuf::create(0);
+
+  encryptClientHelloShared(
+      echExtension, clientHelloInner, clientHelloOuter, setupResult);
+
+  return echExtension;
+}
+
+ClientECH encryptClientHello(
+    const SupportedECHConfig& supportedConfig,
+    const ClientHello& clientHelloInner,
+    const ClientHello& clientHelloOuter,
+    hpke::SetupResult& setupResult) {
+  // Create ECH extension
+  ClientECH echExtension;
+  echExtension.cipher_suite = supportedConfig.cipherSuite;
+  echExtension.config_id = constructConfigId(
+      supportedConfig.cipherSuite.kdf_id, supportedConfig.config);
+  echExtension.enc = setupResult.enc->clone();
+
+  encryptClientHelloShared(
+      echExtension, clientHelloInner, clientHelloOuter, setupResult);
+
   return echExtension;
 }
 

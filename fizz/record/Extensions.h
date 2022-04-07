@@ -114,11 +114,18 @@ struct ProtocolNameList {
 enum class ServerNameType : uint8_t { host_name = 0 };
 
 struct ServerName {
+  ServerName() {}
+  explicit ServerName(Buf hostnameIn) : hostname(std::move(hostnameIn)) {}
+
   ServerNameType name_type{ServerNameType::host_name};
   Buf hostname;
 };
 
 struct ServerNameList {
+  ServerNameList() {}
+  explicit ServerNameList(ServerName sn) {
+    server_name_list.push_back(std::move(sn));
+  }
   std::vector<ServerName> server_name_list;
   static constexpr ExtensionType extension_type = ExtensionType::server_name;
 };

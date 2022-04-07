@@ -19,35 +19,34 @@ using namespace fizz::test;
 namespace fizz {
 namespace ech {
 namespace test {
+ClientHello getChloOuterWithExt(std::unique_ptr<KeyExchange> kex) {
+  // Setup ECH extension
+  auto supportedECHConfig = SupportedECHConfig{
+      getECHConfig(),
+      ECHCipherSuite{
+          hpke::KDFId::Sha256, hpke::AeadId::TLS_AES_128_GCM_SHA256}};
+  auto setupResult =
+      constructHpkeSetupResult(std::move(kex), supportedECHConfig);
+
+  // Add empty ECH extension to client hello inner
+  auto chloInner = TestMessages::clientHello();
+  ClientECH chloInnerECHExt;
+  chloInner.extensions.push_back(encodeExtension(chloInnerECHExt));
+
+  // Encrypt client hello
+  ClientHello chloOuter = getClientHelloOuter();
+  chloOuter.legacy_session_id = folly::IOBuf::create(0);
+
+  ClientECH echExt =
+      encryptClientHello(supportedECHConfig, chloInner, chloOuter, setupResult);
+
+  // Add ECH extension
+  chloOuter.extensions.push_back(encodeExtension(echExt));
+
+  return chloOuter;
+}
 
 TEST(DecrypterTest, TestDecodeSuccess) {
-  auto getChloOuterWithExt = [](std::unique_ptr<KeyExchange> kex) {
-    // Setup ECH extension
-    auto supportedECHConfig = SupportedECHConfig{
-        getECHConfig(),
-        ECHCipherSuite{
-            hpke::KDFId::Sha256, hpke::AeadId::TLS_AES_128_GCM_SHA256}};
-    auto setupResult =
-        constructHpkeSetupResult(std::move(kex), supportedECHConfig);
-
-    // Add empty ECH extension to client hello inner
-    auto chloInner = TestMessages::clientHello();
-    ClientECH chloInnerECHExt;
-    chloInner.extensions.push_back(encodeExtension(chloInnerECHExt));
-
-    // Encrypt client hello
-    ClientHello chloOuter = getClientHelloOuter();
-    chloOuter.legacy_session_id = folly::IOBuf::create(0);
-
-    ClientECH echExt = encryptClientHello(
-        supportedECHConfig, chloInner, chloOuter, std::move(setupResult));
-
-    // Add ECH extension
-    chloOuter.extensions.push_back(encodeExtension(echExt));
-
-    return chloOuter;
-  };
-
   auto kex = std::make_unique<OpenSSLECKeyExchange<P256>>();
   kex->setPrivateKey(getPrivateKey(kP256Key));
 
