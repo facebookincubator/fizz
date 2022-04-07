@@ -46,7 +46,7 @@ struct Params {
 };
 
 void testExportValues(
-    HpkeContext context,
+    std::unique_ptr<HpkeContext>& context,
     const std::vector<std::string>& exportValues) {
   const size_t exportLength = 32;
   const std::vector<std::string> contexts = {
@@ -57,7 +57,7 @@ void testExportValues(
     std::unique_ptr<folly::IOBuf> exporterContext =
         toIOBuf(contexts.at(testNum));
     auto secret =
-        context.exportSecret(std::move(exporterContext), exportLength);
+        context->exportSecret(std::move(exporterContext), exportLength);
     auto expectedSecret = toIOBuf(exportValues.at(testNum));
 
     EXPECT_TRUE(folly::IOBufEqualTo()(secret, expectedSecret));
@@ -130,7 +130,7 @@ TEST_P(HpkeTest, TestSetup) {
           testParam.skE,
           testParam.pkE,
           std::move(encapCipher)));
-  HpkeContext encryptContext = std::move(setupResult.context);
+  std::unique_ptr<HpkeContext> encryptContext = std::move(setupResult.context);
 
   auto enc = std::move(setupResult.enc);
   auto decapCipher =
@@ -141,7 +141,7 @@ TEST_P(HpkeTest, TestSetup) {
       *decapCipher, _setKey(TrafficKeyMatcher(&decapExpectedTrafficKey)))
       .Times(1);
 
-  HpkeContext decryptContext = setupWithDecap(
+  std::unique_ptr<HpkeContext> decryptContext = setupWithDecap(
       testParam.mode,
       enc->coalesce(),
       std::move(info),
@@ -159,16 +159,16 @@ TEST_P(HpkeTest, TestSetup) {
   std::unique_ptr<folly::IOBuf> plaintext =
       toIOBuf("4265617574792069732074727574682c20747275746820626561757479");
 
-  auto ciphertext = encryptContext.seal(aad.get(), plaintext->clone());
+  auto ciphertext = encryptContext->seal(aad.get(), plaintext->clone());
   auto expectedCiphertext = testParam.ciphertext;
   EXPECT_TRUE(folly::IOBufEqualTo()(ciphertext, toIOBuf(expectedCiphertext)));
 
-  auto gotPlaintext = decryptContext.open(aad.get(), std::move(ciphertext));
+  auto gotPlaintext = decryptContext->open(aad.get(), std::move(ciphertext));
   EXPECT_TRUE(folly::IOBufEqualTo()(gotPlaintext, plaintext));
 
   // Test exporter secret
-  auto gotExporterSecretE = encryptContext.getExporterSecret();
-  auto gotExporterSecretD = decryptContext.getExporterSecret();
+  auto gotExporterSecretE = encryptContext->getExporterSecret();
+  auto gotExporterSecretD = decryptContext->getExporterSecret();
   auto expectedExporterSecret = toIOBuf(testParam.exporterSecret);
   EXPECT_TRUE(
       folly::IOBufEqualTo()(gotExporterSecretE, expectedExporterSecret));
@@ -176,8 +176,8 @@ TEST_P(HpkeTest, TestSetup) {
       folly::IOBufEqualTo()(gotExporterSecretD, expectedExporterSecret));
 
   // Test export values
-  testExportValues(std::move(encryptContext), testParam.exportValues);
-  testExportValues(std::move(decryptContext), testParam.exportValues);
+  testExportValues(encryptContext, testParam.exportValues);
+  testExportValues(decryptContext, testParam.exportValues);
 }
 
 TEST_P(HpkeTest, TestKeySchedule) {
@@ -207,7 +207,7 @@ TEST_P(HpkeTest, TestKeySchedule) {
   auto context = keySchedule(std::move(keyScheduleParams));
 
   EXPECT_TRUE(folly::IOBufEqualTo()(
-      context.getExporterSecret(), toIOBuf(testParam.exporterSecret)));
+      context->getExporterSecret(), toIOBuf(testParam.exporterSecret)));
 }
 
 /***

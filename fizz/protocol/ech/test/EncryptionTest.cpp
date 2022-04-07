@@ -228,7 +228,7 @@ TEST(EncryptionTest, TestValidEncryptClientHello) {
       clientECH.enc,
       clientHelloOuterEnc);
   std::unique_ptr<folly::IOBuf> gotClientHelloInner =
-      context.open(clientHelloOuterAad.get(), std::move(clientECH.payload));
+      context->open(clientHelloOuterAad.get(), std::move(clientECH.payload));
 
   folly::io::Cursor encodedECHInnerCursor(gotClientHelloInner.get());
   auto gotChlo = decode<ClientHello>(encodedECHInnerCursor);

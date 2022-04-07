@@ -25,7 +25,7 @@ static std::unique_ptr<folly::IOBuf> writeKeyScheduleContext(
   return keyScheduleContext;
 }
 
-HpkeContext keySchedule(KeyScheduleParams params) {
+std::unique_ptr<HpkeContext> keySchedule(KeyScheduleParams params) {
   auto hkdf = std::move(params.hkdf);
 
   auto psk = params.pskInputs.hasValue()
@@ -82,7 +82,7 @@ HpkeContext keySchedule(KeyScheduleParams params) {
   trafficKey.iv = std::move(nonce);
   params.cipher->setKey(std::move(trafficKey));
 
-  return HpkeContext(
+  return std::make_unique<HpkeContextImpl>(
       std::move(params.cipher),
       std::move(exporterSecret),
       std::move(hkdf),
@@ -113,7 +113,7 @@ SetupResult setupWithEncap(
   return result;
 }
 
-HpkeContext setupWithDecap(
+std::unique_ptr<HpkeContext> setupWithDecap(
     Mode mode,
     folly::ByteRange enc,
     std::unique_ptr<folly::IOBuf> info,

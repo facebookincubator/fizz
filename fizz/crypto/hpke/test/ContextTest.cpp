@@ -49,7 +49,7 @@ TEST_P(HpkeContextTest, TestContext) {
   encryptCipher->setKey(
       TrafficKey{toIOBuf(testParam.key), toIOBuf(testParam.iv)});
 
-  HpkeContext encryptContext(
+  HpkeContextImpl encryptContext(
       std::move(encryptCipher),
       toIOBuf(kExportSecret),
       std::make_unique<fizz::hpke::Hkdf>(
@@ -65,7 +65,7 @@ TEST_P(HpkeContextTest, TestContext) {
   auto decryptCipher = getCipher(testParam.cipher);
   decryptCipher->setKey(
       TrafficKey{toIOBuf(testParam.key), toIOBuf(testParam.iv)});
-  HpkeContext decryptContext(
+  HpkeContextImpl decryptContext(
       std::move(decryptCipher),
       toIOBuf(kExportSecret),
       std::make_unique<fizz::hpke::Hkdf>(
@@ -88,7 +88,7 @@ TEST_P(HpkeContextTest, TestContextRoles) {
   encryptCipher->setKey(
       TrafficKey{toIOBuf(testParam.key), toIOBuf(testParam.iv)});
 
-  HpkeContext encryptContext(
+  HpkeContextImpl encryptContext(
       std::move(encryptCipher),
       toIOBuf(kExportSecret),
       std::make_unique<fizz::hpke::Hkdf>(
@@ -100,7 +100,7 @@ TEST_P(HpkeContextTest, TestContextRoles) {
   auto decryptCipher = getCipher(testParam.cipher);
   decryptCipher->setKey(
       TrafficKey{toIOBuf(testParam.key), toIOBuf(testParam.iv)});
-  HpkeContext decryptContext(
+  HpkeContextImpl decryptContext(
       std::move(decryptCipher),
       toIOBuf(kExportSecret),
       std::make_unique<fizz::hpke::Hkdf>(
@@ -133,7 +133,7 @@ TEST_P(HpkeContextTest, TestExportSecret) {
 
     auto suiteId = generateHpkeSuiteId(
         NamedGroup::x25519, HashFunction::Sha256, testParam.cipher);
-    HpkeContext context(
+    HpkeContextImpl context(
         getCipher(testParam.cipher),
         toIOBuf(testParam.exporterSecret),
         std::make_unique<fizz::hpke::Hkdf>(
@@ -161,7 +161,7 @@ TEST_P(HpkeContextTest, TestExportSecretThrow) {
         NamedGroup::x25519,
         HashFunction::Sha256,
         CipherSuite::TLS_AES_128_GCM_SHA256);
-    HpkeContext context(
+    HpkeContextImpl context(
         OpenSSLEVPCipher::makeCipher<AESGCM128>(),
         toIOBuf(testParam.exporterSecret),
         std::make_unique<fizz::hpke::Hkdf>(

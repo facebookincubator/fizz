@@ -21,7 +21,23 @@ namespace hpke {
 class HpkeContext {
  public:
   enum class Role { Sender, Receiver };
-  HpkeContext(
+  virtual ~HpkeContext() = default;
+  virtual std::unique_ptr<folly::IOBuf> seal(
+      const folly::IOBuf* aad,
+      std::unique_ptr<folly::IOBuf> pt) = 0;
+  virtual std::unique_ptr<folly::IOBuf> open(
+      const folly::IOBuf* aad,
+      std::unique_ptr<folly::IOBuf> ct) = 0;
+  virtual std::unique_ptr<folly::IOBuf> exportSecret(
+      std::unique_ptr<folly::IOBuf> exporterContext,
+      size_t desiredLength) const = 0;
+  // NOTE: This should only be used for testing.
+  virtual std::unique_ptr<folly::IOBuf> getExporterSecret() = 0;
+};
+
+class HpkeContextImpl : public HpkeContext {
+ public:
+  HpkeContextImpl(
       std::unique_ptr<Aead> cipher,
       std::unique_ptr<folly::IOBuf> exporterSecret,
       std::unique_ptr<fizz::hpke::Hkdf> hkdf,
@@ -29,15 +45,14 @@ class HpkeContext {
       Role role);
   std::unique_ptr<folly::IOBuf> seal(
       const folly::IOBuf* aad,
-      std::unique_ptr<folly::IOBuf> pt);
+      std::unique_ptr<folly::IOBuf> pt) override;
   std::unique_ptr<folly::IOBuf> open(
       const folly::IOBuf* aad,
-      std::unique_ptr<folly::IOBuf> ct);
+      std::unique_ptr<folly::IOBuf> ct) override;
   std::unique_ptr<folly::IOBuf> exportSecret(
       std::unique_ptr<folly::IOBuf> exporterContext,
-      size_t desiredLength) const;
-  // NOTE: This should only be used for testing.
-  std::unique_ptr<folly::IOBuf> getExporterSecret();
+      size_t desiredLength) const override;
+  std::unique_ptr<folly::IOBuf> getExporterSecret() override;
 
  private:
   void incrementSeq();

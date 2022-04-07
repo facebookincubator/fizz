@@ -44,7 +44,7 @@ std::unique_ptr<folly::IOBuf> extractEncodedClientHelloInner(
     const ECHCipherSuite& cipherSuite,
     const std::unique_ptr<folly::IOBuf>& encapsulatedKey,
     std::unique_ptr<folly::IOBuf> encryptedCh,
-    hpke::HpkeContext& context,
+    std::unique_ptr<hpke::HpkeContext>& context,
     const ClientHello& clientHelloOuter) {
   std::unique_ptr<folly::IOBuf> encodedClientHelloInner;
   switch (version) {
@@ -53,7 +53,7 @@ std::unique_ptr<folly::IOBuf> extractEncodedClientHelloInner(
       auto chloOuterAad =
           makeClientHelloAad(cipherSuite, configId, encapsulatedKey, aadCH);
       encodedClientHelloInner =
-          context.open(chloOuterAad.get(), std::move(encryptedCh));
+          context->open(chloOuterAad.get(), std::move(encryptedCh));
     }
   }
   return encodedClientHelloInner;
@@ -324,7 +324,7 @@ ClientECH encryptClientHello(
       clientHelloOuterEnc);
 
   // Encrypt inner client hello
-  echExtension.payload = setupResult.context.seal(
+  echExtension.payload = setupResult.context->seal(
       clientHelloOuterAad.get(), std::move(encodedClientHelloInner));
   return echExtension;
 }

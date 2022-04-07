@@ -61,11 +61,11 @@ struct KeyScheduleParams {
   fizz::hpke::HpkeContext::Role ctxRole;
 };
 
-HpkeContext keySchedule(KeyScheduleParams params);
+std::unique_ptr<HpkeContext> keySchedule(KeyScheduleParams params);
 
 struct SetupResult {
   std::unique_ptr<folly::IOBuf> enc;
-  HpkeContext context;
+  std::unique_ptr<HpkeContext> context;
 };
 
 struct SetupParam {
@@ -82,7 +82,7 @@ SetupResult setupWithEncap(
     folly::Optional<PskInputs> pskInputs,
     SetupParam param);
 
-HpkeContext setupWithDecap(
+std::unique_ptr<HpkeContext> setupWithDecap(
     Mode mode,
     folly::ByteRange enc,
     std::unique_ptr<folly::IOBuf> info,

@@ -12,7 +12,7 @@
 namespace fizz {
 namespace hpke {
 
-HpkeContext::HpkeContext(
+HpkeContextImpl::HpkeContextImpl(
     std::unique_ptr<Aead> cipher,
     std::unique_ptr<folly::IOBuf> exporterSecret,
     std::unique_ptr<fizz::hpke::Hkdf> hkdf,
@@ -24,14 +24,14 @@ HpkeContext::HpkeContext(
       suiteId_(std::move(suiteId)),
       role_(role) {}
 
-void HpkeContext::incrementSeq() {
+void HpkeContextImpl::incrementSeq() {
   if (seqNum_ >= (UINT64_MAX - 1)) {
     throw std::runtime_error("NonceOverflowError: When incrementing seqNum");
   }
   seqNum_ += 1;
 }
 
-std::unique_ptr<folly::IOBuf> HpkeContext::seal(
+std::unique_ptr<folly::IOBuf> HpkeContextImpl::seal(
     const folly::IOBuf* aad,
     std::unique_ptr<folly::IOBuf> pt) {
   if (role_ != Role::Sender) {
@@ -43,7 +43,7 @@ std::unique_ptr<folly::IOBuf> HpkeContext::seal(
   return ct;
 }
 
-std::unique_ptr<folly::IOBuf> HpkeContext::open(
+std::unique_ptr<folly::IOBuf> HpkeContextImpl::open(
     const folly::IOBuf* aad,
     std::unique_ptr<folly::IOBuf> ct) {
   if (role_ != Role::Receiver) {
@@ -55,7 +55,7 @@ std::unique_ptr<folly::IOBuf> HpkeContext::open(
   return pt;
 }
 
-std::unique_ptr<folly::IOBuf> HpkeContext::exportSecret(
+std::unique_ptr<folly::IOBuf> HpkeContextImpl::exportSecret(
     std::unique_ptr<folly::IOBuf> exporterContext,
     size_t desiredLength) const {
   auto maxL = 255 * hkdf_->hashLength();
@@ -71,7 +71,7 @@ std::unique_ptr<folly::IOBuf> HpkeContext::exportSecret(
       suiteId_->clone());
 }
 
-std::unique_ptr<folly::IOBuf> HpkeContext::getExporterSecret() {
+std::unique_ptr<folly::IOBuf> HpkeContextImpl::getExporterSecret() {
   return exporterSecret_->clone();
 }
 

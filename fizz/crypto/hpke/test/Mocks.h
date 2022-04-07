@@ -10,6 +10,7 @@
 
 #include <fizz/crypto/aead/Aead.h>
 #include <fizz/crypto/exchange/X25519.h>
+#include <fizz/crypto/hpke/Context.h>
 #include <folly/portability/GMock.h>
 
 namespace fizz {
@@ -81,6 +82,44 @@ class MockAeadCipher : public Aead {
 
  private:
   std::unique_ptr<Aead> actualCipher_;
+};
+
+class MockHpkeContext : public HpkeContext {
+ public:
+  MOCK_METHOD2(
+      _seal,
+      std::unique_ptr<folly::IOBuf>(
+          const folly::IOBuf* aad,
+          std::unique_ptr<folly::IOBuf>& pt));
+  std::unique_ptr<folly::IOBuf> seal(
+      const folly::IOBuf* aad,
+      std::unique_ptr<folly::IOBuf> pt) override {
+    return _seal(aad, pt);
+  }
+
+  MOCK_METHOD2(
+      _open,
+      std::unique_ptr<folly::IOBuf>(
+          const folly::IOBuf* aad,
+          std::unique_ptr<folly::IOBuf>& ct));
+  std::unique_ptr<folly::IOBuf> open(
+      const folly::IOBuf* aad,
+      std::unique_ptr<folly::IOBuf> pt) override {
+    return _open(aad, pt);
+  }
+
+  MOCK_CONST_METHOD2(
+      _exportSecret,
+      std::unique_ptr<folly::IOBuf>(
+          std::unique_ptr<folly::IOBuf>& exporterContext,
+          size_t desiredLength));
+  std::unique_ptr<folly::IOBuf> exportSecret(
+      std::unique_ptr<folly::IOBuf> exporterContext,
+      size_t desiredLength) const override {
+    return _exportSecret(exporterContext, desiredLength);
+  }
+
+  MOCK_METHOD0(getExporterSecret, std::unique_ptr<folly::IOBuf>());
 };
 
 } // namespace test
