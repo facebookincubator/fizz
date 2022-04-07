@@ -43,6 +43,12 @@ struct ClientECH {
 struct ECHIsInner {
   static constexpr ExtensionType extension_type = ExtensionType::ech_is_inner;
 };
+
+struct OuterExtensions {
+  std::vector<ExtensionType> types;
+  static constexpr ExtensionType extension_type =
+      ExtensionType::ech_outer_extensions;
+};
 } // namespace ech
 } // namespace fizz
 

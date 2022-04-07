@@ -36,6 +36,18 @@ inline Extension encodeExtension(const ech::ECHIsInner&) {
 }
 
 template <>
+inline Extension encodeExtension(const ech::OuterExtensions& outerExts) {
+  Extension ext;
+  ext.extension_type = ExtensionType::ech_outer_extensions;
+  ext.extension_data = folly::IOBuf::create(0);
+
+  folly::io::Appender appender(ext.extension_data.get(), 20);
+  detail::writeVector<uint8_t>(outerExts.types, appender);
+
+  return ext;
+}
+
+template <>
 inline ech::ClientECH getExtension(folly::io::Cursor& cs) {
   ech::ClientECH clientECH;
   detail::read(clientECH.cipher_suite, cs);
@@ -44,5 +56,12 @@ inline ech::ClientECH getExtension(folly::io::Cursor& cs) {
   detail::readBuf<uint16_t>(clientECH.payload, cs);
 
   return clientECH;
+}
+
+template <>
+inline ech::OuterExtensions getExtension(folly::io::Cursor& cs) {
+  ech::OuterExtensions outerExts;
+  detail::readVector<uint8_t>(outerExts.types, cs);
+  return outerExts;
 }
 } // namespace fizz

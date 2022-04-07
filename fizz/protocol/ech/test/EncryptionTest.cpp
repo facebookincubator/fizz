@@ -301,6 +301,10 @@ TEST(EncryptionTest, TestSubstituteOuterExtensions) {
   EchOuterExtensions echOuterExt;
   std::vector<Extension*> expectedRes;
 
+  // This should not be permitted to be copied out.
+  Extension echExt = {
+      ExtensionType::encrypted_client_hello, folly::IOBuf::create(0)};
+
   Extension extA = outerExt.at(0).clone(), extB = outerExt.at(1).clone(),
             extC = outerExt.at(2).clone(), extD = outerExt.at(3).clone(),
             extE = outerExt.at(4).clone(), extF = outerExt.at(5).clone(),
@@ -366,6 +370,33 @@ TEST(EncryptionTest, TestSubstituteOuterExtensions) {
   EXPECT_THROW(
       substituteOuterExtensions(std::move(innerChlo.extensions), outerExt),
       fizz::FizzException);
+
+  /**
+   * If the ech_outer_extensions does not match a contiguous set of extensions
+   * in the outerClientHello, it should not fail.
+   *
+   * outerExt: [D, E, F, G]
+   * innerExt: [outer_extensions(D, F, G)]
+   *
+   * result: [D, F, G]
+   */
+
+  // return values to default
+  innerChlo = TestMessages::clientHello();
+  innerChlo.extensions.clear();
+
+  outerExt = cloneExtensionList({&extD, &extE, &extF, &extG});
+
+  echOuterExt.extensionTypes = {
+      extD.extension_type, extF.extension_type, extG.extension_type};
+
+  innerChlo.extensions.push_back(encodeExtension(echOuterExt));
+
+  actualRes =
+      substituteOuterExtensions(std::move(innerChlo.extensions), outerExt);
+  expectedRes = {&extD, &extF, &extG};
+
+  EXPECT_THAT(std::ref(actualRes), ExtensionEq(expectedRes));
 
   /*
    * If all ech_outer_extensions values are all present in outerExt and maintain
@@ -434,6 +465,29 @@ TEST(EncryptionTest, TestSubstituteOuterExtensions) {
 
   innerChlo.extensions =
       cloneExtensionList({&extD, &extE, &extF, &encodedEchOuterExt});
+
+  EXPECT_THROW(
+      substituteOuterExtensions(std::move(innerChlo.extensions), outerExt),
+      FizzException);
+
+  /*
+   * If we attempt to copy out the ECH extension to the innerExt, we expect it
+   * to throw an error.
+   *
+   * outerExt: [ECH, A]
+   * innerExt: [outer_extensions(ECH), B]
+   *
+   * result: FizzException
+   */
+  innerChlo = TestMessages::clientHello();
+
+  outerExt = cloneExtensionList({&echExt, &extA});
+
+  echOuterExt.extensionTypes = {echExt.extension_type};
+
+  encodedEchOuterExt = encodeExtension(echOuterExt);
+
+  innerChlo.extensions = cloneExtensionList({&encodedEchOuterExt, &extB});
 
   EXPECT_THROW(
       substituteOuterExtensions(std::move(innerChlo.extensions), outerExt),

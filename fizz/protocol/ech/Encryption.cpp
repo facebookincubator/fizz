@@ -399,88 +399,63 @@ std::vector<Extension> substituteOuterExtensions(
     const std::vector<Extension>& outerExt) {
   std::vector<Extension> expandedInnerExt;
 
-  // validate that the innerExt has no duplicate extensions.
-  Protocol::checkDuplicateExtensions(innerExt);
-
-  // locate echOuterExtension
-  auto echOuterExtension = std::find_if(
-      innerExt.cbegin(), innerExt.cend(), [](const Extension& ext) {
-        return ext.extension_type == fizz::ExtensionType::ech_outer_extensions;
-      });
-
-  // Return innerExt if no ech_outer_extensions extension was found.
-  if (echOuterExtension == innerExt.end()) {
-    return std::move(innerExt);
-  }
-
-  folly::io::Cursor cursor(echOuterExtension->extension_data.get());
-
-  std::vector<ExtensionType> outerExtsToCopy;
-  fizz::detail::readVector<std::uint8_t>(outerExtsToCopy, cursor);
-
-  // Insert all innerExt extensions before ech_outer_extensions.
-  std::transform(
-      innerExt.cbegin(),
-      echOuterExtension,
-      std::back_inserter(expandedInnerExt),
-      [](const Extension& ext) { return ext.clone(); });
-
-  /**
-   * Expand ech_outer_extensions using the following two pointer approach:
-   * Iterate over the outerExt and when both pointers have
-   * equivalent extensions types, we increment idxInner
-   * –indicating that we've validated an extension is present in
-   * outerExt and maintains its relative ordering.
-   */
-  std::size_t idxInner = 0;
-
-  for (const auto& ext : outerExt) {
-    if (idxInner >= outerExtsToCopy.size()) {
-      break;
+  // This will throw if we duplicate an extension (or if we try to put an
+  // ech_outer_extensions in the resulting inner chlo)
+  std::unordered_set<ExtensionType> seenTypes;
+  auto dupeCheck = [&seenTypes](ExtensionType t) {
+    if (seenTypes.count(t) != 0) {
+      throw fizz::FizzException(
+          "inner client hello has duplicate extensions",
+          AlertDescription::illegal_parameter);
     }
+    seenTypes.insert(t);
+  };
 
-    if ((ext.extension_type == outerExtsToCopy[idxInner])) {
-      expandedInnerExt.push_back(ext.clone());
-      idxInner++;
+  for (auto& ext : innerExt) {
+    dupeCheck(ext.extension_type);
+    if (ExtensionType::ech_outer_extensions != ext.extension_type) {
+      expandedInnerExt.push_back(std::move(ext));
+    } else {
+      // Parse the extension
+      ech::OuterExtensions outerExtensions;
+      try {
+        folly::io::Cursor cursor(ext.extension_data.get());
+        outerExtensions = getExtension<ech::OuterExtensions>(cursor);
+      } catch (...) {
+        throw fizz::FizzException(
+            "ech_outer_extensions malformed",
+            AlertDescription::illegal_parameter);
+      }
+
+      // Use the linear approach suggested by the RFC.
+      auto outerIt = outerExt.cbegin();
+      auto outerEnd = outerExt.cend();
+      for (const auto extType : outerExtensions.types) {
+        // Check types for dupes and ech
+        dupeCheck(extType);
+        if (extType == ExtensionType::encrypted_client_hello) {
+          throw fizz::FizzException(
+              "ech is not allowed in outer extensions",
+              AlertDescription::illegal_parameter);
+        }
+
+        // Scan
+        while (outerIt != outerEnd && outerIt->extension_type != extType) {
+          outerIt++;
+        }
+
+        // If at end, error
+        if (outerIt == outerEnd) {
+          throw fizz::FizzException(
+              "ech outer extensions references a missing extension",
+              AlertDescription::illegal_parameter);
+        }
+
+        // Add it and increment
+        expandedInnerExt.push_back(outerIt->clone());
+        outerIt++;
+      }
     }
-  }
-
-  /**
-   * If we've reached the end of the outerExtensionPtrs, the following
-   * requirements have been satisfied:
-   *
-   * 1. All extensions in outerExtension are present in clientOuterHello
-   * 2. The extensions in outerExtension preserve the relative ordering of
-   * extensions in clientOuterHello.
-   *
-   * Otherwise we've violated one of the requirements.
-   **/
-  if (idxInner < outerExtsToCopy.size()) {
-    throw fizz::FizzException(
-        "Requirements for OuterExtensions not met.",
-        AlertDescription::decode_error);
-  }
-
-  // Add all extensions that follow the ech_outer_extensions; resulting vector
-  // is the list of substituted extensions
-  std::transform(
-      std::next(echOuterExtension, 1),
-      innerExt.cend(),
-      std::back_inserter(expandedInnerExt),
-      [](const Extension& ext) { return ext.clone(); });
-
-  // Verify that there are no duplicate extensions.
-  std::unordered_set<ExtensionType> expandedExtTypes;
-
-  std::transform(
-      expandedInnerExt.cbegin(),
-      expandedInnerExt.cend(),
-      std::inserter(expandedExtTypes, expandedExtTypes.begin()),
-      [](const Extension& ext) { return ext.extension_type; });
-
-  if (expandedExtTypes.size() != expandedInnerExt.size()) {
-    throw FizzException(
-        "Duplicate extensions", AlertDescription::illegal_parameter);
   }
 
   return expandedInnerExt;
