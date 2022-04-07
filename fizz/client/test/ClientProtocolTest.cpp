@@ -1020,7 +1020,7 @@ TEST_F(ClientProtocolTest, TestConnectECH) {
   EXPECT_EQ(*state_.sni(), "v9 publicname");
 
   // Check that the real name is saved.
-  EXPECT_EQ(*state_.echSni(), "www.hostname.com");
+  EXPECT_EQ(state_.echState()->sni, "www.hostname.com");
 
   // Check the legacy session id is the same in both the client hello inner
   // and the client hello outer
@@ -1202,8 +1202,9 @@ TEST_F(ClientProtocolTest, TestServerHelloECHFlow) {
   auto encodedEncryptedClientHello = "esni";
   state_.encodedClientHello() =
       folly::IOBuf::copyBuffer(encodedEncryptedClientHello);
-  state_.encodedECH() = folly::IOBuf::copyBuffer("chlo");
-  state_.echSni() = std::move(state_.sni());
+  state_.echState().emplace();
+  state_.echState()->encodedECH = folly::IOBuf::copyBuffer("chlo");
+  state_.echState()->sni = std::move(*state_.sni());
   state_.sni() = "fakehostname.com";
 
   auto shlo = TestMessages::serverHello();
@@ -1349,7 +1350,8 @@ TEST_F(ClientProtocolTest, TestServerHelloECHFlow) {
       state_.handshakeTime(),
       std::chrono::system_clock::time_point(std::chrono::minutes(5)));
   EXPECT_EQ(state_.sni(), "www.hostname.com");
-  EXPECT_EQ(state_.echSni(), "www.hostname.com");
+  EXPECT_EQ(state_.echState()->sni, "www.hostname.com");
+  EXPECT_EQ(state_.echState()->status, ECHStatus::Accepted);
 }
 
 TEST_F(ClientProtocolTest, TestServerHelloECHRejectedFlow) {
@@ -1357,8 +1359,9 @@ TEST_F(ClientProtocolTest, TestServerHelloECHRejectedFlow) {
   auto encodedEncryptedClientHello = "esni";
   state_.encodedClientHello() =
       folly::IOBuf::copyBuffer(encodedEncryptedClientHello);
-  state_.encodedECH() = folly::IOBuf::copyBuffer("chlo");
-  state_.echSni() = std::move(state_.sni());
+  state_.echState().emplace();
+  state_.echState()->encodedECH = folly::IOBuf::copyBuffer("chlo");
+  state_.echState()->sni = std::move(*state_.sni());
   state_.sni() = "fakehostname.com";
 
   auto shlo = TestMessages::serverHello();
@@ -1503,7 +1506,8 @@ TEST_F(ClientProtocolTest, TestServerHelloECHRejectedFlow) {
       state_.handshakeTime(),
       std::chrono::system_clock::time_point(std::chrono::minutes(5)));
   EXPECT_EQ(state_.sni(), "fakehostname.com");
-  EXPECT_EQ(state_.echSni(), "www.hostname.com");
+  EXPECT_EQ(state_.echState()->sni, "www.hostname.com");
+  EXPECT_EQ(state_.echState()->status, ECHStatus::Rejected);
 }
 
 TEST_F(ClientProtocolTest, TestServerHelloAfterHrrFlow) {

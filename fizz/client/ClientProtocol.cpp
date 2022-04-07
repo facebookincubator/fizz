@@ -809,7 +809,7 @@ EventHandler<ClientTypes, StateEnum::Uninitialized, Event::Connect>::handle(
   }
 
   // Create the ECH (both the client hello inner and client hello outer)
-  folly::Optional<Buf> encodedECH = folly::none;
+  Buf encodedECH;
 
   if (echParams.has_value()) {
     auto newFakeRandom = context->getFactory()->makeRandom();
@@ -903,6 +903,7 @@ EventHandler<ClientTypes, StateEnum::Uninitialized, Event::Connect>::handle(
                          keyExchangers = std::move(keyExchangers),
                          sni = std::move(sni),
                          echSni = std::move(echSni),
+                         echParams = std::move(echParams),
                          random = std::move(random),
                          legacySessionId = std::move(legacySessionId),
                          psk = std::move(psk),
@@ -911,13 +912,16 @@ EventHandler<ClientTypes, StateEnum::Uninitialized, Event::Connect>::handle(
                          earlyDataType](State& newState) mutable {
     newState.context() = std::move(context);
     newState.verifier() = verifier;
+    if (echParams.has_value()) {
+      newState.echState().emplace();
+      newState.echState()->sni = std::move(echSni);
+      newState.echState()->encodedECH = std::move(encodedECH);
+    }
     newState.encodedClientHello() = std::move(encodedClientHello);
-    newState.encodedECH() = std::move(encodedECH);
     newState.readRecordLayer() = std::move(readRecordLayer);
     newState.writeRecordLayer() = std::move(writeRecordLayer);
     newState.keyExchangers() = std::move(keyExchangers);
     newState.sni() = std::move(sni);
-    newState.echSni() = std::move(echSni);
     newState.clientRandom() = std::move(random);
     newState.legacySessionId() = std::move(legacySessionId);
     newState.attemptedPsk() = std::move(psk);
@@ -1194,30 +1198,34 @@ EventHandler<ClientTypes, StateEnum::ExpectingServerHello, Event::ServerHello>::
   std::unique_ptr<HandshakeContext> echHandshakeContext;
   if (state.handshakeContext()) {
     handshakeContext = std::move(state.handshakeContext());
-    // TODO: Handle HRR correctly for ECH
-    echHandshakeContext = handshakeContext->clone();
+    if (state.echState().has_value()) {
+      echHandshakeContext = std::move(state.echState()->handshakeContext);
+    }
   } else {
     handshakeContext =
         state.context()->getFactory()->makeHandshakeContext(cipher);
-    if (state.encodedECH().has_value()) {
+    if (state.echState().has_value()) {
       echHandshakeContext =
           state.context()->getFactory()->makeHandshakeContext(cipher);
-      echHandshakeContext->appendToTranscript(state.encodedECH().value());
+      echHandshakeContext->appendToTranscript(state.echState()->encodedECH);
     }
     handshakeContext->appendToTranscript(state.encodedClientHello());
   }
 
-  bool acceptedECH = false;
-  if (state.encodedECH().has_value()) {
+  folly::Optional<ECHStatus> echStatus;
+  if (state.echState().has_value()) {
     VLOG(8) << "Checking if ECH was accepted...";
 
-    acceptedECH =
+    bool acceptedECH =
         ech::checkECHAccepted(shlo, echHandshakeContext->clone(), scheduler);
 
     if (acceptedECH) {
       handshakeContext = std::move(echHandshakeContext);
+      echStatus = ECHStatus::Accepted;
+    } else {
+      echStatus = ECHStatus::Rejected;
     }
-    VLOG(8) << "ECH was " << (acceptedECH ? "accepted" : "not accepted");
+    VLOG(8) << "ECH was " << toString(*echStatus);
   }
 
   handshakeContext->appendToTranscript(*shlo.originalEncoding);
@@ -1290,7 +1298,7 @@ EventHandler<ClientTypes, StateEnum::ExpectingServerHello, Event::ServerHello>::
            pskMode = negotiatedPsk.mode,
            serverCert = std::move(negotiatedPsk.serverCert),
            clientCert = std::move(negotiatedPsk.clientCert),
-           acceptedECH,
+           echStatus = std::move(echStatus),
            authType = std::move(authType),
            handshakeTime = std::move(handshakeTime)](State& newState) mutable {
             newState.keyScheduler() = std::move(keyScheduler);
@@ -1312,8 +1320,12 @@ EventHandler<ClientTypes, StateEnum::ExpectingServerHello, Event::ServerHello>::
             newState.clientCert() = std::move(clientCert);
             newState.clientAuthRequested() = std::move(authType);
             newState.handshakeTime() = std::move(handshakeTime);
-            if (acceptedECH) {
-              newState.sni() = newState.echSni();
+            if (echStatus.has_value()) {
+              if (echStatus == ECHStatus::Accepted) {
+                newState.sni() = newState.echState()->sni;
+              }
+              newState.echState()->status = *echStatus;
+              newState.echState()->encodedECH.reset();
             }
           }),
       SecretAvailable(std::move(handshakeReadSecret)),
@@ -1492,6 +1504,10 @@ Actions EventHandler<
         newState.earlyWriteRecordLayer() = nullptr;
         newState.encodedClientHello() = std::move(encodedClientHello);
         newState.keyExchangers() = std::move(keyExchangers);
+        // TODO: Properly handle HRR. This prevents a crash but doesn't work.
+        if (newState.echState().has_value()) {
+          newState.echState()->handshakeContext = handshakeContext->clone();
+        }
         newState.handshakeContext() = std::move(handshakeContext);
         newState.keyExchangeType() = KeyExchangeType::HelloRetryRequest;
         newState.attemptedPsk() = std::move(attemptedPsk);

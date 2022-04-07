@@ -52,5 +52,17 @@ folly::StringPiece toString(ClientAuthType auth) {
   }
   return "Invalid client auth type";
 }
+
+folly::StringPiece toString(ECHStatus status) {
+  switch (status) {
+    case ECHStatus::Requested:
+      return "Requested";
+    case ECHStatus::Accepted:
+      return "Accepted";
+    case ECHStatus::Rejected:
+      return "Rejected";
+  }
+  return "Invalid ECH Status";
+}
 } // namespace client
 } // namespace fizz

@@ -13,6 +13,7 @@
 #include <fizz/protocol/Certificate.h>
 #include <fizz/protocol/KeyScheduler.h>
 #include <fizz/protocol/Types.h>
+#include <fizz/protocol/ech/Encryption.h>
 #include <fizz/record/RecordLayer.h>
 
 namespace fizz {
@@ -55,6 +56,25 @@ struct EarlyDataParams {
   std::shared_ptr<const Cert> clientCert;
   folly::Optional<std::string> alpn;
   Buf earlyExporterSecret;
+};
+
+enum class ECHStatus { Requested, Rejected, Accepted };
+
+struct ECHState {
+  // Status of ECH, initially Requested.
+  ECHStatus status{ECHStatus::Requested};
+  // Encoded encrypted (inner) client hello.
+  Buf encodedECH;
+  // Actual SNI sent in ECH. Could be none.
+  folly::Optional<std::string> sni;
+  // ECH parameters selected for use.
+  ech::SupportedECHConfig supportedConfig;
+  // HPKE context saved for use with HRR, if needed.
+  std::unique_ptr<hpke::SetupResult> hpkeSetup;
+  // ECH random (for HRR, if needed).
+  Random random;
+  // ECH handshake context (initialized during HRR)
+  mutable std::unique_ptr<HandshakeContext> handshakeContext;
 };
 
 class State {
@@ -267,22 +287,10 @@ class State {
   }
 
   /**
-   * Contains the encoded encrypted client hello. May be null.
-   *
-   * Should not be used outside of the state machine.
+   * Contains the ECH state (if ECH has been enabled).
    */
-  const folly::Optional<Buf>& encodedECH() const {
-    return encodedECH_;
-  }
-
-  /**
-   * Contains the server name used within the encrypted client hello. May be
-   * null.
-   *
-   * Should not be used outside of the state machine.
-   */
-  const folly::Optional<std::string>& echSni() const {
-    return echSni_;
+  const folly::Optional<ECHState>& echState() const {
+    return echState_;
   }
 
   /**
@@ -492,12 +500,8 @@ class State {
     return encodedClientHello_;
   }
 
-  auto& encodedECH() {
-    return encodedECH_;
-  }
-
-  auto& echSni() {
-    return echSni_;
+  auto& echState() {
+    return echState_;
   }
 
   auto& keyExchangers() const {
@@ -580,9 +584,10 @@ class State {
   folly::Optional<Random> clientRandom_;
   folly::Optional<Buf> legacySessionId_;
   bool sentCCS_{false};
+
   folly::Optional<Buf> encodedClientHello_;
-  folly::Optional<Buf> encodedECH_;
-  folly::Optional<std::string> echSni_;
+
+  folly::Optional<ECHState> echState_;
 
   mutable folly::Optional<std::map<NamedGroup, std::unique_ptr<KeyExchange>>>
       keyExchangers_;
@@ -601,6 +606,7 @@ class State {
 
 folly::StringPiece toString(client::StateEnum);
 folly::StringPiece toString(client::ClientAuthType);
+folly::StringPiece toString(client::ECHStatus);
 
 inline std::ostream& operator<<(std::ostream& os, StateEnum state) {
   os << toString(state);

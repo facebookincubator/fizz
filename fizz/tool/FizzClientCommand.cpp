@@ -397,28 +397,27 @@ class Connection : public AsyncSocket::ConnectCallback,
 
   void printECHSuccess(const State& state) {
     LOG(INFO) << "  Encrypted client hello (ECH) requested: "
-              << (state.encodedECH().has_value() ? "Yes" : "No");
-    LOG(INFO) << "  Encrypted client hello (ECH) accepted: "
-              << ((state.sni() == state.echSni()) &&
-                          state.encodedECH().has_value()
-                      ? "Yes"
-                      : "No");
+              << (state.echState().has_value() ? "Yes" : "No");
+    if (state.echState().has_value()) {
+      LOG(INFO) << "  Encrypted client hello (ECH) status: "
+                << toString(state.echState()->status);
 
-    // Get ECH config content
-    const auto& echConfig = echConfigs_.value()[0];
-    const auto& configContent = echConfig.ech_config_content;
-    folly::io::Cursor cursor(configContent.get());
-    auto echConfigContent = decode<ech::ECHConfigContentDraft>(cursor);
+      // Get ECH config content
+      const auto& echConfig = echConfigs_.value()[0];
+      const auto& configContent = echConfig.ech_config_content;
+      folly::io::Cursor cursor(configContent.get());
+      auto echConfigContent = decode<ech::ECHConfigContentDraft>(cursor);
 
-    auto ciphersuite = echConfigContent.cipher_suites[0];
-    LOG(INFO) << "    Hash function: "
-              << toString(getHashFunction(ciphersuite.kdf_id));
-    LOG(INFO) << "    Cipher Suite: "
-              << toString(getCipherSuite(ciphersuite.aead_id));
-    LOG(INFO) << "    Named Group: "
-              << toString(getKexGroup(echConfigContent.kem_id));
-    LOG(INFO) << "    Fake SNI Used: "
-              << echConfigContent.public_name->clone()->moveToFbString();
+      auto ciphersuite = echConfigContent.cipher_suites[0];
+      LOG(INFO) << "    Hash function: "
+                << toString(getHashFunction(ciphersuite.kdf_id));
+      LOG(INFO) << "    Cipher Suite: "
+                << toString(getCipherSuite(ciphersuite.aead_id));
+      LOG(INFO) << "    Named Group: "
+                << toString(getKexGroup(echConfigContent.kem_id));
+      LOG(INFO) << "    Fake SNI Used: "
+                << echConfigContent.public_name->clone()->moveToFbString();
+    }
   }
 
   EventBase* evb_;
