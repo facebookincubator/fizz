@@ -51,7 +51,12 @@ folly::Optional<ClientHello> tryToDecodeECH(
 
     if (decryptionResult.has_value()) {
       // We've successfully decrypted the client hello.
-      return std::move(decryptionResult.value());
+      auto result = std::move(decryptionResult.value());
+      auto expandedExtensions = substituteOuterExtensions(
+          std::move(result.extensions), clientHelloOuter.extensions);
+      result.extensions = std::move(expandedExtensions);
+      result.originalEncoding = encodeHandshake(result);
+      return result;
     }
   }
   return folly::none;

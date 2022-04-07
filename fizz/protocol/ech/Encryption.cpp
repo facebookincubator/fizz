@@ -386,7 +386,6 @@ folly::Optional<ClientHello> tryToDecryptECH(
     // Replace legacy_session_id that got removed during encryption
     decodedChlo.legacy_session_id = clientHelloOuter.legacy_session_id->clone();
 
-    // TODO: Scan for outer_extensions extension.
     return decodedChlo;
   } catch (const std::exception&) {
   }
