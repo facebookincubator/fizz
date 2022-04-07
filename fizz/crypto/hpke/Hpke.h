@@ -59,6 +59,7 @@ struct KeyScheduleParams {
   std::unique_ptr<fizz::hpke::Hkdf> hkdf;
   std::unique_ptr<folly::IOBuf> suiteId;
   fizz::hpke::HpkeContext::Role ctxRole;
+  uint64_t seqNum;
 };
 
 std::unique_ptr<HpkeContext> keySchedule(KeyScheduleParams params);
@@ -73,6 +74,7 @@ struct SetupParam {
   std::unique_ptr<Aead> cipher;
   std::unique_ptr<fizz::hpke::Hkdf> hkdf;
   std::unique_ptr<folly::IOBuf> suiteId;
+  uint64_t seqNum{0};
 };
 
 SetupResult setupWithEncap(

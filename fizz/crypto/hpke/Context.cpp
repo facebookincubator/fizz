@@ -17,12 +17,28 @@ HpkeContextImpl::HpkeContextImpl(
     std::unique_ptr<folly::IOBuf> exporterSecret,
     std::unique_ptr<fizz::hpke::Hkdf> hkdf,
     HpkeSuiteId suiteId,
+    uint64_t seqNum,
     HpkeContext::Role role)
-    : cipher_(std::move(cipher)),
+    : seqNum_(seqNum),
+      cipher_(std::move(cipher)),
       exporterSecret_(std::move(exporterSecret)),
       hkdf_(std::move(hkdf)),
       suiteId_(std::move(suiteId)),
       role_(role) {}
+
+HpkeContextImpl::HpkeContextImpl(
+    std::unique_ptr<Aead> cipher,
+    std::unique_ptr<folly::IOBuf> exporterSecret,
+    std::unique_ptr<fizz::hpke::Hkdf> hkdf,
+    HpkeSuiteId suiteId,
+    HpkeContext::Role role)
+    : HpkeContextImpl(
+          std::move(cipher),
+          std::move(exporterSecret),
+          std::move(hkdf),
+          std::move(suiteId),
+          0,
+          role) {}
 
 void HpkeContextImpl::incrementSeq() {
   if (seqNum_ >= (UINT64_MAX - 1)) {

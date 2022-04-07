@@ -87,6 +87,7 @@ std::unique_ptr<HpkeContext> keySchedule(KeyScheduleParams params) {
       std::move(exporterSecret),
       std::move(hkdf),
       std::move(params.suiteId),
+      params.seqNum,
       params.ctxRole);
 }
 
@@ -106,7 +107,8 @@ SetupResult setupWithEncap(
       std::move(param.cipher),
       std::move(param.hkdf),
       std::move(param.suiteId),
-      HpkeContext::Role::Sender};
+      HpkeContext::Role::Sender,
+      param.seqNum};
 
   SetupResult result{
       std::move(encapResult.enc), keySchedule(std::move(keyScheduleParams))};
@@ -128,7 +130,8 @@ std::unique_ptr<HpkeContext> setupWithDecap(
       std::move(param.cipher),
       std::move(param.hkdf),
       std::move(param.suiteId),
-      HpkeContext::Role::Receiver};
+      HpkeContext::Role::Receiver,
+      param.seqNum};
 
   return keySchedule(std::move(keyScheduleParams));
 }

@@ -42,6 +42,13 @@ class HpkeContextImpl : public HpkeContext {
       std::unique_ptr<folly::IOBuf> exporterSecret,
       std::unique_ptr<fizz::hpke::Hkdf> hkdf,
       HpkeSuiteId suiteId,
+      uint64_t seqNum,
+      Role role);
+  HpkeContextImpl(
+      std::unique_ptr<Aead> cipher,
+      std::unique_ptr<folly::IOBuf> exporterSecret,
+      std::unique_ptr<fizz::hpke::Hkdf> hkdf,
+      HpkeSuiteId suiteId,
       Role role);
   std::unique_ptr<folly::IOBuf> seal(
       const folly::IOBuf* aad,

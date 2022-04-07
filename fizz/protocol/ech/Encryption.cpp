@@ -161,7 +161,8 @@ static hpke::SetupParam getSetupParam(
       std::move(dhkem),
       makeCipher(cipherSuite.aead_id),
       std::move(hkdf),
-      std::move(suiteId)};
+      std::move(suiteId),
+      0};
 }
 
 std::unique_ptr<folly::IOBuf> getRecordDigest(
