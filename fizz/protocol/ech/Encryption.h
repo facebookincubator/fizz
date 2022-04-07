@@ -22,6 +22,14 @@ struct SupportedECHConfig {
   ECHCipherSuite cipherSuite;
 };
 
+// Used to indicate to the Decrypter that extension expansion failed (which is
+// a hard error)
+class OuterExtensionsError : public std::runtime_error {
+ public:
+  explicit OuterExtensionsError(const std::string& what)
+      : std::runtime_error(what) {}
+};
+
 folly::Optional<SupportedECHConfig> selectECHConfig(
     const std::vector<ECHConfig>& configs,
     std::vector<hpke::KEMId> supportedKEMs,

@@ -334,7 +334,7 @@ TEST(EncryptionTest, TestSubstituteOuterExtensions) {
    * outerExt: []
    * innerExt: [A, B, C, D, E, F, G, outer_extensions(H)]
    *
-   * result: FizzException
+   * result: OuterExtensionsError
    */
   innerChlo = TestMessages::clientHello();
 
@@ -343,7 +343,7 @@ TEST(EncryptionTest, TestSubstituteOuterExtensions) {
 
   EXPECT_THROW(
       substituteOuterExtensions(std::move(innerChlo.extensions), {}),
-      fizz::FizzException);
+      OuterExtensionsError);
 
   /**
    * If the ech_outer_extensions includes extension_type values that do not
@@ -353,7 +353,7 @@ TEST(EncryptionTest, TestSubstituteOuterExtensions) {
    * outerExt: [E, F, G]
    * innerExt: [outer_extensions(E, G, F)]
    *
-   * result: FizzException
+   * result: OuterExtensionsError
    */
 
   // return values to default
@@ -369,7 +369,7 @@ TEST(EncryptionTest, TestSubstituteOuterExtensions) {
 
   EXPECT_THROW(
       substituteOuterExtensions(std::move(innerChlo.extensions), outerExt),
-      fizz::FizzException);
+      OuterExtensionsError);
 
   /**
    * If the ech_outer_extensions does not match a contiguous set of extensions
@@ -433,7 +433,7 @@ TEST(EncryptionTest, TestSubstituteOuterExtensions) {
    * outerExt: [A, B, C]
    * innerExt: [D, E, F, F]
    *
-   * result: FizzException
+   * result: OuterExtensionsError
    */
 
   innerChlo = TestMessages::clientHello();
@@ -444,7 +444,7 @@ TEST(EncryptionTest, TestSubstituteOuterExtensions) {
 
   EXPECT_THROW(
       substituteOuterExtensions(std::move(innerChlo.extensions), outerExt),
-      FizzException);
+      OuterExtensionsError);
 
   /*
    * If the expanded inner client hello has duplicate extensions, we expect it
@@ -453,7 +453,7 @@ TEST(EncryptionTest, TestSubstituteOuterExtensions) {
    * outerExt: [A, B, C, D]
    * innerExt: [D, E, F, outer_extensions(D)]
    *
-   * result: FizzException
+   * result: OuterExtensionsError
    */
   innerChlo = TestMessages::clientHello();
 
@@ -468,7 +468,7 @@ TEST(EncryptionTest, TestSubstituteOuterExtensions) {
 
   EXPECT_THROW(
       substituteOuterExtensions(std::move(innerChlo.extensions), outerExt),
-      FizzException);
+      OuterExtensionsError);
 
   /*
    * If we attempt to copy out the ECH extension to the innerExt, we expect it
@@ -477,7 +477,7 @@ TEST(EncryptionTest, TestSubstituteOuterExtensions) {
    * outerExt: [ECH, A]
    * innerExt: [outer_extensions(ECH), B]
    *
-   * result: FizzException
+   * result: OuterExtensionsError
    */
   innerChlo = TestMessages::clientHello();
 
@@ -491,7 +491,7 @@ TEST(EncryptionTest, TestSubstituteOuterExtensions) {
 
   EXPECT_THROW(
       substituteOuterExtensions(std::move(innerChlo.extensions), outerExt),
-      FizzException);
+      OuterExtensionsError);
 }
 
 } // namespace test

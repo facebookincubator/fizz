@@ -52,9 +52,13 @@ folly::Optional<ClientHello> tryToDecodeECH(
     if (decryptionResult.has_value()) {
       // We've successfully decrypted the client hello.
       auto result = std::move(decryptionResult.value());
-      auto expandedExtensions = substituteOuterExtensions(
-          std::move(result.extensions), clientHelloOuter.extensions);
-      result.extensions = std::move(expandedExtensions);
+      try {
+        auto expandedExtensions = substituteOuterExtensions(
+            std::move(result.extensions), clientHelloOuter.extensions);
+        result.extensions = std::move(expandedExtensions);
+      } catch (const OuterExtensionsError& e) {
+        throw FizzException(e.what(), AlertDescription::illegal_parameter);
+      }
       result.originalEncoding = encodeHandshake(result);
       return result;
     }

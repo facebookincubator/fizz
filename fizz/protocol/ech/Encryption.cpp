@@ -435,9 +435,7 @@ std::vector<Extension> substituteOuterExtensions(
   std::unordered_set<ExtensionType> seenTypes;
   auto dupeCheck = [&seenTypes](ExtensionType t) {
     if (seenTypes.count(t) != 0) {
-      throw fizz::FizzException(
-          "inner client hello has duplicate extensions",
-          AlertDescription::illegal_parameter);
+      throw OuterExtensionsError("inner client hello has duplicate extensions");
     }
     seenTypes.insert(t);
   };
@@ -453,9 +451,7 @@ std::vector<Extension> substituteOuterExtensions(
         folly::io::Cursor cursor(ext.extension_data.get());
         outerExtensions = getExtension<ech::OuterExtensions>(cursor);
       } catch (...) {
-        throw fizz::FizzException(
-            "ech_outer_extensions malformed",
-            AlertDescription::illegal_parameter);
+        throw OuterExtensionsError("ech_outer_extensions malformed");
       }
 
       // Use the linear approach suggested by the RFC.
@@ -465,9 +461,7 @@ std::vector<Extension> substituteOuterExtensions(
         // Check types for dupes and ech
         dupeCheck(extType);
         if (extType == ExtensionType::encrypted_client_hello) {
-          throw fizz::FizzException(
-              "ech is not allowed in outer extensions",
-              AlertDescription::illegal_parameter);
+          throw OuterExtensionsError("ech is not allowed in outer extensions");
         }
 
         // Scan
@@ -477,9 +471,8 @@ std::vector<Extension> substituteOuterExtensions(
 
         // If at end, error
         if (outerIt == outerEnd) {
-          throw fizz::FizzException(
-              "ech outer extensions references a missing extension",
-              AlertDescription::illegal_parameter);
+          throw OuterExtensionsError(
+              "ech outer extensions references a missing extension");
         }
 
         // Add it and increment
