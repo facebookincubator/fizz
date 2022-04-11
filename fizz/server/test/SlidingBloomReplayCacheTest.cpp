@@ -140,6 +140,19 @@ TEST(SlidingBloomReplayCacheTest, TestTimeBucketing) {
       evb.now() + std::chrono::seconds(13));
   evb.loop();
 }
+
+TEST(SlidingBloomReplayCacheTest, TestAsyncLookup) {
+  folly::ScopedEventBaseThread evbThread;
+  SlidingBloomReplayCache cache(12, 1000, 0.0001, evbThread.getEventBase());
+
+  auto r1 = cache.check(toRange(std::string("abcd")));
+  auto r2 = cache.check(toRange(std::string("wxyz")));
+  auto r3 = cache.check(toRange(std::string("abcd")));
+
+  EXPECT_EQ(std::move(r1).get(), ReplayCacheResult::NotReplay);
+  EXPECT_EQ(std::move(r2).get(), ReplayCacheResult::NotReplay);
+  EXPECT_EQ(std::move(r3).get(), ReplayCacheResult::MaybeReplay);
+}
 } // namespace test
 } // namespace server
 } // namespace fizz

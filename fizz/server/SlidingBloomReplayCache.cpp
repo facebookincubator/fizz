@@ -14,6 +14,7 @@
 
 #include <folly/Conv.h>
 #include <folly/hash/Hash.h>
+#include <folly/io/IOBuf.h>
 #include <folly/io/async/ScopedEventBaseThread.h>
 #include <folly/portability/Unistd.h>
 
@@ -159,8 +160,8 @@ folly::SemiFuture<ReplayCacheResult> SlidingBloomReplayCache::check(
     folly::ByteRange query) {
   return folly::via(
              executor_,
-             [this, query]() {
-               const auto result = testAndSet(query)
+             [this, queryBuffer = folly::IOBuf::copyBuffer(query)]() {
+               const auto result = testAndSet(queryBuffer->coalesce())
                    ? ReplayCacheResult::MaybeReplay
                    : ReplayCacheResult::NotReplay;
                return result;
