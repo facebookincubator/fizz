@@ -10,6 +10,7 @@
 
 #include <folly/Range.h>
 #include <folly/futures/Future.h>
+#include <folly/io/IOBuf.h>
 
 namespace fizz {
 namespace server {
@@ -35,7 +36,7 @@ class ReplayCache {
   virtual ~ReplayCache() = default;
 
   virtual folly::SemiFuture<ReplayCacheResult> check(
-      folly::ByteRange identifier) = 0;
+      std::unique_ptr<folly::IOBuf> identifier) = 0;
 };
 
 /**
@@ -45,7 +46,8 @@ class AllowAllReplayReplayCache : public ReplayCache {
  public:
   ~AllowAllReplayReplayCache() override = default;
 
-  folly::SemiFuture<ReplayCacheResult> check(folly::ByteRange) override {
+  folly::SemiFuture<ReplayCacheResult> check(
+      std::unique_ptr<folly::IOBuf>) override {
     return ReplayCacheResult::NotReplay;
   }
 };

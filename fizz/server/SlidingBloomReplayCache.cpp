@@ -20,6 +20,7 @@
 
 #include <fizz/crypto/RandomGenerator.h>
 
+#include <folly/Range.h>
 #include <cmath>
 
 using namespace folly::hash;
@@ -157,10 +158,10 @@ bool SlidingBloomReplayCache::testAndSet(folly::ByteRange query) {
 }
 
 folly::SemiFuture<ReplayCacheResult> SlidingBloomReplayCache::check(
-    folly::ByteRange query) {
+    std::unique_ptr<folly::IOBuf> query) {
   return folly::via(
              executor_,
-             [this, queryBuffer = folly::IOBuf::copyBuffer(query)]() {
+             [this, queryBuffer = std::move(query)]() {
                const auto result = testAndSet(queryBuffer->coalesce())
                    ? ReplayCacheResult::MaybeReplay
                    : ReplayCacheResult::NotReplay;

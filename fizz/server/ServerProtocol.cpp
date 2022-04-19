@@ -533,8 +533,8 @@ static SemiFuture<ReplayCacheResult> getReplayCacheResult(
       !getExtension<ClientEarlyData>(chlo.extensions)) {
     return ReplayCacheResult::NotChecked;
   }
-
-  return replayCache->check(folly::range(chlo.random));
+  auto randBuf = folly::IOBuf::copyBuffer(chlo.random, chlo.random.size());
+  return replayCache->check(std::move(randBuf));
 }
 
 static bool validateResumptionState(

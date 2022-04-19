@@ -223,7 +223,10 @@ class MockServerExtensions : public ServerExtensions {
 
 class MockReplayCache : public ReplayCache {
  public:
-  MOCK_METHOD(folly::SemiFuture<ReplayCacheResult>, check, (folly::ByteRange));
+  MOCK_METHOD(
+      folly::SemiFuture<ReplayCacheResult>,
+      check,
+      (std::unique_ptr<folly::IOBuf>));
 };
 
 class MockAppTokenValidator : public AppTokenValidator {

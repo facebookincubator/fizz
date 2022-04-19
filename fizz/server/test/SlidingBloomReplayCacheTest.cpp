@@ -14,6 +14,7 @@
 #include <folly/Random.h>
 #include <folly/io/async/ScopedEventBaseThread.h>
 
+#include <folly/io/IOBuf.h>
 #include <unordered_set>
 
 using namespace folly;
@@ -38,6 +39,10 @@ static std::string generateRandomString(size_t minimum, size_t maximum) {
 
 static folly::ByteRange toRange(const std::string& str) {
   return folly::ByteRange(folly::StringPiece(str));
+}
+
+static std::unique_ptr<folly::IOBuf> toIOBuf(const std::string& str) {
+  return folly::IOBuf::copyBuffer(str);
 }
 
 TEST(SlidingBloomReplayCacheTest, TestSimpleGetSet) {
@@ -145,9 +150,9 @@ TEST(SlidingBloomReplayCacheTest, TestAsyncLookup) {
   folly::ScopedEventBaseThread evbThread;
   SlidingBloomReplayCache cache(12, 1000, 0.0001, evbThread.getEventBase());
 
-  auto r1 = cache.check(toRange(std::string("abcd")));
-  auto r2 = cache.check(toRange(std::string("wxyz")));
-  auto r3 = cache.check(toRange(std::string("abcd")));
+  auto r1 = cache.check(toIOBuf(std::string("abcd")));
+  auto r2 = cache.check(toIOBuf(std::string("wxyz")));
+  auto r3 = cache.check(toIOBuf(std::string("abcd")));
 
   EXPECT_EQ(std::move(r1).get(), ReplayCacheResult::NotReplay);
   EXPECT_EQ(std::move(r2).get(), ReplayCacheResult::NotReplay);
