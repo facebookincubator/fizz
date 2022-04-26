@@ -73,19 +73,19 @@ class BatchSignatureAsyncSelfCert : public AsyncSelfCert {
   folly::SemiFuture<folly::Optional<Buf>> signFuture(
       SignatureScheme scheme,
       CertificateVerifyContext context,
-      folly::ByteRange message) const override {
+      std::unique_ptr<folly::IOBuf> message) const override {
     // if the scheme is the supported batch scheme, use the signer to sign it
     // directly
     if (scheme != batcher_->getBatchScheme()) {
       auto asyncSigner = dynamic_cast<const AsyncSelfCert*>(signer_.get());
       if (asyncSigner) {
-        return asyncSigner->signFuture(scheme, context, message);
+        return asyncSigner->signFuture(scheme, context, std::move(message));
       } else {
-        return signer_->sign(scheme, context, message);
+        return signer_->sign(scheme, context, message->coalesce());
       }
     }
     // otherwise, generate batch signature with batcher
-    return batchSigSign(message);
+    return batchSigSign(message->coalesce());
   }
 
   /**

@@ -263,7 +263,7 @@ class MockAsyncSelfCert : public AsyncSelfCert {
       signFuture,
       (SignatureScheme scheme,
        CertificateVerifyContext context,
-       folly::ByteRange toBeSigned),
+       std::unique_ptr<folly::IOBuf> toBeSigned),
       (const));
 };
 } // namespace test

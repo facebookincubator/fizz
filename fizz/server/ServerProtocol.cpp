@@ -1405,7 +1405,7 @@ EventHandler<ServerTypes, StateEnum::ExpectingClientHello, Event::ClientHello>::
             signature = asyncSelfCert->signFuture(
                 *sigScheme,
                 CertificateVerifyContext::Server,
-                toBeSigned->coalesce());
+                std::move(toBeSigned));
           } else {
             signature =
                 folly::makeSemiFuture<Optional<Buf>>(originalSelfCert->sign(

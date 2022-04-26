@@ -106,8 +106,8 @@ class Batcher {
     auto asyncSigner = dynamic_cast<const AsyncSelfCert*>(signer_.get());
     folly::SemiFuture<folly::Optional<Buf>> signatureFut = folly::none;
     if (asyncSigner) {
-      signatureFut = asyncSigner->signFuture(
-          baseScheme_, context_, toBeSigned->coalesce());
+      signatureFut =
+          asyncSigner->signFuture(baseScheme_, context_, std::move(toBeSigned));
     } else {
       signatureFut = folly::makeSemiFuture(folly::Optional(
           signer_->sign(baseScheme_, context_, toBeSigned->coalesce())));

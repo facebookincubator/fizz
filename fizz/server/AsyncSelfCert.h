@@ -25,6 +25,6 @@ class AsyncSelfCert : public SelfCert {
   virtual folly::SemiFuture<folly::Optional<Buf>> signFuture(
       SignatureScheme scheme,
       CertificateVerifyContext context,
-      folly::ByteRange toBeSigned) const = 0;
+      std::unique_ptr<folly::IOBuf> toBeSigned) const = 0;
 };
 } // namespace fizz

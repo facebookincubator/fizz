@@ -75,7 +75,7 @@ TEST(BatchSignatureAsyncSelfCertTest, TestDecoratorLogicWithMockCert) {
   auto sig2 = batchCert.signFuture(
       SignatureScheme::ecdsa_secp256r1_sha256,
       CertificateVerifyContext::Server,
-      folly::range(folly::StringPiece("hello")));
+      folly::IOBuf::copyBuffer(folly::StringPiece("hello")));
   EXPECT_EQ(
       sig2.value().value()->moveToFbString(), folly::fbstring("mockSignature"));
   // sign with batch scheme
@@ -96,10 +96,11 @@ TEST(BatchSignatureAsyncSelfCertTest, TestDecoratorLogicWithMockAsyncCert) {
   EXPECT_CALL(
       *mockBaseCert, signFuture(SignatureScheme::ecdsa_secp256r1_sha256, _, _))
       .Times(1)
-      .WillRepeatedly(Invoke(
-          [](SignatureScheme, CertificateVerifyContext, folly::ByteRange) {
-            return folly::IOBuf::copyBuffer("mockSignature");
-          }));
+      .WillRepeatedly(Invoke([](SignatureScheme,
+                                CertificateVerifyContext,
+                                std::unique_ptr<folly::IOBuf>) {
+        return folly::IOBuf::copyBuffer("mockSignature");
+      }));
   // sign will not invoke signer's signFuture
   auto sig1 = batchCert.sign(
       SignatureScheme::ecdsa_secp256r1_sha256,
@@ -109,7 +110,7 @@ TEST(BatchSignatureAsyncSelfCertTest, TestDecoratorLogicWithMockAsyncCert) {
   auto sig2 = batchCert.signFuture(
       SignatureScheme::ecdsa_secp256r1_sha256,
       CertificateVerifyContext::Server,
-      folly::range(folly::StringPiece("hello")));
+      folly::IOBuf::copyBuffer(folly::StringPiece("hello")));
 }
 
 TEST(BatchSignatureAsyncSelfCertTest, TestSignAndVerifyP256) {
@@ -126,7 +127,7 @@ TEST(BatchSignatureAsyncSelfCertTest, TestSignAndVerifyP256) {
   auto signature = batchCert.signFuture(
       SignatureScheme::ecdsa_secp256r1_sha256,
       CertificateVerifyContext::Server,
-      folly::range(folly::StringPiece("Message1")));
+      folly::IOBuf::copyBuffer(folly::StringPiece("Message1")));
   PeerCertImpl<KeyType::P256> peerCert(getCert(kP256Certificate));
   peerCert.verify(
       SignatureScheme::ecdsa_secp256r1_sha256,
@@ -139,13 +140,13 @@ TEST(BatchSignatureAsyncSelfCertTest, TestSignAndVerifyP256) {
       batchCert.signFuture(
           SignatureScheme::rsa_pss_sha256,
           CertificateVerifyContext::Server,
-          folly::range(folly::StringPiece("Message1"))),
+          folly::IOBuf::copyBuffer(folly::StringPiece("Message1"))),
       std::runtime_error);
   EXPECT_THROW(
       batchCert.signFuture(
           SignatureScheme::rsa_pss_sha256_batch,
           CertificateVerifyContext::Server,
-          folly::range(folly::StringPiece("Message1"))),
+          folly::IOBuf::copyBuffer(folly::StringPiece("Message1"))),
       std::runtime_error);
 }
 
@@ -163,7 +164,7 @@ TEST(BatchSignatureAsyncSelfCertTest, TestSignAndVerifyRSA) {
   auto signature = batchCert.signFuture(
       SignatureScheme::rsa_pss_sha256,
       CertificateVerifyContext::Server,
-      folly::range(folly::StringPiece("Message1")));
+      folly::IOBuf::copyBuffer(folly::StringPiece("Message1")));
   PeerCertImpl<KeyType::RSA> peerCert(getCert(kRSACertificate));
   peerCert.verify(
       SignatureScheme::rsa_pss_sha256,
@@ -176,13 +177,13 @@ TEST(BatchSignatureAsyncSelfCertTest, TestSignAndVerifyRSA) {
       batchCert.signFuture(
           SignatureScheme::ecdsa_secp256r1_sha256,
           CertificateVerifyContext::Server,
-          folly::range(folly::StringPiece("Message1"))),
+          folly::IOBuf::copyBuffer(folly::StringPiece("Message1"))),
       std::runtime_error);
   EXPECT_THROW(
       batchCert.signFuture(
           SignatureScheme::ecdsa_secp256r1_sha256_batch,
           CertificateVerifyContext::Server,
-          folly::range(folly::StringPiece("Message1"))),
+          folly::IOBuf::copyBuffer(folly::StringPiece("Message1"))),
       std::runtime_error);
 }
 
@@ -201,7 +202,7 @@ TEST(BatchSignatureAsyncSelfCertTest, TestUnsuportedHash) {
       batchCert.signFuture(
           SignatureScheme::ecdsa_secp384r1_sha384_batch,
           CertificateVerifyContext::Server,
-          folly::range(folly::StringPiece("Message1"))),
+          folly::IOBuf::copyBuffer(folly::StringPiece("Message1"))),
       std::runtime_error);
 }
 

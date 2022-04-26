@@ -140,7 +140,8 @@ TEST(BatchSignatureTest, TestSynchronizedBatcherWithSelfCertP256) {
           std::dynamic_pointer_cast<AsyncSelfCert>(batchCert)->signFuture(
               SignatureScheme::ecdsa_secp256r1_sha256_batch,
               CertificateVerifyContext::Server,
-              folly::range(folly::StringPiece("Message" + std::to_string(i))));
+              folly::IOBuf::copyBuffer(
+                  folly::StringPiece("Message" + std::to_string(i))));
       result = (*std::move(signature).get())->moveToFbString();
     }));
   }
@@ -224,19 +225,19 @@ TEST(BatchSignatureTest, TestThreadLocalBatcherWithSelfCertP256) {
                             ->signFuture(
                                 SignatureScheme::ecdsa_secp256r1_sha256_batch,
                                 CertificateVerifyContext::Server,
-                                folly::range(folly::StringPiece(
+                                folly::IOBuf::copyBuffer(folly::StringPiece(
                                     "Message" + std::to_string(3 * i + 0))));
       auto signature2 = std::dynamic_pointer_cast<AsyncSelfCert>(batchCert2)
                             ->signFuture(
                                 SignatureScheme::ecdsa_secp256r1_sha256_batch,
                                 CertificateVerifyContext::Server,
-                                folly::range(folly::StringPiece(
+                                folly::IOBuf::copyBuffer(folly::StringPiece(
                                     "Message" + std::to_string(3 * i + 1))));
       auto signature3 = std::dynamic_pointer_cast<AsyncSelfCert>(batchCert3)
                             ->signFuture(
                                 SignatureScheme::ecdsa_secp256r1_sha256_batch,
                                 CertificateVerifyContext::Server,
-                                folly::range(folly::StringPiece(
+                                folly::IOBuf::copyBuffer(folly::StringPiece(
                                     "Message" + std::to_string(3 * i + 2))));
       result1 = (*std::move(signature1).get())->moveToFbString();
       result2 = (*std::move(signature2).get())->moveToFbString();
