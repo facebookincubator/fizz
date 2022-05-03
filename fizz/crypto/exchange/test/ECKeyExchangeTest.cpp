@@ -107,7 +107,7 @@ KeyParams Key<P521>::getKeyParams() {
       "8de930387e8ecc2c68ec41bcf2"};
 }
 using KeyTypes = ::testing::Types<P256, P384, P521>;
-TYPED_TEST_CASE(Key, KeyTypes);
+TYPED_TEST_SUITE(Key, KeyTypes);
 
 TYPED_TEST(Key, GenerateKey) {
   typename TestFixture::KeyExch kex;

@@ -81,7 +81,7 @@ struct UndelegatedMode {
 };
 
 using TestTypes = Types<DelegatedMode, UndelegatedMode>;
-TYPED_TEST_CASE(DelegatedCredentialCertManagerTestTyped, TestTypes);
+TYPED_TEST_SUITE(DelegatedCredentialCertManagerTestTyped, TestTypes);
 
 TYPED_TEST(DelegatedCredentialCertManagerTestTyped, TestNoMatchDefault) {
   auto cert1 =

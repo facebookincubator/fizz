@@ -281,7 +281,7 @@ struct RecvCB {
 };
 
 using TestTypes = ::testing::Types<ReadCB, RecvCB>;
-TYPED_TEST_CASE(AsyncFizzBaseTest, TestTypes);
+TYPED_TEST_SUITE(AsyncFizzBaseTest, TestTypes);
 
 TYPED_TEST(AsyncFizzBaseTest, TestIsFizz) {
   EXPECT_EQ(this->getSecurityProtocol(), "Fizz");

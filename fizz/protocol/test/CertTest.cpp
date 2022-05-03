@@ -133,7 +133,7 @@ using KeyTypes = Types<
     P384Test,
     P521Test,
     RSATest>;
-TYPED_TEST_CASE(CertTestTyped, KeyTypes);
+TYPED_TEST_SUITE(CertTestTyped, KeyTypes);
 
 TEST(CertTest, GetIdentity) {
   auto cert = getCert(kP256Certificate);
