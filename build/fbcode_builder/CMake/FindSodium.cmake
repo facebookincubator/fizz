@@ -17,7 +17,7 @@
 #
 # Once done the following variables will be defined:
 #
-#   sodium_FOUND
+#   Sodium_FOUND
 #   sodium_INCLUDE_DIR
 #   sodium_LIBRARY_DEBUG
 #   sodium_LIBRARY_RELEASE
