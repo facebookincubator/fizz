@@ -8,7 +8,6 @@
 
 #pragma once
 
-#include <fizz/protocol/ech/Types.h>
 #include <folly/io/Cursor.h>
 
 namespace fizz {
