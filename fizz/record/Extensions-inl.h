@@ -7,7 +7,6 @@
  */
 
 #include <vector>
-#include "fizz/record/Extensions.h"
 #include "folly/io/IOBuf.h"
 
 #include <fizz/record/Types.h>
