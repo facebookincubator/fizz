@@ -218,8 +218,8 @@ std::unique_ptr<folly::IOBuf> evpEncrypt(
   } else {
     // create enough to also fit the tag and headroom
     size_t totalSize{0};
-    if (!folly::checked_add<size_t>(&totalSize, headroom, inputLength) ||
-        !folly::checked_add<size_t>(&totalSize, totalSize, tagLen)) {
+    if (!folly::checked_add<size_t>(
+            &totalSize, headroom, inputLength, tagLen)) {
       throw std::overflow_error("Output buffer size");
     }
     output = folly::IOBuf::create(totalSize);
