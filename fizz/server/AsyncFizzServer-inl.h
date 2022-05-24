@@ -6,8 +6,6 @@
  *  LICENSE file in the root directory of this source tree.
  */
 
-#include <fizz/server/AsyncFizzServer.h>
-
 namespace fizz {
 namespace server {
 
