@@ -51,15 +51,15 @@ struct PskInputs {
 };
 
 struct KeyScheduleParams {
-  Mode mode;
+  Mode mode{Mode::Base};
   std::unique_ptr<folly::IOBuf> sharedSecret;
   std::unique_ptr<folly::IOBuf> info;
   folly::Optional<PskInputs> pskInputs;
   std::unique_ptr<Aead> cipher;
   std::unique_ptr<fizz::hpke::Hkdf> hkdf;
   std::unique_ptr<folly::IOBuf> suiteId;
-  fizz::hpke::HpkeContext::Role ctxRole;
-  uint64_t seqNum;
+  fizz::hpke::HpkeContext::Role ctxRole{fizz::hpke::HpkeContext::Role::Sender};
+  uint64_t seqNum{0};
 };
 
 std::unique_ptr<HpkeContext> keySchedule(KeyScheduleParams params);
