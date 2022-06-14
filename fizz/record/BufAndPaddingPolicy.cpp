@@ -10,7 +10,7 @@
 
 namespace fizz {
 
-Buf getBufToEncrypt(folly::IOBufQueue& queue, uint16_t maxRecord) {
+static Buf getBufToEncrypt(folly::IOBufQueue& queue, uint16_t maxRecord) {
   if (queue.front()->length() > maxRecord) {
     return queue.splitAtMost(maxRecord);
   } else if (queue.front()->length() >= kMinSuggestedRecordSize) {
