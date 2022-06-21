@@ -57,6 +57,10 @@ std::unique_ptr<folly::IOBuf> DHKEM::extractAndExpand(
   return sharedSecret;
 }
 
+hpke::KEMId DHKEM::getKEMId() const {
+  return static_cast<hpke::KEMId>(getDHKEMId(group_));
+}
+
 DHKEM::EncapResult DHKEM::encap(folly::ByteRange pkR) {
   kex_->generateKeyPair();
   std::unique_ptr<folly::IOBuf> dh = kex_->generateSharedSecret(pkR);

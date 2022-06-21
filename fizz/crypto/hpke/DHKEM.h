@@ -5,6 +5,7 @@
 #include <fizz/crypto/ECCurve.h>
 #include <fizz/crypto/exchange/OpenSSLKeyExchange.h>
 #include <fizz/crypto/hpke/Hkdf.h>
+#include <fizz/crypto/hpke/Types.h>
 #include <fizz/record/Types.h>
 
 namespace fizz {
@@ -33,12 +34,18 @@ class DHKEM {
    * key corresponding to "pk"
    */
   EncapResult encap(folly::ByteRange pkR);
+
   /**
    * Use the private key "sk" to recover the
    * ephemeral symmetric key (the KEM shared secret) from its
    * encapsulated representation "enc"
    */
   std::unique_ptr<folly::IOBuf> decap(folly::ByteRange enc);
+
+  /**
+   * Returns the HPKE KEM code point that this `DHKEM` instance implements.
+   */
+  hpke::KEMId getKEMId() const;
 
  private:
   std::unique_ptr<folly::IOBuf> extractAndExpand(

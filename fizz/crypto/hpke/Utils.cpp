@@ -22,12 +22,15 @@ namespace hpke {
 
 HpkeSuiteId
 generateHpkeSuiteId(NamedGroup group, HashFunction hash, CipherSuite suite) {
+  return generateHpkeSuiteId(getKEMId(group), getKDFId(hash), getAeadId(suite));
+}
+
+HpkeSuiteId generateHpkeSuiteId(KEMId kem, KDFId kdf, AeadId aead) {
   std::unique_ptr<folly::IOBuf> suiteId = folly::IOBuf::copyBuffer("HPKE");
   folly::io::Appender appender(suiteId.get(), 6);
-  detail::write(getKEMId(group), appender);
-  detail::write(getKDFId(hash), appender);
-  detail::write(getAeadId(suite), appender);
-
+  detail::write(kem, appender);
+  detail::write(kdf, appender);
+  detail::write(aead, appender);
   return suiteId;
 }
 
