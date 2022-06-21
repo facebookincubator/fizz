@@ -86,6 +86,24 @@ class Aead {
   }
 
   /**
+   * Encrypts plaintext with nonce passed explicitly by the caller. Will throw
+   * on error.
+   *
+   * Uses BufferOption::RespectSharedPolicy and AllocationOption::Allow by
+   * default.
+   */
+  std::unique_ptr<folly::IOBuf> encrypt(
+      std::unique_ptr<folly::IOBuf>&& plaintext,
+      const folly::IOBuf* associatedData,
+      folly::ByteRange nonce) const {
+    return encrypt(
+        std::forward<std::unique_ptr<folly::IOBuf>>(plaintext),
+        associatedData,
+        nonce,
+        {BufferOption::RespectSharedPolicy, AllocationOption::Allow});
+  }
+
+  /**
    * `encrypt` performs authenticated encryption.
    *
    *  This version of encrypt generates the nonce used for
