@@ -85,10 +85,30 @@ class Aead {
         {BufferOption::RespectSharedPolicy, AllocationOption::Allow});
   }
 
+  /**
+   * `encrypt` performs authenticated encryption.
+   *
+   *  This version of encrypt generates the nonce used for
+   *  encryption using the TLS record number to nonce construction
+   *  as specified in RFC 8446.
+   */
   virtual std::unique_ptr<folly::IOBuf> encrypt(
       std::unique_ptr<folly::IOBuf>&& plaintext,
       const folly::IOBuf* associatedData,
       uint64_t seqNum,
+      AeadOptions options) const = 0;
+
+  /**
+   * `encrypt` performs authenticated encryption.
+   *
+   * This version of encrypt uses a nonce passed in explicitly
+   * by the caller; consequently, this interface can be used
+   * to perform AEAD outside of a TLS specific application.
+   */
+  virtual std::unique_ptr<folly::IOBuf> encrypt(
+      std::unique_ptr<folly::IOBuf>&& plaintext,
+      const folly::IOBuf* associatedData,
+      folly::ByteRange nonce,
       AeadOptions options) const = 0;
 
   /**

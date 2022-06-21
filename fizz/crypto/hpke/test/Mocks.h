@@ -46,6 +46,15 @@ class MockAeadCipher : public Aead {
         std::move(plaintext), associatedData, seqNum, options);
   }
 
+  std::unique_ptr<folly::IOBuf> encrypt(
+      std::unique_ptr<folly::IOBuf>&& plaintext,
+      const folly::IOBuf* associatedData,
+      folly::ByteRange nonce,
+      AeadOptions options) const override {
+    return actualCipher_->encrypt(
+        std::move(plaintext), associatedData, nonce, options);
+  }
+
   std::unique_ptr<folly::IOBuf> inplaceEncrypt(
       std::unique_ptr<folly::IOBuf>&& plaintext,
       const folly::IOBuf* associatedData,

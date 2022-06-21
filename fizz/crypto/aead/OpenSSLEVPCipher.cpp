@@ -436,10 +436,22 @@ std::unique_ptr<folly::IOBuf> OpenSSLEVPCipher::encrypt(
     uint64_t seqNum,
     Aead::AeadOptions options) const {
   auto iv = createIV(seqNum);
-  return evpEncrypt(
+  return encrypt(
       std::move(plaintext),
       associatedData,
       folly::ByteRange(iv.data(), ivLength_),
+      options);
+}
+
+std::unique_ptr<folly::IOBuf> OpenSSLEVPCipher::encrypt(
+    std::unique_ptr<folly::IOBuf>&& plaintext,
+    const folly::IOBuf* associatedData,
+    folly::ByteRange nonce,
+    Aead::AeadOptions options) const {
+  return evpEncrypt(
+      std::move(plaintext),
+      associatedData,
+      nonce,
       tagLength_,
       operatesInBlocks_,
       headroom_,

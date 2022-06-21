@@ -47,6 +47,22 @@ class MockAead : public Aead {
 
   MOCK_METHOD(
       std::unique_ptr<folly::IOBuf>,
+      _encryptNonce,
+      (std::unique_ptr<folly::IOBuf> & plaintext,
+       const folly::IOBuf* associatedData,
+       folly::ByteRange nonce,
+       Aead::AeadOptions options),
+      (const));
+  std::unique_ptr<folly::IOBuf> encrypt(
+      std::unique_ptr<folly::IOBuf>&& plaintext,
+      const folly::IOBuf* associatedData,
+      folly::ByteRange nonce,
+      AeadOptions options) const override {
+    return _encryptNonce(plaintext, associatedData, nonce, options);
+  }
+
+  MOCK_METHOD(
+      std::unique_ptr<folly::IOBuf>,
       _inplaceEncrypt,
       (std::unique_ptr<folly::IOBuf> & plaintext,
        const folly::IOBuf* associatedData,
@@ -97,6 +113,9 @@ class MockAead : public Aead {
     ON_CALL(*this, _encrypt(_, _, _, _)).WillByDefault(InvokeWithoutArgs([]() {
       return folly::IOBuf::copyBuffer("ciphertext");
     }));
+    ON_CALL(*this, _encryptNonce(_, _, _, _))
+        .WillByDefault(InvokeWithoutArgs(
+            []() { return folly::IOBuf::copyBuffer("ciphertext"); }));
     ON_CALL(*this, _decrypt(_, _, _, _)).WillByDefault(InvokeWithoutArgs([]() {
       return folly::IOBuf::copyBuffer("plaintext");
     }));

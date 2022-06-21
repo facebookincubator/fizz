@@ -70,6 +70,12 @@ class OpenSSLEVPCipher : public Aead {
       uint64_t seqNum,
       Aead::AeadOptions options) const override;
 
+  std::unique_ptr<folly::IOBuf> encrypt(
+      std::unique_ptr<folly::IOBuf>&& plaintext,
+      const folly::IOBuf* associatedData,
+      folly::ByteRange nonce,
+      Aead::AeadOptions options) const override;
+
   // The same as encrypt(), except always do an inplace encrypt if possible,
   // even if the IOBuf is shared. If there is not enough room for the tag,
   // this will throw an exception.
