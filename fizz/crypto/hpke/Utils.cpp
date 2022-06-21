@@ -141,6 +141,22 @@ std::unique_ptr<KeyExchange> makeKeyExchange(KEMId kemId) {
   }
 }
 
+size_t nenc(KEMId kemId) {
+  // Refer to Table 2 in 7.1.  Key Encapsulation Mechanisms (KEMs)
+  switch (kemId) {
+    case KEMId::secp256r1:
+      return 65;
+    case KEMId::secp384r1:
+      return 97;
+    case KEMId::secp521r1:
+      return 133;
+    case KEMId::x25519:
+      return 32;
+    default:
+      throw std::runtime_error("unknown or invalid kem");
+  }
+}
+
 std::unique_ptr<Aead> makeCipher(AeadId aeadId) {
   switch (aeadId) {
     case AeadId::TLS_CHACHA20_POLY1305_SHA256:

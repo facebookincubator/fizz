@@ -79,6 +79,18 @@ NamedGroup getKexGroup(KEMId kemId);
  */
 std::unique_ptr<KeyExchange> makeKeyExchange(KEMId kemId);
 
+/**
+ * fizz::hpke::nenc returns the size of the serialized public component (`enc`)
+ * for a given keypair.
+ *
+ * @param  kemId    An HPKE KEM code point.
+ *
+ * @return A non zero value indicating the size of the public component for the
+ *         given KEM.
+ * @throws std::runtime_error   On invalid code points.
+ */
+size_t nenc(KEMId kemId);
+
 /*****************************
  *                           *
  * Key Derivation (KDF)      *
