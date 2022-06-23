@@ -514,11 +514,13 @@ TEST_F(EncryptedRecordTest, TestWritePaddingWithoutTailroom) {
   const uint16_t expectedPadding1 = (maxRecord - recordLength1) % paddingModulo;
   const uint16_t expectedPadding2 = (maxRecord - recordLength2) % paddingModulo;
 
-  TLSMessage msg1{ContentType::application_data, IOBuf::create(recordLength1)};
+  TLSMessage msg1{
+      ContentType::application_data, IOBuf::createExact(recordLength1)};
   msg1.fragment->append(recordLength1);
   memset(msg1.fragment->writableData(), 0x1, msg1.fragment->length());
 
-  TLSMessage msg2{ContentType::application_data, IOBuf::create(recordLength2)};
+  TLSMessage msg2{
+      ContentType::application_data, IOBuf::createExact(recordLength2)};
   msg2.fragment->append(recordLength2);
   memset(msg2.fragment->writableData(), 0x1, msg2.fragment->length());
 
