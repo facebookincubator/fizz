@@ -107,6 +107,22 @@ class MockAead : public Aead {
     return _tryDecrypt(ciphertext, associatedData, seqNum, options);
   }
 
+  MOCK_METHOD(
+      folly::Optional<std::unique_ptr<folly::IOBuf>>,
+      _tryDecryptNonce,
+      (std::unique_ptr<folly::IOBuf> & ciphertext,
+       const folly::IOBuf* associatedData,
+       folly::ByteRange nonce,
+       Aead::AeadOptions options),
+      (const));
+  folly::Optional<std::unique_ptr<folly::IOBuf>> tryDecrypt(
+      std::unique_ptr<folly::IOBuf>&& ciphertext,
+      const folly::IOBuf* associatedData,
+      folly::ByteRange nonce,
+      Aead::AeadOptions options) const override {
+    return _tryDecryptNonce(ciphertext, associatedData, nonce, options);
+  }
+
   MOCK_METHOD(folly::Optional<TrafficKey>, getKey, (), (const));
 
   void setDefaults() {

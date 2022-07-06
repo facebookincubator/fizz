@@ -90,6 +90,12 @@ class OpenSSLEVPCipher : public Aead {
       uint64_t seqNum,
       Aead::AeadOptions options) const override;
 
+  folly::Optional<std::unique_ptr<folly::IOBuf>> tryDecrypt(
+      std::unique_ptr<folly::IOBuf>&& ciphertext,
+      const folly::IOBuf* associatedData,
+      folly::ByteRange nonce,
+      Aead::AeadOptions options) const override;
+
   size_t getCipherOverhead() const override;
 
   void setEncryptedBufferHeadroom(size_t headroom) override {

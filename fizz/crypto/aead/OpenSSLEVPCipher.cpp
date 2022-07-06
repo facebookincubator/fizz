@@ -481,12 +481,24 @@ folly::Optional<std::unique_ptr<folly::IOBuf>> OpenSSLEVPCipher::tryDecrypt(
     const folly::IOBuf* associatedData,
     uint64_t seqNum,
     Aead::AeadOptions options) const {
+  auto iv = createIV(seqNum);
+  return tryDecrypt(
+      std::move(ciphertext),
+      associatedData,
+      folly::ByteRange(iv.data(), ivLength_),
+      options);
+}
+
+folly::Optional<std::unique_ptr<folly::IOBuf>> OpenSSLEVPCipher::tryDecrypt(
+    std::unique_ptr<folly::IOBuf>&& ciphertext,
+    const folly::IOBuf* associatedData,
+    folly::ByteRange nonce,
+    Aead::AeadOptions options) const {
   // Check that there's enough data to decrypt
   if (tagLength_ > ciphertext->computeChainDataLength()) {
     return folly::none;
   }
 
-  auto iv = createIV(seqNum);
   auto inPlace =
       (!ciphertext->isShared() ||
        options.bufferOpt != Aead::BufferOption::RespectSharedPolicy);
@@ -508,7 +520,7 @@ folly::Optional<std::unique_ptr<folly::IOBuf>> OpenSSLEVPCipher::tryDecrypt(
     return evpDecrypt(
         std::move(ciphertext),
         associatedData,
-        folly::ByteRange(iv.data(), ivLength_),
+        nonce,
         tagOut,
         operatesInBlocks_,
         decryptCtx_.get(),
@@ -526,7 +538,7 @@ folly::Optional<std::unique_ptr<folly::IOBuf>> OpenSSLEVPCipher::tryDecrypt(
     return evpDecrypt(
         std::move(ciphertext),
         associatedData,
-        folly::ByteRange(iv.data(), ivLength_),
+        nonce,
         tagOut,
         operatesInBlocks_,
         decryptCtx_.get(),
