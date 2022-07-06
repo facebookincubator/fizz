@@ -40,7 +40,9 @@ class DefaultCertificateVerifier : public CertificateVerifier {
     createAuthorities();
   }
 
-  void verify(const std::vector<std::shared_ptr<const fizz::PeerCert>>& certs)
+  // NOLINTNEXTLINE(modernize-use-nodiscard)
+  std::shared_ptr<const folly::AsyncTransportCertificate> verify(
+      const std::vector<std::shared_ptr<const fizz::PeerCert>>& certs)
       const override;
 
   void setCustomVerifyCallback(X509VerifyCallback cb) {

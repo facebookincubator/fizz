@@ -1939,9 +1939,16 @@ Actions EventHandler<
       state.handshakeContext()->getHandshakeContext()->coalesce(),
       certVerify.signature->coalesce());
 
+  std::shared_ptr<const Cert> newCert;
+
   if (state.verifier()) {
     try {
-      state.verifier()->verify(state.unverifiedCertChain());
+      if (auto verifiedCert =
+              state.verifier()->verify(state.unverifiedCertChain())) {
+        newCert = verifiedCert;
+      } else {
+        newCert = std::move(leaf);
+      }
     } catch (const FizzException&) {
       std::rethrow_exception(std::current_exception());
     } catch (const std::exception& e) {
@@ -1949,13 +1956,15 @@ Actions EventHandler<
           folly::to<std::string>("verifier failure: ", e.what()),
           AlertDescription::bad_certificate);
     }
+  } else {
+    newCert = std::move(leaf);
   }
 
   state.handshakeContext()->appendToTranscript(*certVerify.originalEncoding);
 
   return actions(
       MutateState([sigScheme = certVerify.algorithm,
-                   serverCert = std::move(leaf)](State& newState) mutable {
+                   serverCert = std::move(newCert)](State& newState) mutable {
         newState.sigScheme() = sigScheme;
         newState.serverCert() = std::move(serverCert);
         newState.unverifiedCertChain() = folly::none;

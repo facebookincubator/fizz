@@ -5507,6 +5507,7 @@ TEST_F(ServerProtocolTest, TestCertificateVerifyWithVerifier) {
             EXPECT_EQ(certs.size(), 2);
             EXPECT_EQ(certs[0], clientLeafCert_);
             EXPECT_EQ(certs[1], clientIntCert_);
+            return certs.front();
           }));
 
   EXPECT_CALL(

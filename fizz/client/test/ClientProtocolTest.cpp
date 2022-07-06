@@ -3400,6 +3400,7 @@ TEST_F(ClientProtocolTest, TestCertificateVerifyFlow) {
             EXPECT_EQ(certs.size(), 2);
             EXPECT_EQ(certs[0], mockLeaf_);
             EXPECT_EQ(certs[1], mockIntermediate_);
+            return certs.front();
           }));
 
   auto actions =

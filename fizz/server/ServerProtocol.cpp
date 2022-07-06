@@ -1893,10 +1893,18 @@ AsyncActions EventHandler<
       state.handshakeContext()->getHandshakeContext()->coalesce(),
       certVerify.signature->coalesce());
 
+  std::shared_ptr<const Cert> newCert;
+
   try {
     const auto& verifier = state.context()->getClientCertVerifier();
     if (verifier) {
-      verifier->verify(certs);
+      if (auto verifiedCert = verifier->verify(certs)) {
+        newCert = std::move(verifiedCert);
+      } else {
+        newCert = std::move(leafCert);
+      }
+    } else {
+      newCert = std::move(leafCert);
     }
   } catch (const FizzException&) {
     throw;
@@ -1909,7 +1917,7 @@ AsyncActions EventHandler<
   state.handshakeContext()->appendToTranscript(*certVerify.originalEncoding);
 
   return actions(
-      MutateState([cert = std::move(leafCert)](State& newState) {
+      MutateState([cert = std::move(newCert)](State& newState) {
         newState.unverifiedCertChain() = folly::none;
         newState.clientCert() = std::move(cert);
       }),
