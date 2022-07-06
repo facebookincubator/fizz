@@ -831,6 +831,7 @@ EventHandler<ClientTypes, StateEnum::Uninitialized, Event::Connect>::handle(
   std::unique_ptr<EncryptedWriteRecordLayer> earlyWriteRecordLayer;
   Optional<ReportEarlyHandshakeSuccess> reportEarlySuccess;
   Optional<SecretAvailable> earlyWriteSecretAvailable;
+  Optional<DerivedSecret> earlyExporterVector;
   if (psk) {
     requestedExtensions.push_back(ExtensionType::pre_shared_key);
     auto keyScheduler = context->getFactory()->makeKeyScheduler(psk->cipher);
@@ -858,11 +859,11 @@ EventHandler<ClientTypes, StateEnum::Uninitialized, Event::Connect>::handle(
       }
       earlyWriteSecretAvailable = SecretAvailable(std::move(earlyWriteSecret));
 
-      auto earlyExporterVector = keyScheduler->getSecret(
+      earlyExporterVector = keyScheduler->getSecret(
           EarlySecrets::EarlyExporter,
           handshakeContext->getHandshakeContext()->coalesce());
       earlyDataParams->earlyExporterSecret =
-          folly::IOBuf::copyBuffer(earlyExporterVector.secret);
+          folly::IOBuf::copyBuffer(earlyExporterVector->secret);
 
       reportEarlySuccess = ReportEarlyHandshakeSuccess();
       reportEarlySuccess->maxEarlyDataSize = psk->maxEarlyDataSize;
@@ -965,6 +966,7 @@ EventHandler<ClientTypes, StateEnum::Uninitialized, Event::Connect>::handle(
         std::move(write),
         std::move(*earlyWriteSecretAvailable),
         std::move(*reportEarlySuccess),
+        SecretAvailable(std::move(*earlyExporterVector)),
         MutateState(&Transition<StateEnum::ExpectingServerHello>));
   } else {
     return actions(
@@ -2045,12 +2047,10 @@ EventHandler<ClientTypes, StateEnum::ExpectingFinished, Event::Finished>::
 
   auto encodedFinished = Protocol::getFinished(
       state.clientHandshakeSecret()->coalesce(), *state.handshakeContext());
-  auto resumptionSecret = folly::IOBuf::copyBuffer(
-      state.keyScheduler()
-          ->getSecret(
-              MasterSecrets::ResumptionMaster,
-              state.handshakeContext()->getHandshakeContext()->coalesce())
-          .secret);
+  auto resumptionVector = state.keyScheduler()->getSecret(
+      MasterSecrets::ResumptionMaster,
+      state.handshakeContext()->getHandshakeContext()->coalesce());
+  auto resumptionSecret = folly::IOBuf::copyBuffer(resumptionVector.secret);
 
   WriteToSocket clientFlight;
 
@@ -2136,6 +2136,8 @@ EventHandler<ClientTypes, StateEnum::ExpectingFinished, Event::Finished>::
       MutateState(&Transition<StateEnum::Established>),
       SecretAvailable(std::move(readSecret)),
       SecretAvailable(std::move(writeSecret)),
+      SecretAvailable(std::move(exporterMasterVector)),
+      SecretAvailable(std::move(resumptionVector)),
       std::move(clientFlight),
       std::move(reportSuccess));
 }
