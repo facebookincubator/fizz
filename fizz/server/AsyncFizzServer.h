@@ -95,6 +95,8 @@ class AsyncFizzServerT : public AsyncFizzBase {
 
   folly::Optional<Random> getClientRandom() const override;
 
+  void initiateKeyUpdate(KeyUpdateRequest keyUpdateRequest) override;
+
  protected:
   ~AsyncFizzServerT() override = default;
   void writeAppData(

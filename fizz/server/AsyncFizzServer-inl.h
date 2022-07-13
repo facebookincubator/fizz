@@ -350,5 +350,13 @@ template <typename SM>
 void AsyncFizzServerT<SM>::ActionMoveVisitor::operator()(EndOfData& eod) {
   server_.endOfTLS(std::move(eod.postTlsData));
 }
+
+template <typename SM>
+void AsyncFizzServerT<SM>::initiateKeyUpdate(
+    KeyUpdateRequest keyUpdateRequest) {
+  KeyUpdateInitiation kui;
+  kui.request_update = keyUpdateRequest;
+  fizzServer_.initiateKeyUpdate(std::move(kui));
+}
 } // namespace server
 } // namespace fizz

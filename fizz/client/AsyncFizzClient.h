@@ -152,6 +152,8 @@ class AsyncFizzClientT : public AsyncFizzBase,
     return pskIdentity_;
   }
 
+  void initiateKeyUpdate(KeyUpdateRequest keyUpdateRequest) override;
+
  protected:
   ~AsyncFizzClientT() override = default;
   void writeAppData(

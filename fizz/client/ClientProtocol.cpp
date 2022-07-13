@@ -139,6 +139,12 @@ FIZZ_DECLARE_EVENT_HANDLER(
 FIZZ_DECLARE_EVENT_HANDLER(
     ClientTypes,
     StateEnum::Established,
+    Event::KeyUpdateInitiation,
+    StateEnum::Error);
+
+FIZZ_DECLARE_EVENT_HANDLER(
+    ClientTypes,
+    StateEnum::Established,
     Event::KeyUpdate,
     StateEnum::Error);
 
@@ -234,6 +240,12 @@ Actions ClientStateMachine::processAppClose(const State& state) {
 
 Actions ClientStateMachine::processAppCloseImmediate(const State& state) {
   return detail::handleAppCloseImmediate(state);
+}
+
+Actions ClientStateMachine::processKeyUpdateInitiation(
+    const State& state,
+    KeyUpdateInitiation keyUpdateInitiation) {
+  return detail::processEvent(state, std::move(keyUpdateInitiation));
 }
 
 namespace detail {
@@ -2209,6 +2221,43 @@ EventHandler<ClientTypes, StateEnum::Established, Event::AppWrite>::handle(
 }
 
 Actions
+EventHandler<ClientTypes, StateEnum::Established, Event::KeyUpdateInitiation>::
+    handle(const State& state, Param param) {
+  if (state.readRecordLayer()->hasUnparsedHandshakeData()) {
+    throw FizzException(
+        "data after key_update", AlertDescription::unexpected_message);
+  }
+  auto& keyUpdateInitiation = *param.asKeyUpdateInitiation();
+  auto encodedKeyUpdated =
+      Protocol::getKeyUpdated(keyUpdateInitiation.request_update);
+  WriteToSocket write;
+  write.contents.emplace_back(
+      state.writeRecordLayer()->writeHandshake(std::move(encodedKeyUpdated)));
+
+  state.keyScheduler()->clientKeyUpdate();
+
+  auto writeRecordLayer =
+      state.context()->getFactory()->makeEncryptedWriteRecordLayer(
+          EncryptionLevel::AppTraffic);
+  writeRecordLayer->setProtocolVersion(*state.version());
+  auto writeSecret =
+      state.keyScheduler()->getSecret(AppTrafficSecrets::ClientAppTraffic);
+  Protocol::setAead(
+      *writeRecordLayer,
+      *state.cipher(),
+      folly::range(writeSecret.secret),
+      *state.context()->getFactory(),
+      *state.keyScheduler());
+  return actions(
+      MutateState([wRecordLayer =
+                       std::move(writeRecordLayer)](State& newState) mutable {
+        newState.writeRecordLayer() = std::move(wRecordLayer);
+      }),
+      SecretAvailable(std::move(writeSecret)),
+      std::move(write));
+}
+
+Actions
 EventHandler<ClientTypes, StateEnum::Established, Event::KeyUpdate>::handle(
     const State& state,
     Param param) {
@@ -2218,6 +2267,7 @@ EventHandler<ClientTypes, StateEnum::Established, Event::KeyUpdate>::handle(
     throw FizzException(
         "data after key_update", AlertDescription::unexpected_message);
   }
+
   state.keyScheduler()->serverKeyUpdate();
   auto readRecordLayer =
       state.context()->getFactory()->makeEncryptedReadRecordLayer(
@@ -2241,6 +2291,8 @@ EventHandler<ClientTypes, StateEnum::Established, Event::KeyUpdate>::handle(
         SecretAvailable(std::move(readSecret)));
   }
 
+  // We don't want to request the key update when the remote peer init'ed the
+  // update.
   auto encodedKeyUpdated =
       Protocol::getKeyUpdated(KeyUpdateRequest::update_not_requested);
   WriteToSocket write;
@@ -2261,7 +2313,6 @@ EventHandler<ClientTypes, StateEnum::Established, Event::KeyUpdate>::handle(
       folly::range(writeSecret.secret),
       *state.context()->getFactory(),
       *state.keyScheduler());
-
   return actions(
       MutateState([rRecordLayer = std::move(readRecordLayer),
                    wRecordLayer =

@@ -65,6 +65,13 @@ Buf FizzServer<ActionMoveVisitor, SM>::getEarlyEkm(
 }
 
 template <typename ActionMoveVisitor, typename SM>
+void FizzServer<ActionMoveVisitor, SM>::initiateKeyUpdate(
+    KeyUpdateInitiation keyUpdateInitiation) {
+  this->addProcessingActions(this->machine_.processKeyUpdateInitiation(
+      this->state_, std::move(keyUpdateInitiation)));
+}
+
+template <typename ActionMoveVisitor, typename SM>
 void FizzServer<ActionMoveVisitor, SM>::startActions(AsyncActions actions) {
   folly::variant_match(
       actions,
@@ -125,6 +132,5 @@ void FizzServer<ActionMoveVisitor, SM>::visitActions(
     }
   }
 }
-
 } // namespace server
 } // namespace fizz

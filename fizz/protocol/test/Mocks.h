@@ -375,6 +375,7 @@ class MockAsyncFizzBase : public AsyncFizzBase {
 
   MOCK_METHOD(folly::Optional<Random>, getClientRandom, (), (const));
   MOCK_METHOD(void, tlsShutdown, ());
+  MOCK_METHOD(void, initiateKeyUpdate, (KeyUpdateRequest), (override));
 
   MOCK_METHOD(
       void,

@@ -58,6 +58,13 @@ Buf FizzClient<ActionMoveVisitor, SM>::getEarlyEkm(
 }
 
 template <typename ActionMoveVisitor, typename SM>
+void FizzClient<ActionMoveVisitor, SM>::initiateKeyUpdate(
+    KeyUpdateInitiation keyUpdateInitiation) {
+  this->addProcessingActions(this->machine_.processKeyUpdateInitiation(
+      this->state_, std::move(keyUpdateInitiation)));
+}
+
+template <typename ActionMoveVisitor, typename SM>
 void FizzClient<ActionMoveVisitor, SM>::startActions(Actions actions) {
   this->processActions(std::move(actions));
 }

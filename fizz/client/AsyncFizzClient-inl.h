@@ -654,5 +654,13 @@ template <typename SM>
 folly::Optional<Random> AsyncFizzClientT<SM>::getClientRandom() const {
   return getState().clientRandom();
 }
+
+template <typename SM>
+void AsyncFizzClientT<SM>::initiateKeyUpdate(
+    KeyUpdateRequest keyUpdateRequest) {
+  KeyUpdateInitiation kui;
+  kui.request_update = keyUpdateRequest;
+  fizzClient_.initiateKeyUpdate(std::move(kui));
+}
 } // namespace client
 } // namespace fizz

@@ -55,6 +55,8 @@ folly::StringPiece toString(Event event) {
       return "CloseNotify";
     case Event::NUM_EVENTS:
       return "Invalid event NUM_EVENTS";
+    case Event::KeyUpdateInitiation:
+      return "KeyUpdateInitiation";
   }
   return "Unknown event";
 }
