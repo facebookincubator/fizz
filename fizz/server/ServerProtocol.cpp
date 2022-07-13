@@ -436,8 +436,6 @@ static Optional<ProtocolVersion> negotiateVersion(
 
 static Optional<CookieState> getCookieState(
     const ClientHello& chlo,
-    ProtocolVersion version,
-    CipherSuite cipher,
     const CookieCipher* cookieCipher) {
   auto cookieExt = getExtension<Cookie>(chlo.extensions);
   if (!cookieExt) {
@@ -458,6 +456,22 @@ static Optional<CookieState> getCookieState(
         "could not decrypt cookie", AlertDescription::decrypt_error);
   }
 
+  if (cookieState->echCipherSuite.has_value() ^
+      (cookieState->echConfigId != nullptr)) {
+    throw FizzException(
+        "cookie has incomplete ech params", AlertDescription::internal_error);
+  }
+
+  return cookieState;
+}
+
+static void verifyCookieState(
+    Optional<CookieState>& cookieState,
+    ProtocolVersion version,
+    CipherSuite cipher) {
+  if (!cookieState) {
+    return;
+  }
   if (cookieState->version != version) {
     throw FizzException(
         "version mismatch with cookie", AlertDescription::protocol_version);
@@ -467,8 +481,6 @@ static Optional<CookieState> getCookieState(
     throw FizzException(
         "cipher mismatch with cookie", AlertDescription::handshake_failure);
   }
-
-  return cookieState;
 }
 
 namespace {
@@ -589,11 +601,6 @@ static std::
   auto scheduler = factory.makeKeyScheduler(cipher);
 
   if (cookieState) {
-    if (handshakeContext) {
-      throw FizzException(
-          "cookie after statefull hrr", AlertDescription::illegal_parameter);
-    }
-
     handshakeContext = factory.makeHandshakeContext(cipher);
 
     message_hash chloHash;
@@ -995,24 +1002,121 @@ static Buf getCertificateRequest(
   return encodedCertificateRequest;
 }
 
+static ECHStatus processECHHRR(
+    const Optional<CookieState>& cookieState,
+    const State& state,
+    ClientHello& chlo) {
+  auto decrypter = state.context()->getECHDecrypter();
+  auto echExt = getExtension<ech::ClientECH>(chlo.extensions);
+  ECHStatus echStatus = state.echStatus();
+
+  // Check for cookie ECH
+  bool cookieHasECH = cookieState && cookieState->echCipherSuite.has_value();
+
+  // Do checks for both cases.
+  if (echStatus == ECHStatus::Accepted || cookieHasECH) {
+    if (!decrypter) {
+      throw FizzException(
+          "ech accepted but no decrypter set up",
+          AlertDescription::internal_error);
+    }
+    if (!echExt) {
+      throw FizzException(
+          "ech not sent for hrr", AlertDescription::missing_extension);
+    }
+    if (!echExt->config_id->empty() || !echExt->enc->empty()) {
+      throw FizzException(
+          "hrr ech enc or config_id not empty",
+          AlertDescription::illegal_parameter);
+    }
+  }
+
+  if (echStatus == ECHStatus::Accepted) {
+    // Stateful HRR first.
+    if (state.echState()->cipherSuite != echExt->cipher_suite) {
+      throw FizzException(
+          "ech hrr cipher suite mismatch", AlertDescription::illegal_parameter);
+    }
+
+    chlo = decrypter->decryptClientHelloHRR(
+        chlo, state.echState()->configId, state.echState()->hpkeContext);
+
+    return ECHStatus::Accepted;
+  } else if (cookieHasECH) {
+    // Stateless HRR now
+    if (*cookieState->echCipherSuite != echExt->cipher_suite) {
+      throw FizzException(
+          "ech hrr cipher suite mismatch", AlertDescription::illegal_parameter);
+    }
+
+    chlo = decrypter->decryptClientHelloHRR(
+        chlo, cookieState->echConfigId, cookieState->echEnc);
+
+    return ECHStatus::Accepted;
+  }
+
+  // Just return the ECH status as is
+  return echStatus;
+}
+
+// Process ECH, replacing chlo if successful
+static std::pair<ECHStatus, ECHState> processECH(
+    const Optional<CookieState>& cookieState,
+    const State& state,
+    ClientHello& chlo) {
+  // First, fetch current state (if any).
+  ECHState echState;
+  ECHStatus echStatus = state.echStatus();
+
+  if (state.handshakeContext() || cookieState) {
+    // Process ECH for HRR (if any)
+    echStatus = processECHHRR(cookieState, state, chlo);
+    // Populate ECH state for saving
+    if (state.echState().has_value()) {
+      echState.hpkeContext = std::move(state.echState()->hpkeContext);
+      if (state.echState()->configId != nullptr) {
+        echState.configId = state.echState()->configId->clone();
+      }
+      echState.cipherSuite = state.echState()->cipherSuite;
+    }
+  } else {
+    bool requestedECH =
+        findExtension(chlo.extensions, ExtensionType::encrypted_client_hello) !=
+        chlo.extensions.end();
+    auto decrypter = state.context()->getECHDecrypter();
+    if (requestedECH && decrypter) {
+      auto gotChlo = decrypter->decryptClientHello(chlo);
+      if (gotChlo.has_value()) {
+        auto echExt = getExtension<ech::ClientECH>(chlo.extensions);
+        echStatus = ECHStatus::Accepted;
+        echState.hpkeContext = std::move(gotChlo->context);
+        echState.configId = std::move(gotChlo->configId);
+        echState.cipherSuite = echExt->cipher_suite;
+        chlo = std::move(gotChlo->chlo);
+      } else if (requestedECH) {
+        echStatus = ECHStatus::Rejected;
+      }
+    }
+  }
+
+  return std::make_pair(echStatus, std::move(echState));
+}
+
 AsyncActions
 EventHandler<ServerTypes, StateEnum::ExpectingClientHello, Event::ClientHello>::
     handle(const State& state, Param param) {
   ClientHello chlo = std::move(*param.asClientHello());
 
-  // Update the client hello if we are using ECH
-  auto decrypter = state.context()->getECHDecrypter();
-  bool acceptedECH = false;
-  bool requestedECH =
-      findExtension(chlo.extensions, ExtensionType::encrypted_client_hello) !=
-      chlo.extensions.end();
-  if (decrypter) {
-    auto gotChlo = decrypter->decryptClientHello(chlo);
-    if (gotChlo.has_value()) {
-      acceptedECH = true;
-      chlo = std::move(gotChlo->chlo);
-    }
+  auto cookieState = getCookieState(chlo, state.context()->getCookieCipher());
+
+  if (state.handshakeContext() && cookieState.has_value()) {
+    throw FizzException(
+        "cookie after statefull hrr", AlertDescription::illegal_parameter);
   }
+
+  ECHStatus echStatus;
+  ECHState echState;
+  std::tie(echStatus, echState) = processECH(cookieState, state, chlo);
 
   addHandshakeLogging(state, chlo);
 
@@ -1060,8 +1164,7 @@ EventHandler<ServerTypes, StateEnum::ExpectingClientHello, Event::ClientHello>::
 
   auto cipher = negotiateCipher(chlo, state.context()->getSupportedCiphers());
 
-  auto cookieState = getCookieState(
-      chlo, *version, cipher, state.context()->getCookieCipher());
+  verifyCookieState(cookieState, *version, cipher);
 
   auto resStateResult = getResumptionState(
       chlo,
@@ -1088,8 +1191,8 @@ EventHandler<ServerTypes, StateEnum::ExpectingClientHello, Event::ClientHello>::
        version = *version,
        cipher,
        pskMode = resStateResult.pskMode,
-       acceptedECH,
-       requestedECH,
+       echStatus,
+       echState = std::move(echState),
        obfuscatedAge =
            resStateResult.obfuscatedAge](FutureResultType result) mutable {
         auto& resumption = *std::get<0>(result);
@@ -1252,8 +1355,10 @@ EventHandler<ServerTypes, StateEnum::ExpectingClientHello, Event::ClientHello>::
                              group,
                              earlyDataType,
                              replayCacheResult,
-                             newReadRecordLayer = std::move(
-                                 newReadRecordLayer)](State& newState) mutable {
+                             newReadRecordLayer = std::move(newReadRecordLayer),
+                             echStatus,
+                             echState =
+                                 std::move(echState)](State& newState) mutable {
                   // Save some information about the current state to be
                   // validated when we get the second client hello. We don't
                   // validate that the second client hello matches the first
@@ -1267,6 +1372,10 @@ EventHandler<ServerTypes, StateEnum::ExpectingClientHello, Event::ClientHello>::
                   newState.earlyDataType() = earlyDataType;
                   newState.replayCacheResult() = replayCacheResult;
                   newState.readRecordLayer() = std::move(newReadRecordLayer);
+                  newState.echStatus() = echStatus;
+                  if (echStatus == ECHStatus::Accepted) {
+                    newState.echState() = std::move(echState);
+                  }
                 }),
                 std::move(serverFlight),
                 MutateState(&Transition<StateEnum::ExpectingClientHello>)));
@@ -1315,7 +1424,7 @@ EventHandler<ServerTypes, StateEnum::ExpectingClientHello, Event::ClientHello>::
             std::move(serverShare),
             legacySessionId ? legacySessionId->clone() : nullptr);
 
-        if (acceptedECH) {
+        if (echStatus == ECHStatus::Accepted) {
           // If accepted, go ahead and set the last random bytes to the
           // accept_confirmation
           ech::setAcceptConfirmation(
@@ -1421,10 +1530,6 @@ EventHandler<ServerTypes, StateEnum::ExpectingClientHello, Event::ClientHello>::
 
         auto clientRandom = std::move(chlo.random);
 
-        ECHStatus echStatus = ECHStatus::NotRequested;
-        if (requestedECH) {
-          echStatus = acceptedECH ? ECHStatus::Accepted : ECHStatus::Rejected;
-        }
         return runOnCallerIfComplete(
             state.executor(),
             std::move(signature),
@@ -1610,6 +1715,7 @@ EventHandler<ServerTypes, StateEnum::ExpectingClientHello, Event::ClientHello>::
                     newState.handshakeTime() = std::move(handshakeTime);
                     newState.clientRandom() = std::move(clientRandom);
                     newState.echStatus() = echStatus;
+                    newState.echState() = folly::none;
                   });
 
               if (earlyDataType == EarlyDataType::Accepted) {
