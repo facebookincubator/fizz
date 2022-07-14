@@ -4111,6 +4111,15 @@ TEST_F(ClientProtocolTest, TestFinishedMismatch) {
       actions, AlertDescription::bad_record_mac, "finished verify failure");
 }
 
+TEST_F(ClientProtocolTest, TestFinishedRejectedECH) {
+  setupExpectingFinished();
+  state_.echState().emplace();
+  state_.echState()->status = ECHStatus::Rejected;
+  auto actions = detail::processEvent(state_, TestMessages::finished());
+  expectErrorAtEnd<FizzException>(
+      actions, AlertDescription::ech_required, "ech not accepted");
+}
+
 TEST_F(ClientProtocolTest, TestFinishedRejectedEarly) {
   setupExpectingFinished();
   state_.earlyDataType() = EarlyDataType::Rejected;

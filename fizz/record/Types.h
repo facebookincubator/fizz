@@ -148,7 +148,8 @@ enum class AlertDescription : uint8_t {
   bad_certificate_hash_value = 114,
   unknown_psk_identity = 115,
   certificate_required = 116,
-  no_application_protocol = 120
+  no_application_protocol = 120,
+  ech_required = 121
 };
 
 std::string toString(AlertDescription);

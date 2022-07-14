@@ -2126,8 +2126,7 @@ EventHandler<ClientTypes, StateEnum::ExpectingFinished, Event::Finished>::
   ReportHandshakeSuccess reportSuccess;
   reportSuccess.earlyDataAccepted =
       state.earlyDataType() == EarlyDataType::Accepted;
-
-  return actions(
+  auto pendingActions = actions(
       MutateState([readRecordLayer = std::move(readRecordLayer),
                    writeRecordLayer = std::move(writeRecordLayer),
                    resumptionSecret = std::move(resumptionSecret),
@@ -2150,8 +2149,23 @@ EventHandler<ClientTypes, StateEnum::ExpectingFinished, Event::Finished>::
       SecretAvailable(std::move(writeSecret)),
       SecretAvailable(std::move(exporterMasterVector)),
       SecretAvailable(std::move(resumptionVector)),
-      std::move(clientFlight),
-      std::move(reportSuccess));
+      std::move(clientFlight));
+
+  if (state.echState().has_value() &&
+      state.echState()->status == ECHStatus::Rejected) {
+    auto errActions = handleError(
+        state,
+        ReportError(folly::make_exception_wrapper<FizzException>(
+            "ech not accepted", AlertDescription::ech_required)),
+        AlertDescription::ech_required);
+    for (auto& act : errActions) {
+      fizz::detail::addAction(pendingActions, std::move(act));
+    }
+  } else {
+    fizz::detail::addAction(pendingActions, std::move(reportSuccess));
+  }
+
+  return pendingActions;
 }
 
 static uint32_t getMaxEarlyDataSize(const NewSessionTicket& nst) {
