@@ -28,6 +28,18 @@ inline Extension encodeExtension(const ech::ClientECH& clientECH) {
 }
 
 template <>
+inline Extension encodeExtension(const ech::ServerECH& serverECH) {
+  Extension ext;
+  ext.extension_type = ExtensionType::encrypted_client_hello;
+  ext.extension_data = folly::IOBuf::create(0);
+
+  folly::io::Appender appender(ext.extension_data.get(), 20);
+
+  detail::writeVector<uint16_t>(serverECH.retry_configs, appender);
+  return ext;
+}
+
+template <>
 inline Extension encodeExtension(const ech::ECHIsInner&) {
   Extension ext;
   ext.extension_type = ExtensionType::ech_is_inner;
@@ -56,6 +68,14 @@ inline ech::ClientECH getExtension(folly::io::Cursor& cs) {
   detail::readBuf<uint16_t>(clientECH.payload, cs);
 
   return clientECH;
+}
+
+template <>
+inline ech::ServerECH getExtension(folly::io::Cursor& cs) {
+  ech::ServerECH serverECH;
+  detail::readVector<uint16_t>(serverECH.retry_configs, cs);
+
+  return serverECH;
 }
 
 template <>

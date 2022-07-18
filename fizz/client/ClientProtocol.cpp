@@ -1712,15 +1712,29 @@ Actions EventHandler<
     }
   }
 
+  folly::Optional<std::vector<ech::ECHConfig>> retryConfigs;
+  if (state.echState().has_value()) {
+    // Check if we were sent retry configs
+    auto serverECH = getExtension<ech::ServerECH>(ee.extensions);
+    if (serverECH.has_value()) {
+      retryConfigs = std::move(serverECH->retry_configs);
+    }
+  }
+
   if (state.extensions()) {
     state.extensions()->onEncryptedExtensions(ee.extensions);
   }
 
   MutateState mutateState(
-      [appProto = std::move(appProto), earlyDataType](State& newState) mutable {
+      [appProto = std::move(appProto),
+       earlyDataType,
+       retryConfigs = std::move(retryConfigs)](State& newState) mutable {
         newState.alpn() = std::move(appProto);
         newState.requestedExtensions() = folly::none;
         newState.earlyDataType() = earlyDataType;
+        if (retryConfigs.has_value()) {
+          newState.echState()->retryConfigs = std::move(retryConfigs);
+        }
       });
 
   if (state.pskType() == PskType::Resumption ||

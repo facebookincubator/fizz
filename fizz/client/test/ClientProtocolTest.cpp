@@ -3079,6 +3079,34 @@ TEST_F(ClientProtocolTest, TestEncryptedExtensionsEarlyAlpnMismatch) {
       actions, AlertDescription::illegal_parameter, "different alpn");
 }
 
+TEST_F(ClientProtocolTest, TestEncryptedExtensionsECHRetryConfigs) {
+  context_->setSupportedAlpns({"h2"});
+  setupExpectingEncryptedExtensions();
+  state_.requestedExtensions()->push_back(
+      ExtensionType::encrypted_client_hello);
+  state_.echState().emplace();
+  state_.echState()->status = ECHStatus::Rejected;
+  EXPECT_CALL(
+      *mockHandshakeContext_, appendToTranscript(BufMatches("eeencoding")));
+
+  auto ee = TestMessages::encryptedExt();
+  ech::ServerECH serverECH;
+  ech::ECHConfig cfg;
+  cfg.version = ech::ECHVersion::Draft9;
+  cfg.ech_config_content = folly::IOBuf::copyBuffer("retryconfig");
+  serverECH.retry_configs.push_back(std::move(cfg));
+  ee.extensions.push_back(encodeExtension(std::move(serverECH)));
+
+  auto actions = detail::processEvent(state_, std::move(ee));
+  expectActions<MutateState>(actions);
+  processStateMutations(actions);
+  EXPECT_EQ(*state_.alpn(), "h2");
+  EXPECT_TRUE(folly::IOBufEqualTo()(
+      state_.echState()->retryConfigs.value()[0].ech_config_content,
+      folly::IOBuf::copyBuffer("retryconfig")));
+  EXPECT_EQ(state_.state(), StateEnum::ExpectingCertificate);
+}
+
 TEST_F(ClientProtocolTest, TestCertificateFlow) {
   setupExpectingCertificate();
   EXPECT_CALL(
