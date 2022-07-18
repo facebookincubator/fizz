@@ -910,6 +910,7 @@ static Buf getEncryptedExt(
     HandshakeContext& handshakeContext,
     const folly::Optional<std::string>& selectedAlpn,
     EarlyDataType earlyData,
+    folly::Optional<std::vector<ech::ECHConfig>> echRetryConfigs,
     std::vector<Extension> otherExtensions) {
   EncryptedExtensions encryptedExt;
   if (selectedAlpn) {
@@ -922,6 +923,12 @@ static Buf getEncryptedExt(
 
   if (earlyData == EarlyDataType::Accepted) {
     encryptedExt.extensions.push_back(encodeExtension(ServerEarlyData()));
+  }
+
+  if (echRetryConfigs.has_value()) {
+    ech::ServerECH serverEch;
+    serverEch.retry_configs = std::move(*echRetryConfigs);
+    encryptedExt.extensions.push_back(encodeExtension(std::move(serverEch)));
   }
 
   for (auto& ext : otherExtensions) {
@@ -1079,6 +1086,7 @@ static std::pair<ECHStatus, ECHState> processECH(
   // First, fetch current state (if any).
   ECHState echState;
   ECHStatus echStatus = state.echStatus();
+  auto decrypter = state.context()->getECHDecrypter();
 
   if (state.handshakeContext() || cookieState) {
     // Process ECH for HRR (if any)
@@ -1095,7 +1103,6 @@ static std::pair<ECHStatus, ECHState> processECH(
     bool requestedECH =
         findExtension(chlo.extensions, ExtensionType::encrypted_client_hello) !=
         chlo.extensions.end();
-    auto decrypter = state.context()->getECHDecrypter();
     if (requestedECH && decrypter) {
       auto gotChlo = decrypter->decryptClientHello(chlo);
       if (gotChlo.has_value()) {
@@ -1436,11 +1443,15 @@ EventHandler<ServerTypes, StateEnum::ExpectingClientHello, Event::ClientHello>::
             std::move(serverShare),
             legacySessionId ? legacySessionId->clone() : nullptr);
 
+        folly::Optional<std::vector<ech::ECHConfig>> echRetryConfigs;
         if (echStatus == ECHStatus::Accepted) {
           // If accepted, go ahead and set the last random bytes to the
           // accept_confirmation
           ech::setAcceptConfirmation(
               serverHello, handshakeContext->clone(), scheduler);
+        } else if (echStatus == ECHStatus::Rejected) {
+          auto decrypter = state.context()->getECHDecrypter();
+          echRetryConfigs = decrypter->getRetryConfigs();
         }
 
         auto encodedServerHello = encodeHandshake(std::move(serverHello));
@@ -1483,6 +1494,7 @@ EventHandler<ServerTypes, StateEnum::ExpectingClientHello, Event::ClientHello>::
             *handshakeContext,
             alpn,
             earlyDataType,
+            std::move(echRetryConfigs),
             std::move(additionalExtensions));
 
         /*

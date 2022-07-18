@@ -43,6 +43,7 @@ class Decrypter {
       const ClientHello& chlo,
       const std::unique_ptr<folly::IOBuf>& configId,
       const std::unique_ptr<folly::IOBuf>& encapsulatedKey) = 0;
+  virtual std::vector<ech::ECHConfig> getRetryConfigs() const = 0;
 };
 
 class ECHConfigManager : public Decrypter {
@@ -58,6 +59,7 @@ class ECHConfigManager : public Decrypter {
       const ClientHello& chlo,
       const std::unique_ptr<folly::IOBuf>& configId,
       const std::unique_ptr<folly::IOBuf>& encapsulatedKey) override;
+  std::vector<ech::ECHConfig> getRetryConfigs() const override;
 
  private:
   std::vector<DecrypterParams> configs_;

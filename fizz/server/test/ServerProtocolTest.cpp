@@ -62,6 +62,8 @@ class MockDecrypter : public ech::Decrypter {
       const std::unique_ptr<folly::IOBuf>& encapsulatedKey) override {
     return _decryptClientHelloHRR_Stateless(chlo, configId, encapsulatedKey);
   }
+
+  MOCK_CONST_METHOD0(getRetryConfigs, std::vector<ech::ECHConfig>());
 };
 
 class ServerProtocolTest : public ProtocolTest<ServerTypes, Actions> {
@@ -1462,6 +1464,13 @@ TEST_F(ServerProtocolTest, TestECHDecryptionFailure) {
   auto decrypter = std::make_shared<MockDecrypter>();
   EXPECT_CALL(*decrypter, decryptClientHello(_))
       .WillOnce(InvokeWithoutArgs([=]() { return folly::none; }));
+  EXPECT_CALL(*decrypter, getRetryConfigs())
+      .WillOnce(InvokeWithoutArgs([]() -> std::vector<ech::ECHConfig> {
+        ech::ECHConfig cfg;
+        cfg.version = ech::ECHVersion::Draft9;
+        cfg.ech_config_content = folly::IOBuf::copyBuffer("retryconfig");
+        return {std::move(cfg)};
+      }));
   context_->setECHDecrypter(decrypter);
 
   mockKeyScheduler_ = new MockKeyScheduler();
@@ -1572,6 +1581,13 @@ TEST_F(ServerProtocolTest, TestECHDecryptionFailure) {
       [](TLSMessage& msg, auto writeRecord) {
         EXPECT_EQ(msg.type, ContentType::handshake);
         auto modifiedEncryptedExt = TestMessages::encryptedExt();
+        ech::ServerECH serverECH;
+        ech::ECHConfig cfg;
+        cfg.version = ech::ECHVersion::Draft9;
+        cfg.ech_config_content = folly::IOBuf::copyBuffer("retryconfig");
+        serverECH.retry_configs.push_back(std::move(cfg));
+        modifiedEncryptedExt.extensions.push_back(
+            encodeExtension(std::move(serverECH)));
         Extension ext;
         ext.extension_type = ExtensionType::token_binding;
         ext.extension_data = folly::IOBuf::copyBuffer("someextension");
@@ -3283,6 +3299,13 @@ TEST_F(ServerProtocolTest, TestRetryClientHelloECHRejectedFlow) {
   setUpExpectingClientHelloRetry();
   state_.echStatus() = ECHStatus::Rejected;
   auto decrypter = std::make_shared<MockDecrypter>();
+  EXPECT_CALL(*decrypter, getRetryConfigs())
+      .WillOnce(InvokeWithoutArgs([]() -> std::vector<ech::ECHConfig> {
+        ech::ECHConfig cfg;
+        cfg.version = ech::ECHVersion::Draft9;
+        cfg.ech_config_content = folly::IOBuf::copyBuffer("retryconfig");
+        return {std::move(cfg)};
+      }));
   context_->setECHDecrypter(decrypter);
   Sequence contextSeq;
   mockKeyScheduler_ = new MockKeyScheduler();
@@ -3378,10 +3401,17 @@ TEST_F(ServerProtocolTest, TestRetryClientHelloECHRejectedFlow) {
       folly::StringPiece("sht"),
       [](TLSMessage& msg, auto writeRecord) {
         EXPECT_EQ(msg.type, ContentType::handshake);
+        auto ee = TestMessages::encryptedExt();
+        ech::ServerECH serverECH;
+        ech::ECHConfig cfg;
+        cfg.version = ech::ECHVersion::Draft9;
+        cfg.ech_config_content = folly::IOBuf::copyBuffer("retryconfig");
+        serverECH.retry_configs.push_back(std::move(cfg));
+        ee.extensions.push_back(encodeExtension(std::move(serverECH)));
         EXPECT_TRUE(folly::IOBufEqualTo()(
             msg.fragment,
             getEncryptedHandshakeWrite(
-                TestMessages::encryptedExt(),
+                std::move(ee),
                 TestMessages::certificate(),
                 TestMessages::certificateVerify(),
                 TestMessages::finished())));
