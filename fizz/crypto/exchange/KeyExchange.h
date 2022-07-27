@@ -48,5 +48,10 @@ class KeyExchange {
    * a key pair is set.
    */
   virtual std::unique_ptr<KeyExchange> clone() const = 0;
+
+  /**
+   * @return The size (in bytes) of the public key.
+   */
+  virtual std::size_t getKeyShareSize() const = 0;
 };
 } // namespace fizz

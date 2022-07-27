@@ -27,6 +27,7 @@ class MockKeyExchange : public KeyExchange {
       (folly::ByteRange keyShare),
       (const));
   MOCK_METHOD(std::unique_ptr<KeyExchange>, clone, (), (const));
+  MOCK_METHOD(std::size_t, getKeyShareSize, (), (const));
 
   void setDefaults() {
     ON_CALL(*this, getKeyShare()).WillByDefault(InvokeWithoutArgs([]() {
@@ -35,6 +36,9 @@ class MockKeyExchange : public KeyExchange {
     ON_CALL(*this, generateSharedSecret(_))
         .WillByDefault(InvokeWithoutArgs(
             []() { return folly::IOBuf::copyBuffer("sharedsecret"); }));
+    // Excluding \n
+    ON_CALL(*this, getKeyShareSize())
+        .WillByDefault(Return(sizeof("keyshare") - 1));
   }
 };
 

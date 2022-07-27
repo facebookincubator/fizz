@@ -88,4 +88,9 @@ std::unique_ptr<KeyExchange> OpenSSLECKeyExchange<T>::clone() const {
   return copyKex;
 }
 
+template <class T>
+std::size_t OpenSSLECKeyExchange<T>::getKeyShareSize() const {
+  return T::keyShareLength;
+}
+
 } // namespace fizz

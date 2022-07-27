@@ -92,4 +92,8 @@ std::unique_ptr<KeyExchange> X25519KeyExchange::clone() const {
   return kexCopy;
 }
 
+std::size_t X25519KeyExchange::getKeyShareSize() const {
+  return kCurve25519PubBytes;
+}
+
 } // namespace fizz

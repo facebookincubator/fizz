@@ -39,6 +39,10 @@ class MockKeyExchange : public KeyExchange {
     return nullptr;
   }
 
+  size_t getKeyShareSize() const override {
+    return actualKex_->getKeyShareSize();
+  }
+
  private:
   std::unique_ptr<KeyExchange> actualKex_;
   folly::ssl::EvpPkeyUniquePtr privateKey_;
