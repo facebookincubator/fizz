@@ -245,6 +245,8 @@ std::string toString(NamedGroup group) {
       return "secp521r1";
     case NamedGroup::x25519:
       return "x25519";
+    case NamedGroup::secp521r1_x25519:
+      return "secp521r1_x25519";
   }
   return enumToHex(group);
 }

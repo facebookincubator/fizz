@@ -343,7 +343,12 @@ enum class NamedGroup : uint16_t {
   secp256r1 = 23,
   secp384r1 = 24,
   secp521r1 = 25,
-  x25519 = 29
+  x25519 = 29,
+  // experimental
+  secp521r1_x25519 =
+      510, // Hybrid of secp521r1 and x25519. TLS Supported Group 510 is
+           // reserved for private use, see
+           // https://www.iana.org/assignments/tls-parameters/tls-parameters.xhtml#tls-parameters-8
 };
 
 std::string toString(NamedGroup);
