@@ -28,6 +28,7 @@ class MockKeyExchange : public KeyExchange {
       (const));
   MOCK_METHOD(std::unique_ptr<KeyExchange>, clone, (), (const));
   MOCK_METHOD(std::size_t, getKeyShareSize, (), (const));
+  int keyGenerated = 0;
 
   void setDefaults() {
     ON_CALL(*this, getKeyShare()).WillByDefault(InvokeWithoutArgs([]() {
@@ -39,6 +40,38 @@ class MockKeyExchange : public KeyExchange {
     // Excluding \n
     ON_CALL(*this, getKeyShareSize())
         .WillByDefault(Return(sizeof("keyshare") - 1));
+  }
+
+  void setForHybridKeyExchange() {
+    ON_CALL(*this, generateKeyPair()).WillByDefault(InvokeWithoutArgs([this]() {
+      keyGenerated = 1;
+    }));
+    ON_CALL(*this, getKeyShare()).WillByDefault(InvokeWithoutArgs([this]() {
+      if (!keyGenerated) {
+        throw std::runtime_error("Key not generated");
+      }
+      return folly::IOBuf::copyBuffer("keyshare");
+    }));
+    ON_CALL(*this, generateSharedSecret(_))
+        .WillByDefault(InvokeWithoutArgs([this]() {
+          if (!keyGenerated) {
+            throw std::runtime_error("Key not generated");
+          }
+          return folly::IOBuf::copyBuffer("sharedsecret");
+        }));
+    // Excluding \n
+    ON_CALL(*this, getKeyShareSize())
+        .WillByDefault(Return(sizeof("keyshare") - 1));
+    ON_CALL(*this, clone()).WillByDefault(InvokeWithoutArgs([this]() {
+      auto copy = std::make_unique<MockKeyExchange>();
+      copy->setDefaults();
+      copy->keyGenerated = keyGenerated;
+      return copy;
+    }));
+  }
+
+  void setReturnZeroKeyLength() {
+    ON_CALL(*this, getKeyShareSize()).WillByDefault(Return(0));
   }
 };
 
