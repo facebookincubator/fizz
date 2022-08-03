@@ -22,8 +22,9 @@ HybridKeyExchange::HybridKeyExchange(
 void HybridKeyExchange::generateKeyPair() {
   firstKex_->generateKeyPair();
   secondKex_->generateKeyPair();
-  if (firstKex_->getKeyShareSize() == 0 || secondKex_->getKeyShareSize() == 0) {
-    throw std::runtime_error("Public key length is 0!");
+  if (firstKex_->getExpectedKeyShareSize() == 0 ||
+      secondKex_->getExpectedKeyShareSize() == 0) {
+    throw std::runtime_error("expected key share size is 0!");
   }
 }
 
@@ -46,15 +47,17 @@ std::unique_ptr<folly::IOBuf> HybridKeyExchange::getKeyShare() const {
 std::unique_ptr<folly::IOBuf> HybridKeyExchange::generateSharedSecret(
     folly::ByteRange keyShare) const {
   if (keyShare.size() !=
-      firstKex_->getKeyShareSize() + secondKex_->getKeyShareSize()) {
+      firstKex_->getExpectedKeyShareSize() +
+          secondKex_->getExpectedKeyShareSize()) {
     throw std::runtime_error("Invalid external public key combination ");
   }
   // keyShare.size() should be >= 2 now
   auto firstKeyShare = folly::ByteRange(
-      keyShare.begin(), keyShare.begin() + firstKex_->getKeyShareSize());
+      keyShare.begin(),
+      keyShare.begin() + firstKex_->getExpectedKeyShareSize());
   auto sharedSecret = firstKex_->generateSharedSecret(std::move(firstKeyShare));
   auto secondKeyShare = folly::ByteRange(
-      keyShare.end() - secondKex_->getKeyShareSize(), keyShare.end());
+      keyShare.end() - secondKex_->getExpectedKeyShareSize(), keyShare.end());
   sharedSecret->appendToChain(
       secondKex_->generateSharedSecret(std::move(secondKeyShare)));
   return sharedSecret;
@@ -69,7 +72,8 @@ std::unique_ptr<KeyExchange> HybridKeyExchange::clone() const {
   return kexCopy;
 }
 
-std::size_t HybridKeyExchange::getKeyShareSize() const {
-  return firstKex_->getKeyShareSize() + secondKex_->getKeyShareSize();
+std::size_t HybridKeyExchange::getExpectedKeyShareSize() const {
+  return firstKex_->getExpectedKeyShareSize() +
+      secondKex_->getExpectedKeyShareSize();
 }
 } // namespace fizz

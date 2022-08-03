@@ -50,8 +50,8 @@ class KeyExchange {
   virtual std::unique_ptr<KeyExchange> clone() const = 0;
 
   /**
-   * @return The size (in bytes) of the public key.
+   * @return The size (in bytes) of the expected key share from the peer.
    */
-  virtual std::size_t getKeyShareSize() const = 0;
+  virtual std::size_t getExpectedKeyShareSize() const = 0;
 };
 } // namespace fizz

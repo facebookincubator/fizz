@@ -27,7 +27,7 @@ class MockKeyExchange : public KeyExchange {
       (folly::ByteRange keyShare),
       (const));
   MOCK_METHOD(std::unique_ptr<KeyExchange>, clone, (), (const));
-  MOCK_METHOD(std::size_t, getKeyShareSize, (), (const));
+  MOCK_METHOD(std::size_t, getExpectedKeyShareSize, (), (const));
   int keyGenerated = 0;
 
   void setDefaults() {
@@ -38,7 +38,7 @@ class MockKeyExchange : public KeyExchange {
         .WillByDefault(InvokeWithoutArgs(
             []() { return folly::IOBuf::copyBuffer("sharedsecret"); }));
     // Excluding \n
-    ON_CALL(*this, getKeyShareSize())
+    ON_CALL(*this, getExpectedKeyShareSize())
         .WillByDefault(Return(sizeof("keyshare") - 1));
   }
 
@@ -60,7 +60,7 @@ class MockKeyExchange : public KeyExchange {
           return folly::IOBuf::copyBuffer("sharedsecret");
         }));
     // Excluding \n
-    ON_CALL(*this, getKeyShareSize())
+    ON_CALL(*this, getExpectedKeyShareSize())
         .WillByDefault(Return(sizeof("keyshare") - 1));
     ON_CALL(*this, clone()).WillByDefault(InvokeWithoutArgs([this]() {
       auto copy = std::make_unique<MockKeyExchange>();
@@ -71,7 +71,7 @@ class MockKeyExchange : public KeyExchange {
   }
 
   void setReturnZeroKeyLength() {
-    ON_CALL(*this, getKeyShareSize()).WillByDefault(Return(0));
+    ON_CALL(*this, getExpectedKeyShareSize()).WillByDefault(Return(0));
   }
 };
 

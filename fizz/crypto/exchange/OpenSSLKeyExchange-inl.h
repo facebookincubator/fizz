@@ -89,7 +89,7 @@ std::unique_ptr<KeyExchange> OpenSSLECKeyExchange<T>::clone() const {
 }
 
 template <class T>
-std::size_t OpenSSLECKeyExchange<T>::getKeyShareSize() const {
+std::size_t OpenSSLECKeyExchange<T>::getExpectedKeyShareSize() const {
   return T::keyShareLength;
 }
 

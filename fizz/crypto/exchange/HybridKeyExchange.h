@@ -34,7 +34,7 @@ class HybridKeyExchange : public KeyExchange {
 
   std::unique_ptr<KeyExchange> clone() const override;
 
-  std::size_t getKeyShareSize() const override;
+  std::size_t getExpectedKeyShareSize() const override;
 
  private:
   std::unique_ptr<KeyExchange> firstKex_;

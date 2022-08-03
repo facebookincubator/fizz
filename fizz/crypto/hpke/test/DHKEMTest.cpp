@@ -39,8 +39,8 @@ class MockKeyExchange : public KeyExchange {
     return nullptr;
   }
 
-  size_t getKeyShareSize() const override {
-    return actualKex_->getKeyShareSize();
+  size_t getExpectedKeyShareSize() const override {
+    return actualKex_->getExpectedKeyShareSize();
   }
 
  private:
