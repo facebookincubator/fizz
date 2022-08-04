@@ -106,6 +106,27 @@ std::unique_ptr<folly::IOBuf> constructConfigId(
       extractedChlo, *folly::IOBuf::copyBuffer("tls ech config id"), hashLen);
 }
 
+// We currently don't support any extensions to alter ECH behavior. As such,
+// just check that there are no mandatory extensions. (Extensions with the high
+// order bit set). Since the integer has been converted from network order to
+// native already, we just have to generate a native integer with the highest
+// order bit set and compare.
+//
+// If there are any mandatory extensions, we have to skip this config.
+static bool echConfigHasMandatoryExtension(
+    const ECHConfigContentDraft& config) {
+  return std::any_of(
+      config.extensions.begin(),
+      config.extensions.end(),
+      [](const auto& echExt) {
+        // Bitwise operators work the same independent of endianness (left
+        // shift will consume msb)
+        static const uint16_t msb = 1 << ((sizeof(uint16_t) * 8) - 1);
+        const auto extType = static_cast<uint16_t>(echExt.extension_type);
+        return (msb & extType) != 0;
+      });
+}
+
 folly::Optional<SupportedECHConfig> selectECHConfig(
     const std::vector<ECHConfig>& configs,
     std::vector<hpke::KEMId> supportedKEMs,
@@ -116,6 +137,15 @@ folly::Optional<SupportedECHConfig> selectECHConfig(
     folly::io::Cursor cursor(config.ech_config_content.get());
     if (config.version == ECHVersion::Draft9) {
       auto echConfig = decode<ECHConfigContentDraft>(cursor);
+
+      // Before anything else, check if the config has mandatory extensions.
+      // We don't support any extensions, so if any are mandatory, skip this
+      // config.
+      if (echConfigHasMandatoryExtension(echConfig)) {
+        VLOG(8) << "ECH config has mandatory extension, skipping...";
+        continue;
+      }
+
       // Check if we (client) support the server's chosen KEM.
       auto result = std::find(
           supportedKEMs.begin(), supportedKEMs.end(), echConfig.kem_id);
