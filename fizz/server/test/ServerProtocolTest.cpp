@@ -1157,8 +1157,10 @@ TEST_F(ServerProtocolTest, TestECHDecryptionSuccess) {
   EXPECT_CALL(*decrypter, decryptClientHello(_))
       .WillOnce(
           InvokeWithoutArgs([=]() -> folly::Optional<ech::DecrypterResult> {
+            auto chlo = TestMessages::clientHello();
+            chlo.extensions.push_back(encodeExtension(ech::ECHIsInner()));
             return ech::DecrypterResult{
-                TestMessages::clientHello(),
+                std::move(chlo),
                 folly::IOBuf::copyBuffer("configid"),
                 std::make_unique<hpke::test::MockHpkeContext>()};
           }));
@@ -1454,6 +1456,28 @@ TEST_F(ServerProtocolTest, TestECHDecryptionSuccess) {
   EXPECT_TRUE(folly::IOBufEqualTo()(
       *state_.exporterMasterSecret(), folly::IOBuf::copyBuffer("expm")));
   EXPECT_FALSE(state_.earlyExporterMasterSecret().has_value());
+}
+
+TEST_F(ServerProtocolTest, TestECHMissingInnerExtension) {
+  setUpExpectingClientHello();
+  Sequence contextSeq;
+
+  auto decrypter = std::make_shared<MockDecrypter>();
+  EXPECT_CALL(*decrypter, decryptClientHello(_))
+      .WillOnce(
+          InvokeWithoutArgs([=]() -> folly::Optional<ech::DecrypterResult> {
+            return ech::DecrypterResult{
+                TestMessages::clientHello(),
+                folly::IOBuf::copyBuffer("configid"),
+                std::make_unique<hpke::test::MockHpkeContext>()};
+          }));
+  context_->setECHDecrypter(decrypter);
+  auto actions =
+      getActions(detail::processEvent(state_, setupClientHelloOuter()));
+  expectError<FizzException>(
+      actions,
+      AlertDescription::missing_extension,
+      "inner clienthello missing ech_is_inner");
 }
 
 TEST_F(ServerProtocolTest, TestECHDecryptionFailure) {
@@ -3033,7 +3057,9 @@ TEST_F(ServerProtocolTest, TestRetryClientHelloECHFlow) {
               std::unique_ptr<hpke::HpkeContext>& context) -> ClientHello {
             EXPECT_TRUE(folly::IOBufEqualTo()(
                 configId, folly::IOBuf::copyBuffer("configid")));
-            return TestMessages::clientHello();
+            auto innerchlo = TestMessages::clientHello();
+            innerchlo.extensions.push_back(encodeExtension(ech::ECHIsInner()));
+            return innerchlo;
           }));
   EXPECT_CALL(
       *mockHandshakeContext_,
@@ -3293,6 +3319,22 @@ TEST_F(ServerProtocolTest, TestRetryClientHelloECHFlow) {
   EXPECT_TRUE(
       std::all_of(begin(cr), end(cr), [](auto c) { return c == 0x44; }));
   EXPECT_EQ(state_.echStatus(), ECHStatus::Accepted);
+}
+
+TEST_F(ServerProtocolTest, TestRetryECHMissingInnerExtension) {
+  setUpExpectingClientHelloRetryECH();
+
+  auto decrypter = std::make_shared<MockDecrypter>();
+  EXPECT_CALL(*decrypter, _decryptClientHelloHRR_Stateful(_, _, _))
+      .WillOnce(
+          InvokeWithoutArgs([=]() { return TestMessages::clientHello(); }));
+  context_->setECHDecrypter(decrypter);
+  auto actions =
+      getActions(detail::processEvent(state_, setupClientHelloOuterHRR()));
+  expectError<FizzException>(
+      actions,
+      AlertDescription::missing_extension,
+      "inner clienthello missing ech_is_inner");
 }
 
 TEST_F(ServerProtocolTest, TestRetryClientHelloECHRejectedFlow) {
@@ -5267,6 +5309,7 @@ TEST_F(ServerProtocolTest, TestClientHelloCookieECH) {
             Cookie c;
             c.cookie = folly::IOBuf::copyBuffer("echcookie");
             chloinner.extensions.push_back(encodeExtension(std::move(c)));
+            chloinner.extensions.push_back(encodeExtension(ech::ECHIsInner()));
             return chloinner;
           }));
 
@@ -5281,6 +5324,41 @@ TEST_F(ServerProtocolTest, TestClientHelloCookieECH) {
   EXPECT_EQ(state_.state(), StateEnum::ExpectingFinished);
   EXPECT_EQ(state_.cipher(), CipherSuite::TLS_AES_128_GCM_SHA256);
   EXPECT_EQ(state_.echStatus(), ECHStatus::Accepted);
+}
+
+TEST_F(ServerProtocolTest, TestClientHelloCookieECHMissingInner) {
+  expectCookie();
+  setUpExpectingClientHello();
+
+  auto decrypter = std::make_shared<MockDecrypter>();
+  context_->setECHDecrypter(decrypter);
+  EXPECT_CALL(*decrypter, _decryptClientHelloHRR_Stateless(_, _, _))
+      .WillOnce(Invoke(
+          [=](const ClientHello& /*chlo*/,
+              const std::unique_ptr<folly::IOBuf>& configId,
+              const std::unique_ptr<folly::IOBuf>& encapsulatedKey)
+              -> ClientHello {
+            EXPECT_TRUE(folly::IOBufEqualTo()(
+                configId, folly::IOBuf::copyBuffer("configid")));
+            EXPECT_TRUE(folly::IOBufEqualTo()(
+                encapsulatedKey, folly::IOBuf::copyBuffer("echpubkey")));
+            auto chloinner = TestMessages::clientHello();
+            Cookie c;
+            c.cookie = folly::IOBuf::copyBuffer("echcookie");
+            chloinner.extensions.push_back(encodeExtension(std::move(c)));
+            return chloinner;
+          }));
+
+  auto chlo = setupClientHelloOuterHRR();
+  Cookie c;
+  c.cookie = folly::IOBuf::copyBuffer("echcookie");
+  chlo.extensions.push_back(encodeExtension(std::move(c)));
+
+  auto actions = getActions(detail::processEvent(state_, std::move(chlo)));
+  expectError<FizzException>(
+      actions,
+      AlertDescription::missing_extension,
+      "inner clienthello missing ech_is_inner");
 }
 
 TEST_F(ServerProtocolTest, TestClientHelloCookieFail) {

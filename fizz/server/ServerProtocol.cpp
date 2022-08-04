@@ -1118,6 +1118,14 @@ static std::pair<ECHStatus, ECHState> processECH(
     }
   }
 
+  // Check for ECH inner extension, if accepted.
+  auto innerExt = getExtension<ech::ECHIsInner>(chlo.extensions);
+  if (echStatus == ECHStatus::Accepted && !innerExt) {
+    throw FizzException(
+        "inner clienthello missing ech_is_inner",
+        AlertDescription::missing_extension);
+  }
+
   return std::make_pair(echStatus, std::move(echState));
 }
 

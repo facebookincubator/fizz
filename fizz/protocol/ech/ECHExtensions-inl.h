@@ -79,6 +79,11 @@ inline ech::ServerECH getExtension(folly::io::Cursor& cs) {
 }
 
 template <>
+inline ech::ECHIsInner getExtension(folly::io::Cursor&) {
+  return ech::ECHIsInner();
+}
+
+template <>
 inline ech::OuterExtensions getExtension(folly::io::Cursor& cs) {
   ech::OuterExtensions outerExts;
   detail::readVector<uint8_t>(outerExts.types, cs);
