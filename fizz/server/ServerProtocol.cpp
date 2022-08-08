@@ -712,7 +712,7 @@ static Buf doKex(
     NamedGroup group,
     const Buf& clientShare,
     KeyScheduler& scheduler) {
-  auto kex = factory.makeKeyExchange(group);
+  auto kex = factory.makeServerKeyExchange(group);
   kex->generateKeyPair();
   auto sharedSecret = kex->generateSharedSecret(clientShare->coalesce());
   scheduler.deriveHandshakeSecret(sharedSecret->coalesce());

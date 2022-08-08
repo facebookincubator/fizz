@@ -417,7 +417,7 @@ static std::map<NamedGroup, std::unique_ptr<KeyExchange>> getKeyExchangers(
     const std::vector<NamedGroup>& groups) {
   std::map<NamedGroup, std::unique_ptr<KeyExchange>> keyExchangers;
   for (auto group : groups) {
-    auto kex = factory.makeKeyExchange(group);
+    auto kex = factory.makeClientKeyExchange(group);
     kex->generateKeyPair();
     keyExchangers.emplace(group, std::move(kex));
   }
@@ -672,7 +672,7 @@ static folly::Optional<ECHParams> setupECH(
   auto echConfigContent = decode<ech::ECHConfigContentDraft>(cursor);
   auto fakeSni = echConfigContent.public_name->clone();
   auto kemId = echConfigContent.kem_id;
-  auto kex = factory.makeKeyExchange(getKexGroup(kemId));
+  auto kex = factory.makeClientKeyExchange(getKexGroup(kemId));
   auto setupResult =
       constructHpkeSetupResult(std::move(kex), supportedECHConfig);
 

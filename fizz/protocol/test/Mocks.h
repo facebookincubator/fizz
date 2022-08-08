@@ -224,7 +224,12 @@ class MockFactory : public OpenSSLFactory {
       (const));
   MOCK_METHOD(
       std::unique_ptr<KeyExchange>,
-      makeKeyExchange,
+      makeClientKeyExchange,
+      (NamedGroup group),
+      (const));
+  MOCK_METHOD(
+      std::unique_ptr<KeyExchange>,
+      makeServerKeyExchange,
       (NamedGroup group),
       (const));
   MOCK_METHOD(std::unique_ptr<Aead>, makeAead, (CipherSuite cipher), (const));
@@ -279,11 +284,18 @@ class MockFactory : public OpenSSLFactory {
           ret->setDefaults();
           return ret;
         }));
-    ON_CALL(*this, makeKeyExchange(_)).WillByDefault(InvokeWithoutArgs([]() {
-      auto ret = std::make_unique<NiceMock<MockKeyExchange>>();
-      ret->setDefaults();
-      return ret;
-    }));
+    ON_CALL(*this, makeClientKeyExchange(_))
+        .WillByDefault(InvokeWithoutArgs([]() {
+          auto ret = std::make_unique<NiceMock<MockKeyExchange>>();
+          ret->setDefaults();
+          return ret;
+        }));
+    ON_CALL(*this, makeServerKeyExchange(_))
+        .WillByDefault(InvokeWithoutArgs([]() {
+          auto ret = std::make_unique<NiceMock<MockKeyExchange>>();
+          ret->setDefaults();
+          return ret;
+        }));
     ON_CALL(*this, makeAead(_)).WillByDefault(InvokeWithoutArgs([]() {
       auto ret = std::make_unique<NiceMock<MockAead>>();
       ret->setDefaults();
