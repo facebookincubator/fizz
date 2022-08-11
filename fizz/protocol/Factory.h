@@ -30,24 +30,9 @@ namespace fizz {
  * This class instantiates various objects to facilitate testing.
  */
 class Factory {
- protected:
-  virtual std::unique_ptr<KeyExchange> makeDHKeyExchange(
-      NamedGroup group) const {
-    switch (group) {
-      case NamedGroup::secp256r1:
-        return std::make_unique<OpenSSLECKeyExchange<P256>>();
-      case NamedGroup::secp384r1:
-        return std::make_unique<OpenSSLECKeyExchange<P384>>();
-      case NamedGroup::secp521r1:
-        return std::make_unique<OpenSSLECKeyExchange<P521>>();
-      case NamedGroup::x25519:
-        return std::make_unique<X25519KeyExchange>();
-      default:
-        throw std::runtime_error("ke: not implemented");
-    }
-  }
-
  public:
+  enum class KeyExchangeMode { Server, Client };
+
   virtual ~Factory() = default;
 
   virtual std::unique_ptr<PlaintextReadRecordLayer>
@@ -82,33 +67,19 @@ class Factory {
   virtual std::unique_ptr<HandshakeContext> makeHandshakeContext(
       CipherSuite cipher) const = 0;
 
-  virtual std::unique_ptr<KeyExchange> makeClientKeyExchange(
-      NamedGroup group) const {
+  virtual std::unique_ptr<KeyExchange> makeKeyExchange(
+      NamedGroup group,
+      KeyExchangeMode mode) const {
+    (void)mode;
     switch (group) {
       case NamedGroup::secp256r1:
-        [[fallthrough]];
+        return std::make_unique<OpenSSLECKeyExchange<P256>>();
       case NamedGroup::secp384r1:
-        [[fallthrough]];
+        return std::make_unique<OpenSSLECKeyExchange<P384>>();
       case NamedGroup::secp521r1:
-        [[fallthrough]];
+        return std::make_unique<OpenSSLECKeyExchange<P521>>();
       case NamedGroup::x25519:
-        return makeDHKeyExchange(group);
-      default:
-        throw std::runtime_error("ke: not implemented");
-    }
-  }
-
-  virtual std::unique_ptr<KeyExchange> makeServerKeyExchange(
-      NamedGroup group) const {
-    switch (group) {
-      case NamedGroup::secp256r1:
-        [[fallthrough]];
-      case NamedGroup::secp384r1:
-        [[fallthrough]];
-      case NamedGroup::secp521r1:
-        [[fallthrough]];
-      case NamedGroup::x25519:
-        return makeDHKeyExchange(group);
+        return std::make_unique<X25519KeyExchange>();
       default:
         throw std::runtime_error("ke: not implemented");
     }

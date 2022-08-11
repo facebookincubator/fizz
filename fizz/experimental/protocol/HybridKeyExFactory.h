@@ -13,19 +13,10 @@
 
 namespace fizz {
 class HybridKeyExFactory : public OpenSSLFactory {
-  std::unique_ptr<KeyExchange> makeClientKeyExchange(
-      NamedGroup group) const override {
-    switch (group) {
-      case NamedGroup::secp521r1_x25519:
-        return std::make_unique<HybridKeyExchange>(
-            std::make_unique<OpenSSLECKeyExchange<P521>>(),
-            std::make_unique<X25519KeyExchange>());
-      default:
-        throw std::runtime_error("ke: not implemented");
-    }
-  }
-  std::unique_ptr<KeyExchange> makeServerKeyExchange(
-      NamedGroup group) const override {
+  std::unique_ptr<KeyExchange> makeKeyExchange(
+      NamedGroup group,
+      KeyExchangeMode mode) const override {
+    (void)mode;
     switch (group) {
       case NamedGroup::secp521r1_x25519:
         return std::make_unique<HybridKeyExchange>(

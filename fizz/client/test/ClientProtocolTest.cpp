@@ -345,7 +345,9 @@ TEST_F(ClientProtocolTest, TestConnectFlow) {
     return random;
   }));
   MockKeyExchange* mockKex;
-  EXPECT_CALL(*factory_, makeClientKeyExchange(NamedGroup::x25519))
+  EXPECT_CALL(
+      *factory_,
+      makeKeyExchange(NamedGroup::x25519, Factory::KeyExchangeMode::Client))
       .WillOnce(InvokeWithoutArgs([&mockKex]() {
         auto ret = std::make_unique<MockKeyExchange>();
         EXPECT_CALL(*ret, generateKeyPair());
@@ -413,7 +415,9 @@ TEST_F(ClientProtocolTest, TestConnectPskFlow) {
     return random;
   }));
   MockKeyExchange* mockKex;
-  EXPECT_CALL(*factory_, makeClientKeyExchange(NamedGroup::x25519))
+  EXPECT_CALL(
+      *factory_,
+      makeKeyExchange(NamedGroup::x25519, Factory::KeyExchangeMode::Client))
       .WillOnce(InvokeWithoutArgs([&mockKex]() {
         auto ret = std::make_unique<MockKeyExchange>();
         EXPECT_CALL(*ret, generateKeyPair());
@@ -512,7 +516,9 @@ TEST_F(ClientProtocolTest, TestConnectPskEarlyFlow) {
     return random;
   }));
   MockKeyExchange* mockKex;
-  EXPECT_CALL(*factory_, makeClientKeyExchange(NamedGroup::x25519))
+  EXPECT_CALL(
+      *factory_,
+      makeKeyExchange(NamedGroup::x25519, Factory::KeyExchangeMode::Client))
       .WillOnce(InvokeWithoutArgs([&mockKex]() {
         auto ret = std::make_unique<MockKeyExchange>();
         EXPECT_CALL(*ret, generateKeyPair());
@@ -786,7 +792,9 @@ TEST_F(ClientProtocolTest, TestConnectExtension) {
 TEST_F(ClientProtocolTest, TestConnectMultipleShares) {
   MockKeyExchange* mockKex1;
   MockKeyExchange* mockKex2;
-  EXPECT_CALL(*factory_, makeClientKeyExchange(NamedGroup::x25519))
+  EXPECT_CALL(
+      *factory_,
+      makeKeyExchange(NamedGroup::x25519, Factory::KeyExchangeMode::Client))
       .WillOnce(InvokeWithoutArgs([&mockKex1]() {
         auto ret = std::make_unique<MockKeyExchange>();
         EXPECT_CALL(*ret, generateKeyPair());
@@ -796,7 +804,9 @@ TEST_F(ClientProtocolTest, TestConnectMultipleShares) {
         mockKex1 = ret.get();
         return ret;
       }));
-  EXPECT_CALL(*factory_, makeClientKeyExchange(NamedGroup::secp256r1))
+  EXPECT_CALL(
+      *factory_,
+      makeKeyExchange(NamedGroup::secp256r1, Factory::KeyExchangeMode::Client))
       .WillOnce(InvokeWithoutArgs([&mockKex2]() {
         auto ret = std::make_unique<MockKeyExchange>();
         EXPECT_CALL(*ret, generateKeyPair());
@@ -823,7 +833,9 @@ TEST_F(ClientProtocolTest, TestConnectMultipleShares) {
 TEST_F(ClientProtocolTest, TestConnectCachedGroup) {
   context_->setDefaultShares({NamedGroup::x25519});
   MockKeyExchange* mockKex;
-  EXPECT_CALL(*factory_, makeClientKeyExchange(NamedGroup::secp256r1))
+  EXPECT_CALL(
+      *factory_,
+      makeKeyExchange(NamedGroup::secp256r1, Factory::KeyExchangeMode::Client))
       .WillOnce(InvokeWithoutArgs([&mockKex]() {
         auto ret = std::make_unique<MockKeyExchange>();
         EXPECT_CALL(*ret, generateKeyPair());
@@ -2211,7 +2223,9 @@ TEST_F(ClientProtocolTest, TestHelloRetryRequestFlow) {
   EXPECT_CALL(*mockHandshakeContext2, appendToTranscript(_))
       .InSequence(contextSeq);
   MockKeyExchange* mockKex;
-  EXPECT_CALL(*factory_, makeClientKeyExchange(NamedGroup::secp256r1))
+  EXPECT_CALL(
+      *factory_,
+      makeKeyExchange(NamedGroup::secp256r1, Factory::KeyExchangeMode::Client))
       .WillOnce(InvokeWithoutArgs([&mockKex]() {
         auto ret = std::make_unique<MockKeyExchange>();
         EXPECT_CALL(*ret, generateKeyPair());
@@ -2340,7 +2354,9 @@ TEST_F(ClientProtocolTest, TestHelloRetryRequestPskFlow) {
   EXPECT_CALL(*mockHandshakeContext2, appendToTranscript(_))
       .InSequence(contextSeq);
   MockKeyExchange* mockKex;
-  EXPECT_CALL(*factory_, makeClientKeyExchange(NamedGroup::secp256r1))
+  EXPECT_CALL(
+      *factory_,
+      makeKeyExchange(NamedGroup::secp256r1, Factory::KeyExchangeMode::Client))
       .WillOnce(InvokeWithoutArgs([&mockKex]() {
         auto ret = std::make_unique<MockKeyExchange>();
         EXPECT_CALL(*ret, generateKeyPair());
@@ -2517,7 +2533,9 @@ TEST_F(ClientProtocolTest, TestHelloRetryRequestECHFlow) {
   EXPECT_CALL(*mockHandshakeContext2, appendToTranscript(_))
       .InSequence(contextSeq);
   MockKeyExchange* mockKex;
-  EXPECT_CALL(*factory_, makeClientKeyExchange(NamedGroup::secp256r1))
+  EXPECT_CALL(
+      *factory_,
+      makeKeyExchange(NamedGroup::secp256r1, Factory::KeyExchangeMode::Client))
       .WillOnce(InvokeWithoutArgs([&mockKex]() {
         auto ret = std::make_unique<MockKeyExchange>();
         EXPECT_CALL(*ret, generateKeyPair());
@@ -2695,7 +2713,9 @@ TEST_F(ClientProtocolTest, TestHelloRetryRequestECHPSKFlow) {
   EXPECT_CALL(*mockHandshakeContext2, appendToTranscript(_))
       .InSequence(contextSeq);
   MockKeyExchange* mockKex;
-  EXPECT_CALL(*factory_, makeClientKeyExchange(NamedGroup::secp256r1))
+  EXPECT_CALL(
+      *factory_,
+      makeKeyExchange(NamedGroup::secp256r1, Factory::KeyExchangeMode::Client))
       .WillOnce(InvokeWithoutArgs([&mockKex]() {
         auto ret = std::make_unique<MockKeyExchange>();
         EXPECT_CALL(*ret, generateKeyPair());
