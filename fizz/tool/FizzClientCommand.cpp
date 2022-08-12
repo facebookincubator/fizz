@@ -18,6 +18,7 @@
 #include <fizz/protocol/ZstdCertificateDecompressor.h>
 #endif
 #include <fizz/client/PskSerializationUtils.h>
+#include <fizz/experimental/protocol/HybridKeyExFactory.h>
 #include <fizz/protocol/DefaultCertificateVerifier.h>
 #include <fizz/tool/CertificateVerifiers.h>
 #include <fizz/tool/FizzCommandCommon.h>
@@ -80,6 +81,8 @@ void printUsage() {
     << "                          (JSON format: {echconfigs: [${your ECH config here with all the fields..}]})\n"
     << "                          (See FizzCommandCommonTest for an example.)\n"
     << "                          (Note: Setting ech configs implicitly enables ECH.)\n"
+    << " -hybridkex               (Use experimental hybrid key exchange. Currently the only supported named groups under\n"
+    << "                          this mode are secp384r1_bikel3 and secp521r1_x25519)\n"
 #ifdef FIZZ_TOOL_ENABLE_IO_URING
     << " -io_uring                (use io_uring for I/O. Default: false)\n"
     << " -io_uring_capacity N     (backend capacity for io_uring. Default: 128)\n"
@@ -507,6 +510,7 @@ int fizzClientCommand(const std::vector<std::string>& args) {
   bool reconnect = false;
   std::string customSNI;
   std::vector<std::string> alpns;
+  bool useHybridKexFactory = false;
   folly::Optional<std::vector<CertificateCompressionAlgorithm>> compAlgos;
   bool early = false;
   std::string proxyHost = "";
@@ -603,6 +607,9 @@ int fizzClientCommand(const std::vector<std::string>& args) {
     }}},
     {"-echconfigs", {true, [&echConfigsFile](const std::string& arg) {
         echConfigsFile = arg;
+    }}},
+    {"-hybridkex", {false, [&useHybridKexFactory](const std::string&) {
+        useHybridKexFactory = true;
     }}}
 #ifdef FIZZ_TOOL_ENABLE_IO_URING
     ,{"-io_uring", {false, [&uring](const std::string&) { uring = true; }}},
@@ -657,6 +664,9 @@ int fizzClientCommand(const std::vector<std::string>& args) {
   }));
 
   auto clientContext = std::make_shared<FizzClientContext>();
+  if (useHybridKexFactory) {
+    clientContext->setFactory(std::make_shared<HybridKeyExFactory>());
+  }
 
   if (!alpns.empty()) {
     clientContext->setSupportedAlpns(std::move(alpns));

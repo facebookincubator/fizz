@@ -26,6 +26,7 @@
 #include <fizz/util/KeyLogWriter.h>
 #include <fizz/util/Parse.h>
 
+#include <fizz/experimental/protocol/HybridKeyExFactory.h>
 #include <folly/Format.h>
 #include <folly/io/async/AsyncSSLSocket.h>
 #include <folly/io/async/AsyncServerSocket.h>
@@ -86,8 +87,10 @@ void printUsage() {
     << "                          (This MUST correspond to the public key set in the ECH config.)\n"
     << "                          (If this option is specified, a corresponding ECH config must be set.)\n"
     << "                          (For OpenSSL key exchanges, please use the PEM format for the private key.)\n"
-    << "                          (For the X25519 key exchange, please specify the private key in hex on the first line, "
+    << "                          (For the X25519 key exchange, please specify the private key in hex on the first line,\n"
     << "                          (and the public key in hex on the second line.)\n"
+    << " -hybridkex               (Use experimental hybrid key exchange. Currently the only supported named groups under\n"
+    << "                          this mode are secp384r1_bikel3 and secp521r1_x25519)\n"
 #ifdef FIZZ_TOOL_ENABLE_IO_URING
     << " -io_uring                (use io_uring for I/O. Default: false)\n"
     << " -io_uring_capacity N     (backend capacity for io_uring. Default: 128)\n"
@@ -693,6 +696,7 @@ int fizzServerCommand(const std::vector<std::string>& args) {
   bool fallback = false;
   bool http = false;
   uint32_t earlyDataSize = std::numeric_limits<uint32_t>::max();
+  bool useHybridKexFactory = false;
   std::vector<std::vector<CipherSuite>> ciphers {
     {CipherSuite::TLS_AES_128_GCM_SHA256, CipherSuite::TLS_AES_256_GCM_SHA384},
 #if FOLLY_OPENSSL_HAS_CHACHA
@@ -796,6 +800,9 @@ int fizzServerCommand(const std::vector<std::string>& args) {
     }}},
     {"-echprivatekey", {true, [&echPrivateKeyFile](const std::string& arg) {
         echPrivateKeyFile = arg;
+    }}},
+    {"-hybridkex", {false, [&useHybridKexFactory](const std::string&) {
+        useHybridKexFactory = true;
     }}}
 #ifdef FIZZ_TOOL_ENABLE_IO_URING
     ,{"-io_uring", {false, [&uring](const std::string&) { uring = true; }}},
@@ -876,6 +883,9 @@ int fizzServerCommand(const std::vector<std::string>& args) {
   }
 
   auto serverContext = std::make_shared<FizzServerContext>();
+  if (useHybridKexFactory) {
+    serverContext->setFactory(std::make_shared<HybridKeyExFactory>());
+  }
 
   if (ech) {
     // Use ECH  default values.
