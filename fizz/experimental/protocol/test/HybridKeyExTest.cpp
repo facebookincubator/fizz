@@ -26,5 +26,20 @@ TEST_F(HandshakeTest, secp521r1_x25519) {
   verifyParameters();
   sendAppData();
 }
+TEST_F(HandshakeTest, secp384r1_bikel3) {
+  auto f = HybridKeyExFactory();
+  auto factory = std::make_shared<HybridKeyExFactory>();
+  clientContext_->setFactory(factory);
+  serverContext_->setFactory(factory);
+  clientContext_->setSupportedGroups({NamedGroup::secp384r1_bikel3});
+  clientContext_->setDefaultShares({NamedGroup::secp384r1_bikel3});
+  serverContext_->setSupportedGroups({NamedGroup::secp384r1_bikel3});
+  expected_.group = NamedGroup::secp384r1_bikel3;
+
+  expectSuccess();
+  doHandshake();
+  verifyParameters();
+  sendAppData();
+}
 } // namespace test
 } // namespace fizz

@@ -349,6 +349,10 @@ enum class NamedGroup : uint16_t {
       510, // Hybrid of secp521r1 and x25519. TLS Supported Group 510 is
            // reserved for private use, see
            // https://www.iana.org/assignments/tls-parameters/tls-parameters.xhtml#tls-parameters-8
+  secp384r1_bikel3 =
+      12091, // Experimental, currently aligning with boringssl for inter-op
+             // purposes. See
+             // https://github.com/open-quantum-safe/boringssl/blob/master/include/openssl/ssl.h#L2406
 };
 
 std::string toString(NamedGroup);
