@@ -386,7 +386,7 @@ class FizzException : public std::runtime_error {
 };
 
 template <class T>
-Buf encode(T&& t);
+Buf encode(T&&);
 template <class T>
 Buf encodeHandshake(T&& t);
 template <class T>
