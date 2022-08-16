@@ -12,6 +12,8 @@
 ########################################################################
 # Tries to find the local libsodium installation.
 #
+# Call find_package(Sodium) to start the research
+#
 # On Windows the sodium_DIR environment variable is used as a default
 # hint which can be overridden by setting the corresponding cmake variable.
 #
