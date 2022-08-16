@@ -24,6 +24,7 @@ fmt
 libsodium
 googletest
 zstd
+fatal
 fbthrift
 iproute2
 libmnl
@@ -38,6 +39,7 @@ yaml-cpp
 libyaml
 CLI11
 exprtk
+nlohmann-json
 
 [shipit.pathmap]
 fbcode/fboss/github = .

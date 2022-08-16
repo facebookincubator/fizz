@@ -6,8 +6,6 @@
  *  LICENSE file in the root directory of this source tree.
  */
 
-#include <fizz/server/AsyncFizzServer.h>
-
 namespace fizz {
 namespace server {
 
@@ -351,6 +349,14 @@ void AsyncFizzServerT<SM>::ActionMoveVisitor::operator()(
 template <typename SM>
 void AsyncFizzServerT<SM>::ActionMoveVisitor::operator()(EndOfData& eod) {
   server_.endOfTLS(std::move(eod.postTlsData));
+}
+
+template <typename SM>
+void AsyncFizzServerT<SM>::initiateKeyUpdate(
+    KeyUpdateRequest keyUpdateRequest) {
+  KeyUpdateInitiation kui;
+  kui.request_update = keyUpdateRequest;
+  fizzServer_.initiateKeyUpdate(std::move(kui));
 }
 } // namespace server
 } // namespace fizz

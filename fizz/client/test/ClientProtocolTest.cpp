@@ -345,7 +345,9 @@ TEST_F(ClientProtocolTest, TestConnectFlow) {
     return random;
   }));
   MockKeyExchange* mockKex;
-  EXPECT_CALL(*factory_, makeKeyExchange(NamedGroup::x25519))
+  EXPECT_CALL(
+      *factory_,
+      makeKeyExchange(NamedGroup::x25519, Factory::KeyExchangeMode::Client))
       .WillOnce(InvokeWithoutArgs([&mockKex]() {
         auto ret = std::make_unique<MockKeyExchange>();
         EXPECT_CALL(*ret, generateKeyPair());
@@ -413,7 +415,9 @@ TEST_F(ClientProtocolTest, TestConnectPskFlow) {
     return random;
   }));
   MockKeyExchange* mockKex;
-  EXPECT_CALL(*factory_, makeKeyExchange(NamedGroup::x25519))
+  EXPECT_CALL(
+      *factory_,
+      makeKeyExchange(NamedGroup::x25519, Factory::KeyExchangeMode::Client))
       .WillOnce(InvokeWithoutArgs([&mockKex]() {
         auto ret = std::make_unique<MockKeyExchange>();
         EXPECT_CALL(*ret, generateKeyPair());
@@ -512,7 +516,9 @@ TEST_F(ClientProtocolTest, TestConnectPskEarlyFlow) {
     return random;
   }));
   MockKeyExchange* mockKex;
-  EXPECT_CALL(*factory_, makeKeyExchange(NamedGroup::x25519))
+  EXPECT_CALL(
+      *factory_,
+      makeKeyExchange(NamedGroup::x25519, Factory::KeyExchangeMode::Client))
       .WillOnce(InvokeWithoutArgs([&mockKex]() {
         auto ret = std::make_unique<MockKeyExchange>();
         EXPECT_CALL(*ret, generateKeyPair());
@@ -786,7 +792,9 @@ TEST_F(ClientProtocolTest, TestConnectExtension) {
 TEST_F(ClientProtocolTest, TestConnectMultipleShares) {
   MockKeyExchange* mockKex1;
   MockKeyExchange* mockKex2;
-  EXPECT_CALL(*factory_, makeKeyExchange(NamedGroup::x25519))
+  EXPECT_CALL(
+      *factory_,
+      makeKeyExchange(NamedGroup::x25519, Factory::KeyExchangeMode::Client))
       .WillOnce(InvokeWithoutArgs([&mockKex1]() {
         auto ret = std::make_unique<MockKeyExchange>();
         EXPECT_CALL(*ret, generateKeyPair());
@@ -796,7 +804,9 @@ TEST_F(ClientProtocolTest, TestConnectMultipleShares) {
         mockKex1 = ret.get();
         return ret;
       }));
-  EXPECT_CALL(*factory_, makeKeyExchange(NamedGroup::secp256r1))
+  EXPECT_CALL(
+      *factory_,
+      makeKeyExchange(NamedGroup::secp256r1, Factory::KeyExchangeMode::Client))
       .WillOnce(InvokeWithoutArgs([&mockKex2]() {
         auto ret = std::make_unique<MockKeyExchange>();
         EXPECT_CALL(*ret, generateKeyPair());
@@ -823,7 +833,9 @@ TEST_F(ClientProtocolTest, TestConnectMultipleShares) {
 TEST_F(ClientProtocolTest, TestConnectCachedGroup) {
   context_->setDefaultShares({NamedGroup::x25519});
   MockKeyExchange* mockKex;
-  EXPECT_CALL(*factory_, makeKeyExchange(NamedGroup::secp256r1))
+  EXPECT_CALL(
+      *factory_,
+      makeKeyExchange(NamedGroup::secp256r1, Factory::KeyExchangeMode::Client))
       .WillOnce(InvokeWithoutArgs([&mockKex]() {
         auto ret = std::make_unique<MockKeyExchange>();
         EXPECT_CALL(*ret, generateKeyPair());
@@ -2211,7 +2223,9 @@ TEST_F(ClientProtocolTest, TestHelloRetryRequestFlow) {
   EXPECT_CALL(*mockHandshakeContext2, appendToTranscript(_))
       .InSequence(contextSeq);
   MockKeyExchange* mockKex;
-  EXPECT_CALL(*factory_, makeKeyExchange(NamedGroup::secp256r1))
+  EXPECT_CALL(
+      *factory_,
+      makeKeyExchange(NamedGroup::secp256r1, Factory::KeyExchangeMode::Client))
       .WillOnce(InvokeWithoutArgs([&mockKex]() {
         auto ret = std::make_unique<MockKeyExchange>();
         EXPECT_CALL(*ret, generateKeyPair());
@@ -2340,7 +2354,9 @@ TEST_F(ClientProtocolTest, TestHelloRetryRequestPskFlow) {
   EXPECT_CALL(*mockHandshakeContext2, appendToTranscript(_))
       .InSequence(contextSeq);
   MockKeyExchange* mockKex;
-  EXPECT_CALL(*factory_, makeKeyExchange(NamedGroup::secp256r1))
+  EXPECT_CALL(
+      *factory_,
+      makeKeyExchange(NamedGroup::secp256r1, Factory::KeyExchangeMode::Client))
       .WillOnce(InvokeWithoutArgs([&mockKex]() {
         auto ret = std::make_unique<MockKeyExchange>();
         EXPECT_CALL(*ret, generateKeyPair());
@@ -2517,7 +2533,9 @@ TEST_F(ClientProtocolTest, TestHelloRetryRequestECHFlow) {
   EXPECT_CALL(*mockHandshakeContext2, appendToTranscript(_))
       .InSequence(contextSeq);
   MockKeyExchange* mockKex;
-  EXPECT_CALL(*factory_, makeKeyExchange(NamedGroup::secp256r1))
+  EXPECT_CALL(
+      *factory_,
+      makeKeyExchange(NamedGroup::secp256r1, Factory::KeyExchangeMode::Client))
       .WillOnce(InvokeWithoutArgs([&mockKex]() {
         auto ret = std::make_unique<MockKeyExchange>();
         EXPECT_CALL(*ret, generateKeyPair());
@@ -2695,7 +2713,9 @@ TEST_F(ClientProtocolTest, TestHelloRetryRequestECHPSKFlow) {
   EXPECT_CALL(*mockHandshakeContext2, appendToTranscript(_))
       .InSequence(contextSeq);
   MockKeyExchange* mockKex;
-  EXPECT_CALL(*factory_, makeKeyExchange(NamedGroup::secp256r1))
+  EXPECT_CALL(
+      *factory_,
+      makeKeyExchange(NamedGroup::secp256r1, Factory::KeyExchangeMode::Client))
       .WillOnce(InvokeWithoutArgs([&mockKex]() {
         auto ret = std::make_unique<MockKeyExchange>();
         EXPECT_CALL(*ret, generateKeyPair());
@@ -3079,6 +3099,34 @@ TEST_F(ClientProtocolTest, TestEncryptedExtensionsEarlyAlpnMismatch) {
       actions, AlertDescription::illegal_parameter, "different alpn");
 }
 
+TEST_F(ClientProtocolTest, TestEncryptedExtensionsECHRetryConfigs) {
+  context_->setSupportedAlpns({"h2"});
+  setupExpectingEncryptedExtensions();
+  state_.requestedExtensions()->push_back(
+      ExtensionType::encrypted_client_hello);
+  state_.echState().emplace();
+  state_.echState()->status = ECHStatus::Rejected;
+  EXPECT_CALL(
+      *mockHandshakeContext_, appendToTranscript(BufMatches("eeencoding")));
+
+  auto ee = TestMessages::encryptedExt();
+  ech::ServerECH serverECH;
+  ech::ECHConfig cfg;
+  cfg.version = ech::ECHVersion::Draft9;
+  cfg.ech_config_content = folly::IOBuf::copyBuffer("retryconfig");
+  serverECH.retry_configs.push_back(std::move(cfg));
+  ee.extensions.push_back(encodeExtension(std::move(serverECH)));
+
+  auto actions = detail::processEvent(state_, std::move(ee));
+  expectActions<MutateState>(actions);
+  processStateMutations(actions);
+  EXPECT_EQ(*state_.alpn(), "h2");
+  EXPECT_TRUE(folly::IOBufEqualTo()(
+      state_.echState()->retryConfigs.value()[0].ech_config_content,
+      folly::IOBuf::copyBuffer("retryconfig")));
+  EXPECT_EQ(state_.state(), StateEnum::ExpectingCertificate);
+}
+
 TEST_F(ClientProtocolTest, TestCertificateFlow) {
   setupExpectingCertificate();
   EXPECT_CALL(
@@ -3400,6 +3448,7 @@ TEST_F(ClientProtocolTest, TestCertificateVerifyFlow) {
             EXPECT_EQ(certs.size(), 2);
             EXPECT_EQ(certs[0], mockLeaf_);
             EXPECT_EQ(certs[1], mockIntermediate_);
+            return certs.front();
           }));
 
   auto actions =
@@ -4108,6 +4157,15 @@ TEST_F(ClientProtocolTest, TestFinishedMismatch) {
   auto actions = detail::processEvent(state_, std::move(finished));
   expectError<FizzException>(
       actions, AlertDescription::bad_record_mac, "finished verify failure");
+}
+
+TEST_F(ClientProtocolTest, TestFinishedRejectedECH) {
+  setupExpectingFinished();
+  state_.echState().emplace();
+  state_.echState()->status = ECHStatus::Rejected;
+  auto actions = detail::processEvent(state_, TestMessages::finished());
+  expectErrorAtEnd<FizzException>(
+      actions, AlertDescription::ech_required, "ech not accepted");
 }
 
 TEST_F(ClientProtocolTest, TestFinishedRejectedEarly) {

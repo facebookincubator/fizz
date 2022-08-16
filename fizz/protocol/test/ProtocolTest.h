@@ -42,6 +42,17 @@ class ProtocolTest : public testing::Test {
     throw std::runtime_error("did not find expected action");
   }
 
+  template <typename T>
+  T expectActionReversed(Actions& actions) {
+    for (auto it = actions.rbegin(); it != actions.rend(); it++) {
+      auto val = it->template getType<T>();
+      if (val) {
+        return std::move(*val);
+      }
+    }
+    throw std::runtime_error("did not find expected action");
+  }
+
   template <class T>
   void expectSecret(
       Actions& actions,
@@ -98,6 +109,30 @@ class ProtocolTest : public testing::Test {
 
   void expectExceptionType(Actions& actions) {
     auto error = expectAction<ReportError>(actions);
+  }
+
+  template <typename ExceptionType>
+  ExceptionType expectErrorAtEnd(
+      Actions& actions,
+      folly::Optional<AlertDescription> alert,
+      std::string msg = "") {
+    if (alert) {
+      auto write = expectActionReversed<WriteToSocket>(actions);
+      Alert a;
+      a.description = *alert;
+      auto buf = folly::IOBuf::copyBuffer("alert");
+      buf->prependChain(encode(std::move(a)));
+      EXPECT_TRUE(folly::IOBufEqualTo()(write.contents[0].data, buf));
+    }
+    auto error = expectActionReversed<ReportError>(actions);
+    auto ex = error.error.template get_exception<ExceptionType>();
+    EXPECT_NE(ex, nullptr);
+    EXPECT_THAT(error.error.what().toStdString(), HasSubstr(msg));
+    processStateMutations(actions);
+    EXPECT_EQ(state_.state(), SM::StateEnum::Error);
+    EXPECT_EQ(state_.readRecordLayer(), nullptr);
+    EXPECT_EQ(state_.writeRecordLayer(), nullptr);
+    return *ex;
   }
 
   template <typename ExceptionType>

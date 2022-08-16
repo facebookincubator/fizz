@@ -46,7 +46,8 @@ DefaultCertificateVerifier::createFromCAFiles(
           folly::StringPiece(certBuffer)));
 }
 
-void DefaultCertificateVerifier::verify(
+std::shared_ptr<const folly::AsyncTransportCertificate>
+DefaultCertificateVerifier::verify(
     const std::vector<std::shared_ptr<const fizz::PeerCert>>& certs) const {
   if (certs.empty()) {
     throw std::runtime_error("no certificates to verify");
@@ -116,6 +117,9 @@ void DefaultCertificateVerifier::verify(
         std::string(X509_verify_cert_error_string(errorInt));
     throw std::runtime_error("certificate verification failed: " + errorText);
   }
+
+  // Just return the original cert in the default case
+  return certs.front();
 }
 
 void DefaultCertificateVerifier::createAuthorities() {

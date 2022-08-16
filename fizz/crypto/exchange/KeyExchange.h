@@ -48,5 +48,10 @@ class KeyExchange {
    * a key pair is set.
    */
   virtual std::unique_ptr<KeyExchange> clone() const = 0;
+
+  /**
+   * @return The size (in bytes) of the expected key share from the peer.
+   */
+  virtual std::size_t getExpectedKeyShareSize() const = 0;
 };
 } // namespace fizz

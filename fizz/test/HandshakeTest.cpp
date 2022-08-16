@@ -917,6 +917,63 @@ TEST_F(HandshakeTest, TestFailureOnInvalidCloseNotify) {
   EXPECT_TRUE(serverKCB.isCalled());
 }
 
+TEST_F(HandshakeTest, SendKeyUpdate) {
+  expectSuccess();
+  doHandshake();
+  verifyParameters();
+  sendAppData();
+  // Also check the change of the secrets
+  auto prevServerSec = server_->getState().keyScheduler()->getSecret(
+      AppTrafficSecrets::ServerAppTraffic);
+  auto prevClientSec = client_->getState().keyScheduler()->getSecret(
+      AppTrafficSecrets::ClientAppTraffic);
+  client_->initiateKeyUpdate(KeyUpdateRequest::update_not_requested);
+  sendAppData();
+  EXPECT_EQ(
+      prevServerSec,
+      server_->getState().keyScheduler()->getSecret(
+          AppTrafficSecrets::ServerAppTraffic));
+  EXPECT_NE(
+      prevClientSec,
+      client_->getState().keyScheduler()->getSecret(
+          AppTrafficSecrets::ClientAppTraffic));
+
+  prevServerSec = server_->getState().keyScheduler()->getSecret(
+      AppTrafficSecrets::ServerAppTraffic);
+  prevClientSec = client_->getState().keyScheduler()->getSecret(
+      AppTrafficSecrets::ClientAppTraffic);
+  server_->initiateKeyUpdate(KeyUpdateRequest::update_requested);
+  sendAppData();
+  EXPECT_NE(
+      prevServerSec,
+      server_->getState().keyScheduler()->getSecret(
+          AppTrafficSecrets::ServerAppTraffic));
+  EXPECT_NE(
+      prevClientSec,
+      client_->getState().keyScheduler()->getSecret(
+          AppTrafficSecrets::ClientAppTraffic));
+}
+
+TEST_F(HandshakeTest, FuzzSendKeyUpdate) {
+  expectSuccess();
+  doHandshake();
+  verifyParameters();
+  for (int i = 0; i < 10; i++) {
+    auto r = RandomGenerator<1>().generateRandom();
+    if (r[0] < 100) {
+      client_->initiateKeyUpdate(
+          r[0] < 50 ? KeyUpdateRequest::update_requested
+                    : KeyUpdateRequest::update_not_requested);
+    } else if (r[0] >= 100 && r[0] < 200) {
+      server_->initiateKeyUpdate(
+          r[0] < 150 ? KeyUpdateRequest::update_requested
+                     : KeyUpdateRequest::update_not_requested);
+    } else {
+      sendAppData();
+    }
+  }
+}
+
 INSTANTIATE_TEST_SUITE_P(
     SignatureSchemes,
     SigSchemeTest,

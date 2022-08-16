@@ -186,5 +186,13 @@ ClientHello ECHConfigManager::decryptClientHelloHRR(
   return decodeClientHelloHRR(chlo, configId, encapsulatedKey, dummy, configs_);
 }
 
+std::vector<ech::ECHConfig> ECHConfigManager::getRetryConfigs() const {
+  std::vector<ech::ECHConfig> retryConfigs;
+  for (const auto& cfg : configs_) {
+    retryConfigs.push_back(cfg.echConfig);
+  }
+  return retryConfigs;
+}
+
 } // namespace ech
 } // namespace fizz

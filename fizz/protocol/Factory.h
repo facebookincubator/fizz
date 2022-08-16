@@ -31,6 +31,8 @@ namespace fizz {
  */
 class Factory {
  public:
+  enum class KeyExchangeMode { Server, Client };
+
   virtual ~Factory() = default;
 
   virtual std::unique_ptr<PlaintextReadRecordLayer>
@@ -65,7 +67,10 @@ class Factory {
   virtual std::unique_ptr<HandshakeContext> makeHandshakeContext(
       CipherSuite cipher) const = 0;
 
-  virtual std::unique_ptr<KeyExchange> makeKeyExchange(NamedGroup group) const {
+  virtual std::unique_ptr<KeyExchange> makeKeyExchange(
+      NamedGroup group,
+      KeyExchangeMode mode) const {
+    (void)mode;
     switch (group) {
       case NamedGroup::secp256r1:
         return std::make_unique<OpenSSLECKeyExchange<P256>>();

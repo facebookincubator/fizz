@@ -117,12 +117,15 @@ class AsyncFizzClientTest : public Test {
         folly::Optional<std::vector<ech::ECHConfig>>(folly::none));
   }
 
+  enum class ECHMode { NotRequested, Accepted, Rejected };
+
   void fullHandshakeSuccess(
       bool acceptEarlyData,
       std::string alpn = "h2",
       std::shared_ptr<const Cert> clientCert = nullptr,
       std::shared_ptr<const Cert> serverCert = nullptr,
-      bool pskResumed = false) {
+      bool pskResumed = false,
+      ECHMode echMode = ECHMode::NotRequested) {
     EXPECT_CALL(*machine_, _processSocketData(_, _, _))
         .WillOnce(InvokeWithoutArgs([=]() {
           MutateState addToState([=](State& newState) {
@@ -145,6 +148,19 @@ class AsyncFizzClientTest : public Test {
                   std::chrono::system_clock::now() - std::chrono::hours(1);
             } else {
               newState.handshakeTime() = std::chrono::system_clock::now();
+            }
+            if (echMode != ECHMode::NotRequested) {
+              newState.echState().emplace();
+              if (echMode == ECHMode::Accepted) {
+                newState.echState()->status = ECHStatus::Accepted;
+              } else {
+                newState.echState()->status = ECHStatus::Rejected;
+                ech::ECHConfig cfg;
+                cfg.version = ech::ECHVersion::Draft9;
+                cfg.ech_config_content =
+                    folly::IOBuf::copyBuffer("retryconfig");
+                newState.echState()->retryConfigs.emplace({std::move(cfg)});
+              }
             }
           });
           ReportHandshakeSuccess reportSuccess;
@@ -565,6 +581,28 @@ TEST_F(AsyncFizzClientTest, TestNoPskResumption) {
   EXPECT_CALL(handshakeCallback_, _fizzHandshakeSuccess());
   fullHandshakeSuccess(false, "h2", nullptr, nullptr, false);
   EXPECT_FALSE(client_->pskResumed());
+}
+
+TEST_F(AsyncFizzClientTest, TestECHAccepted) {
+  connect();
+  EXPECT_CALL(handshakeCallback_, _fizzHandshakeSuccess());
+  fullHandshakeSuccess(false, "h2", nullptr, nullptr, false, ECHMode::Accepted);
+  EXPECT_TRUE(client_->echRequested());
+  EXPECT_TRUE(client_->echAccepted());
+}
+
+TEST_F(AsyncFizzClientTest, TestECHRejected) {
+  connect();
+  EXPECT_CALL(handshakeCallback_, _fizzHandshakeSuccess());
+  fullHandshakeSuccess(false, "h2", nullptr, nullptr, false, ECHMode::Rejected);
+  EXPECT_TRUE(client_->echRequested());
+  EXPECT_FALSE(client_->echAccepted());
+  auto retryConfigs = client_->getEchRetryConfigs();
+  EXPECT_TRUE(retryConfigs.has_value());
+  EXPECT_EQ(retryConfigs->size(), 1);
+  EXPECT_TRUE(folly::IOBufEqualTo()(
+      retryConfigs->at(0).ech_config_content,
+      folly::IOBuf::copyBuffer("retryconfig")));
 }
 
 TEST_F(AsyncFizzClientTest, TestGetCertsNone) {

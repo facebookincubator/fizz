@@ -148,7 +148,8 @@ enum class AlertDescription : uint8_t {
   bad_certificate_hash_value = 114,
   unknown_psk_identity = 115,
   certificate_required = 116,
-  no_application_protocol = 120
+  no_application_protocol = 120,
+  ech_required = 121
 };
 
 std::string toString(AlertDescription);
@@ -342,7 +343,16 @@ enum class NamedGroup : uint16_t {
   secp256r1 = 23,
   secp384r1 = 24,
   secp521r1 = 25,
-  x25519 = 29
+  x25519 = 29,
+  // experimental
+  secp521r1_x25519 =
+      510, // Hybrid of secp521r1 and x25519. TLS Supported Group 510 is
+           // reserved for private use, see
+           // https://www.iana.org/assignments/tls-parameters/tls-parameters.xhtml#tls-parameters-8
+  secp384r1_bikel3 =
+      12091, // Experimental, currently aligning with boringssl for inter-op
+             // purposes. See
+             // https://github.com/open-quantum-safe/boringssl/blob/master/include/openssl/ssl.h#L2406
 };
 
 std::string toString(NamedGroup);
@@ -376,7 +386,7 @@ class FizzException : public std::runtime_error {
 };
 
 template <class T>
-Buf encode(T&& t);
+Buf encode(T&&);
 template <class T>
 Buf encodeHandshake(T&& t);
 template <class T>

@@ -218,8 +218,8 @@ std::unique_ptr<folly::IOBuf> evpEncrypt(
   } else {
     // create enough to also fit the tag and headroom
     size_t totalSize{0};
-    if (!folly::checked_add<size_t>(&totalSize, headroom, inputLength) ||
-        !folly::checked_add<size_t>(&totalSize, totalSize, tagLen)) {
+    if (!folly::checked_add<size_t>(
+            &totalSize, headroom, inputLength, tagLen)) {
       throw std::overflow_error("Output buffer size");
     }
     output = folly::IOBuf::create(totalSize);
@@ -436,10 +436,22 @@ std::unique_ptr<folly::IOBuf> OpenSSLEVPCipher::encrypt(
     uint64_t seqNum,
     Aead::AeadOptions options) const {
   auto iv = createIV(seqNum);
-  return evpEncrypt(
+  return encrypt(
       std::move(plaintext),
       associatedData,
       folly::ByteRange(iv.data(), ivLength_),
+      options);
+}
+
+std::unique_ptr<folly::IOBuf> OpenSSLEVPCipher::encrypt(
+    std::unique_ptr<folly::IOBuf>&& plaintext,
+    const folly::IOBuf* associatedData,
+    folly::ByteRange nonce,
+    Aead::AeadOptions options) const {
+  return evpEncrypt(
+      std::move(plaintext),
+      associatedData,
+      nonce,
       tagLength_,
       operatesInBlocks_,
       headroom_,
@@ -469,12 +481,24 @@ folly::Optional<std::unique_ptr<folly::IOBuf>> OpenSSLEVPCipher::tryDecrypt(
     const folly::IOBuf* associatedData,
     uint64_t seqNum,
     Aead::AeadOptions options) const {
+  auto iv = createIV(seqNum);
+  return tryDecrypt(
+      std::move(ciphertext),
+      associatedData,
+      folly::ByteRange(iv.data(), ivLength_),
+      options);
+}
+
+folly::Optional<std::unique_ptr<folly::IOBuf>> OpenSSLEVPCipher::tryDecrypt(
+    std::unique_ptr<folly::IOBuf>&& ciphertext,
+    const folly::IOBuf* associatedData,
+    folly::ByteRange nonce,
+    Aead::AeadOptions options) const {
   // Check that there's enough data to decrypt
   if (tagLength_ > ciphertext->computeChainDataLength()) {
     return folly::none;
   }
 
-  auto iv = createIV(seqNum);
   auto inPlace =
       (!ciphertext->isShared() ||
        options.bufferOpt != Aead::BufferOption::RespectSharedPolicy);
@@ -496,7 +520,7 @@ folly::Optional<std::unique_ptr<folly::IOBuf>> OpenSSLEVPCipher::tryDecrypt(
     return evpDecrypt(
         std::move(ciphertext),
         associatedData,
-        folly::ByteRange(iv.data(), ivLength_),
+        nonce,
         tagOut,
         operatesInBlocks_,
         decryptCtx_.get(),
@@ -514,7 +538,7 @@ folly::Optional<std::unique_ptr<folly::IOBuf>> OpenSSLEVPCipher::tryDecrypt(
     return evpDecrypt(
         std::move(ciphertext),
         associatedData,
-        folly::ByteRange(iv.data(), ivLength_),
+        nonce,
         tagOut,
         operatesInBlocks_,
         decryptCtx_.get(),

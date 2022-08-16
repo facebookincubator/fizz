@@ -22,12 +22,15 @@ namespace hpke {
 
 HpkeSuiteId
 generateHpkeSuiteId(NamedGroup group, HashFunction hash, CipherSuite suite) {
+  return generateHpkeSuiteId(getKEMId(group), getKDFId(hash), getAeadId(suite));
+}
+
+HpkeSuiteId generateHpkeSuiteId(KEMId kem, KDFId kdf, AeadId aead) {
   std::unique_ptr<folly::IOBuf> suiteId = folly::IOBuf::copyBuffer("HPKE");
   folly::io::Appender appender(suiteId.get(), 6);
-  detail::write(getKEMId(group), appender);
-  detail::write(getKDFId(hash), appender);
-  detail::write(getAeadId(suite), appender);
-
+  detail::write(kem, appender);
+  detail::write(kdf, appender);
+  detail::write(aead, appender);
   return suiteId;
 }
 
@@ -138,6 +141,22 @@ std::unique_ptr<KeyExchange> makeKeyExchange(KEMId kemId) {
       return std::make_unique<X25519KeyExchange>();
     default:
       throw std::runtime_error("can't make key exchange: not implemented");
+  }
+}
+
+size_t nenc(KEMId kemId) {
+  // Refer to Table 2 in 7.1.  Key Encapsulation Mechanisms (KEMs)
+  switch (kemId) {
+    case KEMId::secp256r1:
+      return 65;
+    case KEMId::secp384r1:
+      return 97;
+    case KEMId::secp521r1:
+      return 133;
+    case KEMId::x25519:
+      return 32;
+    default:
+      throw std::runtime_error("unknown or invalid kem");
   }
 }
 

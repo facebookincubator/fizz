@@ -40,6 +40,14 @@ struct ClientECH {
       ExtensionType::encrypted_client_hello;
 };
 
+struct ServerECH {
+  // The server's list of supported configurations.
+  std::vector<ECHConfig> retry_configs;
+
+  static constexpr ExtensionType extension_type =
+      ExtensionType::encrypted_client_hello;
+};
+
 struct ECHIsInner {
   static constexpr ExtensionType extension_type = ExtensionType::ech_is_inner;
 };

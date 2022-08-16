@@ -46,6 +46,15 @@ class MockAeadCipher : public Aead {
         std::move(plaintext), associatedData, seqNum, options);
   }
 
+  std::unique_ptr<folly::IOBuf> encrypt(
+      std::unique_ptr<folly::IOBuf>&& plaintext,
+      const folly::IOBuf* associatedData,
+      folly::ByteRange nonce,
+      AeadOptions options) const override {
+    return actualCipher_->encrypt(
+        std::move(plaintext), associatedData, nonce, options);
+  }
+
   std::unique_ptr<folly::IOBuf> inplaceEncrypt(
       std::unique_ptr<folly::IOBuf>&& plaintext,
       const folly::IOBuf* associatedData,
@@ -67,6 +76,15 @@ class MockAeadCipher : public Aead {
         std::move(ciphertext), associatedData, seqNum, options);
   }
 
+  std::unique_ptr<folly::IOBuf> decrypt(
+      std::unique_ptr<folly::IOBuf>&& ciphertext,
+      const folly::IOBuf* associatedData,
+      folly::ByteRange nonce,
+      AeadOptions options) const override {
+    return actualCipher_->decrypt(
+        std::move(ciphertext), associatedData, nonce, options);
+  }
+
   folly::Optional<std::unique_ptr<folly::IOBuf>> tryDecrypt(
       std::unique_ptr<folly::IOBuf>&& ciphertext,
       const folly::IOBuf* associatedData,
@@ -74,6 +92,15 @@ class MockAeadCipher : public Aead {
       AeadOptions options) const override {
     return actualCipher_->tryDecrypt(
         std::move(ciphertext), associatedData, seqNum, options);
+  }
+
+  folly::Optional<std::unique_ptr<folly::IOBuf>> tryDecrypt(
+      std::unique_ptr<folly::IOBuf>&& ciphertext,
+      const folly::IOBuf* associatedData,
+      folly::ByteRange nonce,
+      AeadOptions options) const override {
+    return actualCipher_->tryDecrypt(
+        std::move(ciphertext), associatedData, nonce, options);
   }
 
   size_t getCipherOverhead() const override {

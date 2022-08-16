@@ -171,6 +171,8 @@ std::string toString(AlertDescription alertDesc) {
       return "certificate_required";
     case AlertDescription::no_application_protocol:
       return "no_application_protocol";
+    case AlertDescription::ech_required:
+      return "ech_required";
   }
   return enumToHex(alertDesc);
 }
@@ -243,6 +245,10 @@ std::string toString(NamedGroup group) {
       return "secp521r1";
     case NamedGroup::x25519:
       return "x25519";
+    case NamedGroup::secp521r1_x25519:
+      return "secp521r1_x25519";
+    case NamedGroup::secp384r1_bikel3:
+      return "secp384r1_bikel3";
   }
   return enumToHex(group);
 }

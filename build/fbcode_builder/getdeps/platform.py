@@ -7,6 +7,7 @@ import platform
 import re
 import shlex
 import sys
+from typing import Optional, Tuple
 
 
 def is_windows() -> bool:
@@ -15,12 +16,12 @@ def is_windows() -> bool:
     return sys.platform.startswith("win")
 
 
-def get_linux_type():
+def get_linux_type() -> Tuple[Optional[str], Optional[str], Optional[str]]:
     try:
         with open("/etc/os-release") as f:
             data = f.read()
     except EnvironmentError:
-        return (None, None)
+        return (None, None, None)
 
     os_vars = {}
     for line in data.splitlines():
@@ -55,21 +56,32 @@ def get_linux_type():
 def _get_available_ram_linux() -> int:
     # TODO: Ideally, this function would inspect the current cgroup for any
     # limits, rather than solely relying on system RAM.
-    with open("/proc/meminfo") as f:
-        for line in f:
-            try:
-                key, value = line.split(":", 1)
-            except ValueError:
-                continue
-            suffix = " kB\n"
-            if key == "MemAvailable" and value.endswith(suffix):
-                value = value[: -len(suffix)]
+
+    meminfo_path = "/proc/meminfo"
+    try:
+        with open(meminfo_path) as f:
+            for line in f:
                 try:
-                    return int(value) // 1024
+                    key, value = line.split(":", 1)
                 except ValueError:
                     continue
+                suffix = " kB\n"
+                if key == "MemAvailable" and value.endswith(suffix):
+                    value = value[: -len(suffix)]
+                    try:
+                        return int(value) // 1024
+                    except ValueError:
+                        continue
+    except OSError:
+        print("error opening {}".format(meminfo_path), end="", file=sys.stderr)
+    else:
+        print(
+            "{} had no valid MemAvailable".format(meminfo_path), end="", file=sys.stderr
+        )
 
-    raise NotImplementedError("/proc/meminfo had no valid MemAvailable")
+    guess = 8
+    print(", guessing {} GiB".format(guess), file=sys.stderr)
+    return guess * 1024
 
 
 def _get_available_ram_macos() -> int:

@@ -152,6 +152,21 @@ class AsyncFizzClientT : public AsyncFizzBase,
     return pskIdentity_;
   }
 
+  void initiateKeyUpdate(KeyUpdateRequest keyUpdateRequest) override;
+  /**
+   * Queries the state of ECH (whether it was requested and whether it was
+   * accepted).
+   */
+  bool echRequested() const;
+
+  bool echAccepted() const;
+
+  /**
+   * ECH configs supported by server. May be sent if ECH is requested,
+   * useful in the rejection case.
+   */
+  folly::Optional<std::vector<ech::ECHConfig>> getEchRetryConfigs() const;
+
  protected:
   ~AsyncFizzClientT() override = default;
   void writeAppData(

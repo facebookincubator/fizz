@@ -54,6 +54,10 @@ struct DerivedSecret {
   bool operator==(const DerivedSecret& other) const {
     return secret == other.secret && type == other.type;
   }
+
+  bool operator!=(const DerivedSecret& other) const {
+    return !(*this == other);
+  }
 };
 
 /**

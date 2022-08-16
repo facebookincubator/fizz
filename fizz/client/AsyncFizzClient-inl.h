@@ -654,5 +654,33 @@ template <typename SM>
 folly::Optional<Random> AsyncFizzClientT<SM>::getClientRandom() const {
   return getState().clientRandom();
 }
+
+template <typename SM>
+void AsyncFizzClientT<SM>::initiateKeyUpdate(
+    KeyUpdateRequest keyUpdateRequest) {
+  KeyUpdateInitiation kui;
+  kui.request_update = keyUpdateRequest;
+  fizzClient_.initiateKeyUpdate(std::move(kui));
+}
+
+template <typename SM>
+bool AsyncFizzClientT<SM>::echRequested() const {
+  return getState().echState().has_value();
+}
+
+template <typename SM>
+bool AsyncFizzClientT<SM>::echAccepted() const {
+  return echRequested() && getState().echState()->status == ECHStatus::Accepted;
+}
+
+template <typename SM>
+folly::Optional<std::vector<ech::ECHConfig>>
+AsyncFizzClientT<SM>::getEchRetryConfigs() const {
+  if (!getState().echState().has_value() ||
+      !getState().echState()->retryConfigs.has_value()) {
+    return folly::none;
+  }
+  return getState().echState()->retryConfigs.value();
+}
 } // namespace client
 } // namespace fizz

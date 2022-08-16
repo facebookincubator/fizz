@@ -17,6 +17,7 @@
 #include <fizz/protocol/test/Mocks.h>
 #include <fizz/protocol/test/TestMessages.h>
 #include <fizz/record/Extensions.h>
+#include <folly/lang/Bits.h>
 
 using namespace fizz::test;
 
@@ -151,6 +152,31 @@ TEST(EncryptionTest, TestInvalidECHConfigContent) {
   folly::Optional<SupportedECHConfig> result =
       selectECHConfig(configs, supportedKEMs, supportedAeads);
 
+  EXPECT_FALSE(result.hasValue());
+}
+
+TEST(EncryptionTest, TestUnsupportedMandatoryExtension) {
+  // Add config that would work save for a mandatory extension we don't support.
+  ECHConfigContentDraft invalidConfigContent = getECHConfigContent();
+
+  Extension mandatory;
+  // Set high order bit for type
+  mandatory.extension_type =
+      static_cast<ExtensionType>(1 << ((sizeof(uint16_t) * 8) - 1));
+  mandatory.extension_data = folly::IOBuf::create(0);
+  invalidConfigContent.extensions.clear();
+  invalidConfigContent.extensions.push_back(std::move(mandatory));
+
+  std::vector<ECHConfig> configs;
+  ECHConfig invalid;
+  invalid.version = ECHVersion::Draft9;
+  invalid.ech_config_content = encode(std::move(invalidConfigContent));
+  configs.push_back(std::move(invalid));
+
+  folly::Optional<SupportedECHConfig> result =
+      selectECHConfig(configs, supportedKEMs, supportedAeads);
+
+  // Expect no result thanks to mandatory extension.
   EXPECT_FALSE(result.hasValue());
 }
 

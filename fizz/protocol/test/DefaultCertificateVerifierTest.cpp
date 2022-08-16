@@ -56,7 +56,8 @@ TEST_F(DefaultCertificateVerifierTest, TestVerifyWithIntermediates) {
 TEST_F(DefaultCertificateVerifierTest, TestVerifySelfSignedCert) {
   auto selfsigned = createCert("self", false, nullptr);
   EXPECT_THROW(
-      verifier_->verify({getPeerCert(selfsigned)}), std::runtime_error);
+      std::ignore = verifier_->verify({getPeerCert(selfsigned)}),
+      std::runtime_error);
 }
 
 TEST_F(DefaultCertificateVerifierTest, TestVerifySelfSignedCertWithOverride) {

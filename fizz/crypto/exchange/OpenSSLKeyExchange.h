@@ -40,6 +40,8 @@ class OpenSSLECKeyExchange : public KeyExchange {
 
   const folly::ssl::EvpPkeyUniquePtr& getPrivateKey() const;
 
+  std::size_t getExpectedKeyShareSize() const override;
+
  private:
   folly::ssl::EvpPkeyUniquePtr key_;
 };

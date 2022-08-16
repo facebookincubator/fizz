@@ -34,6 +34,7 @@ enum class Event {
   AppClose,
   WriteNewSessionTicket,
   CloseNotify,
+  KeyUpdateInitiation,
   NUM_EVENTS
 };
 

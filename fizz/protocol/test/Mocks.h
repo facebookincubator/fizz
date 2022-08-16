@@ -178,7 +178,7 @@ class MockPeerCert : public PeerCert {
 class MockCertificateVerifier : public CertificateVerifier {
  public:
   MOCK_METHOD(
-      void,
+      std::shared_ptr<const folly::AsyncTransportCertificate>,
       verify,
       (const std::vector<std::shared_ptr<const PeerCert>>&),
       (const));
@@ -225,7 +225,7 @@ class MockFactory : public OpenSSLFactory {
   MOCK_METHOD(
       std::unique_ptr<KeyExchange>,
       makeKeyExchange,
-      (NamedGroup group),
+      (NamedGroup group, Factory::KeyExchangeMode mode),
       (const));
   MOCK_METHOD(std::unique_ptr<Aead>, makeAead, (CipherSuite cipher), (const));
   MOCK_METHOD(Random, makeRandom, (), (const));
@@ -279,7 +279,7 @@ class MockFactory : public OpenSSLFactory {
           ret->setDefaults();
           return ret;
         }));
-    ON_CALL(*this, makeKeyExchange(_)).WillByDefault(InvokeWithoutArgs([]() {
+    ON_CALL(*this, makeKeyExchange(_, _)).WillByDefault(InvokeWithoutArgs([]() {
       auto ret = std::make_unique<NiceMock<MockKeyExchange>>();
       ret->setDefaults();
       return ret;
@@ -375,6 +375,7 @@ class MockAsyncFizzBase : public AsyncFizzBase {
 
   MOCK_METHOD(folly::Optional<Random>, getClientRandom, (), (const));
   MOCK_METHOD(void, tlsShutdown, ());
+  MOCK_METHOD(void, initiateKeyUpdate, (KeyUpdateRequest), (override));
 
   MOCK_METHOD(
       void,

@@ -66,6 +66,10 @@ struct AppData : EventType<Event::AppData> {
   explicit AppData(std::unique_ptr<folly::IOBuf> buf) : data(std::move(buf)) {}
 };
 
+struct KeyUpdateInitiation : EventType<Event::KeyUpdateInitiation> {
+  KeyUpdateRequest request_update;
+};
+
 struct WriteNewSessionTicket : EventType<Event::WriteNewSessionTicket> {
   Buf appToken;
 };
@@ -85,6 +89,7 @@ struct WriteNewSessionTicket : EventType<Event::WriteNewSessionTicket> {
   F(CertificateVerify, __VA_ARGS__)     \
   F(Finished, __VA_ARGS__)              \
   F(NewSessionTicket, __VA_ARGS__)      \
+  F(KeyUpdateInitiation, __VA_ARGS__)   \
   F(KeyUpdate, __VA_ARGS__)             \
   F(Alert, __VA_ARGS__)                 \
   F(CloseNotify, __VA_ARGS__)           \

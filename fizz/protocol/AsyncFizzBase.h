@@ -315,6 +315,9 @@ class AsyncFizzBase : public folly::WriteChainAsyncTransportWrapper<
         : Aead::BufferOption::RespectSharedPolicy;
   }
 
+  /* Initialize a key update. */
+  virtual void initiateKeyUpdate(KeyUpdateRequest keyUpdateRequest) = 0;
+
  protected:
   /**
    * Start reading raw data from the transport.

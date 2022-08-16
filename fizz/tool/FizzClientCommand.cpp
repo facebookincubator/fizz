@@ -18,6 +18,9 @@
 #include <fizz/protocol/ZstdCertificateDecompressor.h>
 #endif
 #include <fizz/client/PskSerializationUtils.h>
+#ifdef FIZZ_TOOL_ENABLE_OQS
+#include <fizz/experimental/protocol/HybridKeyExFactory.h>
+#endif
 #include <fizz/protocol/DefaultCertificateVerifier.h>
 #include <fizz/tool/CertificateVerifiers.h>
 #include <fizz/tool/FizzCommandCommon.h>
@@ -80,6 +83,10 @@ void printUsage() {
     << "                          (JSON format: {echconfigs: [${your ECH config here with all the fields..}]})\n"
     << "                          (See FizzCommandCommonTest for an example.)\n"
     << "                          (Note: Setting ech configs implicitly enables ECH.)\n"
+#ifdef FIZZ_TOOL_ENABLE_OQS
+    << " -hybridkex               (Use experimental hybrid key exchange. Currently the only supported named groups under\n"
+    << "                          this mode are secp384r1_bikel3 and secp521r1_x25519)\n"
+#endif
 #ifdef FIZZ_TOOL_ENABLE_IO_URING
     << " -io_uring                (use io_uring for I/O. Default: false)\n"
     << " -io_uring_capacity N     (backend capacity for io_uring. Default: 128)\n"
@@ -507,6 +514,9 @@ int fizzClientCommand(const std::vector<std::string>& args) {
   bool reconnect = false;
   std::string customSNI;
   std::vector<std::string> alpns;
+#ifdef FIZZ_TOOL_ENABLE_OQS
+  bool useHybridKexFactory = false;
+#endif
   folly::Optional<std::vector<CertificateCompressionAlgorithm>> compAlgos;
   bool early = false;
   std::string proxyHost = "";
@@ -604,6 +614,11 @@ int fizzClientCommand(const std::vector<std::string>& args) {
     {"-echconfigs", {true, [&echConfigsFile](const std::string& arg) {
         echConfigsFile = arg;
     }}}
+#ifdef FIZZ_TOOL_ENABLE_OQS
+    ,{"-hybridkex", {false, [&useHybridKexFactory](const std::string&) {
+        useHybridKexFactory = true;
+    }}}
+#endif
 #ifdef FIZZ_TOOL_ENABLE_IO_URING
     ,{"-io_uring", {false, [&uring](const std::string&) { uring = true; }}},
     {"-io_uring_async_recv", {false, [&uringAsync](const std::string&) {
@@ -657,6 +672,11 @@ int fizzClientCommand(const std::vector<std::string>& args) {
   }));
 
   auto clientContext = std::make_shared<FizzClientContext>();
+#ifdef FIZZ_TOOL_ENABLE_OQS
+  if (useHybridKexFactory) {
+    clientContext->setFactory(std::make_shared<HybridKeyExFactory>());
+  }
+#endif
 
   if (!alpns.empty()) {
     clientContext->setSupportedAlpns(std::move(alpns));

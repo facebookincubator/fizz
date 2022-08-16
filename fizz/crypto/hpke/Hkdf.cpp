@@ -38,6 +38,10 @@ std::vector<uint8_t> Hkdf::labeledExtract(
   return hkdf_->extract(salt->coalesce(), labeledIkm->coalesce());
 }
 
+std::vector<uint8_t> Hkdf::extract(Buf salt, Buf ikm) {
+  return hkdf_->extract(salt->coalesce(), ikm->coalesce());
+}
+
 std::unique_ptr<folly::IOBuf> Hkdf::labeledExpand(
     folly::ByteRange prk,
     folly::ByteRange label,
@@ -60,6 +64,13 @@ std::unique_ptr<folly::IOBuf> Hkdf::labeledExpand(
   writeBufWithoutLength(info, appender);
 
   return hkdf_->expand(prk, *labeledInfo, L);
+}
+
+std::unique_ptr<folly::IOBuf> Hkdf::expand(
+    folly::ByteRange prk,
+    std::unique_ptr<folly::IOBuf> label,
+    size_t L) {
+  return hkdf_->expand(prk, *label, L);
 }
 
 size_t Hkdf::hashLength() {

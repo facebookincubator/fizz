@@ -21,12 +21,17 @@ class Hkdf {
       folly::ByteRange label,
       std::unique_ptr<folly::IOBuf> ikm,
       std::unique_ptr<folly::IOBuf> suiteId);
+  std::vector<uint8_t> extract(
+      std::unique_ptr<folly::IOBuf> salt,
+      std::unique_ptr<folly::IOBuf> ikm);
   std::unique_ptr<folly::IOBuf> labeledExpand(
       folly::ByteRange prk,
       folly::ByteRange label,
       std::unique_ptr<folly::IOBuf> info,
       size_t L,
       std::unique_ptr<folly::IOBuf> suiteId);
+  std::unique_ptr<folly::IOBuf>
+  expand(folly::ByteRange prk, std::unique_ptr<folly::IOBuf> label, size_t L);
   size_t hashLength();
 
  private:
