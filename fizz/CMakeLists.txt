@@ -18,6 +18,12 @@ set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
+if(NOT DEFINED IS_X86_64_ARCH AND ${CMAKE_SYSTEM_PROCESSOR} MATCHES "x86_64|AMD64")
+  set(IS_X86_64_ARCH TRUE)
+else()
+  set(IS_X86_64_ARCH FALSE)
+endif()
+
 set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 set(CMAKE_MODULE_PATH
   "${CMAKE_CURRENT_SOURCE_DIR}/cmake"
@@ -155,10 +161,15 @@ endforeach()
 
 option(FIZZ_BUILD_AEGIS "Compiles Fizz with AEGIS support (experimental)" OFF)
 
-set(FIZZ_AESNI_SOURCES
-  third-party/libsodium-aegis/aegis128l/aesni/aead_aegis128l_aesni.c
-  third-party/libsodium-aegis/aegis256/aesni/aead_aegis256_aesni.c
-)
+if (${IS_X86_64_ARCH})
+  set(FIZZ_AESNI_SOURCES
+    third-party/libsodium-aegis/aegis128l/aesni/aead_aegis128l_aesni.c
+    third-party/libsodium-aegis/aegis256/aesni/aead_aegis256_aesni.c
+  )
+else()
+  set(FIZZ_AESNI_SOURCES)
+endif()
+
 set(FIZZ_SOURCES
   crypto/Utils.cpp
   crypto/exchange/X25519.cpp
@@ -239,8 +250,9 @@ set(FIZZ_SOURCES
   ${FIZZ_AESNI_SOURCES}
 )
 
-set_source_files_properties(${FIZZ_AESNI_SOURCES} PROPERTIES COMPILE_OPTIONS "-maes;-mssse3")
-
+if (${IS_X86_64_ARCH})
+  set_source_files_properties(${FIZZ_AESNI_SOURCES} PROPERTIES COMPILE_OPTIONS "-maes;-mssse3")
+endif()
 
 add_library(fizz
   ${FIZZ_HEADERS}
