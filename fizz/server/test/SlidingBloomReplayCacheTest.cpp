@@ -122,7 +122,7 @@ TEST(SlidingBloomReplayCacheTest, TestTimeBucketing) {
     }
   });
 
-  // 0.5 seconds in, all values should still be set
+  // all values should still be set
   folly::via(evb, [&]() {
     evb->schedule(
         [&]() {
@@ -133,7 +133,7 @@ TEST(SlidingBloomReplayCacheTest, TestTimeBucketing) {
         std::chrono::milliseconds(500));
   });
 
-  // 1.5 seconds in, all should be gone.
+  // all should be gone.
   folly::via(evb, [&]() {
     evb->schedule(
         [&]() {
@@ -142,7 +142,7 @@ TEST(SlidingBloomReplayCacheTest, TestTimeBucketing) {
           }
           baton.post();
         },
-        std::chrono::seconds(1));
+        std::chrono::milliseconds(1001));
   });
   baton.wait();
 }
