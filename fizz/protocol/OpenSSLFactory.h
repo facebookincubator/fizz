@@ -10,6 +10,7 @@
 
 #include <fizz/crypto/Sha256.h>
 #include <fizz/crypto/Sha384.h>
+#include <fizz/crypto/Sha512.h>
 #include <fizz/protocol/Factory.h>
 
 namespace fizz {
@@ -25,8 +26,9 @@ class OpenSSLFactory : public Factory {
       case CipherSuite::TLS_AEGIS_128L_SHA256:
         return KeyDerivationImpl::make<Sha256>(getHkdfPrefix());
       case CipherSuite::TLS_AES_256_GCM_SHA384:
-      case CipherSuite::TLS_AEGIS_256_SHA384:
         return KeyDerivationImpl::make<Sha384>(getHkdfPrefix());
+      case CipherSuite::TLS_AEGIS_256_SHA512:
+        return KeyDerivationImpl::make<Sha512>(getHkdfPrefix());
       default:
         throw std::runtime_error("ks: not implemented");
     }
@@ -41,8 +43,9 @@ class OpenSSLFactory : public Factory {
       case CipherSuite::TLS_AEGIS_128L_SHA256:
         return std::make_unique<HandshakeContextImpl<Sha256>>(getHkdfPrefix());
       case CipherSuite::TLS_AES_256_GCM_SHA384:
-      case CipherSuite::TLS_AEGIS_256_SHA384:
         return std::make_unique<HandshakeContextImpl<Sha384>>(getHkdfPrefix());
+      case CipherSuite::TLS_AEGIS_256_SHA512:
+        return std::make_unique<HandshakeContextImpl<Sha512>>(getHkdfPrefix());
       default:
         throw std::runtime_error("hs: not implemented");
     }

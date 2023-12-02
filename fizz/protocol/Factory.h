@@ -99,7 +99,7 @@ class Factory : public IFactory {
       case CipherSuite::TLS_AES_128_OCB_SHA256_EXPERIMENTAL:
         return OpenSSLEVPCipher::makeCipher<AESOCB128>();
 #if FIZZ_BUILD_AEGIS
-      case CipherSuite::TLS_AEGIS_256_SHA384:
+      case CipherSuite::TLS_AEGIS_256_SHA512:
         return AEGISCipher::make256();
       case CipherSuite::TLS_AEGIS_128L_SHA256:
         return AEGISCipher::make128L();
