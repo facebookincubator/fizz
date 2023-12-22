@@ -85,10 +85,48 @@ class Aead {
         {BufferOption::RespectSharedPolicy, AllocationOption::Allow});
   }
 
+  /**
+   * Encrypts plaintext with nonce passed explicitly by the caller. Will throw
+   * on error.
+   *
+   * Uses BufferOption::RespectSharedPolicy and AllocationOption::Allow by
+   * default.
+   */
+  std::unique_ptr<folly::IOBuf> encrypt(
+      std::unique_ptr<folly::IOBuf>&& plaintext,
+      const folly::IOBuf* associatedData,
+      folly::ByteRange nonce) const {
+    return encrypt(
+        std::forward<std::unique_ptr<folly::IOBuf>>(plaintext),
+        associatedData,
+        nonce,
+        {BufferOption::RespectSharedPolicy, AllocationOption::Allow});
+  }
+
+  /**
+   * `encrypt` performs authenticated encryption.
+   *
+   *  This version of encrypt generates the nonce used for
+   *  encryption using the TLS record number to nonce construction
+   *  as specified in RFC 8446.
+   */
   virtual std::unique_ptr<folly::IOBuf> encrypt(
       std::unique_ptr<folly::IOBuf>&& plaintext,
       const folly::IOBuf* associatedData,
       uint64_t seqNum,
+      AeadOptions options) const = 0;
+
+  /**
+   * `encrypt` performs authenticated encryption.
+   *
+   * This version of encrypt uses a nonce passed in explicitly
+   * by the caller; consequently, this interface can be used
+   * to perform AEAD outside of a TLS specific application.
+   */
+  virtual std::unique_ptr<folly::IOBuf> encrypt(
+      std::unique_ptr<folly::IOBuf>&& plaintext,
+      const folly::IOBuf* associatedData,
+      folly::ByteRange nonce,
       AeadOptions options) const = 0;
 
   /**
@@ -128,6 +166,28 @@ class Aead {
         {BufferOption::RespectSharedPolicy, AllocationOption::Allow});
   }
 
+  /**
+   * Decrypt ciphertext. Will throw if the ciphertext does not decrypt
+   * successfully.
+   *
+   * This version of decrypt uses a nonce passed in explicitly
+   * by the caller; consequently, this interface can be used
+   * to perform AEAD outside of a TLS specific application.
+   *
+   * Uses BufferOption::RespectSharedPolicy and AllocationOption::Allow by
+   * default.
+   */
+  std::unique_ptr<folly::IOBuf> decrypt(
+      std::unique_ptr<folly::IOBuf>&& ciphertext,
+      const folly::IOBuf* associatedData,
+      folly::ByteRange nonce) const {
+    return decrypt(
+        std::move(ciphertext),
+        associatedData,
+        nonce,
+        {BufferOption::RespectSharedPolicy, AllocationOption::Allow});
+  }
+
   virtual std::unique_ptr<folly::IOBuf> decrypt(
       std::unique_ptr<folly::IOBuf>&& ciphertext,
       const folly::IOBuf* associatedData,
@@ -137,6 +197,22 @@ class Aead {
         std::forward<std::unique_ptr<folly::IOBuf>>(ciphertext),
         associatedData,
         seqNum,
+        options);
+    if (!plaintext) {
+      throw std::runtime_error("decryption failed");
+    }
+    return std::move(*plaintext);
+  }
+
+  virtual std::unique_ptr<folly::IOBuf> decrypt(
+      std::unique_ptr<folly::IOBuf>&& ciphertext,
+      const folly::IOBuf* associatedData,
+      folly::ByteRange nonce,
+      AeadOptions options) const {
+    auto plaintext = tryDecrypt(
+        std::forward<std::unique_ptr<folly::IOBuf>>(ciphertext),
+        associatedData,
+        nonce,
         options);
     if (!plaintext) {
       throw std::runtime_error("decryption failed");
@@ -162,10 +238,38 @@ class Aead {
         {BufferOption::RespectSharedPolicy, AllocationOption::Allow});
   }
 
+  /**
+   * Decrypt ciphertext. Will return none if the ciphertext does not decrypt
+   * successfully. May still throw from errors unrelated to ciphertext.
+   *
+   * This version of tryDecrypt uses a nonce passed in explicitly
+   * by the caller; consequently, this interface can be used
+   * to perform AEAD outside of a TLS specific application.
+   *
+   * Uses BufferOption::RespectSharedPolicy and AllocationOption::Allow by
+   * default.
+   */
+  folly::Optional<std::unique_ptr<folly::IOBuf>> tryDecrypt(
+      std::unique_ptr<folly::IOBuf>&& ciphertext,
+      const folly::IOBuf* associatedData,
+      folly::ByteRange nonce) const {
+    return tryDecrypt(
+        std::forward<std::unique_ptr<folly::IOBuf>>(ciphertext),
+        associatedData,
+        nonce,
+        {BufferOption::RespectSharedPolicy, AllocationOption::Allow});
+  }
+
   virtual folly::Optional<std::unique_ptr<folly::IOBuf>> tryDecrypt(
       std::unique_ptr<folly::IOBuf>&& ciphertext,
       const folly::IOBuf* associatedData,
       uint64_t seqNum,
+      AeadOptions options) const = 0;
+
+  virtual folly::Optional<std::unique_ptr<folly::IOBuf>> tryDecrypt(
+      std::unique_ptr<folly::IOBuf>&& ciphertext,
+      const folly::IOBuf* associatedData,
+      folly::ByteRange nonce,
       AeadOptions options) const = 0;
 
   /**

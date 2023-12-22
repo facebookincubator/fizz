@@ -16,6 +16,7 @@
 
 #pragma once
 #include <fizz/experimental/ktls/KTLS.h>
+#include <fizz/record/RecordLayer.h>
 #include <folly/io/async/AsyncSocket.h>
 
 namespace fizz {
@@ -59,7 +60,7 @@ namespace fizz {
  * * kTLS inherently is incompatible with SO_ZEROCOPY
  * (AsyncSocket::setZeroCopy).
  */
-class AsyncKTLSSocket final : public folly::AsyncSocket {
+class AsyncKTLSSocket : public folly::AsyncSocket {
  public:
   using UniquePtr =
       std::unique_ptr<AsyncKTLSSocket, folly::DelayedDestruction::Destructor>;
@@ -91,22 +92,20 @@ class AsyncKTLSSocket final : public folly::AsyncSocket {
    *    AsyncKTLSSocket
    *  * You have established a ktls 1.3 connection out of band
    *
-   * @param evb         The eventbase that the AsyncKTLSSocket will initially
-   *                    be attached to.
-   * @param fd          The kTLS enabled file descriptor.
-   * @param tlsCallback An instance of `TLSCallback` which will be used to
-   *                    handle non-application data events.
-   * @param selfCert    The certificate used to authenticate *to* the peer.
-   * @param peerCert    The certificate that the *peer* presented and
+   * @param oldAsyncSocket The AsyncSocket, with kTLS enabled, from which we'll
+   *                       steal the file descriptor and EventBase.
+   * @param tlsCallback    An instance of `TLSCallback` which will be used to
+   *                       handle non-application data events.
+   * @param selfCert       The certificate used to authenticate *to* the peer.
+   * @param peerCert       The certificate that the *peer* presented and
    *                    *we* authenticated.
    */
   AsyncKTLSSocket(
-      folly::EventBase* evb,
-      KTLSNetworkSocket fd,
+      folly::AsyncSocket* oldAsyncSocket,
       std::unique_ptr<TLSCallback> tlsCallback,
       std::shared_ptr<const Cert> selfCert,
       std::shared_ptr<const Cert> peerCert)
-      : AsyncSocket(evb, fd),
+      : AsyncSocket(oldAsyncSocket),
         tlsCallback_(std::move(tlsCallback)),
         selfCert_(std::move(selfCert)),
         peerCert_(std::move(peerCert)) {}
@@ -135,7 +134,7 @@ class AsyncKTLSSocket final : public folly::AsyncSocket {
     selfCert_.reset();
   }
 
- private:
+ protected:
   /**
    * kTLS does not support SO_ZEROCOPY
    */
@@ -144,15 +143,16 @@ class AsyncKTLSSocket final : public folly::AsyncSocket {
   }
   void setZeroCopyEnableFunc(AsyncWriter::ZeroCopyEnableFunc) override {}
 
-  AsyncSocket::ReadResult
-  performRead(void** buf, size_t* buflen, size_t* offset) override;
+  AsyncSocket::ReadResult performReadMsg(
+      struct ::msghdr& msg,
+      AsyncReader::ReadCallback::ReadMode readMode) override;
 
   AsyncSocket::ReadResult handleNonApplicationData(
       uint8_t type,
-      folly::ByteRange payload);
+      folly::IOBufQueue);
 
-  AsyncSocket::ReadResult processAlert(folly::ByteRange payload);
-  AsyncSocket::ReadResult processHandshakeData(folly::ByteRange payload);
+  AsyncSocket::ReadResult processAlert(folly::IOBufQueue);
+  AsyncSocket::ReadResult processHandshakeData(folly::IOBufQueue);
 
   std::unique_ptr<TLSCallback> tlsCallback_;
   std::shared_ptr<const Cert> selfCert_;
@@ -163,5 +163,112 @@ class AsyncKTLSSocket final : public folly::AsyncSocket {
   // so we opt for a heap allocation (IOBufQueue is 64 bytes as of this
   // writing)
   std::unique_ptr<folly::IOBufQueue> unparsedHandshakeData_;
+};
+
+class AsyncKTLSRxSocket : public AsyncKTLSSocket {
+ public:
+  AsyncKTLSRxSocket(
+      folly::AsyncSocket* oldAsyncSocket,
+      std::unique_ptr<TLSCallback> tlsCallback,
+      std::shared_ptr<const Cert> selfCert,
+      std::shared_ptr<const Cert> peerCert,
+      std::unique_ptr<WriteRecordLayer> writeRecordLayer)
+      : AsyncKTLSSocket(
+            oldAsyncSocket,
+            std::move(tlsCallback),
+            selfCert,
+            peerCert),
+        writeRecordLayer_(std::move(writeRecordLayer)) {}
+
+  ~AsyncKTLSRxSocket() override;
+
+  void write(
+      AsyncTransport::WriteCallback* callback,
+      const void* buf,
+      size_t bytes,
+      folly::WriteFlags flags = folly::WriteFlags::NONE) override {
+    auto ioBuf = folly::IOBuf::wrapBuffer(buf, bytes);
+    writeChain(callback, std::move(ioBuf), flags);
+  }
+
+  void writev(
+      AsyncTransport::WriteCallback* callback,
+      const iovec* vec,
+      size_t count,
+      folly::WriteFlags flags = folly::WriteFlags::NONE) override {
+    auto writeBuffer = folly::IOBuf::wrapIov(vec, count);
+    writeChain(callback, std::move(writeBuffer), flags);
+  }
+
+  void writeChain(
+      folly::AsyncTransportWrapper::WriteCallback* callback,
+      std::unique_ptr<folly::IOBuf>&& buf,
+      folly::WriteFlags flags = folly::WriteFlags::NONE) override;
+
+ protected:
+  /**
+   * we support SO_ZEROCOPY
+   */
+  bool setZeroCopy(bool enable) override {
+    return folly::AsyncSocket::setZeroCopy(enable);
+  }
+
+  void setZeroCopyEnableFunc(AsyncWriter::ZeroCopyEnableFunc func) override {
+    folly::AsyncSocket::setZeroCopyEnableFunc(func);
+  }
+
+ private:
+  class QueuedWriteRequest
+      : private folly::AsyncTransportWrapper::WriteCallback {
+   public:
+    QueuedWriteRequest(
+        AsyncKTLSRxSocket* sock,
+        folly::AsyncTransportWrapper::WriteCallback* callback,
+        std::unique_ptr<folly::IOBuf> data,
+        folly::WriteFlags flags);
+
+    void startWriting();
+
+    void append(QueuedWriteRequest* request);
+
+    void unlinkFromBase();
+
+    size_t getEntireChainBytesBuffered() {
+      DCHECK(!next_);
+      return entireChainBytesBuffered;
+    }
+
+   private:
+    void writeSuccess() noexcept override;
+
+    void writeErr(size_t, const folly::AsyncSocketException&) noexcept override;
+
+    QueuedWriteRequest* deliverSingleWriteErr(
+        const folly::AsyncSocketException&);
+
+    void advanceOnBase();
+
+    AsyncKTLSRxSocket* sock_;
+    folly::AsyncTransportWrapper::WriteCallback* callback_;
+    folly::IOBufQueue data_{folly::IOBufQueue::cacheChainLength()};
+    folly::WriteFlags flags_;
+
+    size_t dataWritten_{0};
+    // Data length of the entire chain. Only valid at the tail node
+    // of the chain, i.e. when next_ is null.
+    size_t entireChainBytesBuffered;
+
+    QueuedWriteRequest* next_{nullptr};
+  };
+
+  void writeAppData(
+      folly::AsyncTransportWrapper::WriteCallback* callback,
+      std::unique_ptr<folly::IOBuf>&& buf,
+      folly::WriteFlags flags = folly::WriteFlags::NONE);
+
+  std::unique_ptr<WriteRecordLayer> writeRecordLayer_;
+  Aead::AeadOptions aeadOptions_;
+
+  QueuedWriteRequest* tailWriteRequest_{nullptr};
 };
 } // namespace fizz

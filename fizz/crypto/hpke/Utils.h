@@ -38,6 +38,22 @@ namespace hpke {
 HpkeSuiteId
 generateHpkeSuiteId(NamedGroup group, HashFunction hash, CipherSuite suite);
 
+/**
+ * Generates the `suite_id` string (used in HPKE LabeledExtract/LabelExpand).
+ *
+ * For more information on the construction of `suite_id`, refer to Section 4
+ * on the HPKE specification.
+ *
+ * This is intended to be used in constructing an `HpkeContext` structure.
+ *
+ * @param kem     The HPKE KEM code point for the intended HPKE context.
+ * @param kdf     The HPKE KDF code point for the intended HPKE context.
+ * @param aead    The HPKE AEAD code point for the intended HPKE context.
+ *
+ * @return An HPKE `suite_id` string.
+ */
+HpkeSuiteId generateHpkeSuiteId(KEMId kem, KDFId kdf, AeadId aead);
+
 /*****************************
  *                           *
  * Key Encapsulation (KEM)   *
@@ -65,6 +81,16 @@ KEMId getKEMId(NamedGroup group);
 NamedGroup getKexGroup(KEMId kemId);
 
 /**
+ * fizz::hpke::getHashFunctionForKEM converts an HPKE KEM code point to a
+ * `fizz::HashFunction` code point
+ *
+ * @param kemId  An HPKE KEM code point.
+ * @return The corresponding `fizz::HashFunction` code point.
+ * @throws std::runtime_error On invalid code points.
+ */
+HashFunction getHashFunctionForKEM(KEMId kemId);
+
+/**
  * fizz::hpke::makeKeyExchange returns a `fizz::KeyExchange` instance given an
  * HPKE code point.
  *
@@ -78,6 +104,18 @@ NamedGroup getKexGroup(KEMId kemId);
  * @throws std::runtime_error   On invalid code points.
  */
 std::unique_ptr<KeyExchange> makeKeyExchange(KEMId kemId);
+
+/**
+ * fizz::hpke::nenc returns the size of the serialized public component (`enc`)
+ * for a given keypair.
+ *
+ * @param  kemId    An HPKE KEM code point.
+ *
+ * @return A non zero value indicating the size of the public component for the
+ *         given KEM.
+ * @throws std::runtime_error   On invalid code points.
+ */
+size_t nenc(KEMId kemId);
 
 /*****************************
  *                           *

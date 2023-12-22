@@ -17,6 +17,7 @@
 
 #include <fizz/experimental/ktls/AsyncKTLSSocket.h>
 #include <fizz/experimental/ktls/FizzKTLSCallback.h>
+#include <fizz/experimental/util/CertExtraction.h>
 #include <fizz/protocol/AsyncFizzBase.h>
 #include <folly/Expected.h>
 #include <glog/logging.h>
@@ -61,53 +62,14 @@ KTLSCallbackImpl::TicketHandler getTicketHandler(
   return makeTicketHandler(
       std::move(pskIdentity).value(), client.getState(), std::move(pskCache));
 }
+enum class AsyncKTLSSocketType { RxOnly = 1, Both = 2 };
 
-template <class SM>
-std::pair<std::shared_ptr<const Cert>, std::shared_ptr<const Cert>>
-getSelfPeerCertificateShared(const fizz::client::AsyncFizzClientT<SM>& client) {
-  return std::make_pair(
-      client.getState().clientCert(), client.getState().serverCert());
-}
-template <class SM>
-std::pair<std::shared_ptr<const Cert>, std::shared_ptr<const Cert>>
-getSelfPeerCertificateShared(const fizz::server::AsyncFizzServerT<SM>& server) {
-  return std::make_pair(
-      server.getState().serverCert(), server.getState().clientCert());
-}
-
-} // namespace detail
-
-/**
- * fizz::tryConvertKTLS attempts to convert a fizz::AsyncFizzBase socket into
- * an instance of fizz::AsyncKTLSSocket
- *
- * This can only be safely called within a fizzHandshakeSuc() callback, where
- * the socket uses `setHandshakeRecordAlignedReads(true)`, before any
- * application writes are made to the fizz socket.
- *
- * During the conversion process:
- * * The new socket's EventBase is set to the old socket's EventBase.
- * * The new socket's read callback is set to the old socket's read callback, if
- *   set.
- * * Any pending writes on the old socket fail with writeErr().
- *
- * @param fizzSock         Either a fizz::client::AsyncFizzClient or
- *                         fizz::server::AsyncFizzServer reference.
- *
- *                         If this function succeeds, then fizzSock will no
- *                         longer be valid -- it's underlying file descriptor
- *                         will have been moved.
- *
- * @return An Expected result. On success, this returns unique ownership of an
- * AsyncKTLSSocket instance that uses the file descriptor of |fizzSock|. On
- * failure, returns the exception. On failure, |fizzSock| will still be valid;
- * it's file descriptor remains attached, and future I/O operations on
- * |fizzSock| are allowed.
- *
- */
 template <class FizzSocket>
 folly::Expected<AsyncKTLSSocket::UniquePtr, folly::exception_wrapper>
-tryConvertKTLS(FizzSocket& fizzSock) {
+tryConvertKTLSBase(
+    FizzSocket& fizzSock,
+    AsyncKTLSSocketType socketType,
+    KTLSRxPad rxPad) {
 #if defined(__linux__) && !defined(__ANDROID__)
   static_assert(
       std::is_base_of<AsyncFizzBase, FizzSocket>::value,
@@ -156,20 +118,25 @@ tryConvertKTLS(FizzSocket& fizzSock) {
   auto rstate = (*state.readRecordLayer()).getRecordLayerState();
   auto wstate = (*state.writeRecordLayer()).getRecordLayerState();
 
-  auto evb = fizzSock.getEventBase();
-
   auto rx = KTLSDirectionalCryptoParams<TrafficDirection::Receive>(
       KTLSCryptoParams::fromRecordState(ciphersuite, rstate));
-  auto tx = KTLSDirectionalCryptoParams<TrafficDirection::Transmit>(
-      KTLSCryptoParams::fromRecordState(ciphersuite, wstate));
 
   auto keyScheduler = state.keyScheduler()->clone();
   auto ticketHandler = detail::getTicketHandler(fizzSock);
   auto callbackImpl = std::make_unique<KTLSCallbackImpl>(
       std::move(keyScheduler), std::move(ticketHandler));
 
-  auto result =
-      KTLSNetworkSocket::tryEnableKTLS(sock->getNetworkSocket(), rx, tx);
+  folly::Expected<KTLSNetworkSocket, folly::exception_wrapper> result;
+  if (socketType == AsyncKTLSSocketType::Both) {
+    auto tx = KTLSDirectionalCryptoParams<TrafficDirection::Transmit>(
+        KTLSCryptoParams::fromRecordState(ciphersuite, wstate));
+    result = KTLSNetworkSocket::tryEnableKTLS(
+        sock->getNetworkSocket(), rx, tx, rxPad);
+  } else if (socketType == AsyncKTLSSocketType::RxOnly) {
+    result =
+        KTLSNetworkSocket::tryEnableKTLS(sock->getNetworkSocket(), rx, rxPad);
+  }
+
   if (!result) {
     return folly::makeUnexpected<folly::exception_wrapper>(
         std::move(result).error());
@@ -178,19 +145,78 @@ tryConvertKTLS(FizzSocket& fizzSock) {
   auto readCb = fizzSock.getReadCallback();
   fizzSock.setReadCB(nullptr);
 
-  (void)sock->detachNetworkSocket();
   AsyncKTLSSocket::UniquePtr ret;
-  ret.reset(new AsyncKTLSSocket(
-      evb,
-      result.value(),
-      std::move(callbackImpl),
-      std::move(selfCert),
-      std::move(peerCert)));
+  if (socketType == AsyncKTLSSocketType::Both) {
+    ret.reset(new AsyncKTLSSocket(
+        sock,
+        std::move(callbackImpl),
+        std::move(selfCert),
+        std::move(peerCert)));
+  } else if (socketType == AsyncKTLSSocketType::RxOnly) {
+    std::unique_ptr<WriteRecordLayer> writeRecordLayer(
+        const_cast<std::remove_const_t<
+            std::remove_reference_t<decltype(fizzSock.getState())>>&>(
+            fizzSock.getState())
+            .writeRecordLayer()
+            .release());
+    ret.reset(new AsyncKTLSRxSocket(
+        sock,
+        std::move(callbackImpl),
+        std::move(selfCert),
+        std::move(peerCert),
+        std::move(writeRecordLayer)));
+  }
   ret->setReadCB(readCb);
   return ret;
 #else
   return folly::makeUnexpected<folly::exception_wrapper>(
       std::runtime_error("ktls statically not supported on platform"));
 #endif
+}
+} // namespace detail
+
+/**
+ * fizz::tryConvertKTLS attempts to convert a fizz::AsyncFizzBase socket into
+ * an instance of fizz::AsyncKTLSSocket
+ *
+ * This can only be safely called within a fizzHandshakeSuc() callback, where
+ * the socket uses `setHandshakeRecordAlignedReads(true)`, before any
+ * application writes are made to the fizz socket.
+ *
+ * During the conversion process:
+ * * The new socket's EventBase is set to the old socket's EventBase.
+ * * The new socket's read callback is set to the old socket's read callback, if
+ *   set.
+ * * Any pending writes on the old socket fail with writeErr().
+ *
+ * @param fizzSock         Either a fizz::client::AsyncFizzClient or
+ *                         fizz::server::AsyncFizzServer reference.
+ *
+ *                         If this function succeeds, then fizzSock will no
+ *                         longer be valid -- it's underlying file descriptor
+ *                         will have been moved.
+ *
+ * @return An Expected result. On success, this returns unique ownership of an
+ * AsyncKTLSSocket instance that uses the file descriptor of |fizzSock|. On
+ * failure, returns the exception. On failure, |fizzSock| will still be valid;
+ * it's file descriptor remains attached, and future I/O operations on
+ * |fizzSock| are allowed.
+ *
+ */
+template <class FizzSocket>
+folly::Expected<AsyncKTLSSocket::UniquePtr, folly::exception_wrapper>
+tryConvertKTLS(
+    FizzSocket& fizzSock,
+    KTLSRxPad rxPad = KTLSRxPad::RxPadUnknown) {
+  return tryConvertKTLSBase(fizzSock, detail::AsyncKTLSSocketType::Both, rxPad);
+}
+
+template <class FizzSocket>
+folly::Expected<AsyncKTLSRxSocket::UniquePtr, folly::exception_wrapper>
+tryConvertKTLSRx(
+    FizzSocket& fizzSock,
+    KTLSRxPad rxPad = KTLSRxPad::RxPadUnknown) {
+  return tryConvertKTLSBase(
+      fizzSock, detail::AsyncKTLSSocketType::RxOnly, rxPad);
 }
 } // namespace fizz

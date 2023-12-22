@@ -11,13 +11,16 @@
 #include <fizz/extensions/delegatedcred/DelegatedCredentialClientExtension.h>
 #include <fizz/extensions/delegatedcred/DelegatedCredentialFactory.h>
 #ifdef FIZZ_TOOL_ENABLE_BROTLI
-#include <fizz/protocol/BrotliCertificateDecompressor.h>
+#include <fizz/compression/BrotliCertificateDecompressor.h>
 #endif
-#include <fizz/protocol/ZlibCertificateDecompressor.h>
+#include <fizz/compression/ZlibCertificateDecompressor.h>
 #ifdef FIZZ_TOOL_ENABLE_ZSTD
-#include <fizz/protocol/ZstdCertificateDecompressor.h>
+#include <fizz/compression/ZstdCertificateDecompressor.h>
 #endif
 #include <fizz/client/PskSerializationUtils.h>
+#ifdef FIZZ_TOOL_ENABLE_OQS
+#include <fizz/experimental/protocol/HybridKeyExFactory.h>
+#endif
 #include <fizz/protocol/DefaultCertificateVerifier.h>
 #include <fizz/tool/CertificateVerifiers.h>
 #include <fizz/tool/FizzCommandCommon.h>
@@ -80,6 +83,12 @@ void printUsage() {
     << "                          (JSON format: {echconfigs: [${your ECH config here with all the fields..}]})\n"
     << "                          (See FizzCommandCommonTest for an example.)\n"
     << "                          (Note: Setting ech configs implicitly enables ECH.)\n"
+    << " -echbase64 echConfigList (base64 encoded string of echconfigs.)"
+    << "                          (The echconfigs file argument must match the ECH Config List format specified in the ECH RFC.)\n"
+#ifdef FIZZ_TOOL_ENABLE_OQS
+    << " -hybridkex               (Use experimental hybrid key exchange. Currently the only supported named groups under\n"
+    << "                          this mode are secp384r1_bikel3 and secp521r1_x25519)\n"
+#endif
 #ifdef FIZZ_TOOL_ENABLE_IO_URING
     << " -io_uring                (use io_uring for I/O. Default: false)\n"
     << " -io_uring_capacity N     (backend capacity for io_uring. Default: 128)\n"
@@ -408,13 +417,13 @@ class Connection : public AsyncSocket::ConnectCallback,
       folly::io::Cursor cursor(configContent.get());
       auto echConfigContent = decode<ech::ECHConfigContentDraft>(cursor);
 
-      auto ciphersuite = echConfigContent.cipher_suites[0];
+      auto ciphersuite = echConfigContent.key_config.cipher_suites[0];
       LOG(INFO) << "    Hash function: "
                 << toString(getHashFunction(ciphersuite.kdf_id));
       LOG(INFO) << "    Cipher Suite: "
                 << toString(getCipherSuite(ciphersuite.aead_id));
       LOG(INFO) << "    Named Group: "
-                << toString(getKexGroup(echConfigContent.kem_id));
+                << toString(getKexGroup(echConfigContent.key_config.kem_id));
       LOG(INFO) << "    Fake SNI Used: "
                 << echConfigContent.public_name->clone()->moveToFbString();
     }
@@ -507,6 +516,9 @@ int fizzClientCommand(const std::vector<std::string>& args) {
   bool reconnect = false;
   std::string customSNI;
   std::vector<std::string> alpns;
+#ifdef FIZZ_TOOL_ENABLE_OQS
+  bool useHybridKexFactory = false;
+#endif
   folly::Optional<std::vector<CertificateCompressionAlgorithm>> compAlgos;
   bool early = false;
   std::string proxyHost = "";
@@ -530,6 +542,7 @@ int fizzClientCommand(const std::vector<std::string>& args) {
   bool delegatedCredentials = false;
   bool ech = false;
   std::string echConfigsFile;
+  std::string echConfigsBase64;
   bool uring = false;
   bool uringAsync = false;
   bool uringRegisterFds = false;
@@ -569,7 +582,7 @@ int fizzClientCommand(const std::vector<std::string>& args) {
     }}},
     {"-alpn", {true, [&alpns](const std::string& arg) {
         alpns.clear();
-        folly::split(",", arg, alpns);
+        folly::split(',', arg, alpns);
     }}},
     {"-certcompression", {true, [&compAlgos](const std::string& arg) {
         try {
@@ -603,7 +616,15 @@ int fizzClientCommand(const std::vector<std::string>& args) {
     }}},
     {"-echconfigs", {true, [&echConfigsFile](const std::string& arg) {
         echConfigsFile = arg;
+    }}},
+    {"-echbase64", {true, [&echConfigsBase64](const std::string& arg) {
+        echConfigsBase64 = arg;
     }}}
+#ifdef FIZZ_TOOL_ENABLE_OQS
+    ,{"-hybridkex", {false, [&useHybridKexFactory](const std::string&) {
+        useHybridKexFactory = true;
+    }}}
+#endif
 #ifdef FIZZ_TOOL_ENABLE_IO_URING
     ,{"-io_uring", {false, [&uring](const std::string&) { uring = true; }}},
     {"-io_uring_async_recv", {false, [&uringAsync](const std::string&) {
@@ -657,6 +678,11 @@ int fizzClientCommand(const std::vector<std::string>& args) {
   }));
 
   auto clientContext = std::make_shared<FizzClientContext>();
+#ifdef FIZZ_TOOL_ENABLE_OQS
+  if (useHybridKexFactory) {
+    clientContext->setFactory(std::make_shared<HybridKeyExFactory>());
+  }
+#endif
 
   if (!alpns.empty()) {
     clientContext->setSupportedAlpns(std::move(alpns));
@@ -768,22 +794,26 @@ int fizzClientCommand(const std::vector<std::string>& args) {
             clientContext->getSupportedSigSchemes());
   }
 
-  folly::Optional<std::vector<ech::ECHConfig>> echConfigs = folly::none;
+  folly::Optional<ech::ECHConfigList> echConfigList = folly::none;
 
   if (ech) {
     // Use default ECH config values.
-    echConfigs = getDefaultECHConfigs();
-  }
-
-  if (!echConfigsFile.empty()) {
-    // Parse user set ECH configs.
+    auto echConfigContents = getDefaultECHConfigs();
+    echConfigList->configs = std::move(echConfigContents);
+  } else if (!echConfigsBase64.empty()) {
+    echConfigList = parseECHConfigsBase64(echConfigsBase64);
+    if (!echConfigList.has_value()) {
+      LOG(ERROR) << "Unable to parse ECHConfigList base64.";
+      return 1;
+    }
+  } else if (!echConfigsFile.empty()) {
     auto echConfigsJson = readECHConfigsJson(echConfigsFile);
     if (!echConfigsJson.has_value()) {
       LOG(ERROR) << "Unable to load ECH configs from json file";
       return 1;
     }
-    auto gotECHConfigs = parseECHConfigs(echConfigsJson.value());
-    if (!gotECHConfigs.has_value()) {
+    echConfigList = parseECHConfigs(echConfigsJson.value());
+    if (!echConfigList.has_value()) {
       LOG(ERROR)
           << "Unable to parse JSON file and make ECH config."
           << "Ensure the format matches what is expected."
@@ -791,7 +821,11 @@ int fizzClientCommand(const std::vector<std::string>& args) {
           << "See FizzCommandCommonTest for a more concrete example.";
       return 1;
     }
-    echConfigs = std::move(gotECHConfigs.value());
+  }
+
+  folly::Optional<std::vector<ech::ECHConfig>> echConfigs;
+  if (echConfigList.has_value()) {
+    echConfigs = std::move(echConfigList->configs);
   }
 
   try {

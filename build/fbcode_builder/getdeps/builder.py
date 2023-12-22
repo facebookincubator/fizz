@@ -113,7 +113,7 @@ class BuilderBase(object):
         patchfile = os.path.join(
             self.build_opts.fbcode_builder_dir, "patches", self.patchfile
         )
-        patchcmd = ["git", "apply"]
+        patchcmd = ["git", "apply", "--ignore-space-change"]
         if self.patchfile_opts:
             patchcmd.append(self.patchfile_opts)
         try:
@@ -135,6 +135,16 @@ class BuilderBase(object):
         self._apply_patchfile()
         self._prepare(install_dirs=install_dirs, reconfigure=reconfigure)
         self._build(install_dirs=install_dirs, reconfigure=reconfigure)
+
+        if self.build_opts.free_up_disk:
+            # don't clean --src-dir=. case as user may want to build again or run tests on the build
+            if self.src_dir.startswith(self.build_opts.scratch_dir) and os.path.isdir(
+                self.build_dir
+            ):
+                if os.path.islink(self.build_dir):
+                    os.remove(self.build_dir)
+                else:
+                    shutil.rmtree(self.build_dir)
 
         # On Windows, emit a wrapper script that can be used to run build artifacts
         # directly from the build directory, without installing them.  On Windows $PATH
@@ -346,7 +356,7 @@ class AutoconfBuilder(BuilderBase):
 
 class Iproute2Builder(BuilderBase):
     # ./configure --prefix does not work for iproute2.
-    # Thus, explicitly copy sources from src_dir to build_dir, bulid,
+    # Thus, explicitly copy sources from src_dir to build_dir, build,
     # and then install to inst_dir using DESTDIR
     # lastly, also copy include from build_dir to inst_dir
     def __init__(self, build_opts, ctx, manifest, src_dir, build_dir, inst_dir) -> None:
@@ -354,27 +364,12 @@ class Iproute2Builder(BuilderBase):
             build_opts, ctx, manifest, src_dir, build_dir, inst_dir
         )
 
-    def _patch(self) -> None:
-        # FBOSS build currently depends on an old version of iproute2 (commit
-        # 7ca63aef7d1b0c808da0040c6b366ef7a61f38c1). This is missing a commit
-        # (ae717baf15fb4d30749ada3948d9445892bac239) needed to build iproute2
-        # successfully. Apply it viz.: include stdint.h
-        # Reference: https://fburl.com/ilx9g5xm
-        with open(self.build_dir + "/tc/tc_core.c", "r") as f:
-            data = f.read()
-
-        with open(self.build_dir + "/tc/tc_core.c", "w") as f:
-            f.write("#include <stdint.h>\n")
-            f.write(data)
-
     def _build(self, install_dirs, reconfigure) -> None:
         configure_path = os.path.join(self.src_dir, "configure")
-
         env = self.env.copy()
         self._run_cmd([configure_path], env=env)
         shutil.rmtree(self.build_dir)
         shutil.copytree(self.src_dir, self.build_dir)
-        self._patch()
         self._run_cmd(["make", "-j%s" % self.num_jobs], env=env)
         install_cmd = ["make", "install", "DESTDIR=" + self.inst_dir]
 
@@ -478,7 +473,7 @@ def main():
                 "--target",
                 target,
                 "--config",
-                "Release",
+                "{build_type}",
                 get_jobs_argument(args.num_jobs),
         ] + args.cmake_args
     elif args.mode == "test":
@@ -512,6 +507,7 @@ if __name__ == "__main__":
         loader=None,
         final_install_prefix=None,
         extra_cmake_defines=None,
+        cmake_target="install",
     ) -> None:
         super(CMakeBuilder, self).__init__(
             build_opts,
@@ -525,6 +521,7 @@ if __name__ == "__main__":
         self.defines = defines or {}
         if extra_cmake_defines:
             self.defines.update(extra_cmake_defines)
+        self.cmake_target = cmake_target
 
         try:
             from .facebook.vcvarsall import extra_vc_cmake_defines
@@ -598,8 +595,9 @@ if __name__ == "__main__":
             # unspecified.  Some of the deps fail to compile in release mode
             # due to warning->error promotion.  RelWithDebInfo is the happy
             # medium.
-            "CMAKE_BUILD_TYPE": "RelWithDebInfo",
+            "CMAKE_BUILD_TYPE": self.build_opts.build_type,
         }
+
         if "SANDCASTLE" not in os.environ:
             # We sometimes see intermittent ccache related breakages on some
             # of the FB internal CI hosts, so we prefer to disable ccache
@@ -696,6 +694,7 @@ if __name__ == "__main__":
                 build_dir=self.build_dir,
                 install_dir=self.inst_dir,
                 sys=sys,
+                build_type=self.build_opts.build_type,
             )
 
             self._invalidate_cache()
@@ -707,9 +706,9 @@ if __name__ == "__main__":
                 "--build",
                 self.build_dir,
                 "--target",
-                "install",
+                self.cmake_target,
                 "--config",
-                "Release",
+                self.build_opts.build_type,
                 "-j",
                 str(self.num_jobs),
             ],
@@ -816,11 +815,12 @@ if __name__ == "__main__":
             # better signals for flaky tests.
             retry = 0
 
-        testpilot = path_search(env, "testpilot")
         tpx = path_search(env, "tpx")
-        if (tpx or testpilot) and not no_testpilot:
+        if tpx and not no_testpilot:
             buck_test_info = list_tests()
             import os
+
+            from .facebook.testinfra import start_run
 
             buck_test_info_name = os.path.join(self.build_dir, ".buck-test-info.json")
             with open(buck_test_info_name, "w") as f:
@@ -831,27 +831,7 @@ if __name__ == "__main__":
             runs = []
             from sys import platform
 
-            if platform == "win32":
-                machine_suffix = self.build_opts.host_type.as_tuple_string()
-                testpilot_args = [
-                    "parexec-testinfra.exe",
-                    "C:/tools/testpilot/sc_testpilot.par",
-                    # Need to force the repo type otherwise testpilot on windows
-                    # can be confused (presumably sparse profile related)
-                    "--force-repo",
-                    "fbcode",
-                    "--force-repo-root",
-                    self.build_opts.fbsource_dir,
-                    "--buck-test-info",
-                    buck_test_info_name,
-                    "--retry=%d" % retry,
-                    "-j=%s" % str(self.num_jobs),
-                    "--test-config",
-                    "platform=%s" % machine_suffix,
-                    "buildsystem=getdeps",
-                    "--return-nonzero-on-failures",
-                ]
-            else:
+            with start_run(env["FBSOURCE_HASH"]) as run_id:
                 testpilot_args = [
                     tpx,
                     "--force-local-execution",
@@ -862,61 +842,66 @@ if __name__ == "__main__":
                     "--print-long-results",
                 ]
 
-            if owner:
-                testpilot_args += ["--contacts", owner]
+                if owner:
+                    testpilot_args += ["--contacts", owner]
 
-            if tpx and env:
-                testpilot_args.append("--env")
-                testpilot_args.extend(f"{key}={val}" for key, val in env.items())
+                if env:
+                    testpilot_args.append("--env")
+                    testpilot_args.extend(f"{key}={val}" for key, val in env.items())
 
-            if test_filter:
-                testpilot_args += ["--", test_filter]
+                if run_id is not None:
+                    testpilot_args += ["--run-id", run_id]
 
-            if schedule_type == "continuous":
-                runs.append(
-                    [
-                        "--tag-new-tests",
-                        "--collection",
-                        "oss-continuous",
-                        "--purpose",
-                        "continuous",
-                    ]
-                )
-            elif schedule_type == "testwarden":
-                # One run to assess new tests
-                runs.append(
-                    [
-                        "--tag-new-tests",
-                        "--collection",
-                        "oss-new-test-stress",
-                        "--stress-runs",
-                        "10",
-                        "--purpose",
-                        "stress-run-new-test",
-                    ]
-                )
-                # And another for existing tests
-                runs.append(
-                    [
-                        "--tag-new-tests",
-                        "--collection",
-                        "oss-existing-test-stress",
-                        "--stress-runs",
-                        "10",
-                        "--purpose",
-                        "stress-run",
-                    ]
-                )
-            else:
-                runs.append(["--collection", "oss-diff", "--purpose", "diff"])
+                if test_filter:
+                    testpilot_args += ["--", test_filter]
 
-            for run in runs:
-                self._run_cmd(
-                    testpilot_args + run,
-                    cwd=self.build_opts.fbcode_builder_dir,
-                    env=env,
-                    use_cmd_prefix=use_cmd_prefix,
-                )
+                if schedule_type == "diff":
+                    runs.append(["--collection", "oss-diff", "--purpose", "diff"])
+                elif schedule_type == "continuous":
+                    runs.append(
+                        [
+                            "--tag-new-tests",
+                            "--collection",
+                            "oss-continuous",
+                            "--purpose",
+                            "continuous",
+                        ]
+                    )
+                elif schedule_type == "testwarden":
+                    # One run to assess new tests
+                    runs.append(
+                        [
+                            "--tag-new-tests",
+                            "--collection",
+                            "oss-new-test-stress",
+                            "--stress-runs",
+                            "10",
+                            "--purpose",
+                            "stress-run-new-test",
+                        ]
+                    )
+                    # And another for existing tests
+                    runs.append(
+                        [
+                            "--tag-new-tests",
+                            "--collection",
+                            "oss-existing-test-stress",
+                            "--stress-runs",
+                            "10",
+                            "--purpose",
+                            "stress-run",
+                        ]
+                    )
+                else:
+                    runs.append([])
+
+                for run in runs:
+                    self._run_cmd(
+                        testpilot_args + run,
+                        cwd=self.build_opts.fbcode_builder_dir,
+                        env=env,
+                        use_cmd_prefix=use_cmd_prefix,
+                    )
         else:
             args = [
                 require_command(ctest, "ctest"),
@@ -1137,26 +1122,6 @@ class NopBuilder(BuilderBase):
                 shutil.copytree(self.src_dir, self.inst_dir)
 
 
-class OpenNSABuilder(NopBuilder):
-    # OpenNSA libraries are stored with git LFS. As a result, fetcher fetches
-    # LFS pointers and not the contents. Use git-lfs to pull the real contents
-    # before copying to install dir using NoopBuilder.
-    # In future, if more builders require git-lfs, we would consider installing
-    # git-lfs as part of the sandcastle infra as against repeating similar
-    # logic for each builder that requires git-lfs.
-    def __init__(self, build_opts, ctx, manifest, src_dir, inst_dir) -> None:
-        super(OpenNSABuilder, self).__init__(
-            build_opts, ctx, manifest, src_dir, inst_dir
-        )
-
-    def build(self, install_dirs, reconfigure: bool) -> None:
-        env = self._compute_env(install_dirs)
-        self._run_cmd(["git", "lfs", "install", "--local"], cwd=self.src_dir, env=env)
-        self._run_cmd(["git", "lfs", "pull"], cwd=self.src_dir, env=env)
-
-        super(OpenNSABuilder, self).build(install_dirs, reconfigure)
-
-
 class SqliteBuilder(BuilderBase):
     def __init__(self, build_opts, ctx, manifest, src_dir, build_dir, inst_dir) -> None:
         super(SqliteBuilder, self).__init__(
@@ -1216,7 +1181,7 @@ install(FILES sqlite3.h sqlite3ext.h DESTINATION include)
                 "--target",
                 "install",
                 "--config",
-                "Release",
+                self.build_opts.build_type,
                 "-j",
                 str(self.num_jobs),
             ],

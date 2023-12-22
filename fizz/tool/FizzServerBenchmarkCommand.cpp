@@ -11,7 +11,8 @@
 #include <fizz/experimental/batcher/Batcher.h>
 #include <fizz/experimental/server/BatchSignatureAsyncSelfCert.h>
 #include <fizz/extensions/delegatedcred/DelegatedCredentialCertManager.h>
-#include <fizz/protocol/DefaultCertificateVerifier.h>
+
+#include <fizz/protocol/OpenSSLFactory.h>
 #include <fizz/server/AsyncFizzServer.h>
 #include <fizz/server/SlidingBloomReplayCache.h>
 #include <fizz/server/TicketTypes.h>
@@ -95,7 +96,7 @@ class ServerTask : public AsyncFizzServer::HandshakeCallback {
   }
 
   virtual void fizzHandshakeAttemptFallback(
-      std::unique_ptr<folly::IOBuf>) noexcept override {
+      AttemptVersionFallback) noexcept override {
     endTask();
   }
 

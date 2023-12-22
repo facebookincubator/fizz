@@ -115,6 +115,26 @@ void AsyncFizzServerT<SM>::tlsShutdown() {
 }
 
 template <typename SM>
+void AsyncFizzServerT<SM>::shutdownWrite() {
+  DelayedDestruction::DestructorGuard dg(this);
+  // Attempt to send a close_notify, then perform a half-shutdown of the write
+  // side of the underlying socket. If previously submitted writes, and the
+  // close_notify itself, are queued up in the Fizz layer, they won't make it
+  // out before the socket shuts down.
+  tlsShutdown();
+  transport_->shutdownWrite();
+}
+
+template <typename SM>
+void AsyncFizzServerT<SM>::shutdownWriteNow() {
+  DelayedDestruction::DestructorGuard dg(this);
+  // Similar to shutdownWrite(), attempt to write out the close_notify, but it
+  // might not make it out to the transport layer before the socket is closed.
+  tlsShutdown();
+  transport_->shutdownWriteNow();
+}
+
+template <typename SM>
 void AsyncFizzServerT<SM>::closeWithReset() {
   DelayedDestruction::DestructorGuard dg(this);
   if (transport_->good()) {
@@ -151,6 +171,11 @@ folly::Optional<CipherSuite> AsyncFizzServerT<SM>::getCipher() const {
 }
 
 template <typename SM>
+folly::Optional<NamedGroup> AsyncFizzServerT<SM>::getGroup() const {
+  return getState().group();
+}
+
+template <typename SM>
 std::vector<SignatureScheme> AsyncFizzServerT<SM>::getSupportedSigSchemes()
     const {
   return getState().context()->getSupportedSigSchemes();
@@ -179,6 +204,7 @@ void AsyncFizzServerT<SM>::writeAppData(
     folly::AsyncTransportWrapper::WriteCallback* callback,
     std::unique_ptr<folly::IOBuf>&& buf,
     folly::WriteFlags flags) {
+  DelayedDestruction::DestructorGuard dg(this);
   if (!good()) {
     if (callback) {
       callback->writeErr(
@@ -195,7 +221,9 @@ void AsyncFizzServerT<SM>::writeAppData(
   write.data = std::move(buf);
   write.flags = flags;
   write.aeadOptions = writeAeadOptions_;
+  auto size = write.data->computeChainDataLength();
   fizzServer_.appWrite(std::move(write));
+  wroteApplicationBytes(size);
 }
 
 template <typename SM>
@@ -337,18 +365,34 @@ void AsyncFizzServerT<SM>::ActionMoveVisitor::operator()(
   if (!server_.transportReadBuf_.empty()) {
     fallback.clientHello->prependChain(server_.transportReadBuf_.move());
   }
-  callback->fizzHandshakeAttemptFallback(std::move(fallback.clientHello));
+  callback->fizzHandshakeAttemptFallback(AttemptVersionFallback{
+      std::move(fallback.clientHello), std::move(fallback.sni)});
 }
 
 template <typename SM>
 void AsyncFizzServerT<SM>::ActionMoveVisitor::operator()(
     SecretAvailable& secret) {
+  fizz_probe_secret_available(
+      secret.secret.secret.size(),
+      secret.secret.secret.data(),
+      KeyLogWriter::secretToNSSLabel(secret.secret.type)
+          .value_or(std::numeric_limits<KeyLogWriter::Label>::max()),
+      server_.getClientRandom()->data());
+
   server_.secretAvailable(secret.secret);
 }
 
 template <typename SM>
 void AsyncFizzServerT<SM>::ActionMoveVisitor::operator()(EndOfData& eod) {
   server_.endOfTLS(std::move(eod.postTlsData));
+}
+
+template <typename SM>
+void AsyncFizzServerT<SM>::initiateKeyUpdate(
+    KeyUpdateRequest keyUpdateRequest) {
+  KeyUpdateInitiation kui;
+  kui.request_update = keyUpdateRequest;
+  fizzServer_.initiateKeyUpdate(std::move(kui));
 }
 } // namespace server
 } // namespace fizz

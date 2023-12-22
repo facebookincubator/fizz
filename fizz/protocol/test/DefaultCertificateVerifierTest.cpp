@@ -45,18 +45,32 @@ class DefaultCertificateVerifierTest : public testing::Test {
 
 TEST_F(DefaultCertificateVerifierTest, TestVerifySuccess) {
   verifier_->verify({getPeerCert(leafCertAndKey_)});
+
+  auto ctx = verifier_->verifyWithX509StoreCtx({getPeerCert(leafCertAndKey_)});
+  STACK_OF(X509)* certChain = X509_STORE_CTX_get0_chain(ctx.get());
+  X509* rootX509 = sk_X509_value(certChain, sk_X509_num(certChain) - 1);
+  auto rootCertName = folly::ssl::OpenSSLCertUtils::getCommonName(*rootX509);
+  EXPECT_EQ(rootCertName, "root");
 }
 
 TEST_F(DefaultCertificateVerifierTest, TestVerifyWithIntermediates) {
   auto subauth = createCert("subauth", true, &rootCertAndKey_);
   auto subleaf = createCert("subleaf", false, &subauth);
   verifier_->verify({getPeerCert(subleaf), getPeerCert(subauth)});
+
+  auto ctx = verifier_->verifyWithX509StoreCtx(
+      {getPeerCert(subleaf), getPeerCert(subauth)});
+  STACK_OF(X509)* certChain = X509_STORE_CTX_get0_chain(ctx.get());
+  X509* rootX509 = sk_X509_value(certChain, sk_X509_num(certChain) - 1);
+  auto rootCertName = folly::ssl::OpenSSLCertUtils::getCommonName(*rootX509);
+  EXPECT_EQ(rootCertName, "root");
 }
 
 TEST_F(DefaultCertificateVerifierTest, TestVerifySelfSignedCert) {
   auto selfsigned = createCert("self", false, nullptr);
   EXPECT_THROW(
-      verifier_->verify({getPeerCert(selfsigned)}), std::runtime_error);
+      std::ignore = verifier_->verify({getPeerCert(selfsigned)}),
+      std::runtime_error);
 }
 
 TEST_F(DefaultCertificateVerifierTest, TestVerifySelfSignedCertWithOverride) {
@@ -65,6 +79,11 @@ TEST_F(DefaultCertificateVerifierTest, TestVerifySelfSignedCertWithOverride) {
       &DefaultCertificateVerifierTest::allowSelfSignedLeafCertCallback);
   // Will not throw because the override allows for this type of error.
   verifier_->verify({getPeerCert(selfsigned)});
+  auto ctx = verifier_->verifyWithX509StoreCtx({getPeerCert(selfsigned)});
+  STACK_OF(X509)* certChain = X509_STORE_CTX_get0_chain(ctx.get());
+  X509* rootX509 = sk_X509_value(certChain, sk_X509_num(certChain) - 1);
+  auto rootCertName = folly::ssl::OpenSSLCertUtils::getCommonName(*rootX509);
+  EXPECT_EQ(rootCertName, "self");
 }
 
 TEST_F(DefaultCertificateVerifierTest, TestVerifyWithIntermediateMissing) {

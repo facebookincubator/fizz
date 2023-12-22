@@ -88,6 +88,12 @@ void AsyncFizzClientT<SM>::connect(
   if (pskIdentity) {
     cachedPsk = fizzContext_->getPsk(*pskIdentity);
   }
+
+  auto echPolicy = fizzContext_->getECHPolicy();
+  if (!echConfigs && echPolicy && sni.hasValue()) {
+    echConfigs = echPolicy->getConfig(sni.value());
+  }
+
   fizzClient_.connect(
       fizzContext_,
       std::move(verifier),
@@ -224,6 +230,25 @@ void AsyncFizzClientT<SM>::tlsShutdown() {
 }
 
 template <typename SM>
+void AsyncFizzClientT<SM>::shutdownWrite() {
+  DelayedDestruction::DestructorGuard dg(this);
+  // allow any previous writes as well as the close_notify to be written out
+  // before closing the socket
+  tlsShutdown();
+  transport_->shutdownWrite();
+}
+
+template <typename SM>
+void AsyncFizzClientT<SM>::shutdownWriteNow() {
+  DelayedDestruction::DestructorGuard dg(this);
+  // try to write out a close_notify although the ensuing shutdownWriteNow call
+  // on the underlying socket might prevent these bytes (and any other previous
+  // writes) from making it through
+  tlsShutdown();
+  transport_->shutdownWriteNow();
+}
+
+template <typename SM>
 void AsyncFizzClientT<SM>::closeWithReset() {
   DelayedDestruction::DestructorGuard dg(this);
   if (transport_->good()) {
@@ -275,6 +300,7 @@ void AsyncFizzClientT<SM>::writeAppData(
     folly::AsyncTransportWrapper::WriteCallback* callback,
     std::unique_ptr<folly::IOBuf>&& buf,
     folly::WriteFlags flags) {
+  DelayedDestruction::DestructorGuard dg(this);
   if (!good()) {
     if (callback) {
       callback->writeErr(
@@ -338,7 +364,7 @@ void AsyncFizzClientT<SM>::writeAppData(
       // it is, then flush them
       pendingHandshakeAppWrites_.push_back(std::move(w));
     } else {
-      fizzClient_.appWrite(std::move(w));
+      performAppWrite(std::move(w));
     }
   }
 }
@@ -483,7 +509,7 @@ AsyncFizzClientT<SM>::handleEarlyReject() {
         if (!earlyDataState_->resendBuffer.empty()) {
           AppWrite resend;
           resend.data = earlyDataState_->resendBuffer.move();
-          fizzClient_.appWrite(std::move(resend));
+          performAppWrite(std::move(resend));
         }
       } else {
         return folly::AsyncSocketException(
@@ -494,6 +520,13 @@ AsyncFizzClientT<SM>::handleEarlyReject() {
     }
   }
   return folly::none;
+}
+
+template <typename SM>
+void AsyncFizzClientT<SM>::performAppWrite(AppWrite w) {
+  auto size = w.data->computeChainDataLength();
+  fizzClient_.appWrite(std::move(w));
+  wroteApplicationBytes(size);
 }
 
 template <typename SM>
@@ -511,7 +544,7 @@ void AsyncFizzClientT<SM>::ActionMoveVisitor::operator()(
   while (!pendingHandshakeAppWrites.empty()) {
     auto w = std::move(pendingHandshakeAppWrites.front());
     pendingHandshakeAppWrites.pop_front();
-    client_.fizzClient_.appWrite(std::move(w));
+    client_.performAppWrite(std::move(w));
   }
 
   if (client_.earlyDataState_) {
@@ -530,7 +563,7 @@ void AsyncFizzClientT<SM>::ActionMoveVisitor::operator()(
     while (!client_.earlyDataState_->pendingAppWrites.empty()) {
       auto w = std::move(client_.earlyDataState_->pendingAppWrites.front());
       client_.earlyDataState_->pendingAppWrites.pop_front();
-      client_.fizzClient_.appWrite(std::move(w));
+      client_.performAppWrite(std::move(w));
     }
     client_.earlyDataState_.clear();
   }
@@ -608,6 +641,13 @@ void AsyncFizzClientT<SM>::ActionMoveVisitor::operator()(
 template <typename SM>
 void AsyncFizzClientT<SM>::ActionMoveVisitor::operator()(
     SecretAvailable& secret) {
+  fizz_probe_secret_available(
+      secret.secret.secret.size(),
+      secret.secret.secret.data(),
+      KeyLogWriter::secretToNSSLabel(secret.secret.type)
+          .value_or(std::numeric_limits<KeyLogWriter::Label>::max()),
+      client_.getClientRandom()->data());
+
   client_.secretAvailable(secret.secret);
 }
 
@@ -619,6 +659,11 @@ void AsyncFizzClientT<SM>::ActionMoveVisitor::operator()(EndOfData& eod) {
 template <typename SM>
 folly::Optional<CipherSuite> AsyncFizzClientT<SM>::getCipher() const {
   return getState().cipher();
+}
+
+template <typename SM>
+folly::Optional<NamedGroup> AsyncFizzClientT<SM>::getGroup() const {
+  return getState().group();
 }
 
 template <typename SM>
@@ -653,6 +698,34 @@ bool AsyncFizzClientT<SM>::pskResumed() const {
 template <typename SM>
 folly::Optional<Random> AsyncFizzClientT<SM>::getClientRandom() const {
   return getState().clientRandom();
+}
+
+template <typename SM>
+void AsyncFizzClientT<SM>::initiateKeyUpdate(
+    KeyUpdateRequest keyUpdateRequest) {
+  KeyUpdateInitiation kui;
+  kui.request_update = keyUpdateRequest;
+  fizzClient_.initiateKeyUpdate(std::move(kui));
+}
+
+template <typename SM>
+bool AsyncFizzClientT<SM>::echRequested() const {
+  return getState().echState().has_value();
+}
+
+template <typename SM>
+bool AsyncFizzClientT<SM>::echAccepted() const {
+  return echRequested() && getState().echState()->status == ECHStatus::Accepted;
+}
+
+template <typename SM>
+folly::Optional<std::vector<ech::ECHConfig>>
+AsyncFizzClientT<SM>::getEchRetryConfigs() const {
+  if (!getState().echState().has_value() ||
+      !getState().echState()->retryConfigs.has_value()) {
+    return folly::none;
+  }
+  return getState().echState()->retryConfigs.value();
 }
 } // namespace client
 } // namespace fizz

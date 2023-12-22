@@ -13,6 +13,7 @@
 #include <fizz/protocol/Certificate.h>
 #include <fizz/protocol/KeyScheduler.h>
 #include <fizz/protocol/Types.h>
+#include <fizz/protocol/ech/Types.h>
 #include <fizz/record/Extensions.h>
 #include <fizz/record/RecordLayer.h>
 #include <fizz/server/Actions.h>
@@ -38,6 +39,17 @@ enum class StateEnum {
 };
 
 enum class ECHStatus { NotRequested, Accepted, Rejected };
+
+struct ECHState {
+  // Cipher suite used in initial ECH request, for use with HRR and logging
+  ech::HpkeSymmetricCipherSuite cipherSuite;
+  // Config ID used in initial ECH request, for use with HRR and logging
+  uint8_t configId;
+  // HPKE context saved for use with HRR, if needed.
+  mutable std::unique_ptr<hpke::HpkeContext> hpkeContext;
+  // Sni of the outer client hello, for logging.
+  folly::Optional<std::string> outerSni;
+};
 
 struct HandshakeLogging {
   folly::Optional<ProtocolVersion> clientLegacyVersion;
@@ -313,6 +325,10 @@ class State {
     return echStatus_;
   }
 
+  const folly::Optional<ECHState>& echState() const {
+    return echState_;
+  }
+
   /*
    * State setters.
    */
@@ -420,6 +436,10 @@ class State {
     return echStatus_;
   }
 
+  auto& echState() {
+    return echState_;
+  }
+
  private:
   StateEnum state_{StateEnum::Uninitialized};
 
@@ -462,6 +482,7 @@ class State {
   std::vector<uint8_t> resumptionMasterSecret_;
   folly::Optional<std::chrono::system_clock::time_point> handshakeTime_;
   ECHStatus echStatus_{ECHStatus::NotRequested};
+  folly::Optional<ECHState> echState_;
 
   std::unique_ptr<HandshakeLogging> handshakeLogging_;
 

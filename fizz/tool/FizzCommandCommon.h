@@ -8,6 +8,7 @@
 
 #pragma once
 
+#include <fizz/crypto/exchange/KeyExchange.h>
 #include <fizz/protocol/AsyncFizzBase.h>
 #include <fizz/protocol/ech/Types.h>
 #include <fizz/util/Parse.h>
@@ -34,8 +35,18 @@
 namespace fizz {
 namespace tool {
 
-folly::Optional<std::vector<ech::ECHConfig>> parseECHConfigs(
-    folly::dynamic json);
+std::string tryReadFile(const std::string& echFile);
+
+/** Parses base64 encoded ECH config list.
+ * @param echConfigListBase64 ECH config list encoded in base64. It must use
+ * the format specified in the ECH RFC
+ *(https://www.ietf.org/archive/id/draft-ietf-tls-esni-16.html#name-encrypted-clienthello-confi)
+ * @return Parsed ECH config list.
+ **/
+folly::Optional<ech::ECHConfigList> parseECHConfigsBase64(
+    std::string echConfigListBase64);
+
+folly::Optional<ech::ECHConfigList> parseECHConfigs(folly::dynamic json);
 
 folly::Optional<folly::dynamic> readECHConfigsJson(std::string echFile);
 

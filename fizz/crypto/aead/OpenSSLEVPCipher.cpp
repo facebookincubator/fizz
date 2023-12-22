@@ -6,6 +6,7 @@
  *  LICENSE file in the root directory of this source tree.
  */
 
+#include <fizz/crypto/aead/CryptoUtil.h>
 #include <fizz/crypto/aead/OpenSSLEVPCipher.h>
 #include <folly/lang/CheckedMath.h>
 #include <functional>
@@ -13,53 +14,6 @@
 namespace fizz {
 
 namespace {
-
-void encFuncBlocks(
-    EVP_CIPHER_CTX* encryptCtx,
-    const folly::IOBuf& plaintext,
-    folly::IOBuf& output) {
-  size_t totalWritten = 0;
-  size_t totalInput = 0;
-  int outLen = 0;
-  auto outputCursor = transformBufferBlocks<16>(
-      plaintext,
-      output,
-      [&](uint8_t* cipher, const uint8_t* plain, size_t len) {
-        if (len > std::numeric_limits<int>::max()) {
-          throw std::runtime_error("Encryption error: too much plain text");
-        }
-        if (len == 0) {
-          return static_cast<size_t>(0);
-        }
-        if (EVP_EncryptUpdate(
-                encryptCtx, cipher, &outLen, plain, static_cast<int>(len)) !=
-                1 ||
-            outLen < 0) {
-          throw std::runtime_error("Encryption error");
-        }
-        totalWritten += outLen;
-        totalInput += len;
-        return static_cast<size_t>(outLen);
-      });
-
-  // We might end up needing to write more in the final encrypt stage
-  auto numBuffered = totalInput - totalWritten;
-  auto numLeftInOutput = outputCursor.length();
-  if (numBuffered <= numLeftInOutput) {
-    if (EVP_EncryptFinal_ex(encryptCtx, outputCursor.writableData(), &outLen) !=
-        1) {
-      throw std::runtime_error("Encryption error");
-    }
-  } else {
-    // we need to copy nicely - this should be at most one block
-    std::array<uint8_t, 16> block = {};
-    if (EVP_EncryptFinal_ex(encryptCtx, block.data(), &outLen) != 1) {
-      throw std::runtime_error("Encryption error");
-    }
-    outputCursor.push(block.data(), outLen);
-  }
-}
-
 void encFunc(
     EVP_CIPHER_CTX* encryptCtx,
     const folly::IOBuf& plaintext,
@@ -87,58 +41,6 @@ void encFunc(
   if (EVP_EncryptFinal_ex(
           encryptCtx, output.writableData() + numWritten, &outLen) != 1) {
     throw std::runtime_error("Encryption error");
-  }
-}
-
-bool decFuncBlocks(
-    EVP_CIPHER_CTX* decryptCtx,
-    const folly::IOBuf& ciphertext,
-    folly::IOBuf& output,
-    folly::MutableByteRange tagOut) {
-  if (EVP_CIPHER_CTX_ctrl(
-          decryptCtx,
-          EVP_CTRL_GCM_SET_TAG,
-          tagOut.size(),
-          static_cast<void*>(tagOut.begin())) != 1) {
-    throw std::runtime_error("Decryption error");
-  }
-
-  size_t totalWritten = 0;
-  size_t totalInput = 0;
-  int outLen = 0;
-  auto outputCursor = transformBufferBlocks<16>(
-      ciphertext,
-      output,
-      [&](uint8_t* plain, const uint8_t* cipher, size_t len) {
-        if (len > std::numeric_limits<int>::max()) {
-          throw std::runtime_error("Decryption error: too much cipher text");
-        }
-        if (EVP_DecryptUpdate(
-                decryptCtx, plain, &outLen, cipher, static_cast<int>(len)) !=
-            1) {
-          throw std::runtime_error("Decryption error");
-        }
-        totalWritten += outLen;
-        totalInput += len;
-        return static_cast<size_t>(outLen);
-      });
-
-  // We might end up needing to write more in the final encrypt stage
-  auto numBuffered = totalInput - totalWritten;
-  auto numLeftInOutput = outputCursor.length();
-  if (numBuffered <= numLeftInOutput) {
-    auto res =
-        EVP_DecryptFinal_ex(decryptCtx, outputCursor.writableData(), &outLen);
-    return res == 1;
-  } else {
-    // we need to copy nicely - this should be at most one block
-    std::array<uint8_t, 16> block = {};
-    auto res = EVP_DecryptFinal_ex(decryptCtx, block.data(), &outLen);
-    if (res != 1) {
-      return false;
-    }
-    outputCursor.push(block.data(), outLen);
-    return true;
   }
 }
 
@@ -209,7 +111,7 @@ std::unique_ptr<folly::IOBuf> evpEncrypt(
 
   if (!allowInplaceEdit && !allowAlloc) {
     throw std::runtime_error(
-        "Cannot decrypt (must be in-place or allow allocation)");
+        "Cannot encrypt (must be in-place or allow allocation)");
   }
 
   if (allowInplaceEdit) {
@@ -251,7 +153,22 @@ std::unique_ptr<folly::IOBuf> evpEncrypt(
   }
 
   if (useBlockOps) {
-    encFuncBlocks(encryptCtx, *input, *output);
+    struct Impl {
+      EVP_CIPHER_CTX* encryptCtx;
+      bool encryptUpdate(
+          uint8_t* cipher,
+          int* outLen,
+          const uint8_t* plain,
+          size_t len) {
+        return EVP_EncryptUpdate(
+                   encryptCtx, cipher, outLen, plain, static_cast<int>(len)) ==
+            1;
+      }
+      bool encryptFinal(uint8_t* cipher, int* outLen) {
+        return EVP_EncryptFinal_ex(encryptCtx, cipher, outLen) == 1;
+      }
+    };
+    encFuncBlocks<16>(Impl{encryptCtx}, *input, *output);
   } else {
     encFunc(encryptCtx, *input, *output);
   }
@@ -329,9 +246,34 @@ folly::Optional<std::unique_ptr<folly::IOBuf>> evpDecrypt(
     }
   }
 
-  auto decrypted = useBlockOps
-      ? decFuncBlocks(decryptCtx, *input, *output, tagOut)
-      : decFunc(decryptCtx, *input, *output, tagOut);
+  bool decrypted;
+  if (useBlockOps) {
+    struct Impl {
+      EVP_CIPHER_CTX* decryptCtx;
+      bool decryptUpdate(
+          uint8_t* plain,
+          const uint8_t* cipher,
+          size_t len,
+          int* outLen) {
+        return EVP_DecryptUpdate(
+                   decryptCtx, plain, outLen, cipher, static_cast<int>(len)) ==
+            1;
+      }
+      bool setExpectedTag(int tagSize, unsigned char* tag) {
+        return EVP_CIPHER_CTX_ctrl(
+                   decryptCtx,
+                   EVP_CTRL_GCM_SET_TAG,
+                   tagSize,
+                   static_cast<void*>(tag)) == 1;
+      }
+      bool decryptFinal(unsigned char* outm, int* outLen) {
+        return EVP_DecryptFinal_ex(decryptCtx, outm, outLen) == 1;
+      }
+    };
+    decrypted = decFuncBlocks<16>(Impl{decryptCtx}, *input, *output, tagOut);
+  } else {
+    decrypted = decFunc(decryptCtx, *input, *output, tagOut);
+  }
   if (!decrypted) {
     return folly::none;
   }
@@ -435,11 +377,24 @@ std::unique_ptr<folly::IOBuf> OpenSSLEVPCipher::encrypt(
     const folly::IOBuf* associatedData,
     uint64_t seqNum,
     Aead::AeadOptions options) const {
-  auto iv = createIV(seqNum);
-  return evpEncrypt(
+  auto iv = createIV<OpenSSLEVPCipher::kMaxIVLength>(
+      seqNum, ivLength_, trafficIvKey_);
+  return encrypt(
       std::move(plaintext),
       associatedData,
       folly::ByteRange(iv.data(), ivLength_),
+      options);
+}
+
+std::unique_ptr<folly::IOBuf> OpenSSLEVPCipher::encrypt(
+    std::unique_ptr<folly::IOBuf>&& plaintext,
+    const folly::IOBuf* associatedData,
+    folly::ByteRange nonce,
+    Aead::AeadOptions options) const {
+  return evpEncrypt(
+      std::move(plaintext),
+      associatedData,
+      nonce,
       tagLength_,
       operatesInBlocks_,
       headroom_,
@@ -451,7 +406,8 @@ std::unique_ptr<folly::IOBuf> OpenSSLEVPCipher::inplaceEncrypt(
     std::unique_ptr<folly::IOBuf>&& plaintext,
     const folly::IOBuf* associatedData,
     uint64_t seqNum) const {
-  auto iv = createIV(seqNum);
+  auto iv = createIV<OpenSSLEVPCipher::kMaxIVLength>(
+      seqNum, ivLength_, trafficIvKey_);
   return evpEncrypt(
       std::move(plaintext),
       associatedData,
@@ -469,12 +425,25 @@ folly::Optional<std::unique_ptr<folly::IOBuf>> OpenSSLEVPCipher::tryDecrypt(
     const folly::IOBuf* associatedData,
     uint64_t seqNum,
     Aead::AeadOptions options) const {
+  auto iv = createIV<OpenSSLEVPCipher::kMaxIVLength>(
+      seqNum, ivLength_, trafficIvKey_);
+  return tryDecrypt(
+      std::move(ciphertext),
+      associatedData,
+      folly::ByteRange(iv.data(), ivLength_),
+      options);
+}
+
+folly::Optional<std::unique_ptr<folly::IOBuf>> OpenSSLEVPCipher::tryDecrypt(
+    std::unique_ptr<folly::IOBuf>&& ciphertext,
+    const folly::IOBuf* associatedData,
+    folly::ByteRange nonce,
+    Aead::AeadOptions options) const {
   // Check that there's enough data to decrypt
   if (tagLength_ > ciphertext->computeChainDataLength()) {
     return folly::none;
   }
 
-  auto iv = createIV(seqNum);
   auto inPlace =
       (!ciphertext->isShared() ||
        options.bufferOpt != Aead::BufferOption::RespectSharedPolicy);
@@ -487,16 +456,14 @@ folly::Optional<std::unique_ptr<folly::IOBuf>> OpenSSLEVPCipher::tryDecrypt(
   const auto& lastBuf = ciphertext->prev();
   if (lastBuf->length() >= tagLength_) {
     // We can directly carve out this buffer from the last IOBuf
-    auto tagBuf = lastBuf->cloneOne();
     // Adjust buffer sizes
     lastBuf->trimEnd(tagLength_);
-    tagBuf->trimStart(lastBuf->length());
 
-    folly::MutableByteRange tagOut{tagBuf->writableData(), tagLength_};
+    folly::MutableByteRange tagOut{lastBuf->writableTail(), tagLength_};
     return evpDecrypt(
         std::move(ciphertext),
         associatedData,
-        folly::ByteRange(iv.data(), ivLength_),
+        nonce,
         tagOut,
         operatesInBlocks_,
         decryptCtx_.get(),
@@ -514,7 +481,7 @@ folly::Optional<std::unique_ptr<folly::IOBuf>> OpenSSLEVPCipher::tryDecrypt(
     return evpDecrypt(
         std::move(ciphertext),
         associatedData,
-        folly::ByteRange(iv.data(), ivLength_),
+        nonce,
         tagOut,
         operatesInBlocks_,
         decryptCtx_.get(),
@@ -524,17 +491,5 @@ folly::Optional<std::unique_ptr<folly::IOBuf>> OpenSSLEVPCipher::tryDecrypt(
 
 size_t OpenSSLEVPCipher::getCipherOverhead() const {
   return tagLength_;
-}
-
-std::array<uint8_t, OpenSSLEVPCipher::kMaxIVLength> OpenSSLEVPCipher::createIV(
-    uint64_t seqNum) const {
-  std::array<uint8_t, kMaxIVLength> iv;
-  uint64_t bigEndianSeqNum = folly::Endian::big(seqNum);
-  const size_t prefixLength = ivLength_ - sizeof(uint64_t);
-  memset(iv.data(), 0, prefixLength);
-  memcpy(iv.data() + prefixLength, &bigEndianSeqNum, 8);
-  folly::MutableByteRange mutableIv{iv.data(), ivLength_};
-  XOR(trafficIvKey_, mutableIv);
-  return iv;
 }
 } // namespace fizz

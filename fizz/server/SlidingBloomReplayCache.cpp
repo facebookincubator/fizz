@@ -15,7 +15,6 @@
 #include <folly/Conv.h>
 #include <folly/hash/Hash.h>
 #include <folly/io/IOBuf.h>
-#include <folly/io/async/ScopedEventBaseThread.h>
 #include <folly/portability/Unistd.h>
 
 #include <fizz/crypto/RandomGenerator.h>
@@ -193,4 +192,4 @@ void SlidingBloomReplayCache::timeoutExpired() noexcept {
   scheduleTimeout(bucketWidthInMs_.count());
 }
 } // namespace server
-}; // namespace fizz
+} // namespace fizz

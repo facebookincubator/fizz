@@ -15,6 +15,7 @@
 #include <fizz/client/FizzClientContext.h>
 #include <fizz/protocol/AsyncFizzBase.h>
 #include <fizz/protocol/Exporter.h>
+#include <fizz/util/Tracing.h>
 #include <folly/io/SocketOptionMap.h>
 
 namespace fizz {
@@ -110,6 +111,8 @@ class AsyncFizzClientT : public AsyncFizzBase,
   std::string getApplicationProtocol() const noexcept override;
 
   void tlsShutdown() override;
+  void shutdownWrite() override;
+  void shutdownWriteNow() override;
   void close() override;
   void closeWithReset() override;
   void closeNow() override;
@@ -134,6 +137,8 @@ class AsyncFizzClientT : public AsyncFizzBase,
 
   folly::Optional<CipherSuite> getCipher() const override;
 
+  folly::Optional<NamedGroup> getGroup() const override;
+
   std::vector<SignatureScheme> getSupportedSigSchemes() const override;
 
   Buf getExportedKeyingMaterial(
@@ -151,6 +156,21 @@ class AsyncFizzClientT : public AsyncFizzBase,
   folly::Optional<std::string> getPskIdentity() const {
     return pskIdentity_;
   }
+
+  void initiateKeyUpdate(KeyUpdateRequest keyUpdateRequest) override;
+  /**
+   * Queries the state of ECH (whether it was requested and whether it was
+   * accepted).
+   */
+  bool echRequested() const;
+
+  bool echAccepted() const;
+
+  /**
+   * ECH configs supported by server. May be sent if ECH is requested,
+   * useful in the rejection case.
+   */
+  folly::Optional<std::vector<ech::ECHConfig>> getEchRetryConfigs() const;
 
  protected:
   ~AsyncFizzClientT() override = default;
@@ -177,6 +197,9 @@ class AsyncFizzClientT : public AsyncFizzBase,
   void connectSuccess() noexcept override;
 
   folly::Optional<folly::AsyncSocketException> handleEarlyReject();
+
+  // Helper function to perform appWrite and check for key update.
+  void performAppWrite(AppWrite w);
 
   class ActionMoveVisitor {
    public:

@@ -7,6 +7,7 @@
  */
 
 #include <fizz/client/AsyncFizzClient.h>
+#include <fizz/crypto/RandomGenerator.h>
 #include <fizz/crypto/Utils.h>
 #include <fizz/crypto/aead/AESGCM128.h>
 #include <fizz/crypto/aead/OpenSSLEVPCipher.h>
@@ -78,8 +79,7 @@ class BogoTestServer : public AsyncSocket::ConnectCallback,
     success_ = false;
   }
 
-  void fizzHandshakeAttemptFallback(
-      std::unique_ptr<folly::IOBuf> clientHello) override {
+  void fizzHandshakeAttemptFallback(AttemptVersionFallback fallback) override {
     auto fd = transport_->getUnderlyingTransport<AsyncSocket>()
                   ->detachNetworkSocket()
                   .toFd();
@@ -89,7 +89,7 @@ class BogoTestServer : public AsyncSocket::ConnectCallback,
     } else {
       sslSocket_ = AsyncSSLSocket::UniquePtr(new AsyncSSLSocket(
           sslContext_, evb_, folly::NetworkSocket::fromFd(fd)));
-      sslSocket_->setPreReceivedData(std::move(clientHello));
+      sslSocket_->setPreReceivedData(std::move(fallback.clientHello));
       sslSocket_->sslAccept(this);
     }
   }

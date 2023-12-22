@@ -10,6 +10,7 @@
 
 #include <fizz/crypto/Sha256.h>
 #include <fizz/crypto/Sha384.h>
+#include <fizz/crypto/Sha512.h>
 #include <fizz/crypto/aead/AESGCM128.h>
 #include <fizz/crypto/aead/AESGCM256.h>
 #include <fizz/crypto/aead/ChaCha20Poly1305.h>
@@ -22,12 +23,15 @@ namespace hpke {
 
 HpkeSuiteId
 generateHpkeSuiteId(NamedGroup group, HashFunction hash, CipherSuite suite) {
+  return generateHpkeSuiteId(getKEMId(group), getKDFId(hash), getAeadId(suite));
+}
+
+HpkeSuiteId generateHpkeSuiteId(KEMId kem, KDFId kdf, AeadId aead) {
   std::unique_ptr<folly::IOBuf> suiteId = folly::IOBuf::copyBuffer("HPKE");
   folly::io::Appender appender(suiteId.get(), 6);
-  detail::write(getKEMId(group), appender);
-  detail::write(getKDFId(hash), appender);
-  detail::write(getAeadId(suite), appender);
-
+  detail::write(kem, appender);
+  detail::write(kdf, appender);
+  detail::write(aead, appender);
   return suiteId;
 }
 
@@ -52,6 +56,8 @@ KDFId getKDFId(HashFunction hash) {
       return KDFId::Sha256;
     case HashFunction::Sha384:
       return KDFId::Sha384;
+    case HashFunction::Sha512:
+      return KDFId::Sha512;
     default:
       throw std::runtime_error("kdf: not implemented");
   }
@@ -85,12 +91,29 @@ NamedGroup getKexGroup(KEMId kemId) {
   }
 }
 
+HashFunction getHashFunctionForKEM(KEMId kemId) {
+  switch (kemId) {
+    case KEMId::secp256r1:
+      return HashFunction::Sha256;
+    case KEMId::secp384r1:
+      return HashFunction::Sha384;
+    case KEMId::secp521r1:
+      return HashFunction::Sha512;
+    case KEMId::x25519:
+      return HashFunction::Sha256;
+    default:
+      throw std::runtime_error("can't make KEM hash function: not implemented");
+  }
+}
+
 HashFunction getHashFunction(KDFId kdfId) {
   switch (kdfId) {
     case KDFId::Sha256:
       return HashFunction::Sha256;
     case KDFId::Sha384:
       return HashFunction::Sha384;
+    case KDFId::Sha512:
+      return HashFunction::Sha512;
     default:
       throw std::runtime_error("kdf: not implemented");
   }
@@ -121,6 +144,10 @@ std::unique_ptr<Hkdf> makeHpkeHkdf(
       return std::make_unique<Hkdf>(
           std::move(prefix),
           std::make_unique<HkdfImpl>(HkdfImpl::create<Sha384>()));
+    case KDFId::Sha512:
+      return std::make_unique<Hkdf>(
+          std::move(prefix),
+          std::make_unique<HkdfImpl>(HkdfImpl::create<Sha512>()));
     default:
       throw std::runtime_error("hkdf: not implemented");
   }
@@ -138,6 +165,22 @@ std::unique_ptr<KeyExchange> makeKeyExchange(KEMId kemId) {
       return std::make_unique<X25519KeyExchange>();
     default:
       throw std::runtime_error("can't make key exchange: not implemented");
+  }
+}
+
+size_t nenc(KEMId kemId) {
+  // Refer to Table 2 in 7.1.  Key Encapsulation Mechanisms (KEMs)
+  switch (kemId) {
+    case KEMId::secp256r1:
+      return 65;
+    case KEMId::secp384r1:
+      return 97;
+    case KEMId::secp521r1:
+      return 133;
+    case KEMId::x25519:
+      return 32;
+    default:
+      throw std::runtime_error("unknown or invalid kem");
   }
 }
 

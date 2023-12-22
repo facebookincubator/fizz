@@ -66,6 +66,7 @@ class AsyncFizzBaseTest : public testing::Test, public AsyncFizzBase {
   }
 
   MOCK_METHOD(folly::Optional<CipherSuite>, getCipher, (), (const));
+  MOCK_METHOD(folly::Optional<NamedGroup>, getGroup, (), (const));
   MOCK_METHOD(
       std::vector<SignatureScheme>,
       getSupportedSigSchemes,
@@ -99,6 +100,9 @@ class AsyncFizzBaseTest : public testing::Test, public AsyncFizzBase {
 
   MOCK_METHOD(folly::Optional<Random>, getClientRandom, (), (const));
   MOCK_METHOD(void, tlsShutdown, ());
+  MOCK_METHOD(void, shutdownWrite, ());
+  MOCK_METHOD(void, shutdownWriteNow, ());
+  MOCK_METHOD(void, initiateKeyUpdate, (KeyUpdateRequest), (override));
 
  protected:
   void expectReadBufRequest(size_t sizeToGive) {
@@ -269,15 +273,19 @@ MATCHER_P(BufMatches, expected, "") {
 }
 
 struct ReadCB {
-  constexpr static AsyncFizzBase::TransportOptions Options = {
-      false, // registerEventCallback
-  };
+  static const AsyncFizzBase::TransportOptions Options;
+};
+
+const AsyncFizzBase::TransportOptions ReadCB::Options = {
+    false, // registerEventCallback
 };
 
 struct RecvCB {
-  constexpr static AsyncFizzBase::TransportOptions Options = {
-      true, // registerEventCallback
-  };
+  static const AsyncFizzBase::TransportOptions Options;
+};
+
+const AsyncFizzBase::TransportOptions RecvCB::Options = {
+    true, // registerEventCallback
 };
 
 using TestTypes = ::testing::Types<ReadCB, RecvCB>;
@@ -1016,6 +1024,32 @@ TYPED_TEST(AsyncFizzBaseTest, TestWriteBufferingWriteInCallback) {
   wcb->writeSuccess();
 }
 
+TYPED_TEST(AsyncFizzBaseTest, TestWriteBufferingCloseInCallback) {
+  AsyncTransportWrapper::WriteCallback* wcb;
+  StrictMock<folly::test::MockWriteCallback> cb1, cb2;
+
+  this->expectWrite('a', kPartialWriteThreshold, &wcb);
+  auto buf = getBuf('a', kPartialWriteThreshold + 1);
+  this->writeChain(&cb1, buf->clone());
+  this->writeChain(&cb2, getBuf('b', 200));
+
+  this->expectWrite('a', 1);
+  EXPECT_CALL(cb1, writeSuccess_())
+      .InSequence(this->writeSeq_)
+      .WillOnce(Invoke([this, &cb2]() {
+        bool deliverErrorReturned = false;
+        EXPECT_CALL(cb2, writeErr_(0, _))
+            .InSequence(this->writeSeq_)
+            .WillOnce(InvokeWithoutArgs([&deliverErrorReturned]() {
+              EXPECT_FALSE(deliverErrorReturned);
+            }));
+        this->deliverError(this->ase_);
+        deliverErrorReturned = true;
+      }));
+
+  wcb->writeSuccess();
+}
+
 TYPED_TEST(AsyncFizzBaseTest, TestAlignedRecordReads) {
   this->setHandshakeRecordAlignedReads(true);
 
@@ -1062,6 +1096,30 @@ TYPED_TEST(AsyncFizzBaseTest, TestAlignedRecordReads) {
   // Not caring about record alignment, we should be able to get a buffer of
   // at least AsyncFizzBase::kMinReadSize
   EXPECT_GE(len, 1460);
+}
+
+TYPED_TEST(AsyncFizzBaseTest, TestKeyUpdate) {
+  size_t threshold = 20;
+  size_t small_write = 15;
+  size_t big_write = threshold;
+  this->setRekeyAfterWriting(threshold);
+
+  // If we perform an appWrite that exceeds or equals to the threshold,
+  // we initiate a key update
+  EXPECT_CALL(*this, initiateKeyUpdate(KeyUpdateRequest::update_not_requested));
+  this->wroteApplicationBytes(big_write);
+
+  // If the write does not exceed the threshold, we don't initiate a key update
+  EXPECT_CALL(*this, initiateKeyUpdate(KeyUpdateRequest::update_not_requested))
+      .Times(0);
+  this->wroteApplicationBytes(small_write);
+  EXPECT_EQ(this->appByteProcessedUnderKey_, small_write);
+
+  // If multiple appWrites' total bytes exceed the threshold,
+  // we initiate a key update
+  EXPECT_CALL(*this, initiateKeyUpdate(KeyUpdateRequest::update_not_requested));
+  this->wroteApplicationBytes(small_write);
+  EXPECT_EQ(this->appByteProcessedUnderKey_, 0);
 }
 
 } // namespace test

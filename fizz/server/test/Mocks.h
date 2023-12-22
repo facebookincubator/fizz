@@ -20,6 +20,7 @@
 #include <fizz/server/ReplayCache.h>
 #include <fizz/server/ServerExtensions.h>
 #include <fizz/server/ServerProtocol.h>
+#include <fizz/server/TokenCipher.h>
 
 namespace fizz {
 namespace server {
@@ -144,6 +145,29 @@ class MockTicketCipher : public TicketCipher {
   }
 };
 
+class MockTokenCipher : public TokenCipher {
+ public:
+  MOCK_METHOD(
+      bool,
+      setSecrets,
+      (const std::vector<folly::ByteRange>&),
+      (override));
+
+  MOCK_METHOD(folly::Optional<Buf>, _encrypt, (Buf, folly::IOBuf*), (const));
+  folly::Optional<Buf> encrypt(
+      Buf plaintext,
+      folly::IOBuf* associatedData = nullptr) const override {
+    return _encrypt(std::move(plaintext), associatedData);
+  }
+
+  MOCK_METHOD(folly::Optional<Buf>, _decrypt, (Buf, folly::IOBuf*), (const));
+  folly::Optional<Buf> decrypt(
+      Buf ciphertext,
+      folly::IOBuf* associatedData = nullptr) const override {
+    return _decrypt(std::move(ciphertext), associatedData);
+  }
+};
+
 class MockCookieCipher : public CookieCipher {
  public:
   MOCK_METHOD(folly::Optional<CookieState>, _decrypt, (Buf&), (const));
@@ -167,13 +191,9 @@ class MockHandshakeCallbackT : public AsyncFizzServerT<SM>::HandshakeCallback {
     _fizzHandshakeError(std::move(ew));
   }
 
-  MOCK_METHOD(
-      void,
-      _fizzHandshakeAttemptFallback,
-      (std::unique_ptr<folly::IOBuf>&));
-  void fizzHandshakeAttemptFallback(
-      std::unique_ptr<folly::IOBuf> clientHello) override {
-    return _fizzHandshakeAttemptFallback(clientHello);
+  MOCK_METHOD(void, _fizzHandshakeAttemptFallback, (AttemptVersionFallback&));
+  void fizzHandshakeAttemptFallback(AttemptVersionFallback fallback) override {
+    return _fizzHandshakeAttemptFallback(fallback);
   }
 };
 

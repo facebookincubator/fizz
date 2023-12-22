@@ -16,12 +16,6 @@ namespace fizz {
 using folly::AsyncSocketException;
 
 /**
- * Min and max read buffer sizes when using non-movable buffer.
- */
-static const uint32_t kMinReadSize = 1460;
-static const uint32_t kMaxReadSize = 4000;
-
-/**
  * Buffer size above which we should unset our read callback to apply back
  * pressure on the transport.
  */
@@ -39,9 +33,7 @@ AsyncFizzBase::AsyncFizzBase(
     : folly::WriteChainAsyncTransportWrapper<folly::AsyncTransportWrapper>(
           std::move(transport)),
       handshakeTimeout_(*this, transport_->getEventBase()),
-      transportOptions_(std::move(options)),
-      ioVecQueue_(folly::IOBufIovecBuilder::Options().setBlockSize(
-          transportOptions_.readVecBlockSize)) {
+      transportOptions_(std::move(options)) {
   setReadMode(transportOptions_.readMode);
 }
 
@@ -121,6 +113,11 @@ void AsyncFizzBase::QueuedWriteRequest::unlinkFromBase() {
   asyncFizzBase_ = nullptr;
 }
 
+void AsyncFizzBase::QueuedWriteRequest::fail(
+    const folly::AsyncSocketException& ex) {
+  writeErr(0, ex);
+}
+
 void AsyncFizzBase::QueuedWriteRequest::writeSuccess() noexcept {
   if (!data_.empty()) {
     startWriting();
@@ -133,10 +130,13 @@ void AsyncFizzBase::QueuedWriteRequest::writeSuccess() noexcept {
 
     DelayedDestruction::DestructorGuard dg(base);
 
+    DCHECK(!base->immediatelyPendingWriteRequest_);
+    base->immediatelyPendingWriteRequest_ = next;
     if (callback) {
       callback->writeSuccess();
     }
-    if (next) {
+    if (next && base->immediatelyPendingWriteRequest_ == next) {
+      base->immediatelyPendingWriteRequest_ = nullptr;
       next->startWriting();
     }
   }
@@ -322,6 +322,14 @@ void AsyncFizzBase::deliverError(
     }
   }
 
+  if (immediatelyPendingWriteRequest_) {
+    // If we were about to start writing a QueuedWriteRequest, error it here.
+    // This is done to ensure writeErr is invoked synchronously.
+    auto immediatelyPendingWriteRequest = immediatelyPendingWriteRequest_;
+    immediatelyPendingWriteRequest_ = nullptr;
+    immediatelyPendingWriteRequest->fail(ex);
+  }
+
   // Clear the secret callback too.
   if (secretCallback_) {
     secretCallback_ = nullptr;
@@ -364,7 +372,7 @@ class AsyncFizzBase::FizzMsgHdr : public folly::EventRecvmsgCallback::MsgHdr {
   iovec iov_;
 };
 
-folly::EventRecvmsgCallback::MsgHdr* AsyncFizzBase::allocateData() {
+folly::EventRecvmsgCallback::MsgHdr* AsyncFizzBase::allocateData() noexcept {
   auto* ret = msgHdr_.release();
   if (!ret) {
     ret = new FizzMsgHdr(this);
@@ -389,9 +397,13 @@ void AsyncFizzBase::eventRecvmsgCallback(FizzMsgHdr* msgHdr, int res) {
   msgHdr_.reset(msgHdr);
 }
 
-void AsyncFizzBase::getReadBuffer(void** bufReturn, size_t* lenReturn) {
-  std::pair<void*, uint32_t> readSpace =
-      transportReadBuf_.preallocate(kMinReadSize, kMaxReadSize);
+void AsyncFizzBase::getReadBuffer(
+    folly::IOBufQueue& buf,
+    void** bufReturn,
+    size_t* lenReturn) {
+  std::pair<void*, uint32_t> readSpace = buf.preallocate(
+      transportOptions_.readBufferMinReadSize,
+      transportOptions_.readBufferAllocationSize);
   *bufReturn = readSpace.first;
 
   // `readSizeHint_`, if zero, indicates that we do not care about how much
@@ -409,21 +421,29 @@ void AsyncFizzBase::getReadBuffer(void** bufReturn, size_t* lenReturn) {
   // in WaitForData actions.
   if (readSizeHint_ > 0) {
     *lenReturn = std::min(
-        static_cast<decltype(readSizeHint_)>(kMinReadSize), readSizeHint_);
+        static_cast<decltype(readSizeHint_)>(
+            transportOptions_.readBufferMinReadSize),
+        readSizeHint_);
   } else {
     *lenReturn = readSpace.second;
   }
 }
 
+void AsyncFizzBase::getReadBuffer(void** bufReturn, size_t* lenReturn) {
+  getReadBuffer(transportReadBuf_, bufReturn, lenReturn);
+}
+
 void AsyncFizzBase::getReadBuffers(folly::IOBufIovecBuilder::IoVecVec& iovs) {
-  ioVecQueue_.allocateBuffers(iovs, kMaxReadSize);
+  DCHECK(!!transportOptions_.ioVecQueue);
+  transportOptions_.ioVecQueue->allocateBuffers(iovs);
 }
 
 void AsyncFizzBase::readDataAvailable(size_t len) noexcept {
   DelayedDestruction::DestructorGuard dg(this);
 
   if (getReadMode() == folly::AsyncTransport::ReadCallback::ReadMode::ReadVec) {
-    auto tmp = ioVecQueue_.extractIOBufChain(len);
+    DCHECK(!!transportOptions_.ioVecQueue);
+    auto tmp = transportOptions_.ioVecQueue->extractIOBufChain(len);
     transportReadBuf_.append(std::move(tmp));
   } else {
     transportReadBuf_.postallocate(len);
@@ -452,6 +472,34 @@ void AsyncFizzBase::readEOF() noexcept {
 
 void AsyncFizzBase::readErr(const folly::AsyncSocketException& ex) noexcept {
   transportError(ex);
+}
+
+folly::AsyncReader::ReadCallback::ZeroCopyMemStore*
+AsyncFizzBase::readZeroCopyEnabled() noexcept {
+  return transportOptions_.zeroCopyMemStore;
+}
+
+void AsyncFizzBase::getZeroCopyFallbackBuffer(
+    void** bufReturn,
+    size_t* lenReturn) noexcept {
+  getReadBuffer(zeroCopyFallbackReadBuf_, bufReturn, lenReturn);
+}
+
+void AsyncFizzBase::readZeroCopyDataAvailable(
+    std::unique_ptr<folly::IOBuf>&& zeroCopyData,
+    size_t additionalBytes) noexcept {
+  DelayedDestruction::DestructorGuard dg(this);
+
+  if (zeroCopyData) {
+    transportReadBuf_.append(std::move(zeroCopyData));
+  }
+
+  if (additionalBytes) {
+    zeroCopyFallbackReadBuf_.postallocate(additionalBytes);
+    transportReadBuf_.append(zeroCopyFallbackReadBuf_.move());
+  }
+
+  transportDataAvailable();
 }
 
 void AsyncFizzBase::writeSuccess() noexcept {}
@@ -541,6 +589,12 @@ class SecretVisitor {
         return;
       case EarlySecrets::EarlyExporter:
         callback_->earlyExporterSecretAvailable(secretBuf_);
+        return;
+      case EarlySecrets::ECHAcceptConfirmation:
+        // Not an actual encryption secret
+        return;
+      case EarlySecrets::HRRECHAcceptConfirmation:
+        // Not an actual encryption secret
         return;
     }
   }

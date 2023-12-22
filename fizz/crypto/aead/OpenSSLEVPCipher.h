@@ -70,6 +70,12 @@ class OpenSSLEVPCipher : public Aead {
       uint64_t seqNum,
       Aead::AeadOptions options) const override;
 
+  std::unique_ptr<folly::IOBuf> encrypt(
+      std::unique_ptr<folly::IOBuf>&& plaintext,
+      const folly::IOBuf* associatedData,
+      folly::ByteRange nonce,
+      Aead::AeadOptions options) const override;
+
   // The same as encrypt(), except always do an inplace encrypt if possible,
   // even if the IOBuf is shared. If there is not enough room for the tag,
   // this will throw an exception.
@@ -82,6 +88,12 @@ class OpenSSLEVPCipher : public Aead {
       std::unique_ptr<folly::IOBuf>&& ciphertext,
       const folly::IOBuf* associatedData,
       uint64_t seqNum,
+      Aead::AeadOptions options) const override;
+
+  folly::Optional<std::unique_ptr<folly::IOBuf>> tryDecrypt(
+      std::unique_ptr<folly::IOBuf>&& ciphertext,
+      const folly::IOBuf* associatedData,
+      folly::ByteRange nonce,
       Aead::AeadOptions options) const override;
 
   size_t getCipherOverhead() const override;
@@ -98,8 +110,6 @@ class OpenSSLEVPCipher : public Aead {
       const EVP_CIPHER* cipher,
       bool operatesInBlocks,
       bool requiresPresetTagLen);
-
-  std::array<uint8_t, kMaxIVLength> createIV(uint64_t seqNum) const;
 
   TrafficKey trafficKey_;
   folly::ByteRange trafficIvKey_;

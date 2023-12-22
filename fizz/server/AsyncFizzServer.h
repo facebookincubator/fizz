@@ -13,6 +13,7 @@
 #include <fizz/server/FizzServer.h>
 #include <fizz/server/FizzServerContext.h>
 #include <fizz/server/ServerProtocol.h>
+#include <fizz/util/Tracing.h>
 
 namespace fizz {
 namespace server {
@@ -31,7 +32,7 @@ class AsyncFizzServerT : public AsyncFizzBase {
         folly::exception_wrapper ex) noexcept = 0;
 
     virtual void fizzHandshakeAttemptFallback(
-        std::unique_ptr<folly::IOBuf> clientHello) = 0;
+        AttemptVersionFallback fallback) = 0;
   };
 
   using UniquePtr =
@@ -59,6 +60,8 @@ class AsyncFizzServerT : public AsyncFizzBase {
   std::string getApplicationProtocol() const noexcept override;
 
   void tlsShutdown() override;
+  void shutdownWrite() override;
+  void shutdownWriteNow() override;
   void close() override;
   void closeWithReset() override;
   void closeNow() override;
@@ -78,6 +81,8 @@ class AsyncFizzServerT : public AsyncFizzBase {
 
   folly::Optional<CipherSuite> getCipher() const override;
 
+  folly::Optional<NamedGroup> getGroup() const override;
+
   std::vector<SignatureScheme> getSupportedSigSchemes() const override;
 
   Buf getExportedKeyingMaterial(
@@ -94,6 +99,8 @@ class AsyncFizzServerT : public AsyncFizzBase {
   const Cert* getSelfCertificate() const override;
 
   folly::Optional<Random> getClientRandom() const override;
+
+  void initiateKeyUpdate(KeyUpdateRequest keyUpdateRequest) override;
 
  protected:
   ~AsyncFizzServerT() override = default;

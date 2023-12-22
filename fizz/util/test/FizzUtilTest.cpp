@@ -10,6 +10,7 @@
 
 #include <fizz/crypto/test/TestUtil.h>
 #include <fizz/protocol/clock/test/Mocks.h>
+#include <fizz/protocol/test/Mocks.h>
 #include <fizz/server/TicketTypes.h>
 #include <fizz/util/FizzUtil.h>
 #include <folly/FileUtil.h>
@@ -45,7 +46,7 @@ TEST(UtilTest, CreateTicketCipher) {
       std::vector<std::string>(),
       std::chrono::seconds(100),
       std::chrono::minutes(100),
-      std::make_shared<OpenSSLFactory>(),
+      std::make_shared<MockFactory>(),
       std::make_shared<server::CertManager>(),
       folly::Optional<std::string>("fakeContext"));
   auto clock = std::make_shared<MockClock>();
@@ -66,7 +67,7 @@ TEST(UtilTest, CreateTicketCipher) {
         std::vector<std::string>(),
         std::chrono::seconds(100),
         std::chrono::minutes(100),
-        std::make_shared<OpenSSLFactory>(),
+        std::make_shared<MockFactory>(),
         std::make_shared<server::CertManager>(),
         folly::Optional<std::string>("fakeContext"));
     newCipher->setPolicy(std::move(policy));
@@ -141,6 +142,28 @@ TEST(UtilTest, ReadChainFile) {
     EXPECT_THROW(
         FizzUtil::readChainFile("test_file_does_not_exist"),
         std::runtime_error);
+  }
+}
+
+TEST(UtilTest, createKeyExchangeFromBuf) {
+  {
+    // Test X25519 KEM
+    auto keys = FizzUtil::generateKeypairCurve25519();
+    auto privKey = std::get<0>(keys);
+    folly::ByteRange privKeyBuf((folly::StringPiece(privKey)));
+    auto kex =
+        FizzUtil::createKeyExchangeFromBuf(hpke::KEMId::x25519, privKeyBuf);
+    EXPECT_TRUE(kex != nullptr);
+    EXPECT_EQ(kex->getKeyShare()->computeChainDataLength(), 32);
+  }
+
+  {
+    // Test P256 KEM
+    folly::ByteRange privKeyBuf((folly::StringPiece(kP256Key)));
+    auto kex =
+        FizzUtil::createKeyExchangeFromBuf(hpke::KEMId::secp256r1, privKeyBuf);
+    EXPECT_TRUE(kex != nullptr);
+    EXPECT_EQ(kex->getKeyShare()->computeChainDataLength(), 65);
   }
 }
 

@@ -51,6 +51,8 @@ Event EventVisitor::operator()(const Param& param) const {
       return EarlyAppWrite::event;
     case Param::Type::WriteNewSessionTicket_E:
       return WriteNewSessionTicket::event;
+    case Param::Type::KeyUpdateInitiation_E:
+      return KeyUpdateInitiation::event;
   }
   folly::assume_unreachable();
 }

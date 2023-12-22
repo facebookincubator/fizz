@@ -297,14 +297,17 @@ TEST_F(AsyncFizzServerTest, TestAttemptVersionFallback) {
         return actions(
             MutateState(
                 [](State& newState) { newState.state() = StateEnum::Error; }),
-            AttemptVersionFallback{IOBuf::copyBuffer("ClientHello")});
+            AttemptVersionFallback{
+                IOBuf::copyBuffer("ClientHello"),
+                folly::Optional<std::string>("www.hostname.com")});
       }));
   EXPECT_CALL(handshakeCallback_, _fizzHandshakeAttemptFallback(_))
-      .WillOnce(Invoke([&](std::unique_ptr<IOBuf>& clientHello) {
+      .WillOnce(Invoke([&](AttemptVersionFallback& fallback) {
         // The mock machine does not move the read buffer so there will be a 2nd
         // ClientHello.
         EXPECT_TRUE(IOBufEqualTo()(
-            clientHello, IOBuf::copyBuffer("ClientHelloClientHello")));
+            fallback.clientHello, IOBuf::copyBuffer("ClientHelloClientHello")));
+        EXPECT_EQ(fallback.sni, "www.hostname.com");
         server_.reset();
       }));
   socketReadCallback_->readBufferAvailable(IOBuf::copyBuffer("ClientHello"));
@@ -341,6 +344,20 @@ TEST_F(AsyncFizzServerTest, TestTLSShutdown) {
   expectAppClose();
   EXPECT_CALL(*socket_, close()).Times(0);
   server_->tlsShutdown();
+}
+
+TEST_F(AsyncFizzServerTest, TestShutdownWrite) {
+  accept();
+  expectAppClose();
+  EXPECT_CALL(*socket_, shutdownWrite()).Times(1);
+  server_->shutdownWrite();
+}
+
+TEST_F(AsyncFizzServerTest, TestShutdownWriteNow) {
+  accept();
+  expectAppClose();
+  EXPECT_CALL(*socket_, shutdownWriteNow()).Times(1);
+  server_->shutdownWriteNow();
 }
 
 TEST_F(AsyncFizzServerTest, TestCloseNowInFlightAction) {

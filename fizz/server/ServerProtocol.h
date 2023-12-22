@@ -49,6 +49,10 @@ class ServerStateMachine {
 
   virtual Actions processAppClose(const State&);
   virtual Actions processAppCloseImmediate(const State&);
+
+  virtual AsyncActions processKeyUpdateInitiation(
+      const State&,
+      KeyUpdateInitiation keyUpdateInitiation);
 };
 
 namespace detail {

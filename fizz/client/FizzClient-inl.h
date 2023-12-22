@@ -59,7 +59,7 @@ Buf FizzClient<ActionMoveVisitor, SM>::getEarlyEkm(
 
 template <typename ActionMoveVisitor, typename SM>
 void FizzClient<ActionMoveVisitor, SM>::startActions(Actions actions) {
-  this->processActions(std::move(actions));
+  this->processActions(actions);
 }
 
 template <typename ActionMoveVisitor, typename SM>

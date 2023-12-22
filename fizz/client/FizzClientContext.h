@@ -8,11 +8,11 @@
 
 #pragma once
 
+#include <fizz/client/ECHPolicy.h>
 #include <fizz/client/PskCache.h>
-#include <fizz/protocol/CertDecompressionManager.h>
+#include <fizz/compression/CertDecompressionManager.h>
 #include <fizz/protocol/Certificate.h>
 #include <fizz/protocol/Factory.h>
-#include <fizz/protocol/OpenSSLFactory.h>
 #include <fizz/protocol/clock/SystemClock.h>
 #include <fizz/record/Types.h>
 
@@ -26,11 +26,11 @@ enum class SendKeyShare {
 
 class FizzClientContext {
  public:
-  FizzClientContext()
-      : factory_(std::make_shared<OpenSSLFactory>()),
-        clock_(std::make_shared<SystemClock>()) {}
-  FizzClientContext(std::shared_ptr<Factory> factory)
+  FizzClientContext();
+
+  explicit FizzClientContext(std::shared_ptr<Factory> factory)
       : factory_(std::move(factory)), clock_(std::make_shared<SystemClock>()) {}
+
   virtual ~FizzClientContext() = default;
 
   /**
@@ -118,6 +118,14 @@ class FizzClientContext {
 
   const auto& getClientCertificate() const {
     return clientCert_;
+  }
+
+  void setECHPolicy(std::shared_ptr<ECHPolicy> echPolicy) {
+    echPolicy_ = std::move(echPolicy);
+  }
+
+  ECHPolicy* getECHPolicy() const {
+    return echPolicy_.get();
   }
 
   /**
@@ -320,6 +328,7 @@ class FizzClientContext {
 
   SendKeyShare sendKeyShare_{SendKeyShare::WhenNecessary};
 
+  std::shared_ptr<ECHPolicy> echPolicy_;
   std::shared_ptr<PskCache> pskCache_;
   std::shared_ptr<const SelfCert> clientCert_;
   std::shared_ptr<CertDecompressionManager> certDecompressionManager_;

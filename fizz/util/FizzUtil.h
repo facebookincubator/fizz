@@ -26,6 +26,10 @@ class FizzUtil {
   static std::vector<folly::ssl::X509UniquePtr> readChainFile(
       const std::string& filename);
 
+  static folly::ssl::EvpPkeyUniquePtr readPrivateKeyFromBuf(
+      folly::ByteRange privateKey,
+      const std::string& passwordFilename);
+
   static folly::ssl::EvpPkeyUniquePtr readPrivateKey(
       const std::string& filename,
       const std::shared_ptr<folly::PasswordInFile>& pf);
@@ -39,9 +43,32 @@ class FizzUtil {
   static std::vector<std::string> getAlpnsFromNpnList(
       const std::list<folly::SSLContext::NextProtocolsItem>& list);
 
+  // TODO richardsonnick Fix callsites that use std::string version
   static folly::ssl::EvpPkeyUniquePtr decryptPrivateKey(
       const std::string& data,
       folly::PasswordInFile* pf);
+
+  static folly::ssl::EvpPkeyUniquePtr decryptPrivateKey(
+      folly::ByteRange data,
+      folly::PasswordInFile* pf);
+
+  /**
+   * `createKeyExchangeFromBuf` creates a `KeyExchange` object that
+   * can be used as a KEM.
+   *
+   *  @param kemId   Determines the type of KEM to create, as well as the format
+   * of what `privKey` conveys.
+   *  @param privKey For NIST curve based KEMs, this is the PEM encoding of the
+   * private key. For X25519 KEM, this is the hexlified representation of the 32
+   * byte private key.
+   *
+   */
+
+  static std::unique_ptr<KeyExchange> createKeyExchangeFromBuf(
+      hpke::KEMId kemId,
+      folly::ByteRange privKey);
+
+  static std::tuple<std::string, std::string> generateKeypairCurve25519();
 
   // Creates a TicketCipherT with given params
   template <class TicketCipherT>

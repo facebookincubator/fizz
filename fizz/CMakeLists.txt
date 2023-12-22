@@ -98,8 +98,12 @@ else()
   list(APPEND FIZZ_INCLUDE_DIRECTORIES ${LIBEVENT_INCLUDE_DIR})
 endif()
 
+configure_file(fizz-config.h.in ${CMAKE_CURRENT_BINARY_DIR}/generated/fizz/fizz-config.h)
+install(FILES ${CMAKE_CURRENT_BINARY_DIR}/generated/fizz/fizz-config.h DESTINATION ${INCLUDE_INSTALL_DIR}/fizz/)
+
 set(FIZZ_HEADER_DIRS
   client
+  compression
   crypto
   crypto/aead
   crypto/exchange
@@ -107,6 +111,7 @@ set(FIZZ_HEADER_DIRS
   crypto/signature
   crypto/openssl
   experimental/ktls
+  experimental/util
   extensions/delegatedcred
   extensions/exportedauth
   extensions/tokenbinding
@@ -117,10 +122,12 @@ set(FIZZ_HEADER_DIRS
   server
   util
   tool
+  third-party
 )
 
 set(FIZZ_TEST_HEADER_DIRS
   client/test
+  compression/test
   crypto/aead/test
   crypto/exchange/test
   crypto/test
@@ -148,11 +155,37 @@ foreach(dir ${FIZZ_TEST_HEADER_DIRS})
     ${headers})
 endforeach()
 
+option(FIZZ_BUILD_AEGIS "Compiles Fizz with AEGIS support (experimental)" OFF)
+
+
+if(FIZZ_BUILD_AEGIS)
+    set(FIZZ_AESNI_SOURCES
+      third-party/libsodium-aegis/aegis128l/aesni/aead_aegis128l_aesni.c
+      third-party/libsodium-aegis/aegis256/aesni/aead_aegis256_aesni.c
+    )
+    set_source_files_properties(${FIZZ_AESNI_SOURCES} PROPERTIES COMPILE_OPTIONS "-maes;-mssse3")
+
+    set(FIZZ_AEGIS_SOURCES
+      ${FIZZ_AESNI_SOURCES}
+      third-party/libsodium-aegis/aegis128l/aead_aegis128l.c
+      third-party/libsodium-aegis/aegis128l/soft/aead_aegis128l_soft.c
+      third-party/libsodium-aegis/aegis256/aead_aegis256.c
+      third-party/libsodium-aegis/aegis256/soft/aead_aegis256_soft.c
+      third-party/libsodium-aegis/private/softaes.c
+    )
+endif()
+
 set(FIZZ_SOURCES
+  compression/CertDecompressionManager.cpp
+  compression/ZlibCertificateCompressor.cpp
+  compression/ZlibCertificateDecompressor.cpp
+  compression/ZstdCertificateCompressor.cpp
+  compression/ZstdCertificateDecompressor.cpp
   crypto/Utils.cpp
   crypto/exchange/X25519.cpp
   crypto/aead/OpenSSLEVPCipher.cpp
   crypto/aead/IOBufUtil.cpp
+  crypto/aead/AEGISCipher.cpp
   crypto/signature/Signature.cpp
   crypto/Hkdf.cpp
   crypto/KeyDerivation.cpp
@@ -171,6 +204,7 @@ set(FIZZ_SOURCES
   record/BufAndPaddingPolicy.cpp
   server/AeadTokenCipher.cpp
   server/AeadCookieCipher.cpp
+  server/FizzServerContext.cpp
   server/ServerProtocol.cpp
   server/CertManager.cpp
   server/State.cpp
@@ -186,12 +220,8 @@ set(FIZZ_SOURCES
   protocol/Events.cpp
   protocol/KeyScheduler.cpp
   protocol/Certificate.cpp
-  protocol/CertDecompressionManager.cpp
+  protocol/OpenSSLFactory.cpp
   protocol/Params.cpp
-  protocol/ZlibCertificateCompressor.cpp
-  protocol/ZlibCertificateDecompressor.cpp
-  protocol/ZstdCertificateCompressor.cpp
-  protocol/ZstdCertificateDecompressor.cpp
   protocol/clock/SystemClock.cpp
   protocol/ech/Decrypter.cpp
   protocol/ech/Encryption.cpp
@@ -211,6 +241,7 @@ set(FIZZ_SOURCES
   experimental/ktls/FizzKTLSCallback.cpp
   experimental/ktls/AsyncKTLSSocket.cpp
   experimental/ktls/KTLS.cpp
+  client/FizzClientContext.cpp
   client/State.cpp
   client/ClientProtocol.cpp
   client/PskSerializationUtils.cpp
@@ -218,7 +249,10 @@ set(FIZZ_SOURCES
   client/EarlyDataRejectionPolicy.cpp
   tool/FizzCommandCommon.cpp
   util/FizzUtil.cpp
+  util/Tracing.cpp
+  ${FIZZ_AEGIS_SOURCES}
 )
+
 
 add_library(fizz
   ${FIZZ_HEADERS}
@@ -236,6 +270,7 @@ target_include_directories(
   fizz
   PUBLIC
     $<BUILD_INTERFACE:${FIZZ_BASE_DIR}>
+    $<BUILD_INTERFACE:${CMAKE_CURRENT_BINARY_DIR}/generated>
     $<INSTALL_INTERFACE:${INCLUDE_INSTALL_DIR}>
     ${FOLLY_INCLUDE_DIR}
     ${OPENSSL_INCLUDE_DIR}
@@ -393,7 +428,9 @@ if(BUILD_TESTS)
   add_gtest(client/test/AsyncFizzClientTest.cpp AsyncFizzClientTest)
   add_gtest(client/test/ClientProtocolTest.cpp ClientProtocolTest)
   add_gtest(client/test/FizzClientTest.cpp FizzClientTest)
-  add_gtest(crypto/aead/test/OpenSSLEVPCipherTest.cpp OpenSSLEVPCipherTest)
+  add_gtest(compression/test/CertDecompressionManagerTest.cpp CertDecompressionManagerTest)
+  add_gtest(compression/test/ZlibCertificateCompressorTest.cpp ZlibCertificateCompressorTest)
+  add_gtest(crypto/aead/test/EVPCipherTest.cpp EVPCipherTest)
   add_gtest(crypto/aead/test/IOBufUtilTest.cpp IOBufUtilTest)
   add_gtest(crypto/exchange/test/X25519KeyExchangeTest.cpp X25519KeyExchangeTest)
   add_gtest(crypto/exchange/test/ECKeyExchangeTest.cpp ECKeyExchangeTest)
@@ -431,8 +468,6 @@ if(BUILD_TESTS)
   add_gtest(protocol/test/DefaultCertificateVerifierTest.cpp DefaultCertificateVerifierTest)
   add_gtest(protocol/test/HandshakeContextTest.cpp HandshakeContextTest)
   add_gtest(protocol/test/ExporterTest.cpp ExporterTest)
-  add_gtest(protocol/test/CertDecompressionManagerTest.cpp CertDecompressionManagerTest)
-  add_gtest(protocol/test/ZlibCertificateCompressorTest.cpp ZlibCertificateCompressorTest)
   add_gtest(record/test/ExtensionsTest.cpp ExtensionsTest)
   add_gtest(record/test/EncryptedRecordTest.cpp EncryptedRecordTest)
   add_gtest(record/test/TypesTest.cpp TypesTest)

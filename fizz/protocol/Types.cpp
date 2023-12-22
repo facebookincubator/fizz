@@ -15,7 +15,9 @@ HashFunction getHashFunction(CipherSuite cipher) {
     case CipherSuite::TLS_AES_128_GCM_SHA256:
     case CipherSuite::TLS_AES_128_OCB_SHA256_EXPERIMENTAL:
     case CipherSuite::TLS_CHACHA20_POLY1305_SHA256:
+    case CipherSuite::TLS_AEGIS_128L_SHA256:
       return HashFunction::Sha256;
+    case CipherSuite::TLS_AEGIS_256_SHA384:
     case CipherSuite::TLS_AES_256_GCM_SHA384:
       return HashFunction::Sha384;
   }
@@ -28,6 +30,8 @@ size_t getHashSize(HashFunction hash) {
       return 32;
     case HashFunction::Sha384:
       return 48;
+    case HashFunction::Sha512:
+      return 64;
   }
   throw std::runtime_error("unknown hash function");
 }
@@ -38,6 +42,8 @@ folly::StringPiece toString(HashFunction hash) {
       return "Sha256";
     case HashFunction::Sha384:
       return "Sha384";
+    case HashFunction::Sha512:
+      return "Sha512";
   }
   return "Invalid HashFunction";
 }

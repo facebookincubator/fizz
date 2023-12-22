@@ -97,7 +97,17 @@ SetupResult setupWithEncap(
     std::unique_ptr<folly::IOBuf> info,
     folly::Optional<PskInputs> pskInputs,
     SetupParam param) {
-  DHKEM::EncapResult encapResult = param.dhkem->encap(pkR);
+  DHKEM::EncapResult encapResult;
+  switch (mode) {
+    case Mode::Auth:
+    case Mode::AuthPsk:
+      encapResult = param.dhkem->authEncap(pkR);
+      break;
+    case Mode::Base:
+    case Mode::Psk:
+      encapResult = param.dhkem->encap(pkR);
+      break;
+  }
 
   KeyScheduleParams keyScheduleParams{
       mode,
@@ -118,10 +128,21 @@ SetupResult setupWithEncap(
 std::unique_ptr<HpkeContext> setupWithDecap(
     Mode mode,
     folly::ByteRange enc,
+    folly::Optional<folly::ByteRange> pkS,
     std::unique_ptr<folly::IOBuf> info,
     folly::Optional<PskInputs> pskInputs,
     SetupParam param) {
-  auto sharedSecret = param.dhkem->decap(enc);
+  std::unique_ptr<folly::IOBuf> sharedSecret;
+  switch (mode) {
+    case Mode::Auth:
+    case Mode::AuthPsk:
+      sharedSecret = param.dhkem->authDecap(enc, *pkS);
+      break;
+    case Mode::Base:
+    case Mode::Psk:
+      sharedSecret = param.dhkem->decap(enc);
+      break;
+  }
   KeyScheduleParams keyScheduleParams{
       mode,
       std::move(sharedSecret),
@@ -134,6 +155,28 @@ std::unique_ptr<HpkeContext> setupWithDecap(
       param.seqNum};
 
   return keySchedule(std::move(keyScheduleParams));
+}
+
+std::unique_ptr<folly::IOBuf> deserializePublicKey(
+    fizz::hpke::KEMId kemId,
+    const std::string& publicKey) {
+  switch (kemId) {
+    case fizz::hpke::KEMId::x25519:
+    case fizz::hpke::KEMId::x448: {
+      return folly::IOBuf::copyBuffer(folly::unhexlify(publicKey));
+    }
+    case fizz::hpke::KEMId::secp256r1:
+    case fizz::hpke::KEMId::secp384r1:
+    case fizz::hpke::KEMId::secp521r1: {
+      folly::ssl::BioUniquePtr bio(BIO_new(BIO_s_mem()));
+      BIO_write(bio.get(), publicKey.data(), publicKey.size());
+      folly::ssl::EvpPkeyUniquePtr pkey(
+          PEM_read_bio_PUBKEY(bio.get(), nullptr, nullptr, nullptr));
+      return fizz::detail::encodeECPublicKey(pkey);
+    }
+    default:
+      throw std::runtime_error("Unsupported KEM ID");
+  }
 }
 
 } // namespace hpke

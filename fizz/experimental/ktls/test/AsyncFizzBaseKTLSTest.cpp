@@ -18,6 +18,7 @@
 #include <fizz/crypto/test/TestUtil.h>
 #include <fizz/experimental/ktls/AsyncFizzBaseKTLS.h>
 #include <fizz/protocol/Certificate.h>
+#include <fizz/protocol/test/Mocks.h>
 #include <fizz/server/AeadTicketCipher.h>
 #include <fizz/server/AsyncFizzServer.h>
 #include <fizz/server/CertManager.h>
@@ -119,7 +120,7 @@ folly::SemiFuture<AsyncFizzServer::UniquePtr> fizzAccept(
     }
 
     void fizzHandshakeAttemptFallback(
-        std::unique_ptr<folly::IOBuf>) noexcept override {
+        AttemptVersionFallback) noexcept override {
       fizzHandshakeError(
           fizzSocket_.get(),
           folly::make_exception_wrapper<std::runtime_error>(
@@ -228,7 +229,7 @@ makeTestServerContext() {
           fizz::test::kP256Certificate.str(), fizz::test::kP256Key.str()),
       true);
 
-  auto factory = std::make_shared<OpenSSLFactory>();
+  auto factory = std::make_shared<fizz::test::MockFactory>();
   auto certManager = std::make_shared<CertManager>();
   auto ticketCipher = std::make_shared<
       Aead128GCMTicketCipher<TicketCodec<CertificateStorage::X509>>>(
@@ -298,7 +299,7 @@ TEST(AsyncFizzBaseKTLSTest, TestFizzClientKTLSServer) {
   };
 
   ServerAcceptor acceptor(
-      &evb, handleClient, [](auto&&) { ASSERT_FALSE(true); });
+      &evb, handleClient, [](auto&&) noexcept { ASSERT_FALSE(true); });
   stopServer = [&] { acceptor.stopAccepting(); };
 
   VLOG(1) << "Server listening on " << acceptor.getLocalAddress().describe();
@@ -362,7 +363,7 @@ TEST(AsyncFizzBaseKTLSTest, TestKTLSClientFizzServer) {
   };
 
   ServerAcceptor acceptor(
-      &evb, handleClient, [](auto&&) { ASSERT_FALSE(true); });
+      &evb, handleClient, [](auto&&) noexcept { ASSERT_FALSE(true); });
   stopServer = [&] { acceptor.stopAccepting(); };
 
   auto clientCtx = makeTestClientContext();
@@ -418,7 +419,9 @@ TEST(AsyncFizzBaseKTLSTest, TestKTLSClientFizzServer) {
   };
 
   ServerAcceptor acceptor2(
-      &evb, handshakeAndAssertResumption, [](auto&&) { ASSERT_FALSE(true); });
+      &evb, handshakeAndAssertResumption, [](auto&&) noexcept {
+        ASSERT_FALSE(true);
+      });
   stopServer = [&] { acceptor2.stopAccepting(); };
 
   {

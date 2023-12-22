@@ -37,7 +37,8 @@ class JavaCryptoCertificateVerifier : public CertificateVerifier {
     createAuthorities();
   }
 
-  void verify(const std::vector<std::shared_ptr<const fizz::PeerCert>>& certs)
+  std::shared_ptr<const folly::AsyncTransportCertificate> verify(
+      const std::vector<std::shared_ptr<const fizz::PeerCert>>& certs)
       const override;
 
   void setX509Store(folly::ssl::X509StoreUniquePtr&& store) {

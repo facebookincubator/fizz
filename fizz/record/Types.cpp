@@ -11,7 +11,9 @@
 
 namespace fizz {
 
+#if __cplusplus < 201703L
 constexpr Random HelloRetryRequest::HrrRandom;
+#endif
 
 ProtocolVersion getRealDraftVersion(ProtocolVersion version) {
   switch (version) {
@@ -101,8 +103,6 @@ std::string toString(ExtensionType extType) {
       return "encrypted_client_hello";
     case ExtensionType::ech_nonce:
       return "ech_nonce";
-    case ExtensionType::ech_is_inner:
-      return "ech_is_inner";
     case ExtensionType::ech_outer_extensions:
       return "ech_outer_extensions";
   }
@@ -171,6 +171,8 @@ std::string toString(AlertDescription alertDesc) {
       return "certificate_required";
     case AlertDescription::no_application_protocol:
       return "no_application_protocol";
+    case AlertDescription::ech_required:
+      return "ech_required";
   }
   return enumToHex(alertDesc);
 }
@@ -185,6 +187,10 @@ std::string toString(CipherSuite cipher) {
       return "TLS_CHACHA20_POLY1305_SHA256";
     case CipherSuite::TLS_AES_128_OCB_SHA256_EXPERIMENTAL:
       return "TLS_AES_128_OCB_SHA256_EXPERIMENTAL";
+    case CipherSuite::TLS_AEGIS_256_SHA384:
+      return "TLS_AEGIS_256_SHA384";
+    case CipherSuite::TLS_AEGIS_128L_SHA256:
+      return "TLS_AEGIS_128L_SHA256";
   }
   return enumToHex(cipher);
 }
@@ -243,6 +249,22 @@ std::string toString(NamedGroup group) {
       return "secp521r1";
     case NamedGroup::x25519:
       return "x25519";
+    case NamedGroup::secp521r1_x25519:
+      return "secp521r1_x25519";
+    case NamedGroup::secp384r1_bikel3:
+      return "secp384r1_bikel3";
+    case NamedGroup::x25519_kyber512:
+      return "x25519_kyber512";
+    case NamedGroup::secp256r1_kyber512:
+      return "secp256r1_kyber512";
+    case NamedGroup::kyber512:
+      return "kyber512";
+    case NamedGroup::x25519_kyber768_draft00:
+      return "x25519_kyber768_draft00";
+    case NamedGroup::secp256r1_kyber768_draft00:
+      return "secp256r1_kyber768_draft00";
+    case NamedGroup::secp384r1_kyber768:
+      return "secp384r1_kyber768";
   }
   return enumToHex(group);
 }

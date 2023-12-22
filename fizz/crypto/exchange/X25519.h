@@ -26,13 +26,15 @@ class X25519KeyExchange : public KeyExchange {
   std::unique_ptr<folly::IOBuf> getKeyShare() const override;
   std::unique_ptr<folly::IOBuf> generateSharedSecret(
       folly::ByteRange keyShare) const override;
-
   std::unique_ptr<KeyExchange> clone() const override;
+  std::size_t getExpectedKeyShareSize() const override;
 
   // Should only be used for testing.
   void setKeyPair(
       std::unique_ptr<folly::IOBuf> privKey,
       std::unique_ptr<folly::IOBuf> pubKey);
+
+  void setPrivateKey(std::unique_ptr<folly::IOBuf> gotPrivKey);
 
  private:
   constexpr static size_t kCurve25519PubBytes = 32;

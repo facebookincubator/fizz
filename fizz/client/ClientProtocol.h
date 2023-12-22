@@ -49,6 +49,10 @@ class ClientStateMachine {
   virtual Actions processAppClose(const State&);
 
   virtual Actions processAppCloseImmediate(const State&);
+
+  virtual Actions processKeyUpdateInitiation(
+      const State&,
+      KeyUpdateInitiation keyUpdateInitiation);
 };
 
 namespace detail {

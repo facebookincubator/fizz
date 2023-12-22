@@ -139,6 +139,12 @@ FIZZ_DECLARE_EVENT_HANDLER(
 FIZZ_DECLARE_EVENT_HANDLER(
     ClientTypes,
     StateEnum::Established,
+    Event::KeyUpdateInitiation,
+    StateEnum::Error);
+
+FIZZ_DECLARE_EVENT_HANDLER(
+    ClientTypes,
+    StateEnum::Established,
     Event::KeyUpdate,
     StateEnum::Error);
 
@@ -194,9 +200,9 @@ Actions ClientStateMachine::processSocketData(
   } catch (const FizzException& e) {
     return detail::handleError(
         state,
-        ReportError(folly::exception_wrapper(std::current_exception(), e)),
+        ReportError(folly::exception_wrapper(std::current_exception())),
         e.getAlert());
-  } catch (const std::exception& e) {
+  } catch (...) {
     return detail::handleError(
         state,
         ReportError(folly::make_exception_wrapper<FizzException>(
@@ -204,7 +210,7 @@ Actions ClientStateMachine::processSocketData(
                 "error decoding record in state ",
                 toString(state.state()),
                 ": ",
-                e.what()),
+                folly::exceptionStr(std::current_exception())),
             AlertDescription::decode_error)),
         AlertDescription::decode_error);
   }
@@ -236,6 +242,12 @@ Actions ClientStateMachine::processAppCloseImmediate(const State& state) {
   return detail::handleAppCloseImmediate(state);
 }
 
+Actions ClientStateMachine::processKeyUpdateInitiation(
+    const State& state,
+    KeyUpdateInitiation keyUpdateInitiation) {
+  return detail::processEvent(state, std::move(keyUpdateInitiation));
+}
+
 namespace detail {
 
 Actions processEvent(const State& state, Param param) {
@@ -246,12 +258,12 @@ Actions processEvent(const State& state, Param param) {
   } catch (const FizzException& e) {
     return detail::handleError(
         state,
-        ReportError(folly::exception_wrapper(std::current_exception(), e)),
+        ReportError(folly::exception_wrapper(std::current_exception())),
         e.getAlert());
-  } catch (const std::exception& e) {
+  } catch (...) {
     return detail::handleError(
         state,
-        ReportError(folly::exception_wrapper(std::current_exception(), e)),
+        ReportError(folly::exception_wrapper(std::current_exception())),
         AlertDescription::unexpected_message);
   }
 }
@@ -405,7 +417,7 @@ static std::map<NamedGroup, std::unique_ptr<KeyExchange>> getKeyExchangers(
     const std::vector<NamedGroup>& groups) {
   std::map<NamedGroup, std::unique_ptr<KeyExchange>> keyExchangers;
   for (auto group : groups) {
-    auto kex = factory.makeKeyExchange(group);
+    auto kex = factory.makeKeyExchange(group, Factory::KeyExchangeMode::Client);
     kex->generateKeyPair();
     keyExchangers.emplace(group, std::move(kex));
   }
@@ -659,8 +671,9 @@ static folly::Optional<ECHParams> setupECH(
   folly::io::Cursor cursor(configContent.get());
   auto echConfigContent = decode<ech::ECHConfigContentDraft>(cursor);
   auto fakeSni = echConfigContent.public_name->clone();
-  auto kemId = echConfigContent.kem_id;
-  auto kex = factory.makeKeyExchange(getKexGroup(kemId));
+  auto kemId = echConfigContent.key_config.kem_id;
+  auto kex = factory.makeKeyExchange(
+      getKexGroup(kemId), Factory::KeyExchangeMode::Client);
   auto setupResult =
       constructHpkeSetupResult(std::move(kex), supportedECHConfig);
 
@@ -701,11 +714,14 @@ static ClientHello constructEncryptedClientHello(
     const ech::SupportedECHConfig& supportedConfig,
     hpke::SetupResult& hpkeSetup,
     const Random& outerRandom,
-    Buf fakeSni) {
+    Buf fakeSni,
+    const folly::Optional<ClientPresharedKey>& greasePsk) {
   DCHECK(e == Event::ClientHello || e == Event::HelloRetryRequest);
 
+  // Outer chlo is missing the inner ECH. We also replace any PSK
+  // generated earlier with a GREASE one.
   auto chloOuter = chlo.clone();
-  removeExtension(chloOuter, ExtensionType::ech_is_inner);
+  removeExtension(chloOuter, ExtensionType::encrypted_client_hello);
   removeExtension(chloOuter, ExtensionType::pre_shared_key);
 
   // ClientHello might have early data
@@ -723,17 +739,28 @@ static ClientHello constructEncryptedClientHello(
   Extension encodedECHExtension;
   // Create the encrypted client hello inner extension.
   switch (supportedConfig.config.version) {
-    case (ech::ECHVersion::Draft9): {
-      ech::ClientECH clientECHExtension;
+    case (ech::ECHVersion::Draft15): {
+      ech::OuterECHClientHello clientECHExtension;
       if (e == Event::ClientHello) {
         clientECHExtension = encryptClientHello(
-            supportedConfig, std::move(chlo), chloOuter.clone(), hpkeSetup);
+            supportedConfig,
+            std::move(chlo),
+            chloOuter.clone(),
+            hpkeSetup,
+            greasePsk);
       } else {
         clientECHExtension = encryptClientHelloHRR(
-            supportedConfig, std::move(chlo), chloOuter.clone(), hpkeSetup);
+            supportedConfig,
+            std::move(chlo),
+            chloOuter.clone(),
+            hpkeSetup,
+            greasePsk);
       }
       chloOuter.extensions.push_back(
           encodeExtension(std::move(clientECHExtension)));
+      if (greasePsk) {
+        chloOuter.extensions.push_back(encodeExtension(*greasePsk));
+      }
       break;
     }
   }
@@ -821,8 +848,8 @@ EventHandler<ClientTypes, StateEnum::Uninitialized, Event::Connect>::handle(
 
   if (echParams.has_value() &&
       echParams.value().supportedECHConfig.config.version ==
-          ech::ECHVersion::Draft9) {
-    ech::ECHIsInner chloIsInnerExt;
+          ech::ECHVersion::Draft15) {
+    ech::InnerECHClientHello chloIsInnerExt;
     chlo.extensions.push_back(encodeExtension(std::move(chloIsInnerExt)));
     requestedExtensions.push_back(ExtensionType::encrypted_client_hello);
   }
@@ -831,6 +858,7 @@ EventHandler<ClientTypes, StateEnum::Uninitialized, Event::Connect>::handle(
   std::unique_ptr<EncryptedWriteRecordLayer> earlyWriteRecordLayer;
   Optional<ReportEarlyHandshakeSuccess> reportEarlySuccess;
   Optional<SecretAvailable> earlyWriteSecretAvailable;
+  Optional<DerivedSecret> earlyExporterVector;
   if (psk) {
     requestedExtensions.push_back(ExtensionType::pre_shared_key);
     auto keyScheduler = context->getFactory()->makeKeyScheduler(psk->cipher);
@@ -858,11 +886,11 @@ EventHandler<ClientTypes, StateEnum::Uninitialized, Event::Connect>::handle(
       }
       earlyWriteSecretAvailable = SecretAvailable(std::move(earlyWriteSecret));
 
-      auto earlyExporterVector = keyScheduler->getSecret(
+      earlyExporterVector = keyScheduler->getSecret(
           EarlySecrets::EarlyExporter,
           handshakeContext->getHandshakeContext()->coalesce());
       earlyDataParams->earlyExporterSecret =
-          folly::IOBuf::copyBuffer(earlyExporterVector.secret);
+          folly::IOBuf::copyBuffer(earlyExporterVector->secret);
 
       reportEarlySuccess = ReportEarlyHandshakeSuccess();
       reportEarlySuccess->maxEarlyDataSize = psk->maxEarlyDataSize;
@@ -876,11 +904,15 @@ EventHandler<ClientTypes, StateEnum::Uninitialized, Event::Connect>::handle(
 
   // Random used in the inner (encrypted) client hello.
   folly::Optional<Random> echRandom;
+  folly::Optional<ClientPresharedKey> greasePsk;
 
   if (echParams.has_value()) {
     // Swap out randoms first.
     echRandom = std::move(random);
     random = context->getFactory()->makeRandom();
+
+    // Generate GREASE PSK (if needed)
+    greasePsk = ech::generateGreasePSK(chlo, context->getFactory());
 
     chlo = constructEncryptedClientHello(
         Event::ClientHello,
@@ -888,7 +920,8 @@ EventHandler<ClientTypes, StateEnum::Uninitialized, Event::Connect>::handle(
         echParams->supportedECHConfig,
         echParams->setupResult,
         random,
-        echParams->fakeSni->clone());
+        echParams->fakeSni->clone(),
+        greasePsk);
 
     // Update SNI now
     echSni = std::move(sni);
@@ -923,6 +956,7 @@ EventHandler<ClientTypes, StateEnum::Uninitialized, Event::Connect>::handle(
                          echSni = std::move(echSni),
                          echParams = std::move(echParams),
                          echRandom = std::move(echRandom),
+                         greasePsk = std::move(greasePsk),
                          random = std::move(random),
                          legacySessionId = std::move(legacySessionId),
                          psk = std::move(psk),
@@ -939,6 +973,7 @@ EventHandler<ClientTypes, StateEnum::Uninitialized, Event::Connect>::handle(
           std::move(echParams->supportedECHConfig);
       newState.echState()->hpkeSetup = std::move(echParams->setupResult);
       newState.echState()->random = std::move(*echRandom);
+      newState.echState()->greasePsk = std::move(greasePsk);
     }
     newState.encodedClientHello() = std::move(encodedClientHello);
     newState.readRecordLayer() = std::move(readRecordLayer);
@@ -965,6 +1000,7 @@ EventHandler<ClientTypes, StateEnum::Uninitialized, Event::Connect>::handle(
         std::move(write),
         std::move(*earlyWriteSecretAvailable),
         std::move(*reportEarlySuccess),
+        SecretAvailable(std::move(*earlyExporterVector)),
         MutateState(&Transition<StateEnum::ExpectingServerHello>));
   } else {
     return actions(
@@ -1239,8 +1275,17 @@ EventHandler<ClientTypes, StateEnum::ExpectingServerHello, Event::ServerHello>::
   if (state.echState().has_value()) {
     VLOG(8) << "Checking if ECH was accepted...";
 
-    bool acceptedECH =
-        ech::checkECHAccepted(shlo, echHandshakeContext->clone(), scheduler);
+    auto echScheduler = state.context()->getFactory()->makeKeyScheduler(cipher);
+    echScheduler->deriveEarlySecret(folly::range(state.echState()->random));
+    bool acceptedECH = ech::checkECHAccepted(
+        shlo, echHandshakeContext->clone(), std::move(echScheduler));
+    if (state.echState()->status != ECHStatus::Requested &&
+        acceptedECH != (state.echState()->status == ECHStatus::Accepted)) {
+      // ECH acceptance mismatch with hrr
+      throw FizzException(
+          "ech acceptance mismatch between hrr and shlo",
+          AlertDescription::illegal_parameter);
+    }
 
     if (acceptedECH) {
       handshakeContext = std::move(echHandshakeContext);
@@ -1249,6 +1294,15 @@ EventHandler<ClientTypes, StateEnum::ExpectingServerHello, Event::ServerHello>::
       echStatus = ECHStatus::Rejected;
     }
     VLOG(8) << "ECH was " << toString(*echStatus);
+  }
+
+  // Servers cannot accept GREASE PSK
+  if (echStatus == ECHStatus::Rejected &&
+      (negotiatedPsk.type == PskType::External ||
+       negotiatedPsk.type == PskType::Resumption)) {
+    throw FizzException(
+        "ech rejected but server accepted psk",
+        AlertDescription::illegal_parameter);
   }
 
   handshakeContext->appendToTranscript(*shlo.originalEncoding);
@@ -1346,6 +1400,7 @@ EventHandler<ClientTypes, StateEnum::ExpectingServerHello, Event::ServerHello>::
             if (echStatus.has_value()) {
               if (echStatus == ECHStatus::Accepted) {
                 newState.sni() = newState.echState()->sni;
+                newState.clientRandom() = newState.echState()->random;
               }
               newState.echState()->status = *echStatus;
               newState.echState()->encodedECH.reset();
@@ -1411,7 +1466,7 @@ Actions EventHandler<
     Event::HelloRetryRequest>::handle(const State& state, Param param) {
   auto hrr = std::move(*param.asHelloRetryRequest());
 
-  Protocol::checkAllowedExtensions(hrr);
+  Protocol::checkAllowedExtensions(hrr, *state.requestedExtensions());
 
   if (state.keyExchangeType().has_value()) {
     throw FizzException("two HRRs", AlertDescription::unexpected_message);
@@ -1452,8 +1507,8 @@ Actions EventHandler<
   // ECH extension required.
   if (state.echState().has_value() &&
       state.echState()->supportedConfig.config.version ==
-          ech::ECHVersion::Draft9) {
-    ech::ECHIsInner chloIsInnerExt;
+          ech::ECHVersion::Draft15) {
+    ech::InnerECHClientHello chloIsInnerExt;
     encodedInnerECHExt = encodeExtension(std::move(chloIsInnerExt));
     requestedExtensions.push_back(ExtensionType::encrypted_client_hello);
 
@@ -1513,7 +1568,6 @@ Actions EventHandler<
         state.context()->getFactory()->makeHandshakeContext(cipher);
     echHandshakeContext->appendToTranscript(
         encodeHandshake(std::move(echChloHash)));
-    echHandshakeContext->appendToTranscript(*hrr.originalEncoding);
   }
 
   Buf encodedClientHello;
@@ -1536,15 +1590,31 @@ Actions EventHandler<
   }
 
   Buf encodedECH;
+  folly::Optional<ECHStatus> echStatus;
+  folly::Optional<ClientPresharedKey> greasePsk;
 
   // In the HRR case, we reuse the previous HPKE context to bind this to the
   // previous ECH we sent. We reuse the fake SNI and dummy random we sent
   // earlier (as expected for an HRR client hello).
-  //
-  // At this point, it's not clear whether or not HRR has been accepted, thus
-  // we maintain both contexts until acceptance is verified on receipt of the
-  // server hello.
   if (state.echState().has_value()) {
+    // Check for acceptance. We'll still generate another ECH per the RFC, but
+    // the server will already let us know here.
+    auto echScheduler = state.context()->getFactory()->makeKeyScheduler(cipher);
+    echScheduler->deriveEarlySecret(folly::range(state.echState()->random));
+    if (ech::checkECHAccepted(
+            hrr, echHandshakeContext->clone(), std::move(echScheduler))) {
+      echStatus = ECHStatus::Accepted;
+    } else {
+      echStatus = ECHStatus::Rejected;
+    }
+    VLOG(8) << "ECH was " << toString(*echStatus);
+
+    // Generate GREASE PSK if needed
+    if (state.echState()->greasePsk.has_value()) {
+      greasePsk = ech::generateGreasePSKForHRR(
+          state.echState()->greasePsk.value(), state.context()->getFactory());
+    }
+
     // Construct HRR ECH
     chlo = constructEncryptedClientHello(
         Event::HelloRetryRequest,
@@ -1552,7 +1622,8 @@ Actions EventHandler<
         state.echState()->supportedConfig,
         state.echState()->hpkeSetup,
         *state.clientRandom(),
-        folly::IOBuf::copyBuffer(*state.sni()));
+        folly::IOBuf::copyBuffer(*state.sni()),
+        greasePsk);
 
     // Save client hello inner
     encodedECH = std::move(encodedClientHello);
@@ -1561,6 +1632,7 @@ Actions EventHandler<
     encodedClientHello = encodeHandshake(chlo);
 
     // Write to ECH transcript
+    echHandshakeContext->appendToTranscript(*hrr.originalEncoding);
     echHandshakeContext->appendToTranscript(encodedECH);
   }
 
@@ -1595,9 +1667,11 @@ Actions EventHandler<
                    handshakeContext = std::move(handshakeContext),
                    echHandshakeContext = std::move(echHandshakeContext),
                    encodedECH = std::move(encodedECH),
+                   greasePsk = std::move(greasePsk),
                    attemptedPsk = std::move(attemptedPsk),
                    requestedExtensions = std::move(requestedExtensions),
-                   sentCCS](State& newState) mutable {
+                   sentCCS,
+                   echStatus = std::move(echStatus)](State& newState) mutable {
         newState.version() = version;
         newState.cipher() = cipher;
         newState.earlyDataType() = earlyDataType;
@@ -1605,8 +1679,14 @@ Actions EventHandler<
         newState.encodedClientHello() = std::move(encodedClientHello);
         if (newState.echState().has_value()) {
           newState.echState()->encodedECH = std::move(encodedECH);
+          newState.echState()->greasePsk = std::move(greasePsk);
           newState.echState()->handshakeContext =
               std::move(echHandshakeContext);
+          newState.echState()->status = *echStatus;
+          if (echStatus == ECHStatus::Accepted) {
+            newState.sni() = newState.echState()->sni;
+            newState.clientRandom() = newState.echState()->random;
+          }
         }
         newState.keyExchangers() = std::move(keyExchangers);
         newState.handshakeContext() = std::move(handshakeContext);
@@ -1698,15 +1778,29 @@ Actions EventHandler<
     }
   }
 
+  folly::Optional<std::vector<ech::ECHConfig>> retryConfigs;
+  if (state.echState().has_value()) {
+    // Check if we were sent retry configs
+    auto serverECH = getExtension<ech::ECHEncryptedExtensions>(ee.extensions);
+    if (serverECH.has_value()) {
+      retryConfigs = std::move(serverECH->retry_configs);
+    }
+  }
+
   if (state.extensions()) {
     state.extensions()->onEncryptedExtensions(ee.extensions);
   }
 
   MutateState mutateState(
-      [appProto = std::move(appProto), earlyDataType](State& newState) mutable {
+      [appProto = std::move(appProto),
+       earlyDataType,
+       retryConfigs = std::move(retryConfigs)](State& newState) mutable {
         newState.alpn() = std::move(appProto);
         newState.requestedExtensions() = folly::none;
         newState.earlyDataType() = earlyDataType;
+        if (retryConfigs.has_value()) {
+          newState.echState()->retryConfigs = std::move(retryConfigs);
+        }
       });
 
   if (state.pskType() == PskType::Resumption ||
@@ -1939,9 +2033,16 @@ Actions EventHandler<
       state.handshakeContext()->getHandshakeContext()->coalesce(),
       certVerify.signature->coalesce());
 
+  std::shared_ptr<const Cert> newCert;
+
   if (state.verifier()) {
     try {
-      state.verifier()->verify(state.unverifiedCertChain());
+      if (auto verifiedCert =
+              state.verifier()->verify(state.unverifiedCertChain())) {
+        newCert = verifiedCert;
+      } else {
+        newCert = std::move(leaf);
+      }
     } catch (const FizzException&) {
       std::rethrow_exception(std::current_exception());
     } catch (const std::exception& e) {
@@ -1949,13 +2050,15 @@ Actions EventHandler<
           folly::to<std::string>("verifier failure: ", e.what()),
           AlertDescription::bad_certificate);
     }
+  } else {
+    newCert = std::move(leaf);
   }
 
   state.handshakeContext()->appendToTranscript(*certVerify.originalEncoding);
 
   return actions(
       MutateState([sigScheme = certVerify.algorithm,
-                   serverCert = std::move(leaf)](State& newState) mutable {
+                   serverCert = std::move(newCert)](State& newState) mutable {
         newState.sigScheme() = sigScheme;
         newState.serverCert() = std::move(serverCert);
         newState.unverifiedCertChain() = folly::none;
@@ -2036,12 +2139,10 @@ EventHandler<ClientTypes, StateEnum::ExpectingFinished, Event::Finished>::
 
   auto encodedFinished = Protocol::getFinished(
       state.clientHandshakeSecret()->coalesce(), *state.handshakeContext());
-  auto resumptionSecret = folly::IOBuf::copyBuffer(
-      state.keyScheduler()
-          ->getSecret(
-              MasterSecrets::ResumptionMaster,
-              state.handshakeContext()->getHandshakeContext()->coalesce())
-          .secret);
+  auto resumptionVector = state.keyScheduler()->getSecret(
+      MasterSecrets::ResumptionMaster,
+      state.handshakeContext()->getHandshakeContext()->coalesce());
+  auto resumptionSecret = folly::IOBuf::copyBuffer(resumptionVector.secret);
 
   WriteToSocket clientFlight;
 
@@ -2105,8 +2206,7 @@ EventHandler<ClientTypes, StateEnum::ExpectingFinished, Event::Finished>::
   ReportHandshakeSuccess reportSuccess;
   reportSuccess.earlyDataAccepted =
       state.earlyDataType() == EarlyDataType::Accepted;
-
-  return actions(
+  auto pendingActions = actions(
       MutateState([readRecordLayer = std::move(readRecordLayer),
                    writeRecordLayer = std::move(writeRecordLayer),
                    resumptionSecret = std::move(resumptionSecret),
@@ -2127,8 +2227,25 @@ EventHandler<ClientTypes, StateEnum::ExpectingFinished, Event::Finished>::
       MutateState(&Transition<StateEnum::Established>),
       SecretAvailable(std::move(readSecret)),
       SecretAvailable(std::move(writeSecret)),
-      std::move(clientFlight),
-      std::move(reportSuccess));
+      SecretAvailable(std::move(exporterMasterVector)),
+      SecretAvailable(std::move(resumptionVector)),
+      std::move(clientFlight));
+
+  if (state.echState().has_value() &&
+      state.echState()->status == ECHStatus::Rejected) {
+    auto errActions = handleError(
+        state,
+        ReportError(folly::make_exception_wrapper<FizzException>(
+            "ech not accepted", AlertDescription::ech_required)),
+        AlertDescription::ech_required);
+    for (auto& act : errActions) {
+      fizz::detail::addAction(pendingActions, std::move(act));
+    }
+  } else {
+    fizz::detail::addAction(pendingActions, std::move(reportSuccess));
+  }
+
+  return pendingActions;
 }
 
 static uint32_t getMaxEarlyDataSize(const NewSessionTicket& nst) {
@@ -2198,6 +2315,43 @@ EventHandler<ClientTypes, StateEnum::Established, Event::AppWrite>::handle(
 }
 
 Actions
+EventHandler<ClientTypes, StateEnum::Established, Event::KeyUpdateInitiation>::
+    handle(const State& state, Param param) {
+  if (state.readRecordLayer()->hasUnparsedHandshakeData()) {
+    throw FizzException(
+        "data after key_update", AlertDescription::unexpected_message);
+  }
+  auto& keyUpdateInitiation = *param.asKeyUpdateInitiation();
+  auto encodedKeyUpdated =
+      Protocol::getKeyUpdated(keyUpdateInitiation.request_update);
+  WriteToSocket write;
+  write.contents.emplace_back(
+      state.writeRecordLayer()->writeHandshake(std::move(encodedKeyUpdated)));
+
+  state.keyScheduler()->clientKeyUpdate();
+
+  auto writeRecordLayer =
+      state.context()->getFactory()->makeEncryptedWriteRecordLayer(
+          EncryptionLevel::AppTraffic);
+  writeRecordLayer->setProtocolVersion(*state.version());
+  auto writeSecret =
+      state.keyScheduler()->getSecret(AppTrafficSecrets::ClientAppTraffic);
+  Protocol::setAead(
+      *writeRecordLayer,
+      *state.cipher(),
+      folly::range(writeSecret.secret),
+      *state.context()->getFactory(),
+      *state.keyScheduler());
+  return actions(
+      MutateState([wRecordLayer =
+                       std::move(writeRecordLayer)](State& newState) mutable {
+        newState.writeRecordLayer() = std::move(wRecordLayer);
+      }),
+      SecretAvailable(std::move(writeSecret)),
+      std::move(write));
+}
+
+Actions
 EventHandler<ClientTypes, StateEnum::Established, Event::KeyUpdate>::handle(
     const State& state,
     Param param) {
@@ -2207,6 +2361,7 @@ EventHandler<ClientTypes, StateEnum::Established, Event::KeyUpdate>::handle(
     throw FizzException(
         "data after key_update", AlertDescription::unexpected_message);
   }
+
   state.keyScheduler()->serverKeyUpdate();
   auto readRecordLayer =
       state.context()->getFactory()->makeEncryptedReadRecordLayer(
@@ -2230,6 +2385,8 @@ EventHandler<ClientTypes, StateEnum::Established, Event::KeyUpdate>::handle(
         SecretAvailable(std::move(readSecret)));
   }
 
+  // We don't want to request the key update when the remote peer init'ed the
+  // update.
   auto encodedKeyUpdated =
       Protocol::getKeyUpdated(KeyUpdateRequest::update_not_requested);
   WriteToSocket write;
@@ -2250,7 +2407,6 @@ EventHandler<ClientTypes, StateEnum::Established, Event::KeyUpdate>::handle(
       folly::range(writeSecret.secret),
       *state.context()->getFactory(),
       *state.keyScheduler());
-
   return actions(
       MutateState([rRecordLayer = std::move(readRecordLayer),
                    wRecordLayer =

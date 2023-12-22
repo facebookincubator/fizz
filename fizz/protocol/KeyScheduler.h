@@ -19,7 +19,9 @@ enum class EarlySecrets {
   ExternalPskBinder,
   ResumptionPskBinder,
   ClientEarlyTraffic,
-  EarlyExporter
+  EarlyExporter,
+  ECHAcceptConfirmation,
+  HRRECHAcceptConfirmation
 };
 
 enum class HandshakeSecrets {
@@ -53,6 +55,10 @@ struct DerivedSecret {
 
   bool operator==(const DerivedSecret& other) const {
     return secret == other.secret && type == other.type;
+  }
+
+  bool operator!=(const DerivedSecret& other) const {
+    return !(*this == other);
   }
 };
 

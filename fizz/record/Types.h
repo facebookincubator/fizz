@@ -110,9 +110,8 @@ enum class ExtensionType : uint16_t {
   // alternate_server_name = 0xfb00,
   // draft_delegated_credential = 0xff02,
   test_extension = 0xff04,
-  encrypted_client_hello = 0xfe09,
+  encrypted_client_hello = 0xfe0d,
   ech_nonce = 0xff03,
-  ech_is_inner = 0xda09,
   thrift_parameters = 0xff41,
 };
 
@@ -148,7 +147,8 @@ enum class AlertDescription : uint8_t {
   bad_certificate_hash_value = 114,
   unknown_psk_identity = 115,
   certificate_required = 116,
-  no_application_protocol = 120
+  no_application_protocol = 120,
+  ech_required = 121
 };
 
 std::string toString(AlertDescription);
@@ -157,8 +157,10 @@ enum class CipherSuite : uint16_t {
   TLS_AES_128_GCM_SHA256 = 0x1301,
   TLS_AES_256_GCM_SHA384 = 0x1302,
   TLS_CHACHA20_POLY1305_SHA256 = 0x1303,
+  TLS_AEGIS_256_SHA384 = 0x1306,
+  TLS_AEGIS_128L_SHA256 = 0x1307,
   // experimental cipher suites
-  TLS_AES_128_OCB_SHA256_EXPERIMENTAL = 0xFF01
+  TLS_AES_128_OCB_SHA256_EXPERIMENTAL = 0xFF01,
 };
 
 std::string toString(CipherSuite);
@@ -342,7 +344,55 @@ enum class NamedGroup : uint16_t {
   secp256r1 = 23,
   secp384r1 = 24,
   secp521r1 = 25,
-  x25519 = 29
+  x25519 = 29,
+
+  /**
+   * x25519 and secp256r1 hybrids with NIST Round 3 version of Kyber, see
+   * https://datatracker.ietf.org/doc/draft-tls-westerbaan-xyber768d00/02/
+   */
+  x25519_kyber768_draft00 = 25497,
+  secp256r1_kyber768_draft00 = 25498,
+
+  // experimental
+  /**
+   * Hybrid of secp521r1 and x25519. TLS Supported Group 510 is reserved for
+   * private use, see
+   * https://www.iana.org/assignments/tls-parameters/tls-parameters.xhtml#tls-parameters-8
+   */
+  secp521r1_x25519 = 510,
+
+  /**
+   * Experimental, currently aligning with boringssl for inter-op purposes. See
+   * https://github.com/open-quantum-safe/boringssl/blob/master/include/openssl/ssl.h#L2406
+   */
+  secp384r1_bikel3 = 12091,
+
+  // Standardized algorithms. See
+  // https://datatracker.ietf.org/doc/html/draft-ietf-tls-hybrid-design-05#section-5
+
+  /**
+   * Experimental ID, see
+   * https://github.com/aws/s2n-tls/blob/main/tls/s2n_tls_parameters.h#L69
+   */
+  x25519_kyber512 = 12089,
+
+  /**
+   * Experimental ID, see
+   * https://github.com/aws/s2n-tls/blob/main/tls/s2n_tls_parameters.h#L70
+   */
+  secp256r1_kyber512 = 12090,
+
+  /**
+   * Performance test only. Purely relying on unverified post-quantum crypto may
+   * cause security flaws.
+   */
+  kyber512 = 511,
+
+  /**
+   * Experimental ID, see
+   * https://github.com/open-quantum-safe/boringssl/blob/master/include/openssl/ssl.h#L2410
+   */
+  secp384r1_kyber768 = 12092,
 };
 
 std::string toString(NamedGroup);
@@ -376,7 +426,7 @@ class FizzException : public std::runtime_error {
 };
 
 template <class T>
-Buf encode(T&& t);
+Buf encode(T&&);
 template <class T>
 Buf encodeHandshake(T&& t);
 template <class T>

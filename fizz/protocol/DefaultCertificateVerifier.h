@@ -9,6 +9,7 @@
 #pragma once
 
 #include <fizz/protocol/CertificateVerifier.h>
+#include <folly/ssl/OpenSSLPtrTypes.h>
 
 namespace fizz {
 
@@ -40,8 +41,18 @@ class DefaultCertificateVerifier : public CertificateVerifier {
     createAuthorities();
   }
 
-  void verify(const std::vector<std::shared_ptr<const fizz::PeerCert>>& certs)
+  // NOLINTNEXTLINE(modernize-use-nodiscard)
+  std::shared_ptr<const folly::AsyncTransportCertificate> verify(
+      const std::vector<std::shared_ptr<const fizz::PeerCert>>& certs)
       const override;
+
+  /**
+   * Return a std::unique_ptr to X509_STORE_CTX which is used for verifying
+   * the certificate chain. Additional verification result can be extracted
+   * from the returned store context.
+   */
+  folly::ssl::X509StoreCtxUniquePtr verifyWithX509StoreCtx(
+      const std::vector<std::shared_ptr<const fizz::PeerCert>>& certs) const;
 
   void setCustomVerifyCallback(X509VerifyCallback cb) {
     customVerifyCallback_ = cb;

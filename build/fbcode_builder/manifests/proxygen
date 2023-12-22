@@ -13,9 +13,7 @@ builder = nop
 [build]
 builder = cmake
 subdir = .
-
-[cmake.defines]
-BUILD_QUIC = ON
+job_weight_mib = 3072
 
 [cmake.defines.test=on]
 BUILD_TESTS = ON

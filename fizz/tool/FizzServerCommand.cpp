@@ -11,25 +11,27 @@
 #include <fizz/extensions/delegatedcred/DelegatedCredentialCertManager.h>
 #include <fizz/extensions/delegatedcred/SelfDelegatedCredential.h>
 #ifdef FIZZ_TOOL_ENABLE_BROTLI
-#include <fizz/protocol/BrotliCertificateCompressor.h>
+#include <fizz/compression/BrotliCertificateCompressor.h>
 #endif
+#include <fizz/compression/ZlibCertificateCompressor.h>
 #include <fizz/protocol/DefaultCertificateVerifier.h>
-#include <fizz/protocol/ZlibCertificateCompressor.h>
 #ifdef FIZZ_TOOL_ENABLE_ZSTD
-#include <fizz/protocol/ZstdCertificateCompressor.h>
+#include <fizz/compression/ZstdCertificateCompressor.h>
 #endif
 #include <fizz/protocol/test/Utilities.h>
 #include <fizz/server/AsyncFizzServer.h>
 #include <fizz/server/SlidingBloomReplayCache.h>
 #include <fizz/server/TicketTypes.h>
 #include <fizz/tool/FizzCommandCommon.h>
+#include <fizz/util/FizzUtil.h>
 #include <fizz/util/KeyLogWriter.h>
 #include <fizz/util/Parse.h>
-
+#ifdef FIZZ_TOOL_ENABLE_OQS
+#include <fizz/experimental/protocol/HybridKeyExFactory.h>
+#endif
 #include <folly/Format.h>
 #include <folly/io/async/AsyncSSLSocket.h>
 #include <folly/io/async/AsyncServerSocket.h>
-
 #include <fstream>
 #include <string>
 #include <vector>
@@ -86,8 +88,12 @@ void printUsage() {
     << "                          (This MUST correspond to the public key set in the ECH config.)\n"
     << "                          (If this option is specified, a corresponding ECH config must be set.)\n"
     << "                          (For OpenSSL key exchanges, please use the PEM format for the private key.)\n"
-    << "                          (For the X25519 key exchange, please specify the private key in hex on the first line, "
+    << "                          (For the X25519 key exchange, please specify the private key in hex on the first line,\n"
     << "                          (and the public key in hex on the second line.)\n"
+#ifdef FIZZ_TOOL_ENABLE_OQS
+    << " -hybridkex               (Use experimental hybrid key exchange. Currently the only supported named groups under\n"
+    << "                          this mode are secp384r1_bikel3 and secp521r1_x25519)\n"
+#endif
 #ifdef FIZZ_TOOL_ENABLE_IO_URING
     << " -io_uring                (use io_uring for I/O. Default: false)\n"
     << " -io_uring_capacity N     (backend capacity for io_uring. Default: 128)\n"
@@ -169,8 +175,7 @@ class FizzExampleServer : public AsyncFizzServer::HandshakeCallback,
     finish();
   }
 
-  void fizzHandshakeAttemptFallback(
-      std::unique_ptr<IOBuf> clientHello) override {
+  void fizzHandshakeAttemptFallback(AttemptVersionFallback fallback) override {
     CHECK(transport_);
     LOG(INFO) << "Fallback attempt";
     auto socket = transport_->getUnderlyingTransport<AsyncSocket>();
@@ -179,7 +184,7 @@ class FizzExampleServer : public AsyncFizzServer::HandshakeCallback,
     transport_.reset();
     sslSocket_ = AsyncSSLSocket::UniquePtr(
         new AsyncSSLSocket(sslCtx_, evb, folly::NetworkSocket::fromFd(fd)));
-    sslSocket_->setPreReceivedData(std::move(clientHello));
+    sslSocket_->setPreReceivedData(std::move(fallback.clientHello));
     sslSocket_->sslAccept(this);
   }
 
@@ -563,59 +568,6 @@ class PrivateKeyMatcher {
   std::unordered_map<std::string, folly::ssl::EvpPkeyUniquePtr> privKeys_;
 };
 
-std::unique_ptr<KeyExchange> createKeyExchange(
-    hpke::KEMId kemId,
-    std::string echPrivateKeyFile) {
-  auto getPrivateKey = [&echPrivateKeyFile]() {
-    std::string keyData;
-    folly::ssl::EvpPkeyUniquePtr privKey;
-    if (readFile(echPrivateKeyFile.c_str(), keyData)) {
-      privKey = CertUtils::readPrivateKeyFromBuffer(keyData);
-    }
-    return privKey;
-  };
-
-  switch (kemId) {
-    case hpke::KEMId::secp256r1: {
-      auto kex = std::make_unique<OpenSSLECKeyExchange<P256>>();
-      kex->setPrivateKey(getPrivateKey());
-      return kex;
-    }
-    case hpke::KEMId::secp384r1: {
-      auto kex = std::make_unique<OpenSSLECKeyExchange<P384>>();
-      kex->setPrivateKey(getPrivateKey());
-      return kex;
-    }
-    case hpke::KEMId::secp521r1: {
-      auto kex = std::make_unique<OpenSSLECKeyExchange<P521>>();
-      kex->setPrivateKey(getPrivateKey());
-      return kex;
-    }
-    case hpke::KEMId::x25519: {
-      auto kex = std::make_unique<X25519KeyExchange>();
-      std::string keyData;
-      std::ifstream infile(echPrivateKeyFile);
-
-      // Assume the first line is the private key in hex, the second line is the
-      // public key in hex.
-      std::string privKeyStr, pubKeyStr;
-      infile >> privKeyStr;
-      infile >> pubKeyStr;
-
-      kex->setKeyPair(
-          folly::IOBuf::copyBuffer(folly::unhexlify(privKeyStr)),
-          folly::IOBuf::copyBuffer(folly::unhexlify(pubKeyStr)));
-
-      return kex;
-    }
-    default: {
-      // We don't support other key exchanges right now.
-      break;
-    }
-  }
-  return nullptr;
-}
-
 std::shared_ptr<ech::Decrypter> setupDecrypterFromInputs(
     std::string echConfigsFile,
     std::string echPrivateKeyFile) {
@@ -638,12 +590,18 @@ std::shared_ptr<ech::Decrypter> setupDecrypterFromInputs(
   auto decrypter = std::make_shared<ech::ECHConfigManager>();
 
   // If more that 1 ECH config is provided, we use the first one.
-  ech::ECHConfig gotConfig = gotECHConfigs.value()[0];
+  ech::ECHConfig gotConfig = gotECHConfigs.value().configs[0];
   auto kemId =
       getKEMId((*echConfigsJson)["echconfigs"][0]["kem_id"].asString());
 
+  std::string privKeyStrHex;
+  folly::readFile(echPrivateKeyFile.c_str(), privKeyStrHex);
+
+  folly::ByteRange privKeyBuf(folly::trimWhitespace(privKeyStrHex));
+
   // Create a key exchange and set the private key
-  auto kexWithPrivateKey = createKeyExchange(kemId, echPrivateKeyFile);
+  auto kexWithPrivateKey =
+      fizz::FizzUtil::createKeyExchangeFromBuf(kemId, privKeyBuf);
   if (!kexWithPrivateKey) {
     LOG(ERROR)
         << "Unable to create a key exchange and set a private key for it.";
@@ -665,7 +623,7 @@ std::shared_ptr<ech::Decrypter> setupDefaultDecrypter() {
 
   ech::ECHConfig chosenConfig = getDefaultECHConfigs()[0];
   auto kex = std::make_unique<X25519KeyExchange>();
-  kex->setKeyPair(std::move(defaultPrivateKey), std::move(defaultPublicKey));
+  kex->setPrivateKey(std::move(defaultPrivateKey));
 
   // Configure ECH decrpyter to be used server side.
   auto decrypter = std::make_shared<ech::ECHConfigManager>();
@@ -693,6 +651,9 @@ int fizzServerCommand(const std::vector<std::string>& args) {
   bool fallback = false;
   bool http = false;
   uint32_t earlyDataSize = std::numeric_limits<uint32_t>::max();
+#ifdef FIZZ_TOOL_ENABLE_OQS
+  bool useHybridKexFactory = false;
+#endif
   std::vector<std::vector<CipherSuite>> ciphers {
     {CipherSuite::TLS_AES_128_GCM_SHA256, CipherSuite::TLS_AES_256_GCM_SHA384},
 #if FOLLY_OPENSSL_HAS_CHACHA
@@ -730,7 +691,7 @@ int fizzServerCommand(const std::vector<std::string>& args) {
     {"-ciphers", {true, [&ciphers](const std::string& arg) {
         ciphers.clear();
         std::vector<std::string> list;
-        folly::split(":", arg, list);
+        folly::split(':', arg, list);
         for (const auto& item : list) {
           try {
             ciphers.push_back(splitParse<CipherSuite>(item, ","));
@@ -764,7 +725,7 @@ int fizzServerCommand(const std::vector<std::string>& args) {
     {"-early", {false, [&early](const std::string&) { early = true; }}},
     {"-alpn", {true, [&alpns](const std::string& arg) {
         alpns.clear();
-        folly::split(":", arg, alpns);
+        folly::split(':', arg, alpns);
     }}},
     {"-certcompression", {true, [&compAlgos](const std::string& arg) {
         try {
@@ -797,6 +758,11 @@ int fizzServerCommand(const std::vector<std::string>& args) {
     {"-echprivatekey", {true, [&echPrivateKeyFile](const std::string& arg) {
         echPrivateKeyFile = arg;
     }}}
+#ifdef FIZZ_TOOL_ENABLE_OQS
+    ,{"-hybridkex", {false, [&useHybridKexFactory](const std::string&) {
+        useHybridKexFactory = true;
+    }}}
+#endif
 #ifdef FIZZ_TOOL_ENABLE_IO_URING
     ,{"-io_uring", {false, [&uring](const std::string&) { uring = true; }}},
     {"-io_uring_async_recv", {false, [&uringAsync](const std::string&) {
@@ -876,6 +842,11 @@ int fizzServerCommand(const std::vector<std::string>& args) {
   }
 
   auto serverContext = std::make_shared<FizzServerContext>();
+#ifdef FIZZ_TOOL_ENABLE_OQS
+  if (useHybridKexFactory) {
+    serverContext->setFactory(std::make_shared<HybridKeyExFactory>());
+  }
+#endif
 
   if (ech) {
     // Use ECH  default values.

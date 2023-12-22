@@ -12,6 +12,8 @@
 
 #include <fizz/client/AsyncFizzClient.h>
 #include <fizz/client/test/Mocks.h>
+#include <fizz/compression/ZlibCertificateCompressor.h>
+#include <fizz/compression/ZlibCertificateDecompressor.h>
 #include <fizz/crypto/Utils.h>
 #include <fizz/crypto/aead/AESGCM128.h>
 #include <fizz/crypto/aead/OpenSSLEVPCipher.h>
@@ -19,8 +21,6 @@
 #include <fizz/extensions/tokenbinding/TokenBindingClientExtension.h>
 #include <fizz/extensions/tokenbinding/TokenBindingContext.h>
 #include <fizz/extensions/tokenbinding/TokenBindingServerExtension.h>
-#include <fizz/protocol/ZlibCertificateCompressor.h>
-#include <fizz/protocol/ZlibCertificateDecompressor.h>
 #include <fizz/protocol/test/Matchers.h>
 #include <fizz/protocol/test/Utilities.h>
 #include <fizz/server/AsyncFizzServer.h>
@@ -115,7 +115,10 @@ class HandshakeTest : public Test {
     ticketCipher->setPolicy(std::move(policy));
     serverContext_->setTicketCipher(std::move(ticketCipher));
 
-    cookieCipher_ = std::make_shared<AES128CookieCipher>();
+    auto tokenCipher = std::make_unique<Aead128GCMTokenCipher>(
+        std::vector<std::string>({"Fizz Cookie Cipher v1"}));
+    cookieCipher_ =
+        std::make_shared<AES128CookieCipher>(std::move(tokenCipher));
     auto cookieSeed = RandomGenerator<32>().generateRandom();
     cookieCipher_->setCookieSecrets({{range(cookieSeed)}});
     cookieCipher_->setContext(serverContext_.get());

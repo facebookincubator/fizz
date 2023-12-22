@@ -13,12 +13,12 @@
 #include <fizz/crypto/test/Mocks.h>
 #include <fizz/protocol/AsyncFizzBase.h>
 #include <fizz/protocol/Certificate.h>
-#include <fizz/protocol/CertificateCompressor.h>
 #include <fizz/protocol/CertificateVerifier.h>
 #include <fizz/protocol/HandshakeContext.h>
 #include <fizz/protocol/KeyScheduler.h>
 #include <fizz/protocol/OpenSSLFactory.h>
 #include <fizz/protocol/Types.h>
+#include <fizz/protocol/ech/Decrypter.h>
 #include <fizz/record/test/Mocks.h>
 
 #include <folly/io/async/test/MockAsyncTransport.h>
@@ -85,13 +85,17 @@ class MockKeyScheduler : public KeyScheduler {
         .WillByDefault(Invoke([](HandshakeSecrets type, folly::ByteRange) {
           return DerivedSecret(std::vector<uint8_t>(), type);
         }));
-
-    ON_CALL(*this, getSecret(HandshakeSecrets::ECHAcceptConfirmation, _))
+    ON_CALL(*this, getSecret(EarlySecrets::ECHAcceptConfirmation, _))
         .WillByDefault(InvokeWithoutArgs([]() {
           return DerivedSecret(
-              std::vector<uint8_t>(
-                  {'e', 'c', 'h', 'a', 'c', 'c', 'e', 'p', 't', 'e', 'd'}),
-              HandshakeSecrets::ServerHandshakeTraffic);
+              std::vector<uint8_t>({'e', 'c', 'h', 'a', 'c', 'c', 'p', 't'}),
+              EarlySecrets::ECHAcceptConfirmation);
+        }));
+    ON_CALL(*this, getSecret(EarlySecrets::HRRECHAcceptConfirmation, _))
+        .WillByDefault(InvokeWithoutArgs([]() {
+          return DerivedSecret(
+              std::vector<uint8_t>({'e', 'c', 'h', 'a', 'c', 'c', 'p', 't'}),
+              EarlySecrets::HRRECHAcceptConfirmation);
         }));
     ON_CALL(*this, getSecret(An<MasterSecrets>(), _))
         .WillByDefault(Invoke([](MasterSecrets type, folly::ByteRange) {
@@ -178,7 +182,7 @@ class MockPeerCert : public PeerCert {
 class MockCertificateVerifier : public CertificateVerifier {
  public:
   MOCK_METHOD(
-      void,
+      std::shared_ptr<const folly::AsyncTransportCertificate>,
       verify,
       (const std::vector<std::shared_ptr<const PeerCert>>&),
       (const));
@@ -225,7 +229,7 @@ class MockFactory : public OpenSSLFactory {
   MOCK_METHOD(
       std::unique_ptr<KeyExchange>,
       makeKeyExchange,
-      (NamedGroup group),
+      (NamedGroup group, Factory::KeyExchangeMode mode),
       (const));
   MOCK_METHOD(std::unique_ptr<Aead>, makeAead, (CipherSuite cipher), (const));
   MOCK_METHOD(Random, makeRandom, (), (const));
@@ -240,6 +244,10 @@ class MockFactory : public OpenSSLFactory {
       const override {
     return _makePeerCert(entry, leaf);
   }
+
+  MOCK_CONST_METHOD1(
+      makeRandomBytes,
+      std::unique_ptr<folly::IOBuf>(size_t count));
 
   void setDefaults() {
     ON_CALL(*this, makePlaintextReadRecordLayer())
@@ -279,7 +287,7 @@ class MockFactory : public OpenSSLFactory {
           ret->setDefaults();
           return ret;
         }));
-    ON_CALL(*this, makeKeyExchange(_)).WillByDefault(InvokeWithoutArgs([]() {
+    ON_CALL(*this, makeKeyExchange(_, _)).WillByDefault(InvokeWithoutArgs([]() {
       auto ret = std::make_unique<NiceMock<MockKeyExchange>>();
       ret->setDefaults();
       return ret;
@@ -294,6 +302,12 @@ class MockFactory : public OpenSSLFactory {
       random.fill(0x44);
       return random;
     }));
+    ON_CALL(*this, makeRandomBytes(_)).WillByDefault(Invoke([](size_t count) {
+      auto random = folly::IOBuf::create(count);
+      memset(random->writableData(), 0x44, count);
+      random->append(count);
+      return random;
+    }));
     ON_CALL(*this, makeTicketAgeAdd()).WillByDefault(InvokeWithoutArgs([]() {
       return 0x44444444;
     }));
@@ -303,26 +317,13 @@ class MockFactory : public OpenSSLFactory {
   }
 };
 
-class MockCertificateDecompressor : public CertificateDecompressor {
+class MockAsyncKexFactory : public OpenSSLFactory {
  public:
-  MOCK_METHOD(CertificateCompressionAlgorithm, getAlgorithm, (), (const));
-  MOCK_METHOD(CertificateMsg, decompress, (const CompressedCertificate&));
-  void setDefaults() {
-    ON_CALL(*this, getAlgorithm()).WillByDefault(InvokeWithoutArgs([]() {
-      return CertificateCompressionAlgorithm::zlib;
-    }));
-  }
-};
-
-class MockCertificateCompressor : public CertificateCompressor {
- public:
-  MOCK_METHOD(CertificateCompressionAlgorithm, getAlgorithm, (), (const));
-  MOCK_METHOD(CompressedCertificate, compress, (const CertificateMsg&));
-  void setDefaults() {
-    ON_CALL(*this, getAlgorithm()).WillByDefault(InvokeWithoutArgs([]() {
-      return CertificateCompressionAlgorithm::zlib;
-    }));
-  }
+  MOCK_METHOD(
+      std::unique_ptr<KeyExchange>,
+      makeKeyExchange,
+      (NamedGroup group, Factory::KeyExchangeMode mode),
+      (const));
 };
 
 class MockAsyncFizzBase : public AsyncFizzBase {
@@ -355,6 +356,7 @@ class MockAsyncFizzBase : public AsyncFizzBase {
   }
 
   MOCK_METHOD(folly::Optional<CipherSuite>, getCipher, (), (const));
+  MOCK_METHOD(folly::Optional<NamedGroup>, getGroup, (), (const));
   MOCK_METHOD(
       std::vector<SignatureScheme>,
       getSupportedSigSchemes,
@@ -375,6 +377,9 @@ class MockAsyncFizzBase : public AsyncFizzBase {
 
   MOCK_METHOD(folly::Optional<Random>, getClientRandom, (), (const));
   MOCK_METHOD(void, tlsShutdown, ());
+  MOCK_METHOD(void, shutdownWrite, (), (override));
+  MOCK_METHOD(void, shutdownWriteNow, (), (override));
+  MOCK_METHOD(void, initiateKeyUpdate, (KeyUpdateRequest), (override));
 
   MOCK_METHOD(
       void,
@@ -398,5 +403,41 @@ class MockAsyncFizzBase : public AsyncFizzBase {
   MOCK_METHOD(void, resumeEvents, ());
 };
 
+class MockECHDecrypter : public ech::Decrypter {
+ public:
+  MOCK_METHOD(
+      folly::Optional<ech::DecrypterResult>,
+      decryptClientHello,
+      (const ClientHello& chlo));
+
+  MOCK_METHOD(
+      ClientHello,
+      _decryptClientHelloHRR_Stateful,
+      (const ClientHello& chlo, std::unique_ptr<hpke::HpkeContext>& context));
+
+  ClientHello decryptClientHelloHRR(
+      const ClientHello& chlo,
+      std::unique_ptr<hpke::HpkeContext>& context) override {
+    return _decryptClientHelloHRR_Stateful(chlo, context);
+  }
+
+  MOCK_METHOD(
+      ClientHello,
+      _decryptClientHelloHRR_Stateless,
+      (const ClientHello& chlo,
+       const std::unique_ptr<folly::IOBuf>& encapsulatedKey));
+
+  ClientHello decryptClientHelloHRR(
+      const ClientHello& chlo,
+      const std::unique_ptr<folly::IOBuf>& encapsulatedKey) override {
+    return _decryptClientHelloHRR_Stateless(chlo, encapsulatedKey);
+  }
+
+  MOCK_METHOD(
+      std::vector<ech::ECHConfig>,
+      getRetryConfigs,
+      (),
+      (const, override));
+};
 } // namespace test
 } // namespace fizz

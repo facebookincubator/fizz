@@ -16,11 +16,17 @@
 
 namespace fizz {
 namespace ech {
-struct ClientECH {
+
+enum class ECHClientHelloType : uint8_t {
+  Inner = 1,
+  Outer = 0,
+};
+
+struct OuterECHClientHello {
   // The cipher suite used to encrypt ClientHelloInner.
   // This MUST match a value provided in the corresponding
   // "ECHConfig.cipher_suites" list.
-  ECHCipherSuite cipher_suite;
+  HpkeSymmetricCipherSuite cipher_suite;
   // The configuration identifier, equal to "Expand(Extract("",
   // config), "tls ech config id", Nh)", where "config" is the
   // "ECHConfig" structure and "Extract", "Expand", and "Nh" are as
@@ -28,7 +34,7 @@ struct ClientECH {
   // the salt is interpreted by "Extract" as no salt being provided.)
   // The length of this value SHOULD NOT be less than 16 bytes unless
   // it is optional for an application.
-  Buf config_id;
+  uint8_t config_id;
   // The HPKE encapsulated key, used by servers to decrypt the
   // corresponding "payload" field.
   Buf enc;
@@ -36,12 +42,29 @@ struct ClientECH {
   // encrypted using HPKE.
   Buf payload;
 
+  static constexpr ECHClientHelloType ech_type = ECHClientHelloType::Outer;
   static constexpr ExtensionType extension_type =
       ExtensionType::encrypted_client_hello;
 };
 
-struct ECHIsInner {
-  static constexpr ExtensionType extension_type = ExtensionType::ech_is_inner;
+struct ECHEncryptedExtensions {
+  // The server's list of supported configurations.
+  std::vector<ECHConfig> retry_configs;
+
+  static constexpr ExtensionType extension_type =
+      ExtensionType::encrypted_client_hello;
+};
+
+struct InnerECHClientHello {
+  static constexpr ECHClientHelloType ech_type = ECHClientHelloType::Inner;
+  static constexpr ExtensionType extension_type =
+      ExtensionType::encrypted_client_hello;
+};
+
+struct ECHHelloRetryRequest {
+  std::array<uint8_t, 8> confirmation;
+  static constexpr ExtensionType extension_type =
+      ExtensionType::encrypted_client_hello;
 };
 
 struct OuterExtensions {

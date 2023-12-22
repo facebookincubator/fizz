@@ -21,7 +21,8 @@ using Cert = folly::AsyncTransportCertificate;
 
 /**
  * This class is a wrapper around AsyncTransportWrapper to handle most app level
- * interactions so that the derived client and server classes
+ * interactions. The derived client and server classes utilize the protected
+ * methods.
  */
 class AsyncFizzBase : public folly::WriteChainAsyncTransportWrapper<
                           folly::AsyncTransportWrapper>,
@@ -84,6 +85,14 @@ class AsyncFizzBase : public folly::WriteChainAsyncTransportWrapper<
         std::unique_ptr<folly::IOBuf> endOfData) = 0;
   };
 
+  /* Interface used to get a reference to an folly::IOBufIovecBuilder
+   */
+  struct IOVecQueueOps {
+    virtual ~IOVecQueueOps() = default;
+    virtual void allocateBuffers(folly::IOBufIovecBuilder::IoVecVec& iovs) = 0;
+    virtual std::unique_ptr<folly::IOBuf> extractIOBufChain(size_t len) = 0;
+  };
+
   struct TransportOptions {
     /**
      * Controls whether or not the async recv callback should be registered
@@ -106,17 +115,55 @@ class AsyncFizzBase : public folly::WriteChainAsyncTransportWrapper<
      *   ReadMode::ReadVec
      *      Under this mode, Fizz will use vectored IO (`readv`) to read
      *      incoming data. This can help avoid additional copies at the expense
-     *      of allocating extra ref counting objects. The overall mem usage is
-     * also dependent on the readVecBlockSize value.
+     *      of allocating extra ref counting objects.
      *
      */
     folly::AsyncReader::ReadCallback::ReadMode readMode{ReadMode::ReadBuffer};
 
     /*
-     * AsyncTransport read vec block size
+     * Under `ReadMode::ReadVec`, Fizz will allocate buffers for vectored I/O
+     * through the `iovecQueue`.
+     *
+     * This field must be set if `readMode` is `ReadMode::ReadVec`.
+     *
+     * Multiple AsyncFizzBase instances may share the underlying
+     * `IOVecQueueOps`, provided that the implementation allows it. This can be
+     * useful in limiting the amount of memory allocated across a process with
+     * many Fizz connections.
      */
-    size_t readVecBlockSize{
-        folly::IOBufIovecBuilder::Options::kDefaultBlockSize};
+    std::shared_ptr<IOVecQueueOps> ioVecQueue{};
+
+    /**
+     * Under ReadMode::ReadBuffer, whenever Fizz's available read buffer space
+     * is under `readBufferMinReadSize`, `readBufferAllocationSize` controls the
+     * size of the buffer that Fizz will allocate.
+     *
+     * Higher values will result in larger memory allocations which may
+     * negatively affect memory usage on servers with many idle connections.
+     * However, this may result in fewer syscalls and allocation calls being
+     * made on the data path.
+     */
+    size_t readBufferAllocationSize{4000};
+
+    /**
+     * Under ReadMode::ReadBuffer, whenever the underlying transport becomes
+     * available to read, Fizz will ensure that *at least*
+     * `readBuferMinReadSize` worth of contiguous data is read per read call. If
+     * the internal read buffer is smaller than `readBufferMinReadSize`, then
+     * Fizz will allocate `readBufferAllocationSize` worth of new buffer space
+     * to satisfy this read.
+     */
+    size_t readBufferMinReadSize{1460};
+    /**
+     * When set, `zeroCopyMemStore` points to an instance of a
+     * `ZeroCopyMemStore` that outlives all `AsyncFizzBase` instances.
+     *
+     * When set, Fizz will attempt to perform TCP zero copy receives. This
+     * requires appropriate kernel and hardware support. With appropriate
+     * support, encrypted data received by the NIC will be handed directly to
+     * Fizz for decryption (normally, Fizz will copy data from the kernel).
+     */
+    ZeroCopyMemStore* zeroCopyMemStore{nullptr};
   };
 
   explicit AsyncFizzBase(
@@ -167,6 +214,11 @@ class AsyncFizzBase : public folly::WriteChainAsyncTransportWrapper<
    * Get the CipherSuite negotiated in this transport.
    */
   virtual folly::Optional<CipherSuite> getCipher() const = 0;
+
+  /**
+   * Get the NamedGroup negotiated in this transport.
+   */
+  virtual folly::Optional<NamedGroup> getGroup() const = 0;
 
   /**
    * Get the supported signature schemes in this transport.
@@ -271,6 +323,14 @@ class AsyncFizzBase : public folly::WriteChainAsyncTransportWrapper<
     }
   }
 
+  /**
+   * If set, after AsyncFizzBase has been used to write `bytes` worth of data,
+   * AsyncFizzBase will automatically initiate a key_update
+   */
+  void setRekeyAfterWriting(size_t bytes) {
+    keyUpdateThreshold_ = bytes;
+  }
+
   /*
    * Gets the client random associated with this connection. The CR can be
    * used as a transport agnostic identifier (for instance, for NSS keylogging)
@@ -279,9 +339,21 @@ class AsyncFizzBase : public folly::WriteChainAsyncTransportWrapper<
 
   /*
    * Used to shut down the tls session, without shutting down the underlying
-   * transport. Note you will still need to set setCloseTransportOnCloseNotify.
+   * transport.
    */
   virtual void tlsShutdown() = 0;
+
+  /*
+   * Redeclared from AsyncTransport. Attempts to perform a full TLS shutdown,
+   * then shuts down the underlying transport.
+   */
+  virtual void shutdownWrite() override = 0;
+
+  /*
+   * Redeclared from AsyncTransport. Attempts to perform a full TLS shutdown,
+   * then shuts down the underlying transport.
+   */
+  virtual void shutdownWriteNow() override = 0;
 
   /*
    * Sets whether or not to force in-place decryption of records. This is
@@ -314,6 +386,9 @@ class AsyncFizzBase : public folly::WriteChainAsyncTransportWrapper<
         ? Aead::BufferOption::AllowInPlace
         : Aead::BufferOption::RespectSharedPolicy;
   }
+
+  /* Initialize a key update. */
+  virtual void initiateKeyUpdate(KeyUpdateRequest keyUpdateRequest) = 0;
 
  protected:
   /**
@@ -392,9 +467,25 @@ class AsyncFizzBase : public folly::WriteChainAsyncTransportWrapper<
     }
   }
 
+  /**
+   * Called by derived classes after an AppWrite of `bytesWritten` bytes is
+   * performed.
+   */
+  void wroteApplicationBytes(size_t bytesWritten) {
+    appByteProcessedUnderKey_ += bytesWritten;
+    if (keyUpdateThreshold_ &&
+        appByteProcessedUnderKey_ >= keyUpdateThreshold_) {
+      appByteProcessedUnderKey_ = 0;
+      initiateKeyUpdate(KeyUpdateRequest::update_not_requested);
+    }
+  }
+
   folly::IOBufQueue transportReadBuf_{folly::IOBufQueue::cacheChainLength()};
   Aead::AeadOptions readAeadOptions_;
   Aead::AeadOptions writeAeadOptions_;
+
+  size_t appByteProcessedUnderKey_{0};
+  size_t keyUpdateThreshold_{0};
 
  private:
   class QueuedWriteRequest
@@ -411,6 +502,8 @@ class AsyncFizzBase : public folly::WriteChainAsyncTransportWrapper<
     void append(QueuedWriteRequest* request);
 
     void unlinkFromBase();
+
+    void fail(const folly::AsyncSocketException&);
 
     size_t getEntireChainBytesBuffered() {
       DCHECK(!next_);
@@ -445,7 +538,7 @@ class AsyncFizzBase : public folly::WriteChainAsyncTransportWrapper<
   /**
    * EventRecvmsgCallback implementation
    */
-  folly::EventRecvmsgCallback::MsgHdr* allocateData() override;
+  folly::EventRecvmsgCallback::MsgHdr* allocateData() noexcept override;
   void eventRecvmsgCallback(FizzMsgHdr* msgHdr, int res);
 
   /**
@@ -459,6 +552,14 @@ class AsyncFizzBase : public folly::WriteChainAsyncTransportWrapper<
       std::unique_ptr<folly::IOBuf> data) noexcept override;
   void readEOF() noexcept override;
   void readErr(const folly::AsyncSocketException& ex) noexcept override;
+  /* ZC RX related*/
+  ZeroCopyMemStore* readZeroCopyEnabled() noexcept override;
+  void getZeroCopyFallbackBuffer(
+      void** /*bufReturn*/,
+      size_t* /*lenReturn*/) noexcept override;
+  void readZeroCopyDataAvailable(
+      std::unique_ptr<folly::IOBuf>&& /*zeroCopyData*/,
+      size_t /*additionalBytes*/) noexcept override;
 
   /**
    * WriteCallback implementation, for use with handshake messages.
@@ -472,6 +573,9 @@ class AsyncFizzBase : public folly::WriteChainAsyncTransportWrapper<
 
   void handshakeTimeoutExpired() noexcept;
 
+  void
+  getReadBuffer(folly::IOBufQueue& buf, void** bufReturn, size_t* lenReturn);
+
   ReadCallback* readCallback_{nullptr};
   std::unique_ptr<folly::IOBuf> appDataBuf_;
 
@@ -481,6 +585,7 @@ class AsyncFizzBase : public folly::WriteChainAsyncTransportWrapper<
   size_t readSizeHint_{0};
 
   QueuedWriteRequest* tailWriteRequest_{nullptr};
+  QueuedWriteRequest* immediatelyPendingWriteRequest_{nullptr};
 
   HandshakeTimeout handshakeTimeout_;
 
@@ -490,6 +595,7 @@ class AsyncFizzBase : public folly::WriteChainAsyncTransportWrapper<
   TransportOptions transportOptions_;
   std::unique_ptr<FizzMsgHdr> msgHdr_;
 
-  folly::IOBufIovecBuilder ioVecQueue_;
+  folly::IOBufQueue zeroCopyFallbackReadBuf_{
+      folly::IOBufQueue::cacheChainLength()};
 };
 } // namespace fizz

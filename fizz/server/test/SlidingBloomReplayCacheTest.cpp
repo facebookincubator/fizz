@@ -13,6 +13,7 @@
 
 #include <folly/Random.h>
 #include <folly/io/async/ScopedEventBaseThread.h>
+#include <folly/synchronization/Baton.h>
 
 #include <folly/io/IOBuf.h>
 #include <unordered_set>
@@ -108,42 +109,42 @@ TEST(SlidingBloomReplayCacheTest, TestCacheErrorRate) {
 
 TEST(SlidingBloomReplayCacheTest, TestTimeBucketing) {
   const int numTries = 1 << 14;
-  folly::ScopedEventBaseThread evbThread_;
-  SlidingBloomReplayCache cache(
-      12, numTries, 0.0005, evbThread_.getEventBase());
+  folly::ScopedEventBaseThread evbThread;
+  folly::EventBase* evb = evbThread.getEventBase();
+  SlidingBloomReplayCache cache(1, numTries, 0.0005, evb);
+  folly::Baton baton;
 
   std::vector<std::string> history(numTries);
-  folly::via(evbThread_.getEventBase(), [&]() {
+  folly::via(evb, [&]() {
     for (size_t i = 0; i < numTries; i++) {
       history[i] = generateRandomString(8, 64);
       cache.set(toRange(history[i]));
     }
-  }).get();
+  });
 
-  folly::EventBase evb;
-  // 6 seconds in, all values should still be set
-  evb.scheduleAt(
-      [&] {
-        folly::via(evbThread_.getEventBase(), [&]() {
+  // 0.5 seconds in, all values should still be set
+  folly::via(evb, [&]() {
+    evb->schedule(
+        [&]() {
           for (int i = 0; i < numTries; ++i) {
             EXPECT_TRUE(cache.test(toRange(history[i])));
           }
-        }).get();
-      },
-      evb.now() + std::chrono::seconds(6));
+        },
+        std::chrono::milliseconds(500));
+  });
 
-  // 13 seconds in, all should be gone.
-  evb.scheduleAt(
-      [&] {
-        folly::via(evbThread_.getEventBase(), [&]() {
+  // 1.5 seconds in, all should be gone.
+  folly::via(evb, [&]() {
+    evb->schedule(
+        [&]() {
           for (int i = 0; i < numTries; ++i) {
             EXPECT_FALSE(cache.test(toRange(history[i])));
           }
-        }).get();
-        evb.terminateLoopSoon();
-      },
-      evb.now() + std::chrono::seconds(13));
-  evb.loop();
+          baton.post();
+        },
+        std::chrono::seconds(1));
+  });
+  baton.wait();
 }
 
 TEST(SlidingBloomReplayCacheTest, TestAsyncLookup) {
