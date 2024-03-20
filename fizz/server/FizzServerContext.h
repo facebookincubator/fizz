@@ -9,6 +9,7 @@
 #pragma once
 
 #include <fizz/protocol/Certificate.h>
+#include <fizz/protocol/OpenSSLFactory.h>
 #include <fizz/protocol/Factory.h>
 #include <fizz/protocol/clock/SystemClock.h>
 #include <fizz/protocol/ech/Decrypter.h>
