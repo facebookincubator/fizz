@@ -1,0 +1,241 @@
+load(
+    "@fbsource//xplat/security/lionhead:defs.bzl",
+    "EXTERNAL_USERS",
+    "Metadata",
+    "Severity",
+)
+load("//security/lionhead/harnesses:defs.bzl", "cpp_lionhead_harness")
+
+oncall("secure_pipes")
+
+cpp_lionhead_harness(
+    name = "fizz_expecting_client_hello",
+    srcs = ["ServerProtocolFuzzer.cpp"],
+    context_task = "T144013895",
+    ftest_name = ("ServerProtocolFuzzer", "ExpectingClientHello"),
+    metadata = Metadata(
+        exposure = EXTERNAL_USERS,
+        project = "oncall_secure_pipes",
+        severity_denial_of_service = Severity.FILE_SECURITY_TASK,
+        severity_service_takeover = Severity.FILE_SECURITY_TASK,
+    ),
+    deps = [
+        "fbsource//third-party/googletest:gtest",
+        "fbsource//xplat/security/lionhead/utils/lib_ftest:lib",
+        "//fizz/crypto/hpke/test:mocks",
+        "//fizz/facebook/fuzzer:fuzz_handshake_context",
+        "//fizz/facebook/fuzzer:fuzz_server_context_builder",
+        "//fizz/protocol/test:mocks",
+        "//fizz/server:fizz_server",
+        "//fizz/server:protocol",
+        "//folly/executors:manual_executor",
+    ],
+)
+
+cpp_lionhead_harness(
+    name = "fizz_expecting_retry_client_hello",
+    srcs = ["ServerProtocolFuzzer.cpp"],
+    context_task = "T144013895",
+    ftest_name = ("ServerProtocolFuzzer", "ExpectingRetryClientHello"),
+    metadata = Metadata(
+        exposure = EXTERNAL_USERS,
+        project = "oncall_secure_pipes",
+        severity_denial_of_service = Severity.FILE_SECURITY_TASK,
+        severity_service_takeover = Severity.FILE_SECURITY_TASK,
+    ),
+    deps = [
+        "fbsource//third-party/googletest:gtest",
+        "fbsource//xplat/security/lionhead/utils/lib_ftest:lib",
+        "//fizz/crypto/hpke/test:mocks",
+        "//fizz/facebook/fuzzer:fuzz_handshake_context",
+        "//fizz/facebook/fuzzer:fuzz_server_context_builder",
+        "//fizz/protocol/test:mocks",
+        "//fizz/server:fizz_server",
+        "//fizz/server:protocol",
+        "//folly/executors:manual_executor",
+    ],
+)
+
+cpp_lionhead_harness(
+    name = "fizz_expecting_retry_ech_client_hello",
+    srcs = ["ServerProtocolFuzzer.cpp"],
+    context_task = "T144013895",
+    ftest_name = ("ServerProtocolFuzzer", "ExpectingRetryECHClientHello"),
+    metadata = Metadata(
+        exposure = EXTERNAL_USERS,
+        project = "oncall_secure_pipes",
+        severity_denial_of_service = Severity.FILE_SECURITY_TASK,
+        severity_service_takeover = Severity.FILE_SECURITY_TASK,
+    ),
+    deps = [
+        "fbsource//third-party/googletest:gtest",
+        "fbsource//xplat/security/lionhead/utils/lib_ftest:lib",
+        "//fizz/crypto/hpke/test:mocks",
+        "//fizz/facebook/fuzzer:fuzz_handshake_context",
+        "//fizz/facebook/fuzzer:fuzz_server_context_builder",
+        "//fizz/protocol/test:mocks",
+        "//fizz/server:fizz_server",
+        "//fizz/server:protocol",
+        "//folly/executors:manual_executor",
+    ],
+)
+
+cpp_lionhead_harness(
+    name = "fizz_expecting_certificate",
+    srcs = ["ServerProtocolFuzzer.cpp"],
+    context_task = "T144013895",
+    ftest_name = ("ServerProtocolFuzzer", "ExpectingCertificate"),
+    metadata = Metadata(
+        exposure = EXTERNAL_USERS,
+        project = "oncall_secure_pipes",
+        severity_denial_of_service = Severity.FILE_SECURITY_TASK,
+        severity_service_takeover = Severity.FILE_SECURITY_TASK,
+    ),
+    deps = [
+        "fbsource//third-party/googletest:gtest",
+        "fbsource//xplat/security/lionhead/utils/lib_ftest:lib",
+        "//fizz/crypto/hpke/test:mocks",
+        "//fizz/facebook/fuzzer:fuzz_handshake_context",
+        "//fizz/facebook/fuzzer:fuzz_server_context_builder",
+        "//fizz/protocol/test:mocks",
+        "//fizz/server:fizz_server",
+        "//fizz/server:protocol",
+        "//folly/executors:manual_executor",
+    ],
+)
+
+cpp_lionhead_harness(
+    name = "fizz_expecting_certificate_verify",
+    srcs = ["ServerProtocolFuzzer.cpp"],
+    context_task = "T144013895",
+    ftest_name = ("ServerProtocolFuzzer", "ExpectingCertificate"),
+    metadata = Metadata(
+        exposure = EXTERNAL_USERS,
+        project = "oncall_secure_pipes",
+        severity_denial_of_service = Severity.FILE_SECURITY_TASK,
+        severity_service_takeover = Severity.FILE_SECURITY_TASK,
+    ),
+    deps = [
+        "fbsource//third-party/googletest:gtest",
+        "fbsource//xplat/security/lionhead/utils/lib_ftest:lib",
+        "//fizz/crypto/hpke/test:mocks",
+        "//fizz/facebook/fuzzer:fuzz_handshake_context",
+        "//fizz/facebook/fuzzer:fuzz_server_context_builder",
+        "//fizz/protocol/test:mocks",
+        "//fizz/server:fizz_server",
+        "//fizz/server:protocol",
+        "//folly/executors:manual_executor",
+    ],
+)
+
+cpp_lionhead_harness(
+    name = "fizz_accepting_early_data",
+    srcs = ["ServerProtocolFuzzer.cpp"],
+    context_task = "T144013895",
+    ftest_name = ("ServerProtocolFuzzer", "AcceptingEarlyData"),
+    metadata = Metadata(
+        exposure = EXTERNAL_USERS,
+        project = "oncall_secure_pipes",
+        severity_denial_of_service = Severity.FILE_SECURITY_TASK,
+        severity_service_takeover = Severity.FILE_SECURITY_TASK,
+    ),
+    deps = [
+        "fbsource//third-party/googletest:gtest",
+        "fbsource//xplat/security/lionhead/utils/lib_ftest:lib",
+        "//fizz/crypto/hpke/test:mocks",
+        "//fizz/facebook/fuzzer:fuzz_handshake_context",
+        "//fizz/facebook/fuzzer:fuzz_server_context_builder",
+        "//fizz/protocol/test:mocks",
+        "//fizz/server:fizz_server",
+        "//fizz/server:protocol",
+        "//folly/executors:manual_executor",
+    ],
+)
+
+cpp_lionhead_harness(
+    name = "fizz_expecting_finished",
+    srcs = ["ServerProtocolFuzzer.cpp"],
+    context_task = "T144013895",
+    ftest_name = ("ServerProtocolFuzzer", "ExpectingFinished"),
+    metadata = Metadata(
+        exposure = EXTERNAL_USERS,
+        project = "oncall_secure_pipes",
+        severity_denial_of_service = Severity.FILE_SECURITY_TASK,
+        severity_service_takeover = Severity.FILE_SECURITY_TASK,
+    ),
+    deps = [
+        "fbsource//third-party/googletest:gtest",
+        "fbsource//xplat/security/lionhead/utils/lib_ftest:lib",
+        "//fizz/crypto/hpke/test:mocks",
+        "//fizz/facebook/fuzzer:fuzz_handshake_context",
+        "//fizz/facebook/fuzzer:fuzz_server_context_builder",
+        "//fizz/protocol/test:mocks",
+        "//fizz/server:fizz_server",
+        "//fizz/server:protocol",
+        "//folly/executors:manual_executor",
+    ],
+)
+
+cpp_lionhead_harness(
+    name = "fizz_accepting_data",
+    srcs = ["ServerProtocolFuzzer.cpp"],
+    context_task = "T144013895",
+    ftest_name = ("ServerProtocolFuzzer", "AcceptingEarlyData"),
+    metadata = Metadata(
+        exposure = EXTERNAL_USERS,
+        project = "oncall_secure_pipes",
+        severity_denial_of_service = Severity.FILE_SECURITY_TASK,
+        severity_service_takeover = Severity.FILE_SECURITY_TASK,
+    ),
+    deps = [
+        "fbsource//third-party/googletest:gtest",
+        "fbsource//xplat/security/lionhead/utils/lib_ftest:lib",
+        "//fizz/crypto/hpke/test:mocks",
+        "//fizz/facebook/fuzzer:fuzz_handshake_context",
+        "//fizz/facebook/fuzzer:fuzz_server_context_builder",
+        "//fizz/protocol/test:mocks",
+        "//fizz/server:fizz_server",
+        "//fizz/server:protocol",
+        "//folly/executors:manual_executor",
+    ],
+)
+
+cpp_lionhead_harness(
+    name = "fizz_server_w_mocks",
+    srcs = ["ServerFuzzer.cpp"],
+    context_task = "T144013895",
+    ftest_name = ("ServerFuzzer", "ServerWithMocksAccepting"),
+    metadata = Metadata(
+        exposure = EXTERNAL_USERS,
+        project = "oncall_secure_pipes",
+        severity_denial_of_service = Severity.FILE_SECURITY_TASK,
+        severity_service_takeover = Severity.FILE_SECURITY_TASK,
+    ),
+    deps = [
+        "fbsource//third-party/googletest:gtest",
+        "fbsource//xplat/security/lionhead/utils/lib_ftest:lib",
+        "//fizz/facebook/fuzzer:fuzz_server_context_builder",
+        "//fizz/server:fizz_server",
+        "//folly/io/async:async_base",
+    ],
+)
+
+cpp_lionhead_harness(
+    name = "fizz_server_w_fakes",
+    srcs = ["ServerFuzzer.cpp"],
+    context_task = "T144013895",
+    ftest_name = ("ServerFuzzer", "ServerWithFakesAccepting"),
+    metadata = Metadata(
+        exposure = EXTERNAL_USERS,
+        project = "oncall_secure_pipes",
+        severity_denial_of_service = Severity.FILE_SECURITY_TASK,
+        severity_service_takeover = Severity.FILE_SECURITY_TASK,
+    ),
+    deps = [
+        "fbsource//third-party/googletest:gtest",
+        "fbsource//xplat/security/lionhead/utils/lib_ftest:lib",
+        "//fizz/facebook/fuzzer:fuzz_server_context_builder",
+        "//fizz/server:fizz_server",
+        "//folly/io/async:async_base",
+    ],
+)

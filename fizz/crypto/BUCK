@@ -1,0 +1,112 @@
+load("@fbcode_macros//build_defs:cpp_library.bzl", "cpp_library")
+
+oncall("secure_pipes")
+
+cpp_library(
+    name = "sha",
+    headers = [
+        "Sha.h",
+    ],
+    exported_deps = [
+        "//fizz/backend:openssl",
+    ],
+)
+
+cpp_library(
+    name = "hmac_sha256",
+    headers = [
+        "Sha256.h",
+    ],
+    exported_deps = [
+        ":sha",
+        "//fizz/backend:openssl",
+    ],
+)
+
+cpp_library(
+    name = "hmac_sha384",
+    headers = [
+        "Sha384.h",
+    ],
+    exported_deps = [
+        ":sha",
+        "//fizz/backend:openssl",
+    ],
+)
+
+cpp_library(
+    name = "hmac_sha512",
+    headers = [
+        "Sha512.h",
+    ],
+    exported_deps = [
+        ":sha",
+        "//fizz/backend:openssl",
+    ],
+)
+
+cpp_library(
+    name = "asymmetric",
+    headers = [
+        "ECCurve.h",
+    ],
+    exported_deps = [
+        "//fizz/backend:openssl",
+    ],
+)
+
+cpp_library(
+    name = "hkdf",
+    srcs = [
+        "Hkdf.cpp",
+    ],
+    headers = [
+        "Hkdf.h",
+    ],
+    exported_deps = [
+        "//folly/io:iobuf",
+    ],
+)
+
+cpp_library(
+    name = "key_derivation",
+    srcs = [
+        "KeyDerivation.cpp",
+    ],
+    headers = [
+        "KeyDerivation.h",
+    ],
+    exported_deps = [
+        ":hkdf",
+        "//fizz/record:record",
+    ],
+)
+
+cpp_library(
+    name = "random",
+    headers = [
+        "RandomGenerator.h",
+    ],
+    exported_deps = [
+        "//folly/io:iobuf",
+    ],
+    exported_external_deps = [
+        ("libsodium", None, "sodium"),
+    ],
+)
+
+cpp_library(
+    name = "utils",
+    srcs = [
+        "Utils.cpp",
+    ],
+    headers = [
+        "Utils.h",
+    ],
+    exported_deps = [
+        "//folly:range",
+    ],
+    external_deps = [
+        ("libsodium", None, "sodium"),
+    ],
+)
