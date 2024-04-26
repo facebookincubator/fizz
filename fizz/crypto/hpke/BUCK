@@ -1,0 +1,115 @@
+load("@fbcode_macros//build_defs:cpp_library.bzl", "cpp_library")
+
+oncall("secure_pipes")
+
+cpp_library(
+    name = "utils",
+    srcs = [
+        "Utils.cpp",
+    ],
+    headers = [
+        "Utils.h",
+    ],
+    deps = [
+        "//fizz/backend:openssl",
+        "//fizz/crypto/exchange:x25519",
+    ],
+    exported_deps = [
+        ":hkdf",
+        ":types",
+        "//fizz/crypto:hmac_sha256",
+        "//fizz/crypto:hmac_sha384",
+        "//fizz/crypto:hmac_sha512",
+        "//fizz/crypto/aead:aead",
+        "//fizz/crypto/aead:evpcipher",
+        "//fizz/crypto/exchange:exchange",
+        "//fizz/crypto/exchange:key_exchange",
+        "//fizz/protocol:types",
+    ],
+)
+
+cpp_library(
+    name = "hkdf",
+    srcs = [
+        "Hkdf.cpp",
+    ],
+    headers = [
+        "Hkdf.h",
+    ],
+    deps = [
+        "//fizz/record:record",
+    ],
+    exported_deps = [
+        "//fizz/crypto:hkdf",
+    ],
+)
+
+cpp_library(
+    name = "dhkem",
+    srcs = [
+        "DHKEM.cpp",
+    ],
+    headers = [
+        "DHKEM.h",
+    ],
+    deps = [
+        "//folly/io:iobuf",
+    ],
+    exported_deps = [
+        ":hkdf",
+        ":types",
+        "//fizz/backend:openssl",
+        "//fizz/crypto:asymmetric",
+        "//fizz/crypto/exchange:exchange",
+        "//fizz/crypto/exchange:key_exchange",
+        "//fizz/record:record",
+    ],
+)
+
+cpp_library(
+    name = "types",
+    headers = [
+        "Types.h",
+    ],
+    exported_deps = [
+        "//folly/io:iobuf",
+    ],
+)
+
+cpp_library(
+    name = "context",
+    srcs = [
+        "Context.cpp",
+    ],
+    headers = [
+        "Context.h",
+    ],
+    deps = [
+        ":utils",
+    ],
+    exported_deps = [
+        ":hkdf",
+        ":types",
+        "//fizz/crypto/aead:aead",
+        "//fizz/crypto/aead:evpcipher",
+        "//fizz/protocol:types",
+    ],
+)
+
+cpp_library(
+    name = "hpke",
+    srcs = [
+        "Hpke.cpp",
+    ],
+    headers = [
+        "Hpke.h",
+    ],
+    deps = [
+        ":types",
+    ],
+    exported_deps = [
+        ":context",
+        ":dhkem",
+        "//fizz/crypto/aead:aead",
+    ],
+)

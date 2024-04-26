@@ -1,0 +1,82 @@
+load("@fbcode_macros//build_defs:cpp_binary.bzl", "cpp_binary")
+
+# @autodeps
+load(
+    "@fbsource//xplat/security/lionhead:defs.bzl",
+    "EXTERNAL_USERS",
+    "Metadata",
+    "Severity",
+)
+load("//security/lionhead/harnesses:defs.bzl", "cpp_lionhead_harness")
+
+oncall("secure_pipes")
+
+cpp_binary(
+    name = "handshake_decode_fuzz_test.so",
+    srcs = [
+        "HandshakeDecodeFuzzTest.cpp",
+    ],
+    dlopen_enabled = True,
+    deps = [
+        "//common/testing/fuzztest:fuzz_main",
+        "//common/testing/fuzztest:headers",
+        "//fizz/protocol/test:test_messages",
+        "//fizz/record:record",
+        "//folly/portability:gtest",
+    ],
+)
+
+cpp_binary(
+    name = "extension_decode_fuzz_test.so",
+    srcs = [
+        "ExtensionDecodeFuzzTest.cpp",
+    ],
+    dlopen_enabled = True,
+    deps = [
+        "//common/testing/fuzztest:fuzz_main",
+        "//common/testing/fuzztest:headers",
+        "//fizz/record:record",
+        "//folly/portability:gtest",
+    ],
+)
+
+cpp_lionhead_harness(
+    name = "fizz_decode_extension",
+    srcs = ["ExtensionDecodeFuzzer.cpp"],
+    context_task = "T144013895",
+    ftest_name = ("ExtensionDecodeFuzzer", "Decode"),
+    metadata = Metadata(
+        exposure = EXTERNAL_USERS,
+        project = "oncall_secure_pipes",
+        severity_denial_of_service = Severity.FILE_SECURITY_TASK,
+        severity_service_takeover = Severity.FILE_SECURITY_TASK,
+    ),
+    deps = [
+        "fbsource//xplat/security/lionhead/utils/lib_ftest:lib",
+        "//fizz/protocol/ech:encrypted_client_hello",
+        "//fizz/record:record",
+        "//folly/io:iobuf",
+    ],
+    external_deps = [
+        "gflags",
+        "glog",
+    ],
+)
+
+cpp_lionhead_harness(
+    name = "fizz_decode_handshake",
+    srcs = ["HandshakeDecodeFuzzer.cpp"],
+    context_task = "T144013895",
+    ftest_name = ("HandshakeDecodeFuzzer", "Decode"),
+    metadata = Metadata(
+        exposure = EXTERNAL_USERS,
+        project = "oncall_secure_pipes",
+        severity_denial_of_service = Severity.FILE_SECURITY_TASK,
+        severity_service_takeover = Severity.FILE_SECURITY_TASK,
+    ),
+    deps = [
+        "fbsource//xplat/security/lionhead/utils/lib_ftest:lib",
+        "//fizz/record:record_layer",
+        "//folly/io:iobuf",
+    ],
+)

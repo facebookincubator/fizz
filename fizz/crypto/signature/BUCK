@@ -1,0 +1,14 @@
+load("@fbcode_macros//build_defs:cpp_library.bzl", "cpp_library")
+
+oncall("secure_pipes")
+
+cpp_library(
+    name = "signature",
+    headers = [
+        "Signature.h",
+    ],
+    exported_deps = [
+        "//fizz/backend:openssl",
+        "//fizz/crypto/openssl:openssl",
+    ],
+)
