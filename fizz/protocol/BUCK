@@ -143,11 +143,6 @@ cpp_library(
     headers = [
         "OpenSSLFactory.h",
     ],
-    deps = [
-        ":openssl_certificate",
-        "//fizz/crypto/exchange:hybrid_exchange",
-        "//fizz/experimental/crypto/exchange:oqs_key_exchange",
-    ],
     exported_deps = [
         ":default_factory",
         "//fizz/backend:openssl",
