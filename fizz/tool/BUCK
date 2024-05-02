@@ -68,6 +68,7 @@ cpp_binary(
         "//fizz/extensions/delegatedcred:delegated_credential_cert_manager",
         "//fizz/extensions/delegatedcred:delegated_credential_client_extension",
         "//fizz/extensions/delegatedcred:delegated_credential_factory",
+        "//fizz/extensions/delegatedcred:delegated_credential_pem_utils",
         "//fizz/extensions/delegatedcred:delegated_credential_utils",
         "//fizz/extensions/delegatedcred:self_delegated_credential",
         "//fizz/protocol:certificate_verifier",

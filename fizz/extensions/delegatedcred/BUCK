@@ -55,6 +55,26 @@ cpp_library(
 )
 
 cpp_library(
+    name = "delegated_credential_pem_utils",
+    srcs = [
+        "DelegatedCredentialPemUtils.cpp",
+    ],
+    headers = [
+        "DelegatedCredentialPemUtils.h",
+    ],
+    deps = [
+        ":delegated_credential_utils",
+        "//folly:base64",
+        "//folly:format",
+        "//folly:range",
+    ],
+    exported_deps = [
+        ":delegated_credential",
+        ":self_delegated_credential",
+    ],
+)
+
+cpp_library(
     name = "peer_delegated_credential",
     headers = [
         "PeerDelegatedCredential.h",

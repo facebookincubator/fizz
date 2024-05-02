@@ -17,6 +17,19 @@ cpp_unittest(
 )
 
 cpp_unittest(
+    name = "delegated_credential_pem_utils_test",
+    srcs = [
+        "DelegatedCredentialPemUtilsTest.cpp",
+    ],
+    deps = [
+        "//fizz/extensions/delegatedcred:delegated_credential_pem_utils",
+        "//folly:base64",
+        "//folly/portability:gmock",
+        "//folly/portability:gtest",
+    ],
+)
+
+cpp_unittest(
     name = "delegated_credential_utils_test",
     srcs = [
         "DelegatedCredentialUtilsTest.cpp",
