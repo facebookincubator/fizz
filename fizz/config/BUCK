@@ -1,18 +1,2 @@
-load("@fbsource//tools/build_defs:fb_native_wrapper.bzl", "fb_native")
-
-# Only applies when manually opted into with platforms:fizz-mobile
-fb_native.config_setting(
-    name = "mobile",
-    constraint_values = [
-        "fbsource//xplat/fizz/constraints:mobile",
-    ],
-    visibility = ["PUBLIC"],
-)
-
-fb_native.config_setting(
-    name = "xplat",
-    constraint_values = [
-        "fbsource//xplat/fizz/constraints:xplat",
-    ],
-    visibility = ["PUBLIC"],
-)
+# For now, this file needs to exist for fbcode-target-determinator to work.
+# See: https://fb.workplace.com/groups/td.users/permalink/3290301304599199/
