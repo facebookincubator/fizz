@@ -266,6 +266,7 @@ cpp_library(
         ":aead_cookie_cipher",
         "//fizz/backend:openssl",
         "//fizz/crypto:hkdf",
+        "//fizz/crypto/aead:evpcipher",
         "//fizz/protocol:types",
     ],
 )
