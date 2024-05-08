@@ -12,6 +12,7 @@ cpp_library(
         "//fizz/backend:openssl",
     ],
     exported_deps = [
+        ":cert_manager",
         ":ech_policy",
         ":psk_cache",
         "//fizz/compression:cert_decompression_manager",
