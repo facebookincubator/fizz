@@ -73,6 +73,7 @@ cpp_library(
         "Certificate.cpp",
     ],
     headers = [
+        "CertManagerBase.h",
         "Certificate.h",
     ],
     exported_deps = [

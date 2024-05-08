@@ -56,6 +56,19 @@ cpp_library(
 )
 
 cpp_library(
+    name = "cert_manager",
+    srcs = [
+        "CertManager.cpp",
+    ],
+    headers = [
+        "CertManager.h",
+    ],
+    exported_deps = [
+        "//fizz/protocol:certificate",
+    ],
+)
+
+cpp_library(
     name = "protocol",
     srcs = [
         "ClientProtocol.cpp",
