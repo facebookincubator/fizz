@@ -107,6 +107,20 @@ cpp_unittest(
     ],
 )
 
+cpp_unittest(
+    name = "delegated_credential_client_cert_manager_test",
+    srcs = [
+        "DelegatedCredentialClientCertManagerTest.cpp",
+    ],
+    deps = [
+        "//fizz/extensions/delegatedcred:delegated_credential",
+        "//fizz/extensions/delegatedcred:delegated_credential_client_cert_manager",
+        "//fizz/protocol/test:mocks",
+        "//folly/portability:gmock",
+        "//folly/portability:gtest",
+    ],
+)
+
 cpp_library(
     name = "mocks",
     headers = [

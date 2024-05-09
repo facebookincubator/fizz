@@ -141,3 +141,19 @@ cpp_library(
         "//fizz/server:cert_manager",
     ],
 )
+
+cpp_library(
+    name = "delegated_credential_client_cert_manager",
+    srcs = [
+        "DelegatedCredentialClientCertManager.cpp",
+    ],
+    headers = [
+        "DelegatedCredentialClientCertManager.h",
+    ],
+    deps = [
+        ":delegated_credential",
+    ],
+    exported_deps = [
+        "//fizz/client:cert_manager",
+    ],
+)
