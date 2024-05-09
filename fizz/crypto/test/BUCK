@@ -30,7 +30,6 @@ cpp_library(
     ],
     exported_deps = [
         "//fizz/crypto/aead:aead",
-        "//fizz/crypto/aead:evpcipher",
         "//fizz/protocol:types",
         "//folly:string",
         "//folly/io:iobuf",
