@@ -97,11 +97,11 @@ cpp_library(
     headers = [
         "ZstdCertificateCompressor.h",
     ],
+    deps = [
+        "fbsource//third-party/zstd:zstd",
+    ],
     exported_deps = [
         "//fizz/compression:certificate_compressor",
-    ],
-    external_deps = [
-        "zstd",
     ],
 )
 
@@ -113,10 +113,10 @@ cpp_library(
     headers = [
         "ZstdCertificateDecompressor.h",
     ],
+    deps = [
+        "fbsource//third-party/zstd:zstd",
+    ],
     exported_deps = [
         "//fizz/compression:certificate_compressor",
-    ],
-    external_deps = [
-        "zstd",
     ],
 )
