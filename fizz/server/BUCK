@@ -182,8 +182,6 @@ cpp_library(
         ":token_cipher",
         "//fizz/backend:openssl",
         "//fizz/crypto:hkdf",
-        "//fizz/crypto:hmac_sha256",
-        "//fizz/crypto/aead:evpcipher",
         "//fizz/record:record",
         "//folly:optional",
         "//folly/io:iobuf",
@@ -200,7 +198,6 @@ cpp_library(
         ":ticket_codec",
         "//fizz/backend:openssl",
         "//fizz/crypto:hkdf",
-        "//fizz/crypto/aead:evpcipher",
         "//fizz/protocol:types",
     ],
 )
@@ -266,7 +263,6 @@ cpp_library(
         ":aead_cookie_cipher",
         "//fizz/backend:openssl",
         "//fizz/crypto:hkdf",
-        "//fizz/crypto/aead:evpcipher",
         "//fizz/protocol:types",
     ],
 )

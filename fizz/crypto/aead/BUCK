@@ -61,17 +61,3 @@ cpp_library(
         ":aead",
     ],
 )
-
-cpp_library(
-    name = "evpcipher",
-    headers = [
-        "AESGCM128.h",
-        "AESGCM256.h",
-        "AESOCB128.h",
-        "ChaCha20Poly1305.h",
-        "OpenSSLEVPCipher.h",
-    ],
-    exported_deps = [
-        "//fizz/backend:openssl",
-    ],
-)

@@ -34,7 +34,7 @@ cpp_unittest(
         "HandshakeContextTest.cpp",
     ],
     deps = [
-        "//fizz/crypto:hmac_sha256",
+        "//fizz/backend:openssl",
         "//fizz/protocol:handshake_context",
         "//folly/portability:gtest",
     ],
@@ -46,8 +46,8 @@ cpp_unittest(
         "CertTest.cpp",
     ],
     deps = [
+        "//fizz/backend:openssl",
         "//fizz/crypto/test:TestUtil",
-        "//fizz/protocol:openssl_certificate",
         "//folly:string",
         "//folly/portability:gtest",
     ],
@@ -75,8 +75,8 @@ cpp_unittest(
         "ExporterTest.cpp",
     ],
     deps = [
+        "//fizz/backend:openssl",
         "//fizz/protocol:exporter",
-        "//fizz/protocol:openssl_factory",
         "//folly/portability:gtest",
     ],
 )
@@ -87,6 +87,7 @@ cpp_library(
         "Mocks.h",
     ],
     exported_deps = [
+        "//fizz/backend:openssl",
         "//fizz/crypto/aead/test:mocks",
         "//fizz/crypto/exchange/test:mocks",
         "//fizz/crypto/test:mocks",
@@ -95,7 +96,6 @@ cpp_library(
         "//fizz/protocol:certificate_verifier",
         "//fizz/protocol:handshake_context",
         "//fizz/protocol:key_scheduler",
-        "//fizz/protocol:openssl_factory",
         "//fizz/protocol:types",
         "//fizz/protocol/ech:decrypter",
         "//fizz/record/test:mocks",
@@ -109,7 +109,7 @@ cpp_library(
         "Utilities.h",
     ],
     exported_deps = [
-        "//fizz/protocol:openssl_certificate",
+        "//fizz/backend:openssl",
     ],
 )
 
@@ -132,7 +132,7 @@ cpp_unittest(
     ],
     supports_static_listing = False,
     deps = [
-        "//fizz/protocol:openssl_factory",
+        "//fizz/backend:openssl",
         "//fizz/test:handshake_test_lib",
     ],
 )

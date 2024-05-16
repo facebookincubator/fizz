@@ -85,19 +85,6 @@ cpp_library(
 )
 
 cpp_library(
-    name = "openssl_certificate",
-    headers = [
-        "CertUtils.h",
-        "OpenSSLPeerCertImpl.h",
-        "OpenSSLSelfCertImpl.h",
-    ],
-    exported_deps = [
-        "//fizz/backend:openssl",
-        "//fizz/crypto/signature:signature",
-    ],
-)
-
-cpp_library(
     name = "handshake_context",
     headers = [
         "HandshakeContext.h",
@@ -136,24 +123,6 @@ cpp_library(
     ],
     exported_deps = [
         ":factory",
-    ],
-)
-
-cpp_library(
-    name = "openssl_factory",
-    headers = [
-        "OpenSSLFactory.h",
-    ],
-    exported_deps = [
-        ":default_factory",
-        "//fizz/backend:openssl",
-        "//fizz/crypto:hmac_sha256",
-        "//fizz/crypto:hmac_sha384",
-        "//fizz/crypto:hmac_sha512",
-        "//fizz/crypto/aead:aegiscipher",
-        "//fizz/crypto/aead:evpcipher",
-        "//fizz/crypto/exchange:exchange",
-        "//fizz/crypto/exchange:x25519",
     ],
 )
 

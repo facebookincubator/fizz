@@ -23,7 +23,6 @@ cpp_library(
     ],
     exported_deps = [
         "//fizz/backend:openssl",
-        "//fizz/crypto:hmac_sha256",
         "//fizz/record:record",
     ],
 )

@@ -3,20 +3,6 @@ load("@fbcode_macros//build_defs:cpp_library.bzl", "cpp_library")
 oncall("secure_pipes")
 
 cpp_library(
-    name = "exchange",
-    headers = [
-        "ECCurveKeyExchange.h",
-        "OpenSSLKeyExchange.h",
-    ],
-    exported_deps = [
-        ":key_exchange",
-        "//fizz/backend:openssl",
-        "//fizz/crypto:asymmetric",
-        "//fizz/crypto/openssl:openssl",
-    ],
-)
-
-cpp_library(
     name = "x25519",
     srcs = [
         "X25519.cpp",

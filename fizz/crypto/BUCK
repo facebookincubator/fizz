@@ -3,59 +3,6 @@ load("@fbcode_macros//build_defs:cpp_library.bzl", "cpp_library")
 oncall("secure_pipes")
 
 cpp_library(
-    name = "sha",
-    headers = [
-        "Sha.h",
-    ],
-    exported_deps = [
-        "//fizz/backend:openssl",
-    ],
-)
-
-cpp_library(
-    name = "hmac_sha256",
-    headers = [
-        "Sha256.h",
-    ],
-    exported_deps = [
-        ":sha",
-        "//fizz/backend:openssl",
-    ],
-)
-
-cpp_library(
-    name = "hmac_sha384",
-    headers = [
-        "Sha384.h",
-    ],
-    exported_deps = [
-        ":sha",
-        "//fizz/backend:openssl",
-    ],
-)
-
-cpp_library(
-    name = "hmac_sha512",
-    headers = [
-        "Sha512.h",
-    ],
-    exported_deps = [
-        ":sha",
-        "//fizz/backend:openssl",
-    ],
-)
-
-cpp_library(
-    name = "asymmetric",
-    headers = [
-        "ECCurve.h",
-    ],
-    exported_deps = [
-        "//fizz/backend:openssl",
-    ],
-)
-
-cpp_library(
     name = "hkdf",
     srcs = [
         "Hkdf.cpp",

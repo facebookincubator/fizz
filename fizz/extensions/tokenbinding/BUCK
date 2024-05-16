@@ -73,7 +73,6 @@ cpp_library(
     exported_deps = [
         ":token_binding",
         "//fizz/backend:openssl",
-        "//fizz/crypto/signature:signature",
         "//fizz/record:record",
     ],
 )
