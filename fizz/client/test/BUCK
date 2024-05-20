@@ -88,6 +88,7 @@ cpp_unittest(
     deps = [
         ":mocks",
         "//fizz/client:async_fizz_client",
+        "//fizz/protocol/ech/test:test_util",
         "//fizz/protocol/test:mocks",
         "//folly/io:socket_option_map",
         "//folly/io/async/test:async_socket_test_lib",
