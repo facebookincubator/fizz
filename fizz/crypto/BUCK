@@ -3,6 +3,17 @@ load("@fbcode_macros//build_defs:cpp_library.bzl", "cpp_library")
 oncall("secure_pipes")
 
 cpp_library(
+    name = "crypto",
+    srcs = [
+    ],
+    headers = [
+        "Crypto.h",
+    ],
+    exported_deps = [
+    ],
+)
+
+cpp_library(
     name = "hkdf",
     srcs = [
         "Hkdf.cpp",
