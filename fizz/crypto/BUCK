@@ -5,11 +5,13 @@ oncall("secure_pipes")
 cpp_library(
     name = "crypto",
     srcs = [
+        "Crypto.cpp",
     ],
     headers = [
         "Crypto.h",
     ],
     exported_deps = [
+        "//folly:range",
     ],
 )
 
