@@ -91,6 +91,7 @@ cpp_library(
         "HandshakeContext-inl.h",
     ],
     exported_deps = [
+        "//fizz/backend:openssl_hasher",
         "//fizz/crypto:key_derivation",
         "//fizz/record:record",
     ],
