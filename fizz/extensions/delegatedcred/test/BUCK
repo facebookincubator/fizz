@@ -17,12 +17,12 @@ cpp_unittest(
 )
 
 cpp_unittest(
-    name = "delegated_credential_pem_utils_test",
+    name = "serialization_test",
     srcs = [
-        "DelegatedCredentialPemUtilsTest.cpp",
+        "SerializationTest.cpp",
     ],
     deps = [
-        "//fizz/extensions/delegatedcred:delegated_credential_pem_utils",
+        "//fizz/extensions/delegatedcred:serialization",
         "//folly:base64",
         "//folly/portability:gmock",
         "//folly/portability:gtest",

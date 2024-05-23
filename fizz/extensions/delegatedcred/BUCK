@@ -55,12 +55,12 @@ cpp_library(
 )
 
 cpp_library(
-    name = "delegated_credential_pem_utils",
+    name = "serialization",
     srcs = [
-        "DelegatedCredentialPemUtils.cpp",
+        "Serialization.cpp",
     ],
     headers = [
-        "DelegatedCredentialPemUtils.h",
+        "Serialization.h",
     ],
     deps = [
         ":delegated_credential_utils",
