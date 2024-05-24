@@ -21,6 +21,7 @@ cpp_library(
         "openssl/crypto/exchange/*.h",
         "openssl/crypto/signature/*.h",
     ]),
+    propagated_pp_flags = ["-DFIZZ_HAVE_OQS"],
     deps = [
         "//fizz/crypto/aead:aegiscipher",
         "//fizz/crypto/aead:cryptoutil",
