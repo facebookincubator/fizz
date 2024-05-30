@@ -23,6 +23,8 @@ cpp_unittest(
     ],
     deps = [
         ":test_util",
+        "//fizz/backend:openssl",
+        "//fizz/crypto:crypto",
         "//fizz/crypto/hpke:hpke",
         "//fizz/crypto/hpke:utils",
         "//fizz/crypto/test:TestUtil",
@@ -59,6 +61,7 @@ cpp_unittest(
     ],
     deps = [
         ":test_util",
+        "//fizz/backend:openssl",
         "//fizz/crypto/test:TestUtil",
         "//fizz/protocol/ech:decrypter",
         "//fizz/protocol/test:test_messages",
