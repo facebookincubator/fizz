@@ -1,11 +1,22 @@
 load("@fbcode_macros//build_defs:cpp_library.bzl", "cpp_library")
+load("@fbcode_macros//build_defs:export_files.bzl", "export_files")
 
 oncall("secure_pipes")
 
 cpp_library(
     name = "config",
     headers = select({
-        "DEFAULT": {"fizz-config.h": "facebook/fizz-config-fbcode.h"},
+        # @fb-only: "DEFAULT": {"fizz-config.h": "facebook/fizz-config-fbcode.h"}, 
+        "DEFAULT": {"fizz-config.h": "//:fizz-config.h"}, # @oss-only
         # @fb-only: "ovr_config//toolchain/fb:arista": {"fizz-config.h": "facebook/fizz-config-xplat.h"}, 
     }),
+)
+
+export_files(
+    files = glob([
+        "cmake/*",
+    ] + [
+        "fizz-config.h.in",
+        "CMakeListsForBuck2.txt",
+    ]),
 )
