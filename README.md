@@ -7,7 +7,7 @@
 ![mac](https://github.com/facebookincubator/fizz/workflows/mac/badge.svg?branch=main)
 ![windows](https://github.com/facebookincubator/fizz/workflows/windows/badge.svg?branch=main)
 
-Fizz is a TLS 1.3 implementation.
+Fizz is a TLS 1.3 implementation!
 
 Fizz currently supports TLS 1.3 drafts 28, 26 (both wire-compatible with the
 final specification), and 23. All major handshake modes are supported, including
