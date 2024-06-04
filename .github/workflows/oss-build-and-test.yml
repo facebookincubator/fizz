@@ -2,7 +2,7 @@ name: Buck build and test
 on: [push, pull_request, workflow_dispatch]
 jobs:
   get-toolchains-to-install:
-    runs-on: macos-latest
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
         with:
