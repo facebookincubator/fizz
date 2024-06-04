@@ -142,6 +142,10 @@ def cpp_library(
         deps += _select_os_deps(_fix_dict_deps(os_deps))
     if headers == None:
         headers = []
+    
+    if tags != None and "oss_depends_on" in tags:
+        headers = [item.replace("//:", "//folly:") if item == "//:folly-config.h" else item for item in headers]
+
     if is_select(srcs) and auto_headers == AutoHeaders.SOURCES:
         # Validate `srcs` and `auto_headers` before the config check
         base_path = native.package_name()
