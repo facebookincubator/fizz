@@ -68,7 +68,7 @@ jobs:
             brew install zig
             cd tools/libaegis
             zig build -Drelease
-            ls -al "$GITHUB_WORKSPACE"/tools/libaegis
+            echo "PKG_CONFIG_PATH=$GITHUB_WORKSPACE/.github" >> $GITHUB_ENV
           
             
         - uses: facebook/install-dotslash@latest
