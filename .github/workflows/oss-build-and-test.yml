@@ -55,6 +55,11 @@ jobs:
       needs: get-toolchains-to-install
       runs-on: macos-latest
       steps:
+        - name: Setup libaegis
+          run: |
+            brew install zig
+            pwd
+            ls -al
         - uses: actions/checkout@v4
           with:
             submodules: 'true'
@@ -83,8 +88,6 @@ jobs:
             HOMEBREW_PACKAGES=$(echo $BUCK_GRAPH | jq '[.[] | .labels] | flatten | unique | map(select(contains("third-party:homebrew:")) | sub("third-party:homebrew:"; "")) | .[] | @text')
             echo $HOMEBREW_PACKAGES
             echo $HOMEBREW_PACKAGES | xargs brew install pkg-config
-        - name: Print PKG_CONFIG_PATH
-          run: echo "PKG_CONFIG_PATH=$PKG_CONFIG_PATH"
         - name: buck2 build and test
           run: bash oss_buck_build_and_test.sh
   ubuntu-os-buck-build-and-test:
