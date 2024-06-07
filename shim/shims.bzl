@@ -136,23 +136,19 @@ def cpp_library(
         headers = None,
         private_headers = None,
         propagated_pp_flags = (),
-        **kwargs):
-    base_path = native.package_name()
-    oss_depends_on_folly = read_config("oss_depends_on", "folly", False)
-    header_base_path = base_path
-    if oss_depends_on_folly and header_base_path.startswith("folly"):
-        header_base_path = header_base_path.replace("folly/", "", 1)
-            
+        **kwargs):       
     _unused = (undefined_symbols, arch_preprocessor_flags, modular_headers, arch_compiler_flags, tags, propagated_pp_flags)  # @unused
     if os_deps:
         deps += _select_os_deps(_fix_dict_deps(os_deps))
     if headers == None:
         headers = []
     if tags != None and "oss_dependency" in tags:
+        oss_depends_on_folly = read_config("oss_depends_on", "folly", False)
         if oss_depends_on_folly:
             headers = [item.replace("//:", "//folly:") if item == "//:folly-config.h" else item for item in headers]
     if is_select(srcs) and auto_headers == AutoHeaders.SOURCES:
         # Validate `srcs` and `auto_headers` before the config check
+        base_path = native.package_name()
         fail(
             "//{}:{}: `select` srcs cannot support AutoHeaders.SOURCES".format(base_path, name),
         )
