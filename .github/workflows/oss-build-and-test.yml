@@ -68,7 +68,8 @@ jobs:
             brew install zig
             cd tools/libaegis
             zig build -Drelease
-            echo "PKG_CONFIG_PATH=$GITHUB_WORKSPACE/.github" >> $GITHUB_ENV
+            export PKG_CONFIG_PATH="$GITHUB_WORKSPACE/.github":$PKG_CONFIG_PATH
+            ls -al "$GITHUB_WORKSPACE/.github"
             pkg-config --modversion libaegis
           
             
