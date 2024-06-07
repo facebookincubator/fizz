@@ -10,6 +10,7 @@ jobs:
       - uses: facebook/install-dotslash@latest
       - name: get_buck_graph
         run: |
+          echo $PKG_CONFIG_PATH
           BUCK_GRAPH=$(./buck2 cquery //fizz/... --output-attribute '^buck.type$|^name$')
           echo "$BUCK_GRAPH" > buck_graph_results.json
         shell: bash
