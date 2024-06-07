@@ -69,6 +69,7 @@ jobs:
             cd tools/libaegis
             zig build -Drelease
             echo "PKG_CONFIG_PATH=$GITHUB_WORKSPACE/.github" >> $GITHUB_ENV
+            pkg-config --modversion libaegis
           
             
         - uses: facebook/install-dotslash@latest
