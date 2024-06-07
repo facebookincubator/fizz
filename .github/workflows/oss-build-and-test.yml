@@ -8,8 +8,6 @@ jobs:
         with:
           submodules: 'true'
       - uses: facebook/install-dotslash@latest
-      - name: Print PKG_CONFIG_PATH
-        run: echo "PKG_CONFIG_PATH=$PKG_CONFIG_PATH"
       - name: get_buck_graph
         run: |
           BUCK_GRAPH=$(./buck2 cquery //fizz/... --output-attribute '^buck.type$|^name$')
@@ -85,6 +83,8 @@ jobs:
             HOMEBREW_PACKAGES=$(echo $BUCK_GRAPH | jq '[.[] | .labels] | flatten | unique | map(select(contains("third-party:homebrew:")) | sub("third-party:homebrew:"; "")) | .[] | @text')
             echo $HOMEBREW_PACKAGES
             echo $HOMEBREW_PACKAGES | xargs brew install pkg-config
+        - name: Print PKG_CONFIG_PATH
+          run: echo "PKG_CONFIG_PATH=$PKG_CONFIG_PATH"
         - name: buck2 build and test
           run: bash oss_buck_build_and_test.sh
   ubuntu-os-buck-build-and-test:
