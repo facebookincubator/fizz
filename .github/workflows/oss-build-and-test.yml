@@ -59,7 +59,7 @@ jobs:
       steps:
         - uses: actions/checkout@v4
           with:
-            submodules: 'true'    
+            submodules: 'true'
         - uses: facebook/install-dotslash@latest
         - name: Install Rust toolchain
           if: needs.get-toolchains-to-install.outputs.uses_rust == 'true'
