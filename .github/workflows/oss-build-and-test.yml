@@ -58,8 +58,8 @@ jobs:
         - name: Setup libaegis
           run: |
             brew install zig
-            pwd
-            ls -al
+            mkdir /Users/runner/work/lib
+            ls /Users/runner/work/lib
         - uses: actions/checkout@v4
           with:
             submodules: 'true'
