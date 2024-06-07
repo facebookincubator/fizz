@@ -55,14 +55,17 @@ jobs:
       needs: get-toolchains-to-install
       runs-on: macos-latest
       steps:
-        - name: Setup libaegis
-          run: |
-            brew install zig
-            mkdir /Users/runner/work/lib
-            ls /Users/runner/work/lib
         - uses: actions/checkout@v4
           with:
             submodules: 'true'
+        - name: Checkout libaegis repo
+          uses: actions/checkout@v4
+          with:
+            repository: jedisct1/libaegis
+            path: tools
+        - name: Setup libaegis
+          run: |
+            ls -al
         - uses: facebook/install-dotslash@latest
         - name: Install Rust toolchain
           if: needs.get-toolchains-to-install.outputs.uses_rust == 'true'
