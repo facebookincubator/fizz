@@ -59,21 +59,7 @@ jobs:
       steps:
         - uses: actions/checkout@v4
           with:
-            submodules: 'true'
-        - name: Checkout libaegis repo
-          uses: actions/checkout@v4
-          with:
-            repository: jedisct1/libaegis
-            path: tools/libaegis
-        - name: Setup libaegis
-          run: |
-            brew install zig
-            cd tools/libaegis
-            zig build -Drelease
-            ls -al "$GITHUB_WORKSPACE/.github"
-            pkg-config --modversion libaegis
-          
-            
+            submodules: 'true'    
         - uses: facebook/install-dotslash@latest
         - name: Install Rust toolchain
           if: needs.get-toolchains-to-install.outputs.uses_rust == 'true'
@@ -99,9 +85,17 @@ jobs:
             HOMEBREW_PACKAGES=$(echo $BUCK_GRAPH | jq '[.[] | .labels] | flatten | unique | map(select(contains("third-party:homebrew:")) | sub("third-party:homebrew:"; "")) | .[] | @text')
             echo $HOMEBREW_PACKAGES
             echo $HOMEBREW_PACKAGES | xargs brew install pkg-config
+        - name: Setup libaegis
+          uses: actions/checkout@v4
+          with:
+            repository: jedisct1/libaegis
+            path: tools/libaegis
+        - run: |
+            brew install zig
+            cd tools/libaegis
+            zig build -Drelease
         - name: buck2 build and test
           run: |
-            pkg-config --modversion libaegis
             bash oss_buck_build_and_test.sh
   ubuntu-os-buck-build-and-test:
       needs: get-toolchains-to-install
