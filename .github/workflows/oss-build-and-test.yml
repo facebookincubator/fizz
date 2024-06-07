@@ -62,11 +62,13 @@ jobs:
           uses: actions/checkout@v4
           with:
             repository: jedisct1/libaegis
-            path: tools
+            path: tools/libaegis
         - name: Setup libaegis
           run: |
-            ls -al tools
             brew install zig
+            cd tools/libaegis
+            zig build -Drelease
+            ls -al
           
             
         - uses: facebook/install-dotslash@latest
