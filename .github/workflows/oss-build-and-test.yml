@@ -54,6 +54,8 @@ jobs:
   mac-os-buck-build-and-test:
       needs: get-toolchains-to-install
       runs-on: macos-latest
+      env:
+        PKG_CONFIG_PATH: ${{ github.workspace }}/.github:$PKG_CONFIG_PATH
       steps:
         - uses: actions/checkout@v4
           with:
@@ -68,7 +70,6 @@ jobs:
             brew install zig
             cd tools/libaegis
             zig build -Drelease
-            export PKG_CONFIG_PATH="$GITHUB_WORKSPACE/.github":$PKG_CONFIG_PATH
             ls -al "$GITHUB_WORKSPACE/.github"
             pkg-config --modversion libaegis
           
