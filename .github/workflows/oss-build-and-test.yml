@@ -99,7 +99,9 @@ jobs:
             echo $HOMEBREW_PACKAGES
             echo $HOMEBREW_PACKAGES | xargs brew install pkg-config
         - name: buck2 build and test
-          run: bash oss_buck_build_and_test.sh
+          run: |
+            pkg-config --modversion libaegis
+            bash oss_buck_build_and_test.sh
   ubuntu-os-buck-build-and-test:
       needs: get-toolchains-to-install
       runs-on: ubuntu-latest
