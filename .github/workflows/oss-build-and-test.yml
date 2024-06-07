@@ -68,7 +68,7 @@ jobs:
             brew install zig
             cd tools/libaegis
             zig build -Drelease
-            ls -al
+            ls -al "$GITHUB_WORKSPACE"/tools/libaegis
           
             
         - uses: facebook/install-dotslash@latest
