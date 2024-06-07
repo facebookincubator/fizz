@@ -65,7 +65,10 @@ jobs:
             path: tools
         - name: Setup libaegis
           run: |
-            ls -al
+            ls -al tools
+            brew install zig
+          
+            
         - uses: facebook/install-dotslash@latest
         - name: Install Rust toolchain
           if: needs.get-toolchains-to-install.outputs.uses_rust == 'true'
