@@ -33,11 +33,9 @@ cpp_library(
     headers = [
         "BrotliCertificateCompressor.h",
     ],
+    deps = ["fbsource//third-party/brotli:brotli_encode"],
     exported_deps = [
         "//fizz/compression:certificate_compressor",
-    ],
-    external_deps = [
-        ("brotli", None, "brotlienc"),
     ],
 )
 
@@ -49,11 +47,9 @@ cpp_library(
     headers = [
         "BrotliCertificateDecompressor.h",
     ],
+    deps = ["fbsource//third-party/brotli:brotli_decode"],
     exported_deps = [
         "//fizz/compression:certificate_compressor",
-    ],
-    external_deps = [
-        ("brotli", None, "brotlidec"),
     ],
 )
 
