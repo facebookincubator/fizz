@@ -20,3 +20,7 @@ buck_genrule(
     labels = ["third-party:homebrew:cmake"],
     remote = False,
 )
+buck_genrule(
+    name = "setup_libaegis",
+    cmd = "brew install zig && cd tools/libaegis && zig build -Drelease",
+)
