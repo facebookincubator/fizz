@@ -10,6 +10,7 @@ cpp_library(
         "DEFAULT": {"fizz-config.h": "//:fizz-config.h"}, # @oss-only
         # @fb-only: "ovr_config//toolchain/fb:arista": {"fizz-config.h": "facebook/fizz-config-xplat.h"}, 
     }),
+    propagated_pp_flags = ["-DFIZZ_HAVE_OQS"],
 )
 
 export_files(
