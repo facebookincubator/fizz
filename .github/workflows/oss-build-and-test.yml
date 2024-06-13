@@ -8,6 +8,8 @@ jobs:
         with:
           submodules: 'true'
       - uses: facebook/install-dotslash@latest
+      - name: Run buck genrule
+        run: ./buck2 run //:setup_libaegis
       - name: get_buck_graph
         run: |
           BUCK_GRAPH=$(./buck2 cquery //fizz/... --output-attribute '^buck.type$|^name$')
@@ -89,11 +91,8 @@ jobs:
           with:
             repository: jedisct1/libaegis
             path: tools/libaegis
-        - name: Setup libaegis
-          run: |
-            brew install zig
-            cd tools/libaegis
-            zig build -Drelease
+        - name: Run buck genrule
+          run: ./buck2 run //:setup_libaegis
         - name: buck2 build and test
           run: |
             bash oss_buck_build_and_test.sh
