@@ -22,5 +22,6 @@ buck_genrule(
 )
 buck_genrule(
     name = "setup_libaegis",
+    out = "setup_libaegis",
     cmd = "brew install zig && cd tools/libaegis && zig build -Drelease",
 )
