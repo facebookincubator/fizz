@@ -9,7 +9,7 @@ jobs:
           submodules: 'true'
       - uses: facebook/install-dotslash@latest
       - name: Run buck genrule
-        run: ./buck2 run //:setup_libaegis
+        run: ./buck2 build //:setup_libaegis
       - name: get_buck_graph
         run: |
           BUCK_GRAPH=$(./buck2 cquery //fizz/... --output-attribute '^buck.type$|^name$')
