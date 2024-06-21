@@ -114,10 +114,6 @@ jobs:
             sudo apt-get install cmake llvm cppcheck python3-pip
             sudo pip3 install conan==1.*
           shell: bash
-        - run: |
-            sudo apt-get update
-            sudo apt install -y libfmt-dev libsodium-dev libunwind-dev libgoogle-glog-dev
-          shell: bash
         - name: Install OCaml toolchain
           if: needs.get-toolchains-to-install.outputs.uses_ocaml == 'true'
           uses: ocaml/setup-ocaml@v2
@@ -128,6 +124,21 @@ jobs:
           uses: actions/setup-python@v5
           with:
             python-version: '3.10'
+        - run: |
+            sudo apt-get update
+            sudo apt install -y libfmt-dev libsodium-dev libunwind-dev libgoogle-glog-dev
+            snap install zig --classic --beta
+          shell: bash
+        - name: Checkout libaegis
+          uses: actions/checkout@v4
+          with:
+            repository: jedisct1/libaegis
+            path: tools/libaegis
+        - name: Setup libaegis
+          run: |
+            brew install zig
+            cd tools/libaegis
+            zig build -Drelease
         - name: buck2 build and test
           run: bash oss_buck_build_and_test.sh
   windows-os-buck-build-and-test:
