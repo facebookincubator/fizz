@@ -116,7 +116,7 @@ jobs:
           shell: bash
         - run: |
             sudo apt-get update
-            sudo apt install -y libfmt-dev libsodium-dev libgoogle-glog-dev
+            sudo apt install -y libfmt-dev libsodium-dev libunwind-dev libgoogle-glog-dev
           shell: bash
         - name: Install OCaml toolchain
           if: needs.get-toolchains-to-install.outputs.uses_ocaml == 'true'
