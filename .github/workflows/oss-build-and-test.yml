@@ -117,7 +117,7 @@ jobs:
         - run: |
             sudo apt-get update
             sudo apt install -y libfmt-dev libsodium-dev
-            conan install -r conancenter glog/<glog-version>@
+            conan install -r conancenter glog/0.7.1@
           shell: bash
         - name: Install OCaml toolchain
           if: needs.get-toolchains-to-install.outputs.uses_ocaml == 'true'
