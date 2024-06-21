@@ -104,7 +104,9 @@ jobs:
         - uses: actions/checkout@v4
           with:
             submodules: 'true'
-        - run: sudo apt-get update
+        - run: |
+            sudo apt-get update
+            sudo apt install libfmt-dev
           shell: bash
         - uses: facebook/install-dotslash@latest
         - name: Install Rust toolchain
