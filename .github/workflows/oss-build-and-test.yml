@@ -127,7 +127,7 @@ jobs:
         - run: |
             sudo apt-get update
             sudo apt install -y libfmt-dev libsodium-dev libunwind-dev libgoogle-glog-dev
-            snap install zig --classic --beta
+            sudo snap install zig --classic --beta
           shell: bash
         - name: Checkout libaegis
           uses: actions/checkout@v4
