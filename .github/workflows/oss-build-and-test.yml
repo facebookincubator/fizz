@@ -106,7 +106,7 @@ jobs:
             submodules: 'true'
         - run: |
             sudo apt-get update
-            sudo apt install libfmt-dev libsodium-dev
+            sudo apt install libfmt-dev libsodium-dev libgoogle-glog-dev
           shell: bash
         - uses: facebook/install-dotslash@latest
         - name: Install Rust toolchain
