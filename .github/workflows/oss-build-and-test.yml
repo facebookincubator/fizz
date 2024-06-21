@@ -104,10 +104,6 @@ jobs:
         - uses: actions/checkout@v4
           with:
             submodules: 'true'
-        - run: |
-            sudo apt-get update
-            sudo apt install -y libfmt-dev libsodium-dev libgoogle-glog-dev
-          shell: bash
         - uses: facebook/install-dotslash@latest
         - name: Install Rust toolchain
           if: needs.get-toolchains-to-install.outputs.uses_rust == 'true'
@@ -117,6 +113,11 @@ jobs:
           run: |
             sudo apt-get install cmake llvm cppcheck python3-pip
             sudo pip3 install conan==1.*
+          shell: bash
+        - run: |
+            sudo apt-get update
+            sudo apt install -y libfmt-dev libsodium-dev
+            conan install -r conancenter glog/<glog-version>@
           shell: bash
         - name: Install OCaml toolchain
           if: needs.get-toolchains-to-install.outputs.uses_ocaml == 'true'
