@@ -100,6 +100,8 @@ jobs:
   ubuntu-os-buck-build-and-test:
       needs: get-toolchains-to-install
       runs-on: ubuntu-latest
+      env:
+        PKG_CONFIG_PATH: ${{ github.workspace }}/.github:$PKG_CONFIG_PATH
       steps:
         - uses: actions/checkout@v4
           with:
