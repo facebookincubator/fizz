@@ -128,7 +128,7 @@ jobs:
             python-version: '3.10'
         - run: |
             sudo apt-get update
-            sudo apt install -y libfmt-dev libsodium-dev libunwind-dev libgoogle-glog-dev libevent-dev libdouble-conversion-dev build-essential libc6-dev
+            sudo apt install -y libfmt-dev libsodium-dev libunwind-dev libgoogle-glog-dev libevent-dev libdouble-conversion-dev build-essential libc6-dev libboost-all-dev
           shell: bash
         - name: Checkout libaegis
           uses: actions/checkout@v4
