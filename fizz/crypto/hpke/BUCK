@@ -20,6 +20,7 @@ cpp_library(
         "//fizz/crypto/aead:aead",
         "//fizz/crypto/exchange:key_exchange",
         "//fizz/protocol:types",
+        "//folly:optional",
     ],
 )
 
