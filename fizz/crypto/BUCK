@@ -12,6 +12,7 @@ cpp_library(
     ],
     exported_deps = [
         "//folly:range",
+        "//folly/io:iobuf",
     ],
 )
 
@@ -38,8 +39,8 @@ cpp_library(
         "KeyDerivation.h",
     ],
     exported_deps = [
+        ":crypto",
         ":hkdf",
-        "//fizz/backend:openssl_hasher",
         "//fizz/record:record",
     ],
 )

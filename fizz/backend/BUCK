@@ -22,6 +22,7 @@ cpp_library(
         "openssl/crypto/signature/*.h",
     ]),
     deps = [
+        "//fizz/crypto:hkdf",
         "//fizz/crypto/aead:aegiscipher",
         "//fizz/crypto/aead:cryptoutil",
         "//fizz/crypto/exchange:hybrid_exchange",
