@@ -25,7 +25,7 @@ cpp_library(
         "Hkdf.h",
     ],
     exported_deps = [
-        "//fizz/backend:openssl_hasher",
+        ":crypto",
         "//folly/io:iobuf",
     ],
 )
