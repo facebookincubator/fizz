@@ -46,6 +46,16 @@ cpp_library(
 )
 
 cpp_library(
+    name = "hasher",
+    headers = [
+        "Hasher.h",
+    ],
+    exported_deps = [
+        "//folly/io:iobuf",
+    ],
+)
+
+cpp_library(
     name = "random",
     headers = [
         "RandomGenerator.h",

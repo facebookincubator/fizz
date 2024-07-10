@@ -33,6 +33,7 @@ cpp_library(
         "//fizz:config",
         "//fizz/compression:certificate_compressor",
         "//fizz/crypto:crypto",
+        "//fizz/crypto:hasher",
         "//fizz/crypto:hkdf",
         "//fizz/crypto/aead:aead",
         "//fizz/crypto/aead:iobuf",
@@ -77,6 +78,7 @@ cpp_library(
     ],
     exported_deps = [
         "//fizz/crypto:crypto",
+        "//fizz/crypto:hasher",
         "//folly:range",
         "//folly/io:iobuf",
         "//folly/ssl:openssl_hash",
