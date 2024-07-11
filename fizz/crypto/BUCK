@@ -47,8 +47,16 @@ cpp_library(
 
 cpp_library(
     name = "hasher",
+    srcs = [
+        "Hasher.cpp",
+        "Hmac.cpp",
+    ],
     headers = [
         "Hasher.h",
+        "Hmac.h",
+    ],
+    deps = [
+        ":crypto",
     ],
     exported_deps = [
         "//folly/io:iobuf",

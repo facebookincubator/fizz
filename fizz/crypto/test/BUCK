@@ -15,6 +15,26 @@ cpp_library(
 )
 
 cpp_library(
+    name = "HmacTest",
+    srcs = [
+        "HmacTest.cpp",
+    ],
+    headers = [
+        "HmacTest.h",
+    ],
+    deps = [
+        "//fizz/crypto:crypto",
+        "//folly:string",
+        "//folly/io:iobuf",
+        "//folly/portability:gtest",
+    ],
+    exported_deps = [
+        "//fizz/crypto:hasher",
+        "//fizz/protocol:types",
+    ],
+)
+
+cpp_library(
     name = "TestUtil",
     srcs = [
         "TestUtil.cpp",

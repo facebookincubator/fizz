@@ -3,6 +3,18 @@ load("@fbcode_macros//build_defs:cpp_unittest.bzl", "cpp_unittest")
 oncall("secure_pipes")
 
 cpp_unittest(
+    name = "hmac_test",
+    srcs = [
+        "Hmac.cpp",
+    ],
+    deps = [
+        "//fizz/backend:openssl",
+        "//fizz/crypto/test:HmacTest",
+        "//folly/portability:gtest",
+    ],
+)
+
+cpp_unittest(
     name = "key_utils",
     srcs = [
         "OpenSSLKeyUtilsTest.cpp",
