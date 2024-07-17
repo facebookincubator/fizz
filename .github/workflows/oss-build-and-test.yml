@@ -101,7 +101,7 @@ jobs:
       needs: get-toolchains-to-install
       runs-on: ubuntu-latest
       env:
-        PKG_CONFIG_PATH: ${{ github.workspace }}/tools/liboqs/build/src
+        PKG_CONFIG_PATH: ${{ github.workspace }}/tools/liboqs/build/src:${{ github.workspace }}/.github
       steps:
         - uses: actions/checkout@v4
           with:
@@ -140,7 +140,6 @@ jobs:
             cd tools/liboqs
             mkdir build && cd build
             cmake -GNinja ..
-            ls ${{ github.workspace }}/tools/liboqs/build/src
         - name: buck2 build and test
           run: bash oss_buck_build_and_test.sh
   windows-os-buck-build-and-test:
