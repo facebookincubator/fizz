@@ -101,7 +101,7 @@ jobs:
       needs: get-toolchains-to-install
       runs-on: ubuntu-latest
       env:
-        PKG_CONFIG_PATH: ${{ github.workspace }}/.github:$PKG_CONFIG_PATH
+        PKG_CONFIG_PATH: ${{ github.workspace }}/tools/liboqs/build/src
       steps:
         - uses: actions/checkout@v4
           with:
