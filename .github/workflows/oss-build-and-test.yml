@@ -133,7 +133,7 @@ jobs:
             echo $UBUNTU_PACKAGES | xargs sudo apt-get install -y
         - run: |
             sudo apt-get update
-            sudo apt install -y libdouble-conversion-dev build-essential libc6-dev
+            sudo apt install -y libfmt-dev build-essential libc6-dev
         - name: Checkout liboqs
           uses: actions/checkout@v4
           with:
