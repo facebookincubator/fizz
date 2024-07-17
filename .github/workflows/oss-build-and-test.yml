@@ -140,9 +140,7 @@ jobs:
             cd tools/liboqs
             mkdir build && cd build
             cmake -GNinja ..
-            ninja
-            pwd
-            ls
+            pwd ${{ github.workspace }}
             ls ${{ github.workspace }}
         - name: buck2 build and test
           run: bash oss_buck_build_and_test.sh
