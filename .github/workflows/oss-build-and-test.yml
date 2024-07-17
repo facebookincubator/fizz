@@ -129,6 +129,18 @@ jobs:
         - run: |
             sudo apt-get update
             sudo apt install -y libfmt-dev libsodium-dev libunwind-dev libgoogle-glog-dev libevent-dev libdouble-conversion-dev build-essential libc6-dev libboost-all-dev
+        - name: Checkout liboqs
+          uses: actions/checkout@v4
+          with:
+            repository: open-quantum-safe/liboqs
+            path: tools/liboqs
+        - name: Setup liboqs
+          run: |
+            sudo apt install astyle cmake gcc ninja-build libssl-dev python3-pytest python3-pytest-xdist unzip xsltproc doxygen graphviz python3-yaml valgrind
+            cd tools/liboqs
+            mkdir build && cd build
+            cmake -GNinja ..
+            ninja
         - name: buck2 build and test
           run: bash oss_buck_build_and_test.sh
   windows-os-buck-build-and-test:
