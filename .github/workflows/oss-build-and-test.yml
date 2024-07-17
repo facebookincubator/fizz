@@ -128,7 +128,7 @@ jobs:
             python-version: '3.10'
         - run: |
             sudo apt-get update
-            sudo apt install -y libfmt-dev libsodium-dev libgoogle-glog-dev
+            sudo apt install -y libunwind-dev libfmt-dev libsodium-dev libgoogle-glog-dev
         - name: buck2 build and test
           run: bash oss_buck_build_and_test.sh
   windows-os-buck-build-and-test:
