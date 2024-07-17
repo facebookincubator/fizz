@@ -130,11 +130,10 @@ jobs:
           run: |
             BUCK_GRAPH=$(./buck2 cquery "attrregexfilter(labels, 'third-party:ubuntu:', deps(//fizz/...))" --json --output-attribute=labels)
             UBUNTU_PACKAGES=$(echo $BUCK_GRAPH | jq '[.[] | .labels] | flatten | unique | map(select(contains("third-party:ubuntu:")) | sub("third-party:ubuntu:"; "")) | .[] | @text')
-            echo $UBUNTU_PACKAGES
             echo $UBUNTU_PACKAGES | xargs sudo apt-get install -y
         - run: |
             sudo apt-get update
-            sudo apt install -y libfmt-dev libdouble-conversion-dev build-essential libc6-dev
+            sudo apt install -y libdouble-conversion-dev build-essential libc6-dev
         - name: Checkout liboqs
           uses: actions/checkout@v4
           with:
