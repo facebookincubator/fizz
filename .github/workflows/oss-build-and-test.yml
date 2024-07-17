@@ -134,7 +134,7 @@ jobs:
             echo $UBUNTU_PACKAGES | xargs sudo apt-get install -y
         - run: |
             sudo apt-get update
-            sudo apt install -y libfmt-dev libsodium-dev libunwind-dev libgoogle-glog-dev libevent-dev libdouble-conversion-dev build-essential libc6-dev libboost-all-dev
+            sudo apt install -y libfmt-dev libdouble-conversion-dev build-essential libc6-dev
         - name: Checkout liboqs
           uses: actions/checkout@v4
           with:
