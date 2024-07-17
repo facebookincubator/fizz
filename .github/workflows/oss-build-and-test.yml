@@ -140,8 +140,7 @@ jobs:
             cd tools/liboqs
             mkdir build && cd build
             cmake -GNinja ..
-            pwd ${{ github.workspace }}
-            ls ${{ github.workspace }}
+            ls ${{ github.workspace }}/tools/liboqs/build/src
         - name: buck2 build and test
           run: bash oss_buck_build_and_test.sh
   windows-os-buck-build-and-test:
