@@ -7,6 +7,7 @@ LIBS = [
     (
         prebuilt_cpp_library(
             name = lib,
+            visibility = ["PUBLIC"],
         )
     )
     for lib in LIBS
