@@ -1,11 +1,12 @@
 load("//tools/build_defs:fb_xplat_prebuilt_cxx_library.bzl", "fb_xplat_prebuilt_cxx_library")
+load("@shim//build_defs:prebuilt_cpp_library.bzl", "prebuilt_cpp_library")
 
 LIBS = [
     "advapi32.lib"
 ]
 [
     (
-        fb_xplat_prebuilt_cxx_library(
+        prebuilt_cpp_library(
             name = lib,
         )
     )
