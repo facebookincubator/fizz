@@ -14,10 +14,14 @@ cpp_library(
 )
 
 export_files(
-    files = glob([
-        "cmake/*",
-    ] + [
-        "fizz-config.h.in",
+    files = [
+        "cmake/CheckAtomic.cmake",
+        "cmake/FindGMock.cmake",
+        "cmake/FindLibevent.cmake",
+        "cmake/FindLibrt.cmake",
+        "cmake/fizz-config.cmake.in",
+        "cmake/FizzOptions.cmake",
         "CMakeListsForBuck2.txt",
-    ]),
+        "fizz-config.h.in",
+    ],
 )
