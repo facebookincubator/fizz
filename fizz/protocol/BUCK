@@ -128,29 +128,6 @@ cpp_library(
 )
 
 cpp_library(
-    name = "multi_backend_factory",
-    srcs = [
-        "MultiBackendFactory.cpp",
-    ],
-    headers = [
-        "MultiBackendFactory.h",
-    ],
-    deps = [
-        "//fizz:config",
-        "//fizz/crypto:hkdf",
-        "//fizz/crypto/aead:aegiscipher",
-        "//fizz/crypto/exchange:hybrid_exchange",
-        "//fizz/experimental/crypto/exchange:oqs_key_exchange",
-    ],
-    exported_deps = [
-        ":default_factory",
-        "//fizz/backend:openssl",
-        "//fizz/backend:openssl_hasher",
-        "//fizz/crypto/exchange:x25519",
-    ],
-)
-
-cpp_library(
     name = "types",
     srcs = [
         "Types.cpp",
