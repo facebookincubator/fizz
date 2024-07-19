@@ -99,6 +99,9 @@ cpp_library(
 
 cpp_library(
     name = "factory",
+    srcs = [
+        "Factory.cpp",
+    ],
     headers = [
         "Factory.h",
     ],
@@ -123,7 +126,7 @@ cpp_library(
         "DefaultFactory.h",
     ],
     exported_deps = [
-        ":factory",
+        "//fizz/backend:openssl",
     ],
 )
 
