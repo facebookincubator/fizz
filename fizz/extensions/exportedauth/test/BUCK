@@ -11,6 +11,7 @@ cpp_unittest(
         "//fizz/backend:openssl",
         "//fizz/crypto/test:TestUtil",
         "//fizz/extensions/exportedauth:exported_authenticator",
+        "//fizz/protocol:default_factory",
         "//fizz/protocol/test:mocks",
         "//fizz/protocol/test:test_messages",
         "//fizz/record:record",

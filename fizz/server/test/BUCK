@@ -11,6 +11,7 @@ cpp_library(
     exported_deps = [
         "//fizz/backend:openssl",
         "//fizz/protocol:default_certificate_verifier",
+        "//fizz/protocol:default_factory",
         "//fizz/protocol/test:utilities",
         "//fizz/server:async_fizz_server",
         "//fizz/server:ticket_types",
@@ -133,6 +134,7 @@ cpp_unittest(
     deps = [
         ":mocks",
         "//fizz/crypto/test:TestUtil",
+        "//fizz/protocol:default_factory",
         "//fizz/protocol/test:mocks",
         "//fizz/server:ticket_codec",
         "//folly/io/async/ssl:openssl_transport_certificate",

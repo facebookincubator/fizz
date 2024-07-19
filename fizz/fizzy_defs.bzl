@@ -23,7 +23,7 @@ def fizzy_library(name):
             ":client_fizz_client_context",
             ":client_fizz_client",
             ":client_psk_serialization",
-            ":backend_openssl",
+            ":protocol_default_factory",
             "fbsource//third-party/boost:boost",
         ],
     )

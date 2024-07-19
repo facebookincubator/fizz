@@ -69,7 +69,7 @@ cpp_library(
         "FizzServerContext.h",
     ],
     deps = [
-        "//fizz/backend:openssl",
+        "//fizz/protocol:default_factory",
     ],
     exported_deps = [
         ":cert_manager",

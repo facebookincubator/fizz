@@ -117,7 +117,7 @@ cpp_library(
     ],
     exported_deps = [
         ":delegated_credential",
-        "//fizz/backend:openssl",
+        "//fizz/protocol:default_factory",
     ],
 )
 

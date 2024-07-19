@@ -27,6 +27,7 @@ cpp_library(
         "//fizz/backend:openssl",
         "//fizz/protocol:certificate",
         "//fizz/protocol:certificate_verifier",
+        "//fizz/protocol:default_factory",
         "//fizz/record:record",
         "//folly:range",
     ],

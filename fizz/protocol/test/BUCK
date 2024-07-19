@@ -75,7 +75,7 @@ cpp_unittest(
         "ExporterTest.cpp",
     ],
     deps = [
-        "//fizz/backend:openssl",
+        "//fizz/protocol:default_factory",
         "//fizz/protocol:exporter",
         "//folly/portability:gtest",
     ],
@@ -87,13 +87,13 @@ cpp_library(
         "Mocks.h",
     ],
     exported_deps = [
-        "//fizz/backend:openssl",
         "//fizz/crypto/aead/test:mocks",
         "//fizz/crypto/exchange/test:mocks",
         "//fizz/crypto/test:mocks",
         "//fizz/protocol:async_fizz_base",
         "//fizz/protocol:certificate",
         "//fizz/protocol:certificate_verifier",
+        "//fizz/protocol:default_factory",
         "//fizz/protocol:handshake_context",
         "//fizz/protocol:key_scheduler",
         "//fizz/protocol:types",

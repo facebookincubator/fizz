@@ -11,7 +11,10 @@ cpp_library(
         "ExportedAuthenticator.h",
         "Util.h",
     ],
-    deps = ["//fizz/backend:openssl"],
+    deps = [
+        "//fizz/backend:openssl",
+        "//fizz/protocol:default_factory",
+    ],
     exported_deps = [
         "//fizz/crypto:key_derivation",
         "//fizz/protocol:async_fizz_base",
