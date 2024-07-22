@@ -21,7 +21,7 @@ cpp_unittest(
         "//fizz/protocol/ech/test:test_util",
         "//fizz/protocol/test:matchers",
         "//fizz/protocol/test:protocol_test",
-        "//fizz/protocol/test:test_messages",
+        "//fizz/protocol/test:test_util",
         "//fizz/record/test:mocks",
         "//folly/portability:gmock",
         "//folly/portability:gtest",

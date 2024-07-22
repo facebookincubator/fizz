@@ -74,7 +74,7 @@ cpp_binary(
         "//fizz/protocol:certificate_verifier",
         "//fizz/protocol:default_certificate_verifier",
         "//fizz/protocol:default_factory",
-        "//fizz/protocol/test:utilities",
+        "//fizz/protocol/test:cert_util",
         "//fizz/server:async_fizz_server",
         "//fizz/server:sliding_bloom_replay_cache",
         "//fizz/server:ticket_types",

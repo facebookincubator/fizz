@@ -21,7 +21,7 @@ cpp_unittest(
         "DefaultCertificateVerifierTest.cpp",
     ],
     deps = [
-        ":utilities",
+        ":cert_util",
         "//fizz/protocol:default_certificate_verifier",
         "//folly/portability:gtest",
         "//folly/ssl:openssl_cert_utils",
@@ -104,9 +104,9 @@ cpp_library(
 )
 
 cpp_library(
-    name = "utilities",
+    name = "cert_util",
     headers = [
-        "Utilities.h",
+        "CertUtil.h",
     ],
     exported_deps = [
         "//fizz/backend:openssl",
@@ -153,12 +153,11 @@ cpp_library(
 )
 
 cpp_library(
-    name = "test_messages",
+    name = "test_util",
     headers = [
-        "TestMessages.h",
+        "TestUtil.h",
     ],
     exported_deps = [
-        ":protocol_test",
         "//fizz/protocol:params",
         "//fizz/record:record",
     ],
