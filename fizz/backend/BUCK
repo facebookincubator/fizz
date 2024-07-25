@@ -5,7 +5,6 @@ oncall("secure_pipes")
 cpp_library(
     name = "openssl",
     srcs = [
-        "openssl/OpenSSLFactory.cpp",
         "openssl/certificate/CertUtils.cpp",
         "openssl/crypto/OpenSSLKeyUtils.cpp",
         "openssl/crypto/aead/OpenSSLEVPCipher.cpp",
@@ -15,7 +14,6 @@ cpp_library(
     headers = [
         "openssl/Hasher.h",
         "openssl/OpenSSL.h",
-        "openssl/OpenSSLFactory.h",
         "openssl/Properties.h",
         "openssl/certificate/CertUtils.h",
         "openssl/certificate/CertUtils-inl.h",
@@ -43,10 +41,7 @@ cpp_library(
         "openssl/crypto/signature/Signature-inl.h",
     ],
     deps = [
-        "//fizz/crypto/aead:aegiscipher",
         "//fizz/crypto/aead:cryptoutil",
-        "//fizz/crypto/exchange:hybrid_exchange",
-        "//fizz/experimental/crypto/exchange:oqs_key_exchange",
         "//folly:scope_guard",
         "//folly/lang:checked_math",
     ],
@@ -59,9 +54,7 @@ cpp_library(
         "//fizz/crypto/aead:aead",
         "//fizz/crypto/aead:iobuf",
         "//fizz/crypto/exchange:key_exchange",
-        "//fizz/crypto/exchange:x25519",
         "//fizz/protocol:certificate",
-        "//fizz/protocol:factory",
         "//fizz/record:record",
         "//folly:conv",
         "//folly:memory",

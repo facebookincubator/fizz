@@ -126,13 +126,13 @@ cpp_library(
 )
 
 cpp_unittest(
-    name = "openssl_factory_test",
+    name = "multi_backend_factory_test",
     srcs = [
-        "OpenSSLFactoryTest.cpp",
+        "MultiBackendFactoryTest.cpp",
     ],
     supports_static_listing = False,
     deps = [
-        "//fizz/backend:openssl",
+        "//fizz/protocol:multi_backend_factory",
         "//fizz/test:handshake_test_lib",
     ],
 )
