@@ -13,6 +13,7 @@ load(
     "WATCHOS",
     "WINDOWS",
 )
+load("@fbsource//xplat/pfh/Infra_Networking_Core:DEFS.bzl", "Infra_Networking_Core")
 
 # Fizz is a cross platform library used across fbcode, fbobjc, fbandroid, etc.
 #
@@ -84,6 +85,7 @@ def fizz_cxx_library(
         exported_headers = [],
         enable_static_variant = True,
         header_namespace = "",
+        feature = None,
         srcs = None,
         **kwargs):
     """Translate a simpler declartion into the more complete library target"""
@@ -91,6 +93,8 @@ def fizz_cxx_library(
         apple_sdks = DEFAULT_APPLE_SDKS
     if platforms == None:
         platforms = DEFAULT_PLATFORMS
+    if feature == None:
+        feature = Infra_Networking_Core
 
     windows_compiler_flags = WINDOWS_CLANG_CXX_FLAGS if read_bool("fizz", "enable_sse4", True) else WINDOWS_CLANG_CXX_FLAGS_NO_SSE4
 
@@ -104,6 +108,7 @@ def fizz_cxx_library(
     fb_xplat_cxx_library(
         name = name,
         srcs = native.glob(srcs) if srcs else [],
+        feature = feature,
         enable_static_variant = enable_static_variant,
         platforms = platforms,
         apple_sdks = apple_sdks,
