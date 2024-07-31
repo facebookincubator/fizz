@@ -1,3 +1,4 @@
+# (c) Meta Platforms, Inc. and affiliates. Confidential and proprietary.
 FIZZ_EXTENSIONS_TOKENBINDING_TOKEN_BINDING_CONTEXT_HEADERS = [
     "extensions/tokenbinding/TokenBindingContext.h",
 ]

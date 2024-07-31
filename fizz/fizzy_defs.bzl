@@ -1,3 +1,4 @@
+# (c) Meta Platforms, Inc. and affiliates. Confidential and proprietary.
 load("@fbsource//tools/build_defs:fb_xplat_cxx_library.bzl", "fb_xplat_cxx_library")
 load(":defs.bzl", "CXXFLAGS")
 

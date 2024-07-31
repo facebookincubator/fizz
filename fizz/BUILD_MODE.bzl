@@ -1,3 +1,4 @@
+# (c) Meta Platforms, Inc. and affiliates. Confidential and proprietary.
 """ build mode definitions for fizz """
 
 load("@fbcode//:BUILD_MODE.bzl", get_parent_modes = "get_empty_modes")
