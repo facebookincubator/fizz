@@ -35,7 +35,7 @@ cpp_unittest(
     ],
     deps = [
         ":mocks",
-        "//fizz/crypto/exchange:hybrid_exchange",
+        "//fizz/crypto/exchange:hybrid_key_exchange",
         "//folly/portability:gtest",
     ],
 )

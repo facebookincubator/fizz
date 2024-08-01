@@ -142,7 +142,7 @@ cpp_library(
         "//fizz:config",
         "//fizz/crypto:hkdf",
         "//fizz/crypto/aead:aegiscipher",
-        "//fizz/crypto/exchange:hybrid_exchange",
+        "//fizz/crypto/exchange:hybrid_key_exchange",
         "//fizz/experimental/crypto/exchange:oqs_key_exchange",
     ],
     exported_deps = [

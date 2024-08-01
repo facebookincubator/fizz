@@ -48,7 +48,7 @@ cpp_library(
 )
 
 cpp_library(
-    name = "hybrid_exchange",
+    name = "hybrid_key_exchange",
     srcs = [
         "HybridKeyExchange.cpp",
     ],
