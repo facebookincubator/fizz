@@ -54,7 +54,7 @@ def fizzy_library(name):
         deps = [
             ":client_fizz_client_context",
             ":client_fizz_client",
-            ":client_psk_serialization",
+            ":client_psk_serialization_utils",
             ":protocol_default_factory",
             "fbsource//third-party/boost:boost",
         ],
