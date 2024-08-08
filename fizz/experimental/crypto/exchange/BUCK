@@ -13,7 +13,6 @@ cpp_library(
     exported_deps = [
         "fbsource//third-party/liboqs:oqs",
         "//fizz/crypto/exchange:key_exchange",
-        "//fizz/protocol:factory",
         "//folly:memory",
     ],
 )
