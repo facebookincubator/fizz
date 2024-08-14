@@ -1,0 +1,14 @@
+load("@fbcode_macros//build_defs:cpp_unittest.bzl", "cpp_unittest")
+
+oncall("secure_pipes")
+
+cpp_unittest(
+    name = "oqs_key_exchange_test",
+    srcs = [
+        "OQSKeyExchangeTest.cpp",
+    ],
+    deps = [
+        "//fizz/backend:liboqs",
+        "//folly/portability:gtest",
+    ],
+)

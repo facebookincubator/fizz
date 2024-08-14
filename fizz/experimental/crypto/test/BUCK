@@ -27,14 +27,3 @@ cpp_unittest(
         "//folly/portability:gtest",
     ],
 )
-
-cpp_unittest(
-    name = "oqs_key_exchange_test",
-    srcs = [
-        "OQSKeyExchangeTest.cpp",
-    ],
-    deps = [
-        "//fizz/experimental/crypto/exchange:oqs_key_exchange",
-        "//folly/portability:gtest",
-    ],
-)

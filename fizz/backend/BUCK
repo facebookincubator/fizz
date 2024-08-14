@@ -3,6 +3,24 @@ load("@fbcode_macros//build_defs:cpp_library.bzl", "cpp_library")
 oncall("secure_pipes")
 
 cpp_library(
+    name = "liboqs",
+    srcs = [
+        "liboqs/OQSKeyExchange.cpp",
+    ],
+    headers = [
+        "liboqs/LibOQS.h",
+        "liboqs/OQSKeyExchange.h",
+    ],
+    exported_deps = [
+        "fbsource//third-party/liboqs:oqs",
+        "//fizz:config",
+        "//fizz/crypto:crypto",
+        "//fizz/crypto/exchange:key_exchange",
+        "//folly:memory",
+    ],
+)
+
+cpp_library(
     name = "openssl",
     srcs = [
         "openssl/certificate/CertUtils.cpp",

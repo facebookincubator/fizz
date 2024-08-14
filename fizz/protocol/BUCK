@@ -140,10 +140,10 @@ cpp_library(
     ],
     deps = [
         "//fizz:config",
+        "//fizz/backend:liboqs",
         "//fizz/crypto:hkdf",
         "//fizz/crypto/aead:aegiscipher",
         "//fizz/crypto/exchange:hybrid_key_exchange",
-        "//fizz/experimental/crypto/exchange:oqs_key_exchange",
     ],
     exported_deps = [
         "//fizz/backend:openssl",
