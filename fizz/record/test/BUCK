@@ -130,9 +130,9 @@ cpp_binary(
     ],
     compiler_flags = ["-Wno-unused-variable"],
     deps = [
+        "//fizz/backend:libaegis",
         "//fizz/backend:openssl",
         "//fizz/crypto:utils",
-        "//fizz/crypto/aead:aegiscipher",
         "//fizz/record:encrypted_record_layer",
         "//folly:benchmark",
         "//folly:random",

@@ -3,6 +3,30 @@ load("@fbcode_macros//build_defs:cpp_library.bzl", "cpp_library")
 oncall("secure_pipes")
 
 cpp_library(
+    name = "libaegis",
+    srcs = [
+        "libaegis/AEGISCipher.cpp",
+    ],
+    headers = [
+        "libaegis/LibAEGIS.h",
+    ],
+    deps = [
+        "//fizz/crypto/aead:cryptoutil",
+        "//folly/lang:checked_math",
+    ] + select({
+        "DEFAULT": [
+            "fbsource//third-party/libaegis:aegis",
+        ],
+        "ovr_config//toolchain/fb:arista": [],
+    }),
+    exported_deps = [
+        "//fizz:config",
+        "//fizz/crypto:crypto",
+        "//fizz/crypto/aead:aead",
+    ],
+)
+
+cpp_library(
     name = "liboqs",
     srcs = [
         "liboqs/OQSKeyExchange.cpp",

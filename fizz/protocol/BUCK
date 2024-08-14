@@ -140,9 +140,9 @@ cpp_library(
     ],
     deps = [
         "//fizz:config",
+        "//fizz/backend:libaegis",
         "//fizz/backend:liboqs",
         "//fizz/crypto:hkdf",
-        "//fizz/crypto/aead:aegiscipher",
         "//fizz/crypto/exchange:hybrid_key_exchange",
     ],
     exported_deps = [

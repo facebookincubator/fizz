@@ -44,8 +44,8 @@ cpp_library(
     ],
     deps = [
         "//fizz:config",
+        "//fizz/backend:libaegis",
         "//fizz/backend:openssl",
-        "//fizz/crypto/aead:aegiscipher",
         "//folly/ssl:openssl_cert_utils",
     ],
     exported_deps = [
