@@ -120,6 +120,7 @@ cpp_unittest(
     deps = [
         ":utilities",
         "//fizz/client:psk_serialization_utils",
+        "//fizz/crypto/test:TestUtil",
         "//fizz/protocol/test:mocks",
         "//folly/portability:gmock",
         "//folly/portability:gtest",
