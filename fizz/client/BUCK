@@ -176,12 +176,11 @@ cpp_library(
     ],
     deps = [
         "//fizz/record:record",
-        "//folly/io/async/ssl:openssl_transport_certificate",
-        "//folly/ssl:openssl_cert_utils",
+        "//folly/io:iobuf",
     ],
     exported_deps = [
         ":psk_cache",
-        "//fizz/protocol:factory",
+        "//fizz/protocol:certificate",
     ],
 )
 
