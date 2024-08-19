@@ -126,7 +126,8 @@ cpp_library(
         "DefaultFactory.h",
     ],
     exported_deps = [
-        ":multi_backend_factory",
+        ":multi_backend_factory",  #@manual
+        "//fizz:config",
     ],
 )
 
