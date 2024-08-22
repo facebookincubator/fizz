@@ -35,6 +35,22 @@ cpp_library(
 )
 
 cpp_library(
+    name = "TestKeys",
+    srcs = [
+        "TestKeys.cpp",
+    ],
+    headers = [
+        "TestKeys.h",
+    ],
+    deps = [
+    ],
+    exported_deps = [
+        "//fizz/crypto:crypto",
+        "//folly:string",
+    ],
+)
+
+cpp_library(
     name = "TestUtil",
     srcs = [
         "TestUtil.cpp",
@@ -49,6 +65,7 @@ cpp_library(
         "//folly/ssl:openssl_cert_utils",
     ],
     exported_deps = [
+        ":TestKeys",
         "//fizz/crypto/aead:aead",
         "//fizz/protocol:types",
         "//folly:string",

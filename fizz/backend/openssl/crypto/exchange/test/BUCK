@@ -10,6 +10,7 @@ cpp_unittest(
     supports_static_listing = False,
     deps = [
         "//fizz/backend:openssl",
+        "//fizz/crypto/test:TestKeys",
         "//fizz/crypto/test:TestUtil",
         "//folly:string",
         "//folly/portability:gtest",
