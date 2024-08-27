@@ -41,6 +41,7 @@ cpp_unittest(
         "//fizz/protocol/clock/test:mock_clock",
         "//folly/portability:gmock",
         "//folly/portability:gtest",
+        "//folly/ssl:openssl_cert_utils",
         "//folly/ssl:openssl_ptr_types",
     ],
 )
