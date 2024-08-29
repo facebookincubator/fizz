@@ -3,7 +3,7 @@
 #
 # This source code is licensed under the BSD-style license found in the
 # LICENSE file in the root directory of this source tree.
-load("@fbsource//tools/build_defs:buckconfig.bzl", "read_bool")
+load("@fbsource//tools/build_defs:buckconfig.bzl", "read", "read_bool")
 load("@fbsource//tools/build_defs:fb_xplat_cxx_binary.bzl", "fb_xplat_cxx_binary")
 load("@fbsource//tools/build_defs:fb_xplat_cxx_library.bzl", "fb_xplat_cxx_library")
 load("@fbsource//tools/build_defs:fb_xplat_cxx_test.bzl", "fb_xplat_cxx_test")
@@ -28,27 +28,29 @@ load("@fbsource//xplat/pfh/Infra_Networking_Core:DEFS.bzl", "Infra_Networking_Co
 # difftime (or worse, some contbuilds are asynchronous so we only find out
 # about this after land) since some of these environments define `-Werror`.
 #
-FIZZ_CXX_WARNINGS = [
-    "-Wno-error",
-
+FIZZ_EXTRA_CXX_WARNINGS = [
     # Apple builds warn against this, but Fizz requires static initializers
     # so we *need* global-constructors.
     "-Wno-error=global-constructors",
+    "-Werror=mismatched-tags",
+    "-Werror=shadow",
+    "-Werror=sign-compare",
+    "-Werror=unused-exception-parameter",
+    "-Werror=constant-conversion",
+]
+
+FIZZ_CXX_WARNINGS = [
+    "-Wno-error",
     "-Werror=comment",
     "-Werror=format",
     "-Werror=format-security",
-    "-Werror=mismatched-tags",
     "-Werror=missing-braces",
     "-Werror=return-type",
-    "-Werror=shadow",
-    "-Werror=sign-compare",
     "-Werror=uninitialized",
     "-Werror=unused-function",
     "-Werror=unused-local-typedefs",
     "-Werror=unused-variable",
-    "-Werror=unused-exception-parameter",
-    "-Werror=constant-conversion",
-]
+] + FIZZ_EXTRA_CXX_WARNINGS if ("oe-linux-gcc9" not in read("toolchain", "PROG", "")) else []
 
 CXXFLAGS = [
     "-frtti",
