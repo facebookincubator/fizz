@@ -15,7 +15,6 @@ load(
     "FBCODE",
     "IOS",
     "MACOSX",
-    "WATCHOS",
     "WINDOWS",
 )
 load("@fbsource//xplat/pfh/Infra_Networking_Core:DEFS.bzl", "Infra_Networking_Core")
@@ -81,7 +80,7 @@ WINDOWS_CLANG_CXX_FLAGS = WINDOWS_CLANG_CXX_FLAGS_NO_SSE4 + [
     "-msse4.2",
 ]
 
-DEFAULT_APPLE_SDKS = (IOS, MACOSX, WATCHOS)
+DEFAULT_APPLE_SDKS = (IOS, MACOSX)
 DEFAULT_PLATFORMS = (ANDROID, APPLE, CXX, FBCODE, WINDOWS)
 
 def fizz_cxx_library(
