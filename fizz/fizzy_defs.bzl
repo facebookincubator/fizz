@@ -56,9 +56,9 @@ def fizzy_library(name):
         srcs = FIZZY_SRCS,
         visibility = ["PUBLIC"],
         deps = [
-            ":client_fizz_client_context",
-            ":client_fizz_client",
-            ":client_psk_serialization_utils",
+            "fbsource//xplat/fizz/client:fizz_client_context",
+            "fbsource//xplat/fizz/client:fizz_client",
+            "fbsource//xplat/fizz/client:psk_serialization_utils",
             ":protocol_default_factory",
             "fbsource//third-party/boost:boost",
         ],
