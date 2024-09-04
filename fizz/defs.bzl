@@ -83,6 +83,17 @@ WINDOWS_CLANG_CXX_FLAGS = WINDOWS_CLANG_CXX_FLAGS_NO_SSE4 + [
 DEFAULT_APPLE_SDKS = (IOS, MACOSX)
 DEFAULT_PLATFORMS = (ANDROID, APPLE, CXX, FBCODE, WINDOWS)
 
+def _compute_include_directories():
+    base_path = native.package_name()
+    if base_path == "xplat/fizz":
+        return [".."]
+    fizz_path = base_path[6:]
+    return ["/".join(len(fizz_path.split("/")) * [".."])]
+
+def _compute_header_namespace():
+    base_path = native.package_name()
+    return base_path[6:]
+
 def fizz_cxx_library(
         name,
         platforms = None,
@@ -106,9 +117,9 @@ def fizz_cxx_library(
 
     if headers or exported_headers:
         public_include_directories = []
-        header_namespace = "fizz"
+        header_namespace = _compute_header_namespace()
     else:
-        public_include_directories = [".."]
+        public_include_directories = _compute_include_directories()
         header_namespace = ""
 
     fb_xplat_cxx_library(
