@@ -26,7 +26,6 @@ cpp_library(
         "Encryption.h",
     ],
     deps = [
-        "//fizz/backend:openssl",
         "//fizz/crypto/hpke:utils",
         "//fizz/protocol:protocol",
         "//fizz/record:record",
