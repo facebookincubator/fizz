@@ -162,3 +162,32 @@ cpp_library(
         "//fizz/record:record",
     ],
 )
+
+cpp_unittest(
+    name = "set_pre_received_app_data_test",
+    srcs = [
+        "SetPreReceivedAppDataTest.cpp",
+    ],
+    resources = {
+        "certs/tests-cert.pem": "//folly/io/async/test/certs:tests-cert.pem",
+        "certs/tests-key.pem": "//folly/io/async/test/certs:tests-key.pem",
+    },
+    supports_static_listing = False,
+    deps = [
+        "//fizz/backend:openssl",
+        "//fizz/client:async_fizz_client",
+        "//fizz/client:fizz_client_context",
+        "//fizz/server:async_fizz_server",
+        "//fizz/server:fizz_server_context",
+        "//folly:file_util",
+        "//folly:range",
+        "//folly/coro:gmock_helpers",
+        "//folly/coro:task",
+        "//folly/coro:timeout",
+        "//folly/io/async:async_base",
+        "//folly/io/async:async_transport",
+        "//folly/io/async/test:util",
+        "//folly/portability:gtest",
+        "//folly/testing:test_util",
+    ],
+)
