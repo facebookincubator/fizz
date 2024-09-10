@@ -9,6 +9,7 @@ cpp_library(
         "Mocks.h",
     ],
     exported_deps = [
+        "//fizz/crypto:hasher",
         "//fizz/crypto:key_derivation",
         "//folly/portability:gmock",
     ],
