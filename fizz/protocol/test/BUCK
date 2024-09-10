@@ -34,7 +34,7 @@ cpp_unittest(
         "HandshakeContextTest.cpp",
     ],
     deps = [
-        "//fizz/backend:openssl",
+        "//fizz/protocol:default_factory",
         "//fizz/protocol:handshake_context",
         "//folly/portability:gtest",
     ],
