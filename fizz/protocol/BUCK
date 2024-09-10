@@ -110,6 +110,8 @@ cpp_library(
         ":handshake_context",
         ":key_scheduler",
         ":types",
+        "//fizz/crypto:crypto",
+        "//fizz/crypto:hasher",
         "//fizz/crypto:key_derivation",
         "//fizz/crypto:random",
         "//fizz/crypto/aead:aead",
@@ -163,6 +165,7 @@ cpp_library(
         "Types.h",
     ],
     exported_deps = [
+        "//fizz/crypto:crypto",
         "//fizz/record:record",
         "//folly:range",
     ],
