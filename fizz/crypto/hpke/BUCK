@@ -17,6 +17,7 @@ cpp_library(
     exported_deps = [
         ":hkdf",
         ":types",
+        "//fizz/crypto:crypto",
         "//fizz/crypto/aead:aead",
         "//fizz/crypto/exchange:key_exchange",
         "//fizz/protocol:types",
@@ -84,6 +85,7 @@ cpp_library(
     exported_deps = [
         ":hkdf",
         ":types",
+        "//fizz/crypto:crypto",
         "//fizz/crypto/aead:aead",
         "//fizz/protocol:types",
     ],
