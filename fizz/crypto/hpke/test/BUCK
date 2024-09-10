@@ -27,6 +27,7 @@ cpp_unittest(
     deps = [
         ":mocks",
         "//fizz/backend:openssl",
+        "//fizz/backend:openssl_hasher",
         "//fizz/crypto/aead/test:test_util",
         "//fizz/crypto/hpke:context",
         "//fizz/crypto/hpke:utils",

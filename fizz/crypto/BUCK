@@ -26,6 +26,7 @@ cpp_library(
     ],
     exported_deps = [
         ":crypto",
+        ":hasher",
         "//folly/io:iobuf",
     ],
 )
