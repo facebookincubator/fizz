@@ -108,28 +108,3 @@ cpp_library(
         ("openssl", None, "crypto"),
     ],
 )
-
-# TODO (zale): Remove this.
-# this is temporary for things outside backend/openssl that still need to
-# reference some openssl Propertis. But those will be cleaned up and this
-# target will be removed.
-cpp_library(
-    name = "openssl_hasher",
-    headers = [
-        "openssl/Hasher.h",
-        "openssl/Properties.h",
-        "openssl/crypto/Sha.h",
-        "openssl/crypto/Sha-inl.h",
-    ],
-    exported_deps = [
-        "//fizz/crypto:crypto",
-        "//fizz/crypto:hasher",
-        "//folly:range",
-        "//folly/io:iobuf",
-        "//folly/portability:openssl",
-        "//folly/ssl:openssl_hash",
-    ],
-    exported_external_deps = [
-        ("openssl", None, "crypto"),
-    ],
-)
