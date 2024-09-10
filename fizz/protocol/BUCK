@@ -274,6 +274,9 @@ cpp_library(
     headers = [
         "Exporter.h",
     ],
+    deps = [
+        "//fizz/crypto:hasher",
+    ],
     exported_deps = [
         ":factory",
         "//fizz/crypto:key_derivation",
