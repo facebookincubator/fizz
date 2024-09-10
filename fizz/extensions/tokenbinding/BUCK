@@ -69,6 +69,7 @@ cpp_library(
     ],
     deps = [
         ":utils",
+        "//fizz/protocol:default_factory",
     ],
     exported_deps = [
         ":token_binding",
@@ -96,8 +97,8 @@ cpp_library(
         "TokenBindingConstructor.h",
     ],
     deps = [
-        ":utils",
-        "//fizz/backend:openssl",
+        "fbcode//fizz/backend:openssl",
+        "fbcode//fizz/extensions/tokenbinding:utils",
     ],
     exported_deps = [
         ":token_binding",

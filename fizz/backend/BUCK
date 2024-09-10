@@ -49,6 +49,7 @@ cpp_library(
     srcs = [
         "openssl/certificate/CertUtils.cpp",
         "openssl/crypto/OpenSSLKeyUtils.cpp",
+        "openssl/crypto/Sha.cpp",
         "openssl/crypto/aead/OpenSSLEVPCipher.cpp",
         "openssl/crypto/exchange/OpenSSLKeyExchange.cpp",
         "openssl/crypto/signature/Signature.cpp",
@@ -67,7 +68,6 @@ cpp_library(
         "openssl/crypto/OpenSSL.h",
         "openssl/crypto/OpenSSLKeyUtils.h",
         "openssl/crypto/Sha.h",
-        "openssl/crypto/Sha-inl.h",
         "openssl/crypto/aead/OpenSSLEVPCipher.h",
         "openssl/crypto/aead/OpenSSLEVPCipher-inl.h",
         "openssl/crypto/exchange/OpenSSLKeyExchange.h",
