@@ -16,7 +16,7 @@ cpp_library(
         "//fizz/protocol:default_factory",
     ],
     exported_deps = [
-        "//fizz/crypto:key_derivation",
+        "//fizz/crypto:hasher",
         "//fizz/protocol:async_fizz_base",
         "//fizz/protocol:certificate",
         "//fizz/protocol:exporter",
