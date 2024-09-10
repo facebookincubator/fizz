@@ -10,16 +10,13 @@ cpp_library(
     headers = [
         "Utils.h",
     ],
-    deps = [
-        "//fizz/backend:openssl",
-        "//fizz/crypto/exchange:x25519",
-    ],
     exported_deps = [
         ":hkdf",
         ":types",
         "//fizz/crypto:crypto",
         "//fizz/crypto/aead:aead",
         "//fizz/crypto/exchange:key_exchange",
+        "//fizz/protocol:factory",
         "//fizz/protocol:types",
         "//folly:optional",
     ],
@@ -85,7 +82,6 @@ cpp_library(
     exported_deps = [
         ":hkdf",
         ":types",
-        "//fizz/crypto:crypto",
         "//fizz/crypto/aead:aead",
         "//fizz/protocol:types",
     ],
