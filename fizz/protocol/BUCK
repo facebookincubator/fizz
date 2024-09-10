@@ -149,10 +149,9 @@ cpp_library(
         "//fizz/crypto/exchange:hybrid_key_exchange",
     ],
     exported_deps = [
+        ":factory",
         "//fizz/backend:openssl",
-        "//fizz/backend:openssl_hasher",
         "//fizz/crypto/exchange:x25519",
-        "//fizz/protocol:factory",
     ],
 )
 
