@@ -86,13 +86,18 @@ cpp_library(
 
 cpp_library(
     name = "handshake_context",
+    srcs = [
+        "HandshakeContext.cpp",
+    ],
     headers = [
         "HandshakeContext.h",
-        "HandshakeContext-inl.h",
+    ],
+    deps = [
+        "//fizz/crypto:hkdf",
+        "//fizz/crypto:key_derivation",
     ],
     exported_deps = [
-        "//fizz/backend:openssl_hasher",
-        "//fizz/crypto:key_derivation",
+        "//fizz/crypto:hasher",
         "//fizz/record:record",
     ],
 )
