@@ -49,6 +49,5 @@ cpp_library(
     exported_deps = [
         ":encrypted_client_hello",
         ":encryption",
-        "//fizz/protocol:factory",
     ],
 )
