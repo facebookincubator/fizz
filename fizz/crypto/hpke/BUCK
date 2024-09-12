@@ -83,11 +83,10 @@ cpp_library(
         ":utils",
     ],
     exported_deps = [
-        ":hkdf",
-        ":types",
-        "//fizz/crypto:crypto",
-        "//fizz/crypto/aead:aead",
-        "//fizz/protocol:types",
+        "fbcode//fizz/crypto/aead:aead",
+        "fbcode//fizz/crypto/hpke:hkdf",
+        "fbcode//fizz/crypto/hpke:types",
+        "fbcode//fizz/protocol:types",
     ],
 )
 
