@@ -59,7 +59,7 @@ def fizzy_library(name):
             "fbsource//xplat/fizz/client:fizz_client_context",
             "fbsource//xplat/fizz/client:fizz_client",
             "fbsource//xplat/fizz/client:psk_serialization_utils",
-            ":protocol_default_factory",
+            "fbsource//xplat/fizz/protocol:default_factory",
             "fbsource//third-party/boost:boost",
         ],
     )
