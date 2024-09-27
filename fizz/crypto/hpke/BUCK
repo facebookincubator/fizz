@@ -49,7 +49,6 @@ cpp_library(
     exported_deps = [
         ":hkdf",
         ":types",
-        "//fizz/backend:openssl",
         "//fizz/crypto/exchange:key_exchange",
         "//fizz/record:record",
     ],
