@@ -56,11 +56,9 @@ cpp_library(
         "Hasher.h",
         "Hmac.h",
     ],
-    deps = [
-        ":crypto",
-    ],
     exported_deps = [
-        "//folly/io:iobuf",
+        "fbcode//fizz/crypto:crypto",
+        "fbcode//folly/io:iobuf",
     ],
 )
 
