@@ -16,6 +16,7 @@ cpp_unittest(
         "//fizz/compression/test:mocks",
         "//fizz/crypto/hpke:utils",
         "//fizz/crypto/hpke/test:mocks",
+        "//fizz/protocol:default_factory",
         "//fizz/protocol/clock/test:mock_clock",
         "//fizz/protocol/ech:encrypted_client_hello",
         "//fizz/protocol/ech/test:test_util",

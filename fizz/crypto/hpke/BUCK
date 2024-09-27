@@ -37,6 +37,7 @@ cpp_library(
         "//fizz/record:record",
     ],
     exported_deps = [
+        "//fizz/crypto:hasher",
         "//fizz/crypto:hkdf",
     ],
 )

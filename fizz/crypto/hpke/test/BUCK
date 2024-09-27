@@ -60,5 +60,6 @@ cpp_unittest(
         "//fizz/crypto/hpke:hpke",
         "//fizz/crypto/hpke:utils",
         "//fizz/crypto/test:TestUtil",
+        "//fizz/protocol:default_factory",
     ],
 )
