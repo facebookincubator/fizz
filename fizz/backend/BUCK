@@ -17,7 +17,7 @@ cpp_library(
         "DEFAULT": [
             "fbsource//third-party/libaegis:aegis",
         ],
-        "ovr_config//toolchain/fb:arista": [],
+        # @fb-only: "ovr_config//toolchain/fb:arista": [], 
     }),
     exported_deps = [
         "//fizz:config",
