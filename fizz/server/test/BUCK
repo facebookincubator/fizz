@@ -10,6 +10,7 @@ cpp_library(
     ],
     exported_deps = [
         "//fizz/backend:openssl",
+        "//fizz/crypto:random",
         "//fizz/protocol:default_certificate_verifier",
         "//fizz/protocol:default_factory",
         "//fizz/protocol/test:cert_util",
@@ -180,6 +181,7 @@ cpp_unittest(
         "AeadCookieCipherTest.cpp",
     ],
     deps = [
+        "//fizz/crypto:random",
         "//fizz/crypto/test:TestUtil",
         "//fizz/protocol/test:test_util",
         "//fizz/server:aead_token_cipher",

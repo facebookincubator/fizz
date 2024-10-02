@@ -118,7 +118,6 @@ cpp_library(
         "//fizz/crypto:crypto",
         "//fizz/crypto:hasher",
         "//fizz/crypto:key_derivation",
-        "//fizz/crypto:random",
         "//fizz/crypto/aead:aead",
         "//fizz/crypto/exchange:key_exchange",
         "//fizz/record:encrypted_record_layer",
@@ -157,6 +156,9 @@ cpp_library(
         ":factory",
         "//fizz/backend:openssl",
         "//fizz/crypto/exchange:x25519",
+    ],
+    external_deps = [
+        ("libsodium", None, "sodium"),
     ],
 )
 

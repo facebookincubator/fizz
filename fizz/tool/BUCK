@@ -61,6 +61,7 @@ cpp_binary(
         "//fizz/compression:zlib_certificate_decompressor",
         "//fizz/compression:zstd_certificate_compressor",
         "//fizz/compression:zstd_certificate_decompressor",
+        "//fizz/crypto:random",
         "//fizz/crypto/hpke:utils",
         "//fizz/experimental/batcher:batcher",
         "//fizz/experimental/protocol:batch_signature_factory",
