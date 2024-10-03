@@ -13,7 +13,7 @@ cpp_library(
             "FizzUtil.h",
         ],
     deps = [
-        "//fizz/crypto/exchange:x25519",
+        "//fizz/backend:libsodium",
         "//fizz/server:ticket_types",
         "//folly:file_util",
         "//folly:format",

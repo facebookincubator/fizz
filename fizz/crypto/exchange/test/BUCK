@@ -21,7 +21,7 @@ cpp_unittest(
         "X25519KeyExchangeTest.cpp",
     ],
     deps = [
-        "//fizz/crypto/exchange:x25519",
+        "//fizz/backend:libsodium",
         "//folly:range",
         "//folly:string",
         "//folly/portability:gtest",

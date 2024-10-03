@@ -108,3 +108,27 @@ cpp_library(
         ("openssl", None, "crypto"),
     ],
 )
+
+cpp_library(
+    name = "libsodium",
+    srcs = [
+        "libsodium/crypto/exchange/X25519.cpp",
+    ],
+    headers = [
+        "libsodium/LibSodium.h",
+        "libsodium/crypto/exchange/X25519.h",
+    ],
+    deps = [
+        "//folly:conv",
+    ],
+    exported_deps = [
+        "//fizz/crypto:crypto",
+        "//fizz/crypto/exchange:key_exchange",
+        "//folly:optional",
+        "//folly:range",
+        "//folly/io:iobuf",
+    ],
+    exported_external_deps = [
+        ("libsodium", None, "sodium"),
+    ],
+)

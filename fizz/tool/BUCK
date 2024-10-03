@@ -12,8 +12,8 @@ cpp_library(
         "FizzCommandCommon.h",
     ],
     deps = [
+        "//fizz/backend:libsodium",
         "//fizz/backend:openssl",
-        "//fizz/crypto/exchange:x25519",
         "//fizz/protocol:certificate",
         "//folly:base64",
         "//folly:string",
@@ -52,6 +52,7 @@ cpp_binary(
     ],
     deps = [
         ":tool_lib",
+        "//fizz/backend:libsodium",
         "//fizz/backend:openssl",
         "//fizz/client:async_fizz_client",
         "//fizz/client:psk_serialization_utils",
@@ -62,7 +63,6 @@ cpp_binary(
         "//fizz/compression:zstd_certificate_compressor",
         "//fizz/compression:zstd_certificate_decompressor",
         "//fizz/crypto:random",
-        "//fizz/crypto/exchange:x25519",
         "//fizz/crypto/hpke:utils",
         "//fizz/experimental/batcher:batcher",
         "//fizz/experimental/protocol:batch_signature_factory",

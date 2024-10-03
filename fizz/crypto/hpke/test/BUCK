@@ -42,8 +42,8 @@ cpp_library(
         "Mocks.h",
     ],
     exported_deps = [
+        "//fizz/backend:libsodium",
         "//fizz/crypto/aead:aead",
-        "//fizz/crypto/exchange:x25519",
         "//fizz/crypto/hpke:context",
         "//folly/portability:gmock",
     ],
@@ -56,6 +56,7 @@ cpp_unittest(
     ],
     deps = [
         ":mocks",
+        "//fizz/backend:libsodium",
         "//fizz/backend:openssl",
         "//fizz/crypto/hpke:hpke",
         "//fizz/crypto/hpke:utils",

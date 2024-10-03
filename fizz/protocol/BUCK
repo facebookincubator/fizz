@@ -149,16 +149,13 @@ cpp_library(
         "//fizz:config",
         "//fizz/backend:libaegis",
         "//fizz/backend:liboqs",
+        "//fizz/backend:libsodium",
         "//fizz/backend:openssl",
         "//fizz/crypto:hkdf",
         "//fizz/crypto/exchange:hybrid_key_exchange",
-        "//fizz/crypto/exchange:x25519",
     ],
     exported_deps = [
         ":factory",
-    ],
-    external_deps = [
-        ("libsodium", None, "sodium"),
     ],
 )
 

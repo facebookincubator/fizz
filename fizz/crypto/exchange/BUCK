@@ -3,29 +3,6 @@ load("@fbcode_macros//build_defs:cpp_library.bzl", "cpp_library")
 oncall("secure_pipes")
 
 cpp_library(
-    name = "x25519",
-    srcs = [
-        "X25519.cpp",
-    ],
-    headers = [
-        "X25519.h",
-    ],
-    deps = [
-        "//fizz/crypto:utils",
-        "//folly:conv",
-    ],
-    exported_deps = [
-        ":key_exchange",
-        "//folly:optional",
-        "//folly:range",
-        "//folly/io:iobuf",
-    ],
-    external_deps = [
-        ("libsodium", None, "sodium"),
-    ],
-)
-
-cpp_library(
     name = "key_exchange",
     headers = [
         "KeyExchange.h",
