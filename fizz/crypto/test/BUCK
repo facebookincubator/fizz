@@ -52,6 +52,19 @@ cpp_library(
 )
 
 cpp_library(
+    name = "signature_test_data",
+    srcs = [
+        "SignatureTestData.cpp",
+    ],
+    headers = [
+        "SignatureTestData.h",
+    ],
+    exported_deps = [
+        "//fizz/record:record",
+    ],
+)
+
+cpp_library(
     name = "TestUtil",
     srcs = [
         "TestUtil.cpp",
