@@ -15,6 +15,16 @@ cpp_library(
 )
 
 cpp_library(
+    name = "data",
+    headers = [
+        "Data.h",
+    ],
+    exported_deps = [
+        "//fizz/record:record",
+    ],
+)
+
+cpp_library(
     name = "test_util",
     srcs = [
         "TestUtil.cpp",

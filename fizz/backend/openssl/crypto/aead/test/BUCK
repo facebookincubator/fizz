@@ -11,6 +11,7 @@ cpp_unittest(
     deps = [
         "//fizz:config",
         "//fizz/crypto/aead:iobuf",
+        "//fizz/crypto/aead/test:data",
         "//fizz/crypto/aead/test:test_util",
         "//fizz/crypto/test:TestUtil",
         "//fizz/record:record",
