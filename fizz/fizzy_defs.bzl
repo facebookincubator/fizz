@@ -8,6 +8,7 @@ load(":defs.bzl", "CXXFLAGS")
 
 FIZZY_CXXFLAGS = [
     "-fvisibility=hidden",
+    "-Werror=switch",
 ]
 
 FIZZY_PUBLIC_HEADERS = [
