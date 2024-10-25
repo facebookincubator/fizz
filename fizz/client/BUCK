@@ -119,7 +119,7 @@ cpp_library(
         ":fizz_client_context",
         ":protocol",
         ":psk_cache",
-        "//fizz/protocol:default_certificate_verifier",
+        "//fizz/protocol:certificate_verifier",
         "//fizz/protocol:fizz_base",
     ],
 )
@@ -137,6 +137,7 @@ cpp_library(
         ":fizz_client_context",
         ":protocol",
         "//fizz/protocol:async_fizz_base",
+        "//fizz/protocol:default_certificate_verifier",
         "//fizz/protocol:exporter",
         "//fizz/util:tracer",
         "//folly/io:socket_option_map",
