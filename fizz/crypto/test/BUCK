@@ -36,6 +36,26 @@ cpp_library(
 )
 
 cpp_library(
+    name = "hash_test",
+    srcs = [
+        "HashTest.cpp",
+    ],
+    headers = [
+        "HashTest.h",
+    ],
+    deps = [
+        "//fizz/crypto:crypto",
+        "//folly:string",
+        "//folly/io:iobuf",
+        "//folly/portability:gtest",
+    ],
+    exported_deps = [
+        "//fizz/crypto:hasher",
+        "//fizz/protocol:types",
+    ],
+)
+
+cpp_library(
     name = "TestKeys",
     srcs = [
         "TestKeys.cpp",
