@@ -40,12 +40,25 @@ cpp_unittest(
     ],
 )
 
+cpp_library(
+    name = "cert_test_types",
+    headers = [
+        "CertTestTypes.h",
+    ],
+    exported_deps = [
+        "//fizz/backend:openssl",
+        "//fizz/crypto/test:TestUtil",
+        "//folly/ssl:openssl_ptr_types",
+    ],
+)
+
 cpp_unittest(
     name = "cert_test",
     srcs = [
         "CertTest.cpp",
     ],
     deps = [
+        ":cert_test_types",
         "//fizz/backend:openssl",
         "//fizz/crypto/test:TestUtil",
         "//folly:string",
