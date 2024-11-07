@@ -74,3 +74,16 @@ cpp_unittest(
         "//folly/portability:gtest",
     ],
 )
+
+cpp_unittest(
+    name = "grease_ech_test",
+    srcs = [
+        "GreaseECHTest.cpp",
+    ],
+    deps = [
+        "//fizz/crypto/hpke:utils",
+        "//fizz/protocol/ech:grease_ech",
+        "//fizz/protocol/test:mocks",
+        "//fizz/protocol/test:test_util",
+    ],
+)

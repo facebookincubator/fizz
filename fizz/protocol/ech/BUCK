@@ -52,3 +52,31 @@ cpp_library(
         "//fizz/protocol:factory",
     ],
 )
+
+cpp_library(
+    name = "grease_ech_setting",
+    headers = [
+        "GreaseECHSetting.h",
+    ],
+    exported_deps = [
+        "//fizz/crypto/hpke:hpke",
+    ],
+)
+
+cpp_library(
+    name = "grease_ech",
+    srcs = [
+        "GreaseECH.cpp",
+    ],
+    headers = [
+        "GreaseECH.h",
+    ],
+    deps = [
+        "//fizz/crypto/hpke:utils",
+    ],
+    exported_deps = [
+        ":encrypted_client_hello",
+        ":grease_ech_setting",
+        "//fizz/protocol:factory",
+    ],
+)
