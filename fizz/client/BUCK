@@ -19,6 +19,7 @@ cpp_library(
         "//fizz/protocol:certificate",
         "//fizz/protocol:factory",
         "//fizz/protocol/clock:system_clock",
+        "//fizz/protocol/ech:grease_ech_setting",
         "//fizz/record:record",
     ],
 )
@@ -84,6 +85,7 @@ cpp_library(
         "//fizz/protocol:protocol",
         "//fizz/protocol:state_machine",
         "//fizz/protocol/ech:encryption",
+        "//fizz/protocol/ech:grease_ech",
         "//fizz/record:record",
     ],
     exported_deps = [
