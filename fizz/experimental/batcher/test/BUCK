@@ -13,7 +13,6 @@ cpp_unittest(
         "//fizz/experimental/batcher:batcher",
         "//fizz/experimental/client:batch_signature_peer_cert",
         "//fizz/experimental/server:batch_signature_async_self_cert",
-        "//fizz/server:protocol",
         "//fizz/server/test:mocks",
         "//folly/portability:gtest",
     ],

@@ -51,7 +51,6 @@ cpp_unittest(
     deps = [
         ":extension_tests_base",
         "//fizz/record:record",
-        "//folly:string",
         "//folly/portability:gmock",
         "//folly/portability:gtest",
     ],

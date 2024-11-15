@@ -22,7 +22,6 @@ cpp_unittest(
     deps = [
         "//fizz/backend:openssl",
         "//fizz/crypto/test:TestUtil",
-        "//folly:string",
         "//folly/portability:gtest",
     ],
 )

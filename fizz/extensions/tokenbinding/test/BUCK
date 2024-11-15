@@ -27,7 +27,6 @@ cpp_unittest(
         "//fizz/extensions/tokenbinding:token_binding_context",
         "//fizz/extensions/tokenbinding:token_binding_server_extension",
         "//fizz/record:record",
-        "//fizz/server:server_extensions",
         "//folly/portability:gmock",
         "//folly/portability:gtest",
     ],

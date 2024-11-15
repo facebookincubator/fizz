@@ -76,7 +76,6 @@ cpp_library(
     ],
     deps = [
         "//fizz/crypto/aead:cryptoutil",
-        "//folly:scope_guard",
         "//folly/lang:checked_math",
     ],
     exported_deps = [

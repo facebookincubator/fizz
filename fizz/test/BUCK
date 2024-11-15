@@ -90,7 +90,6 @@ cpp_binary(
         "//fizz/crypto:utils",
         "//fizz/server:async_fizz_server",
         "//fizz/server:ticket_types",
-        "//folly:string",
         "//folly/io/async:async_ssl_socket",
         "//folly/io/async:ssl_context",
         "//folly/portability:gflags",

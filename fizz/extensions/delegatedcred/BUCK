@@ -11,7 +11,6 @@ cpp_library(
         "Types.h",
     ],
     deps = [
-        "//folly:string",
         "//folly/io:iobuf",
     ],
     exported_deps = [
@@ -128,9 +127,6 @@ cpp_library(
     ],
     headers = [
         "DelegatedCredentialCertManager.h",
-    ],
-    deps = [
-        ":delegated_credential_utils",
     ],
     exported_deps = [
         ":delegated_credential",

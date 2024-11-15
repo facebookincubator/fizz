@@ -88,7 +88,6 @@ cpp_unittest(
     ],
     deps = [
         "//fizz/crypto/test:TestUtil",
-        "//fizz/crypto/test:mocks",
         "//fizz/protocol/clock/test:mock_clock",
         "//fizz/server:ticket_policy",
         "//folly/portability:gmock",
@@ -108,7 +107,6 @@ cpp_unittest(
         "//fizz/protocol/clock/test:mock_clock",
         "//fizz/protocol/test:mocks",
         "//fizz/server:aead_ticket_cipher",
-        "//folly:string",
         "//folly/portability:gmock",
         "//folly/portability:gtest",
     ],

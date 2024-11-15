@@ -25,13 +25,11 @@ cpp_unittest(
     ],
     supports_static_listing = False,
     deps = [
-        ":mocks",
         "//fizz/backend:openssl",
         "//fizz/crypto/aead/test:test_util",
         "//fizz/crypto/hpke:context",
         "//fizz/crypto/hpke:utils",
         "//fizz/crypto/test:TestUtil",
-        "//fizz/protocol:types",
         "//fizz/record:record",
     ],
 )
