@@ -12,12 +12,14 @@
 ########################################################################
 # Tries to find the local libsodium installation.
 #
+# Call find_package(Sodium) to start the research
+#
 # On Windows the sodium_DIR environment variable is used as a default
 # hint which can be overridden by setting the corresponding cmake variable.
 #
 # Once done the following variables will be defined:
 #
-#   sodium_FOUND
+#   Sodium_FOUND
 #   sodium_INCLUDE_DIR
 #   sodium_LIBRARY_DEBUG
 #   sodium_LIBRARY_RELEASE
@@ -91,7 +93,7 @@ if (UNIX)
 ########################################################################
 # Windows
 elseif (WIN32)
-    set(sodium_DIR "$ENV{sodium_DIR}" CACHE FILEPATH "sodium install directory")
+    set(sodium_DIR "$ENV{sodium_DIR}" CACHE PATH "sodium install directory")
     mark_as_advanced(sodium_DIR)
 
     find_path(sodium_INCLUDE_DIR sodium.h
