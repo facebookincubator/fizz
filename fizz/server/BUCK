@@ -30,6 +30,7 @@ cpp_library(
     ],
     exported_deps = [
         ":fizz_server_context",
+        ":handshake_logging",
         ":resumption_state",
         ":server_extensions",
         "//fizz/protocol:actions",
@@ -383,5 +384,18 @@ cpp_library(
     ],
     exported_deps = [
         ":server_extensions",
+    ],
+)
+
+cpp_library(
+    name = "handshake_logging",
+    srcs = [
+        "HandshakeLogging.cpp",
+    ],
+    headers = [
+        "HandshakeLogging.h",
+    ],
+    exported_deps = [
+        "//fizz/record:record",
     ],
 )
