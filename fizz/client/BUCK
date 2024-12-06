@@ -13,7 +13,6 @@ cpp_library(
     ],
     exported_deps = [
         ":cert_manager",
-        ":ech_policy",
         ":psk_cache",
         "//fizz/compression:cert_decompression_manager",
         "//fizz/protocol:certificate",
