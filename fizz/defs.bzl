@@ -1,9 +1,6 @@
-# Copyright (c) Meta Platforms, Inc. and affiliates.
-# All rights reserved.
-#
-# This source code is licensed under the BSD-style license found in the
-# LICENSE file in the root directory of this source tree.
+load("@fbcode_macros//build_defs:cpp_library.bzl", "cpp_library")
 load("@fbsource//tools/build_defs:buckconfig.bzl", "read", "read_bool")
+load("@fbsource//tools/build_defs:cell_defs.bzl", "get_fbsource_cell")
 load("@fbsource//tools/build_defs:fb_xplat_cxx_binary.bzl", "fb_xplat_cxx_binary")
 load("@fbsource//tools/build_defs:fb_xplat_cxx_library.bzl", "fb_xplat_cxx_library")
 load("@fbsource//tools/build_defs:fb_xplat_cxx_test.bzl", "fb_xplat_cxx_test")
@@ -17,6 +14,13 @@ load(
     "MACOSX",
     "WINDOWS",
 )
+
+# Copyright (c) Meta Platforms, Inc. and affiliates.
+# All rights reserved.
+#
+# This source code is licensed under the BSD-style license found in the
+# LICENSE file in the root directory of this source tree.
+load("@fbsource//tools/build_defs/xplat:deps_map_utils.bzl", "deps_map_utils")
 load("@fbsource//xplat/pfh/Infra_Networking_Core:DEFS.bzl", "Infra_Networking_Core")
 
 # Fizz is a cross platform library used across fbcode, fbobjc, fbandroid, etc.
@@ -94,6 +98,45 @@ def _compute_header_namespace():
     base_path = native.package_name()
     return base_path[6:]
 
+def fizz_cpp_library(
+        name,
+        headers = [],
+        private_headers = [],
+        srcs = [],
+        deps = None,
+        exported_deps = None,
+        external_deps = None,
+        exported_external_deps = None,
+        **kwargs):
+    """Translate a simpler declartion into the more complete library target"""
+    if get_fbsource_cell() == "fbcode":
+        cpp_library(
+            name = name,
+            headers = headers,
+            private_headers = private_headers,
+            srcs = srcs,
+            deps = deps,
+            exported_deps = exported_deps,
+            external_deps = external_deps,
+            exported_external_deps = exported_external_deps,
+        )
+    else:
+        converted_deps = deps_map_utils.convert_all_to_fbsource_deps(
+            deps = deps,
+            exported_deps = exported_deps,
+            external_deps = external_deps,
+            exported_external_deps = exported_external_deps,
+        )
+        fizz_cxx_library(
+            name = name,
+            exported_headers = headers,
+            headers = private_headers,
+            srcs = srcs,
+            deps = converted_deps.deps,
+            exported_deps = converted_deps.exported_deps,
+            **kwargs
+        )
+
 def fizz_cxx_library(
         name,
         platforms = None,
@@ -103,7 +146,7 @@ def fizz_cxx_library(
         enable_static_variant = True,
         header_namespace = "",
         feature = None,
-        srcs = None,
+        srcs = [],
         **kwargs):
     """Translate a simpler declartion into the more complete library target"""
     if apple_sdks == None:
