@@ -1,4 +1,6 @@
+load("@fbcode_macros//build_defs:cpp_binary.bzl", "cpp_binary")
 load("@fbcode_macros//build_defs:cpp_library.bzl", "cpp_library")
+load("@fbcode_macros//build_defs:cpp_unittest.bzl", "cpp_unittest")
 load("@fbsource//tools/build_defs:buckconfig.bzl", "read", "read_bool")
 load("@fbsource//tools/build_defs:cell_defs.bzl", "get_fbsource_cell")
 load("@fbsource//tools/build_defs:fb_xplat_cxx_binary.bzl", "fb_xplat_cxx_binary")
@@ -100,13 +102,18 @@ def _compute_header_namespace():
 
 def fizz_cpp_library(
         name,
+        srcs = [],
+        # cpp_library API
         headers = [],
         private_headers = [],
-        srcs = [],
+        modular_headers = None,
         deps = None,
         exported_deps = None,
         external_deps = None,
         exported_external_deps = None,
+        propagated_pp_flags = (),
+        # fb_xplat API
+        enable_static_variant = True,
         **kwargs):
     """Translate a simpler declartion into the more complete library target"""
     if get_fbsource_cell() == "fbcode":
@@ -114,11 +121,13 @@ def fizz_cpp_library(
             name = name,
             headers = headers,
             private_headers = private_headers,
+            modular_headers = modular_headers,
             srcs = srcs,
             deps = deps,
             exported_deps = exported_deps,
             external_deps = external_deps,
             exported_external_deps = exported_external_deps,
+            propagated_pp_flags = propagated_pp_flags,
         )
     else:
         converted_deps = deps_map_utils.convert_all_to_fbsource_deps(
@@ -132,8 +141,10 @@ def fizz_cpp_library(
             exported_headers = headers,
             headers = private_headers,
             srcs = srcs,
+            exported_preprocessor_flags = propagated_pp_flags,
             deps = converted_deps.deps,
             exported_deps = converted_deps.exported_deps,
+            enable_static_variant = enable_static_variant,
             **kwargs
         )
 
@@ -186,6 +197,19 @@ def fizz_cxx_library(
         **kwargs
     )
 
+def fizz_cpp_binary(name, deps, **kwargs):
+    if get_fbsource_cell() == "fbcode":
+        cpp_binary(name = name, **kwargs)
+    else:
+        converted_deps = deps_map_utils.convert_all_to_fbsource_deps(
+            deps = deps,
+        )
+        fizz_cxx_binary(
+            name = name,
+            deps = converted_deps.deps,
+            **kwargs
+        )
+
 def fizz_cxx_binary(name, **kwargs):
     fb_xplat_cxx_binary(
         name = name,
@@ -193,6 +217,31 @@ def fizz_cxx_binary(name, **kwargs):
         contacts = ["oncall+secure_pipes@xmail.facebook.com"],
         **kwargs
     )
+
+def fizz_cpp_unittest(
+        name,
+        deps,
+        external_deps = (),
+        supports_static_listing = True,
+        **kwargs):
+    if get_fbsource_cell() == "fbcode":
+        cpp_unittest(
+            name = name,
+            supports_static_listing = supports_static_listing,
+            deps = deps,
+            external_deps = external_deps,
+            **kwargs
+        )
+    else:
+        converted_deps = deps_map_utils.convert_all_to_fbsource_deps(
+            deps = deps,
+            external_deps = external_deps,
+        )
+        fizz_cxx_test(
+            name = name,
+            deps = converted_deps.deps,
+            **kwargs
+        )
 
 def fizz_cxx_test(name, **kwargs):
     fb_xplat_cxx_test(
