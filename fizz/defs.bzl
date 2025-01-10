@@ -114,6 +114,7 @@ def fizz_cpp_library(
         propagated_pp_flags = (),
         # fb_xplat API
         enable_static_variant = True,
+        platforms = None,
         **kwargs):
     """Translate a simpler declartion into the more complete library target"""
     if get_fbsource_cell() == "fbcode":
@@ -138,6 +139,7 @@ def fizz_cpp_library(
         )
         fizz_cxx_library(
             name = name,
+            platforms = platforms,
             exported_headers = headers,
             headers = private_headers,
             srcs = srcs,
