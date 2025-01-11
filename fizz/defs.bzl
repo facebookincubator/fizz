@@ -201,7 +201,11 @@ def fizz_cxx_library(
 
 def fizz_cpp_binary(name, deps, **kwargs):
     if get_fbsource_cell() == "fbcode":
-        cpp_binary(name = name, **kwargs)
+        cpp_binary(
+            name = name,
+            deps = deps,
+            **kwargs
+        )
     else:
         converted_deps = deps_map_utils.convert_all_to_fbsource_deps(
             deps = deps,
