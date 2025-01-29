@@ -32,7 +32,6 @@ _modes = extend_build_modes(
     get_parent_modes(),
     c_flags = _extra_cflags,
     clang_flags = _extra_clang_flags,
-    cxx_modular_headers = True,
     gcc_flags = _extra_gcc_flags,
     tags = _tags,
 )
