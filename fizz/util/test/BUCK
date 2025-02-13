@@ -1,0 +1,43 @@
+load("@fbsource//xplat/fizz:defs.bzl", "fizz_cpp_unittest")
+
+oncall("secure_pipes")
+
+fizz_cpp_unittest(
+    name = "fizz_util_test",
+    srcs = [
+        "FizzUtilTest.cpp",
+    ],
+    deps = [
+        "//fizz/crypto/test:TestUtil",
+        "//fizz/protocol/clock/test:mock_clock",
+        "//fizz/protocol/test:mocks",
+        "//fizz/server:ticket_types",
+        "//fizz/util:fizz_util",
+        "//folly:file_util",
+        "//folly/portability:gtest",
+        "//folly/testing:test_util",
+    ],
+)
+
+fizz_cpp_unittest(
+    name = "variant_test",
+    srcs = [
+        "FizzVariantTest.cpp",
+    ],
+    deps = [
+        "//fizz/util:variant",
+        "//folly/portability:gtest",
+    ],
+)
+
+fizz_cpp_unittest(
+    name = "key_log_writer_test",
+    srcs = [
+        "KeyLogWriterTest.cpp",
+    ],
+    deps = [
+        "//fizz/crypto:random",
+        "//fizz/util:key_log_writer",
+        "//folly/portability:gtest",
+    ],
+)

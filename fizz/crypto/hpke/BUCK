@@ -1,0 +1,102 @@
+load("@fbsource//xplat/fizz:defs.bzl", "fizz_cpp_library")
+
+oncall("secure_pipes")
+
+fizz_cpp_library(
+    name = "utils",
+    srcs = [
+        "Utils.cpp",
+    ],
+    headers = [
+        "Utils.h",
+    ],
+    exported_deps = [
+        ":types",
+        "//fizz/crypto:crypto",
+        "//fizz/protocol:types",
+        "//folly:optional",
+    ],
+)
+
+fizz_cpp_library(
+    name = "hkdf",
+    srcs = [
+        "Hkdf.cpp",
+    ],
+    headers = [
+        "Hkdf.h",
+    ],
+    deps = [
+        "//fizz/record:record",
+    ],
+    exported_deps = [
+        "//fizz/crypto:hasher",
+        "//fizz/crypto:hkdf",
+    ],
+)
+
+fizz_cpp_library(
+    name = "dhkem",
+    srcs = [
+        "DHKEM.cpp",
+    ],
+    headers = [
+        "DHKEM.h",
+    ],
+    deps = [
+        "//folly/io:iobuf",
+    ],
+    exported_deps = [
+        ":hkdf",
+        ":types",
+        "//fizz/crypto/exchange:key_exchange",
+        "//fizz/record:record",
+    ],
+)
+
+fizz_cpp_library(
+    name = "types",
+    headers = [
+        "Types.h",
+    ],
+    exported_deps = [
+        "//folly/io:iobuf",
+    ],
+)
+
+fizz_cpp_library(
+    name = "context",
+    srcs = [
+        "Context.cpp",
+    ],
+    headers = [
+        "Context.h",
+    ],
+    deps = [
+        ":utils",
+    ],
+    exported_deps = [
+        "fbcode//fizz/crypto/aead:aead",
+        "fbcode//fizz/crypto/hpke:hkdf",
+        "fbcode//fizz/crypto/hpke:types",
+        "fbcode//fizz/protocol:types",
+    ],
+)
+
+fizz_cpp_library(
+    name = "hpke",
+    srcs = [
+        "Hpke.cpp",
+    ],
+    headers = [
+        "Hpke.h",
+    ],
+    deps = [
+        ":types",
+    ],
+    exported_deps = [
+        ":context",
+        ":dhkem",
+        "//fizz/crypto/aead:aead",
+    ],
+)

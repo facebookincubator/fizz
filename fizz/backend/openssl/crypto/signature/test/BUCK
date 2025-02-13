@@ -1,0 +1,59 @@
+load("@fbsource//xplat/fizz:defs.bzl", "fizz_cpp_unittest")
+
+oncall("secure_pipes")
+
+fizz_cpp_unittest(
+    name = "peer_cert_verify",
+    srcs = [
+        "PeerCertVerify.cpp",
+    ],
+    supports_static_listing = False,
+    deps = [
+        "//fizz/backend:openssl",
+        "//fizz/crypto/test:signature",
+        "//fizz/crypto/test:signature_test_data",
+        "//folly/portability:gtest",
+    ],
+)
+
+fizz_cpp_unittest(
+    name = "ec",
+    srcs = [
+        "ECSignatureTest.cpp",
+    ],
+    supports_static_listing = False,
+    deps = [
+        "//fizz/backend:openssl",
+        "//folly:string",
+        "//folly/portability:gtest",
+    ],
+)
+
+fizz_cpp_unittest(
+    name = "ed",
+    srcs = [
+        "EdSignatureTest.cpp",
+    ],
+    headers = [
+        "EdSignatureTest.h",
+    ],
+    supports_static_listing = False,
+    deps = [
+        "//fizz/backend:openssl",
+        "//fizz/crypto/test:TestUtil",
+        "//folly:fixed_string",
+        "//folly:string",
+        "//folly/portability:gtest",
+    ],
+)
+
+fizz_cpp_unittest(
+    name = "rsa_pss",
+    srcs = [
+        "RSAPSSSignatureTest.cpp",
+    ],
+    deps = [
+        "//fizz/backend:openssl",
+        "//folly/portability:gtest",
+    ],
+)

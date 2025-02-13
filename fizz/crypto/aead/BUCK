@@ -1,0 +1,42 @@
+load("@fbsource//xplat/fizz:defs.bzl", "fizz_cpp_library")
+
+oncall("secure_pipes")
+
+fizz_cpp_library(
+    name = "aead",
+    headers = [
+        "Aead.h",
+    ],
+    exported_deps = [
+        "//folly:optional",
+        "//folly/io:iobuf",
+    ],
+)
+
+fizz_cpp_library(
+    name = "iobuf",
+    srcs = [
+        "IOBufUtil.cpp",
+    ],
+    headers = [
+        "IOBufUtil.h",
+    ],
+    exported_deps = [
+        "//folly:range",
+        "//folly/io:iobuf",
+    ],
+)
+
+fizz_cpp_library(
+    name = "cryptoutil",
+    headers = [
+        "CryptoUtil.h",
+    ],
+    exported_deps = [
+        ":aead",
+        ":iobuf",
+        "//folly:conv",
+        "//folly:memory",
+        "//folly:range",
+    ],
+)

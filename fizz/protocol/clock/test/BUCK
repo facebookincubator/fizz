@@ -1,0 +1,14 @@
+load("@fbsource//xplat/fizz:defs.bzl", "fizz_cpp_library")
+
+oncall("secure_pipes")
+
+fizz_cpp_library(
+    name = "mock_clock",
+    headers = [
+        "Mocks.h",
+    ],
+    exported_deps = [
+        "//fizz/protocol/clock:clock",
+        "//folly/portability:gmock",
+    ],
+)

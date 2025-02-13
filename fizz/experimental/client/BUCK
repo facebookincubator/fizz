@@ -1,0 +1,18 @@
+load("@fbsource//xplat/fizz:defs.bzl", "fizz_cpp_library")
+
+oncall("secure_pipes")
+
+fizz_cpp_library(
+    name = "batch_signature_peer_cert",
+    srcs = [
+        "BatchSignaturePeerCert.cpp",
+    ],
+    headers = [
+        "BatchSignaturePeerCert.h",
+    ],
+    exported_deps = [
+        "//fizz/experimental/crypto:batch_signature",
+        "//fizz/experimental/protocol:batch_signature_types",
+        "//fizz/protocol:certificate",
+    ],
+)

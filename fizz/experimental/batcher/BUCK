@@ -1,0 +1,16 @@
+load("@fbsource//xplat/fizz:defs.bzl", "fizz_cpp_library")
+
+oncall("secure_pipes")
+
+fizz_cpp_library(
+    name = "batcher",
+    headers = [
+        "Batcher.h",
+    ],
+    exported_deps = [
+        "//fizz/experimental/crypto:batch_signature",
+        "//fizz/experimental/protocol:batch_signature_types",
+        "//fizz/server:async_self_cert",
+        "//folly/futures:shared_promise",
+    ],
+)

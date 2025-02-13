@@ -1,0 +1,225 @@
+load("@fbsource//xplat/fizz:defs.bzl", "fizz_cpp_library")
+
+oncall("secure_pipes")
+
+fizz_cpp_library(
+    name = "fizz_client_context",
+    srcs = ["FizzClientContext.cpp"],
+    headers = [
+        "FizzClientContext.h",
+    ],
+    deps = [
+        "//fizz/protocol:default_factory",
+    ],
+    exported_deps = [
+        ":cert_manager",
+        ":psk_cache",
+        "//fizz/compression:cert_decompression_manager",
+        "//fizz/protocol:certificate",
+        "//fizz/protocol:factory",
+        "//fizz/protocol/clock:system_clock",
+        "//fizz/protocol/ech:grease_ech_setting",
+        "//fizz/record:record",
+    ],
+)
+
+fizz_cpp_library(
+    name = "actions",
+    headers = [
+        "Actions.h",
+    ],
+    exported_deps = [
+        ":psk_cache",
+        "//fizz/protocol:actions",
+        "//fizz/protocol:params",
+        "//fizz/util:variant",
+        "//folly:c_portability",
+    ],
+)
+
+fizz_cpp_library(
+    name = "state",
+    srcs = [
+        "State.cpp",
+    ],
+    headers = [
+        "State.h",
+    ],
+    exported_deps = [
+        ":client_extensions",
+        ":fizz_client_context",
+        "//fizz/protocol:certificate",
+        "//fizz/protocol:key_scheduler",
+        "//fizz/protocol:types",
+        "//fizz/protocol/ech:encryption",
+        "//fizz/record:record_layer",
+    ],
+)
+
+fizz_cpp_library(
+    name = "cert_manager",
+    srcs = [
+        "CertManager.cpp",
+    ],
+    headers = [
+        "CertManager.h",
+    ],
+    exported_deps = [
+        "//fizz/protocol:certificate",
+    ],
+)
+
+fizz_cpp_library(
+    name = "protocol",
+    srcs = [
+        "ClientProtocol.cpp",
+    ],
+    headers = [
+        "ClientProtocol.h",
+    ],
+    deps = [
+        "//fizz/crypto:utils",
+        "//fizz/crypto/hpke:utils",
+        "//fizz/protocol:certificate_verifier",
+        "//fizz/protocol:protocol",
+        "//fizz/protocol:state_machine",
+        "//fizz/protocol/ech:encryption",
+        "//fizz/protocol/ech:grease_ech",
+        "//fizz/record:record",
+    ],
+    exported_deps = [
+        ":actions",
+        ":client_extensions",
+        ":fizz_client_context",
+        ":psk_cache",
+        ":state",
+        "//fizz/protocol/ech:encrypted_client_hello",
+    ],
+)
+
+fizz_cpp_library(
+    name = "early_data_rejection",
+    srcs = [
+        "EarlyDataRejectionPolicy.cpp",
+    ],
+    headers = [
+        "EarlyDataRejectionPolicy.h",
+    ],
+    exported_deps = [
+        ":state",
+    ],
+)
+
+fizz_cpp_library(
+    name = "fizz_client",
+    headers = [
+        "FizzClient.h",
+        "FizzClient-inl.h",
+    ],
+    exported_deps = [
+        ":fizz_client_context",
+        ":protocol",
+        ":psk_cache",
+        "//fizz/protocol:certificate_verifier",
+        "//fizz/protocol:fizz_base",
+    ],
+)
+
+fizz_cpp_library(
+    name = "async_fizz_client",
+    headers = [
+        "AsyncFizzClient.h",
+        "AsyncFizzClient-inl.h",
+    ],
+    exported_deps = [
+        ":client_extensions",
+        ":early_data_rejection",
+        ":fizz_client",
+        ":fizz_client_context",
+        ":protocol",
+        "//fizz/protocol:async_fizz_base",
+        "//fizz/protocol:default_certificate_verifier",
+        "//fizz/protocol:exporter",
+        "//fizz/util:tracer",
+        "//folly/io:socket_option_map",
+    ],
+)
+
+fizz_cpp_library(
+    name = "psk_cache",
+    headers = [
+        "PskCache.h",
+    ],
+    exported_deps = [
+        "//fizz/protocol:certificate",
+        "//fizz/protocol:types",
+        "//fizz/record:record",
+    ],
+)
+
+fizz_cpp_library(
+    name = "ech_policy",
+    headers = [
+        "ECHPolicy.h",
+    ],
+    exported_deps = [
+        "//fizz/protocol/ech:encrypted_client_hello",
+        "//folly:optional",
+    ],
+)
+
+fizz_cpp_library(
+    name = "psk_serialization_utils",
+    srcs = [
+        "PskSerializationUtils.cpp",
+    ],
+    headers = [
+        "PskSerializationUtils.h",
+    ],
+    deps = [
+        "//fizz/record:record",
+        "//folly/io:iobuf",
+    ],
+    exported_deps = [
+        ":psk_cache",
+        "//fizz/protocol:certificate",
+    ],
+)
+
+fizz_cpp_library(
+    name = "synchronized_lru_psk_cache",
+    srcs = [
+        "SynchronizedLruPskCache.cpp",
+    ],
+    headers = [
+        "SynchronizedLruPskCache.h",
+    ],
+    exported_deps = [
+        ":psk_cache",
+        "//folly:synchronized",
+        "//folly/container:evicting_cache_map",
+    ],
+)
+
+fizz_cpp_library(
+    name = "client_extensions",
+    headers = [
+        "ClientExtensions.h",
+    ],
+    exported_deps = [
+        "//fizz/record:record",
+    ],
+)
+
+fizz_cpp_library(
+    name = "multi_client_extensions",
+    srcs = [
+        "MultiClientExtensions.cpp",
+    ],
+    headers = [
+        "MultiClientExtensions.h",
+    ],
+    exported_deps = [
+        ":client_extensions",
+    ],
+)

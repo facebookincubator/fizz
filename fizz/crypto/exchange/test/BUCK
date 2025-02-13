@@ -1,0 +1,40 @@
+load("@fbsource//xplat/fizz:defs.bzl", "fizz_cpp_library", "fizz_cpp_unittest")
+
+oncall("secure_pipes")
+
+fizz_cpp_library(
+    name = "mocks",
+    headers = [
+        "Mocks.h",
+    ],
+    exported_deps = [
+        "//fizz/crypto/exchange:async_key_exchange",
+        "//fizz/crypto/exchange:key_exchange",
+        "//folly/portability:gmock",
+    ],
+)
+
+fizz_cpp_unittest(
+    name = "x25519",
+    srcs = [
+        "X25519KeyExchangeTest.cpp",
+    ],
+    deps = [
+        "//fizz/backend:libsodium",
+        "//folly:range",
+        "//folly:string",
+        "//folly/portability:gtest",
+    ],
+)
+
+fizz_cpp_unittest(
+    name = "HybridExchange",
+    srcs = [
+        "HybridKeyExchangeTest.cpp",
+    ],
+    deps = [
+        ":mocks",
+        "//fizz/crypto/exchange:hybrid_key_exchange",
+        "//folly/portability:gtest",
+    ],
+)

@@ -1,0 +1,33 @@
+load("@fbsource//tools/build_defs:fb_native_wrapper.bzl", "fb_native")
+
+oncall("mobile_networking_core")
+
+fb_native.constraint_setting(
+    name = "profile",
+    visibility = ["PUBLIC"],
+)
+
+# Only applies when manually opted into with platforms:fizz-mobile
+fb_native.constraint_value(
+    name = "mobile",
+    constraint_setting = ":profile",
+    visibility = ["PUBLIC"],
+)
+
+fb_native.constraint_value(
+    name = "xplat",
+    constraint_setting = ":profile",
+    visibility = ["PUBLIC"],
+)
+
+fb_native.constraint_setting(
+    name = "oqs",
+    visibility = ["PUBLIC"],
+)
+
+# Constrain a platform to not use liboqs-related components in Fizz
+fb_native.constraint_value(
+    name = "oqs-disabled",
+    constraint_setting = ":oqs",
+    visibility = ["PUBLIC"],
+)

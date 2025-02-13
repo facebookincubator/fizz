@@ -1,0 +1,88 @@
+load("@fbsource//xplat/fizz:defs.bzl", "fizz_cpp_library", "fizz_cpp_unittest")
+
+oncall("secure_pipes")
+
+fizz_cpp_unittest(
+    name = "ech_test",
+    srcs = [
+        "ECHTest.cpp",
+    ],
+    deps = [
+        ":test_util",
+        "//fizz/protocol/ech:encrypted_client_hello",
+        "//folly/portability:gmock",
+        "//folly/portability:gtest",
+    ],
+)
+
+fizz_cpp_unittest(
+    name = "encryption_test",
+    srcs = [
+        "EncryptionTest.cpp",
+    ],
+    deps = [
+        ":test_util",
+        "//fizz/backend:openssl",
+        "//fizz/crypto:crypto",
+        "//fizz/crypto/hpke:hpke",
+        "//fizz/crypto/hpke:utils",
+        "//fizz/crypto/test:TestUtil",
+        "//fizz/protocol:default_factory",
+        "//fizz/protocol/ech:encryption",
+        "//fizz/protocol/test:matchers",
+        "//fizz/protocol/test:mocks",
+        "//fizz/protocol/test:test_util",
+        "//fizz/record:record",
+        "//folly/lang:bits",
+    ],
+)
+
+fizz_cpp_library(
+    name = "test_util",
+    srcs = [
+        "TestUtil.cpp",
+    ],
+    headers = [
+        "TestUtil.h",
+    ],
+    deps = [
+        "//fizz/backend:openssl",
+        "//fizz/crypto/test:TestUtil",
+        "//fizz/protocol/ech:encryption",
+        "//fizz/protocol/test:test_util",
+    ],
+    exported_deps = [
+        "//fizz/crypto/exchange:key_exchange",
+        "//fizz/protocol/ech:encrypted_client_hello",
+    ],
+)
+
+fizz_cpp_unittest(
+    name = "decrypter_test",
+    srcs = [
+        "DecrypterTest.cpp",
+    ],
+    deps = [
+        ":test_util",
+        "//fizz/backend:openssl",
+        "//fizz/crypto/test:TestUtil",
+        "//fizz/protocol:default_factory",
+        "//fizz/protocol/ech:decrypter",
+        "//fizz/protocol/test:test_util",
+        "//folly/portability:gmock",
+        "//folly/portability:gtest",
+    ],
+)
+
+fizz_cpp_unittest(
+    name = "grease_ech_test",
+    srcs = [
+        "GreaseECHTest.cpp",
+    ],
+    deps = [
+        "//fizz/crypto/hpke:utils",
+        "//fizz/protocol/ech:grease_ech",
+        "//fizz/protocol/test:mocks",
+        "//fizz/protocol/test:test_util",
+    ],
+)

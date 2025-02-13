@@ -1,0 +1,22 @@
+load("@fbsource//xplat/fizz:defs.bzl", "fizz_cpp_unittest")
+
+oncall("secure_pipes")
+
+fizz_cpp_unittest(
+    name = "exported_authenticator_test",
+    srcs = [
+        "ExportedAuthenticatorTest.cpp",
+    ],
+    deps = [
+        "//fizz/backend:openssl",
+        "//fizz/crypto/test:TestUtil",
+        "//fizz/extensions/exportedauth:exported_authenticator",
+        "//fizz/protocol:default_factory",
+        "//fizz/protocol/test:mocks",
+        "//fizz/protocol/test:test_util",
+        "//fizz/record:record",
+        "//folly:string",
+        "//folly/portability:gmock",
+        "//folly/portability:gtest",
+    ],
+)

@@ -1,0 +1,92 @@
+load("@fbsource//xplat/fizz:defs.bzl", "fizz_cpp_library")
+
+oncall("secure_pipes")
+
+fizz_cpp_library(
+    name = "crypto",
+    srcs = [
+        "Crypto.cpp",
+    ],
+    headers = [
+        "Crypto.h",
+    ],
+    exported_deps = [
+        "//folly:range",
+        "//folly/io:iobuf",
+    ],
+)
+
+fizz_cpp_library(
+    name = "hasher",
+    srcs = [
+        "Hasher.cpp",
+        "Hmac.cpp",
+    ],
+    headers = [
+        "Hasher.h",
+        "Hmac.h",
+    ],
+    exported_deps = [
+        "//fizz/crypto:crypto",
+        "//folly/io:iobuf",
+    ],
+)
+
+fizz_cpp_library(
+    name = "hkdf",
+    srcs = [
+        "Hkdf.cpp",
+    ],
+    headers = [
+        "Hkdf.h",
+    ],
+    exported_deps = [
+        "//fizz/crypto:crypto",
+        "//fizz/crypto:hasher",
+        "//folly/io:iobuf",
+    ],
+)
+
+fizz_cpp_library(
+    name = "key_derivation",
+    srcs = [
+        "KeyDerivation.cpp",
+    ],
+    headers = [
+        "KeyDerivation.h",
+    ],
+    exported_deps = [
+        "//fizz/crypto:crypto",
+        "//fizz/crypto:hkdf",
+        "//fizz/record:record",
+    ],
+)
+
+fizz_cpp_library(
+    name = "random",
+    headers = [
+        "RandomGenerator.h",
+    ],
+    exported_deps = [
+        "//folly/io:iobuf",
+    ],
+    exported_external_deps = [
+        ("libsodium", None, "sodium"),
+    ],
+)
+
+fizz_cpp_library(
+    name = "utils",
+    srcs = [
+        "Utils.cpp",
+    ],
+    headers = [
+        "Utils.h",
+    ],
+    exported_deps = [
+        "//folly:range",
+    ],
+    external_deps = [
+        ("libsodium", None, "sodium"),
+    ],
+)

@@ -1,0 +1,43 @@
+load("@fbsource//tools/build_defs:platform_defs.bzl", "ANDROID")
+load("@fbsource//xplat/fizz:defs.bzl", "fizz_cpp_library")
+
+oncall("secure_pipes")
+
+fizz_cpp_library(
+    name = "java_crypto",
+    srcs = [
+        "JavaCryptoCertificateVerifier.cpp",
+        "JavaCryptoPeerCert.cpp",
+        "JniUtils.cpp",
+        "OnLoad.cpp",
+    ],
+    headers = [
+        "JavaCryptoCertificateVerifier.h",
+        "JavaCryptoFactory.h",
+        "JavaCryptoPeerCert.h",
+        "JniUtils.h",
+    ],
+    # This library uses proxygen, which hasn't been modularized yet, so keep
+    # using textual inclusion for now.
+    modular_headers = False,
+    platforms = (ANDROID,),
+    deps = [
+        "//folly/ssl:openssl_cert_utils",
+    ],
+    exported_deps = [
+        "//fizz/backend:openssl",
+        "//fizz/protocol:certificate",
+        "//fizz/protocol:certificate_verifier",
+        "//fizz/protocol:default_factory",
+        "//fizz/record:record",
+        "//folly:range",
+    ] + select({
+        "DEFAULT": [],
+        "ovr_config//runtime/constraints:fbcode": [
+            "fbsource//third-party/jvm:jvm",
+        ],
+    }),
+    external_deps = [
+        "glog",
+    ],
+)

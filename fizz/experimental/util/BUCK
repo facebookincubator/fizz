@@ -1,0 +1,17 @@
+load("@fbsource//xplat/fizz:defs.bzl", "fizz_cpp_library")
+
+oncall("secure_pipes")
+
+fizz_cpp_library(
+    name = "cert_extraction",
+    srcs = [],
+    headers = [
+        "CertExtraction.h",
+    ],
+    deps = [
+    ],
+    exported_deps = [
+        "//fizz/client:async_fizz_client",
+        "//fizz/server:async_fizz_server",
+    ],
+)

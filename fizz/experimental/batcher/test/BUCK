@@ -1,0 +1,19 @@
+load("@fbsource//xplat/fizz:defs.bzl", "fizz_cpp_unittest")
+
+oncall("secure_pipes")
+
+fizz_cpp_unittest(
+    name = "batcher_test",
+    srcs = [
+        "BatcherTest.cpp",
+    ],
+    deps = [
+        "//fizz/backend:openssl",
+        "//fizz/crypto/test:TestUtil",
+        "//fizz/experimental/batcher:batcher",
+        "//fizz/experimental/client:batch_signature_peer_cert",
+        "//fizz/experimental/server:batch_signature_async_self_cert",
+        "//fizz/server/test:mocks",
+        "//folly/portability:gtest",
+    ],
+)

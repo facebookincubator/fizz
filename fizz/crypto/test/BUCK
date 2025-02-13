@@ -1,0 +1,182 @@
+load("@fbsource//xplat/fizz:defs.bzl", "fizz_cpp_library", "fizz_cpp_unittest")
+
+oncall("secure_pipes")
+
+fizz_cpp_library(
+    name = "mocks",
+    headers = [
+        "Mocks.h",
+    ],
+    exported_deps = [
+        "//fizz/crypto:hasher",
+        "//fizz/crypto:key_derivation",
+        "//folly/portability:gmock",
+    ],
+)
+
+fizz_cpp_library(
+    name = "HmacTest",
+    srcs = [
+        "HmacTest.cpp",
+    ],
+    headers = [
+        "HmacTest.h",
+    ],
+    deps = [
+        "//fizz/crypto:crypto",
+        "//folly:string",
+        "//folly/io:iobuf",
+        "//folly/portability:gtest",
+    ],
+    exported_deps = [
+        "//fizz/crypto:hasher",
+        "//fizz/protocol:types",
+    ],
+)
+
+fizz_cpp_library(
+    name = "hash_test",
+    srcs = [
+        "HashTest.cpp",
+    ],
+    headers = [
+        "HashTest.h",
+    ],
+    deps = [
+        "//fizz/crypto:crypto",
+        "//folly:string",
+        "//folly/io:iobuf",
+        "//folly/portability:gtest",
+    ],
+    exported_deps = [
+        "//fizz/crypto:hasher",
+        "//fizz/protocol:types",
+    ],
+)
+
+fizz_cpp_library(
+    name = "TestKeys",
+    srcs = [
+        "TestKeys.cpp",
+    ],
+    headers = [
+        "TestKeys.h",
+    ],
+    deps = [
+    ],
+    exported_deps = [
+        "//fizz/crypto:crypto",
+        "//folly:string",
+    ],
+)
+
+fizz_cpp_library(
+    name = "signature_test_data",
+    srcs = [
+        "SignatureTestData.cpp",
+    ],
+    headers = [
+        "SignatureTestData.h",
+    ],
+    exported_deps = [
+        "//fizz/record:record",
+    ],
+)
+
+fizz_cpp_library(
+    name = "signature",
+    srcs = [
+        "Signature.cpp",
+    ],
+    headers = [
+        "Signature.h",
+    ],
+    deps = [
+        "//fizz/protocol:certificate",
+        "//folly:range",
+        "//folly/io:iobuf",
+    ],
+    exported_deps = [
+        ":signature_test_data",
+        "//folly/portability:gtest",
+    ],
+)
+
+fizz_cpp_library(
+    name = "TestUtil",
+    srcs = [
+        "TestUtil.cpp",
+    ],
+    headers = [
+        "TestUtil.h",
+    ],
+    deps = [
+        "//fizz:config",
+        "//fizz/backend:libaegis",
+        "//fizz/backend:openssl",
+        "//folly/ssl:openssl_cert_utils",
+    ],
+    exported_deps = [
+        ":TestKeys",
+        "//fizz/crypto/aead:aead",
+        "//fizz/protocol:types",
+        "//folly:string",
+        "//folly/io:iobuf",
+        "//folly/ssl:openssl_ptr_types",
+    ],
+    external_deps = [
+        ("libsodium", None, "sodium"),
+    ],
+)
+
+fizz_cpp_unittest(
+    name = "hkdf_tests",
+    srcs = [
+        "HkdfTest.cpp",
+    ],
+    supports_static_listing = False,
+    deps = [
+        ":TestUtil",
+        "//fizz/backend:openssl",
+        "//fizz/crypto:hkdf",
+        "//folly/portability:gtest",
+    ],
+)
+
+fizz_cpp_unittest(
+    name = "key_derivation",
+    srcs = [
+        "KeyDerivationTest.cpp",
+    ],
+    supports_static_listing = False,
+    deps = [
+        "//fizz/backend:openssl",
+        "//fizz/crypto:key_derivation",
+        "//folly:string",
+        "//folly/io:iobuf",
+        "//folly/portability:gtest",
+    ],
+)
+
+fizz_cpp_unittest(
+    name = "random_generator_test",
+    srcs = [
+        "RandomGeneratorTest.cpp",
+    ],
+    deps = [
+        ":TestUtil",
+        "//fizz/crypto:random",
+        "//folly/portability:gtest",
+    ],
+)
+
+fizz_cpp_unittest(
+    name = "utils_test",
+    srcs = [
+        "UtilsTest.cpp",
+    ],
+    deps = [
+        "//fizz/crypto:utils",
+        "//folly/portability:gtest",
+    ],
+)

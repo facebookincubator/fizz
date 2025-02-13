@@ -1,0 +1,27 @@
+load("@fbsource//xplat/fizz:defs.bzl", "fizz_cpp_library")
+
+oncall("secure_pipes")
+
+fizz_cpp_library(
+    name = "merkle_tree",
+    headers = [
+        "MerkleTree.h",
+    ],
+    exported_deps = [
+        "//fizz/backend:openssl",
+        "//fizz/crypto:random",
+        "//fizz/record:record",
+        "//folly/container:f14_hash",
+    ],
+)
+
+fizz_cpp_library(
+    name = "batch_signature",
+    headers = [
+        "BatchSignature.h",
+    ],
+    exported_deps = [
+        ":merkle_tree",
+        "//fizz/record:record",
+    ],
+)

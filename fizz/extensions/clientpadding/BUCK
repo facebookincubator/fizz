@@ -1,0 +1,30 @@
+load("@fbsource//xplat/fizz:defs.bzl", "fizz_cpp_library")
+
+oncall("secure_pipes")
+
+fizz_cpp_library(
+    name = "types",
+    srcs = [
+        "Types.cpp",
+    ],
+    headers = [
+        "Types.h",
+    ],
+    exported_deps = [
+        "//fizz/record:record",
+    ],
+)
+
+fizz_cpp_library(
+    name = "padding_client_extension",
+    srcs = [
+        "PaddingClientExtension.cpp",
+    ],
+    headers = [
+        "PaddingClientExtension.h",
+    ],
+    exported_deps = [
+        ":types",
+        "//fizz/client:client_extensions",
+    ],
+)

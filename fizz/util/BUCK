@@ -1,0 +1,90 @@
+load("@fbsource//xplat/fizz:defs.bzl", "fizz_cpp_library")
+
+oncall("secure_pipes")
+
+fizz_cpp_library(
+    name = "fizz_util",
+    srcs =
+        [
+            "FizzUtil.cpp",
+        ],
+    headers =
+        [
+            "FizzUtil.h",
+        ],
+    deps = [
+        "//fizz/backend:libsodium",
+        "//fizz/server:ticket_types",
+        "//folly:file_util",
+        "//folly:format",
+        "//folly/portability:openssl",
+    ],
+    exported_deps = [
+        "//fizz/extensions/tokenbinding:token_binding_context",
+        "//fizz/protocol:certificate",
+        "//fizz/server:fizz_server_context",
+        "//fizz/server:ticket_policy",
+        "//folly/io/async:password_in_file",
+        "//folly/io/async:ssl_context",
+        "//folly/ssl:openssl_cert_utils",
+    ],
+    external_deps = [
+        ("libsodium", None, "sodium"),
+        ("openssl", None, "crypto"),
+    ],
+)
+
+fizz_cpp_library(
+    name = "parse",
+    headers = [
+        "Parse.h",
+        "Parse-inl.h",
+    ],
+    exported_deps = [
+        "//fizz/record:record",
+        "//folly:range",
+    ],
+)
+
+fizz_cpp_library(
+    name = "workarounds",
+    headers = [
+        "Workarounds.h",
+    ],
+)
+
+fizz_cpp_library(
+    name = "variant",
+    headers = [
+        "Variant.h",
+    ],
+)
+
+fizz_cpp_library(
+    name = "key_log_writer",
+    headers = [
+        "KeyLogWriter.h",
+    ],
+    exported_deps = [
+        "fbsource//third-party/fmt:fmt",
+        "//fizz/protocol:key_scheduler",
+        "//fizz/protocol:types",
+        "//folly:range",
+    ],
+)
+
+fizz_cpp_library(
+    name = "tracer",
+    srcs = [
+        "Tracing.cpp",
+    ],
+    headers = [
+        "Tracing.h",
+    ],
+    deps = [
+        "//folly/tracing:static_tracepoint",
+    ],
+    exported_deps = [
+        ":key_log_writer",
+    ],
+)

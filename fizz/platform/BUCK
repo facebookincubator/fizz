@@ -1,0 +1,15 @@
+load("@fbsource//tools/build_defs:default_platform_defs.bzl", "get_host_target_platform")
+load("@fbsource//tools/build_defs:fb_native_wrapper.bzl", "fb_native")
+
+oncall("mobile_networking_core")
+
+deps = [x for x in [get_host_target_platform()] if x != None]
+
+fb_native.platform(
+    name = "fizz-mobile",
+    constraint_values = [
+        "fbsource//xplat/fizz/constraints:mobile",
+    ],
+    visibility = ["PUBLIC"],
+    deps = deps,
+)
