@@ -1,0 +1,22 @@
+load("@fbsource//xplat/fizz:defs.bzl", "fizz_cpp_unittest")
+
+oncall("secure_pipes")
+
+fizz_cpp_unittest(
+    name = "evpciphers",
+    srcs = [
+        "EVPCipherTest.cpp",
+    ],
+    supports_static_listing = False,
+    deps = [
+        "//fizz:config",
+        "//fizz/crypto/aead:iobuf",
+        "//fizz/crypto/aead/test:data",
+        "//fizz/crypto/aead/test:test_util",
+        "//fizz/crypto/test:TestUtil",
+        "//fizz/record:record",
+        "//folly:exception_wrapper",
+        "//folly:string",
+        "//folly/portability:gtest",
+    ],
+)

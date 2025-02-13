@@ -1,0 +1,54 @@
+load("@fbsource//xplat/fizz:defs.bzl", "fizz_cpp_library", "fizz_cpp_unittest")
+
+oncall("secure_pipes")
+
+fizz_cpp_library(
+    name = "mocks",
+    headers = [
+        "Mocks.h",
+    ],
+    exported_deps = [
+        "//fizz/crypto/aead:aead",
+        "//folly/portability:gmock",
+    ],
+)
+
+fizz_cpp_library(
+    name = "data",
+    headers = [
+        "Data.h",
+    ],
+    exported_deps = [
+        "//fizz/record:record",
+    ],
+)
+
+fizz_cpp_library(
+    name = "test_util",
+    srcs = [
+        "TestUtil.cpp",
+    ],
+    headers = [
+        "TestUtil.h",
+    ],
+    deps = [
+        "//fizz/crypto/aead:iobuf",
+    ],
+    exported_deps = [
+        "//folly:memory",
+        "//folly:string",
+        "//folly/io:iobuf",
+    ],
+)
+
+fizz_cpp_unittest(
+    name = "util_test",
+    srcs = [
+        "IOBufUtilTest.cpp",
+    ],
+    deps = [
+        "//fizz/crypto/aead:iobuf",
+        "//folly/io:iobuf",
+        "//folly/portability:gtest",
+    ],
+)

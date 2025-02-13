@@ -1,0 +1,81 @@
+load("@fbcode_macros//build_defs:build_file_migration.bzl", "fbcode_target")
+load("@fbcode_macros//build_defs:cpp_unittest.bzl", "cpp_unittest")
+
+oncall("secure_pipes")
+
+fbcode_target(
+    _kind = cpp_unittest,
+    name = "ktls_test",
+    srcs = [
+        "KTLSTest.cpp",
+    ],
+    deps = [
+        "//fizz/backend:openssl",
+        "//fizz/crypto/aead:aead",
+        "//fizz/experimental/ktls:ktls",
+        "//folly/test:test_utils",
+    ],
+)
+
+fbcode_target(
+    _kind = cpp_unittest,
+    name = "async_fizz_base_ktls_test",
+    srcs = [
+        "AsyncFizzBaseKTLSTest.cpp",
+    ],
+    deps = [
+        "//fizz/backend:openssl",
+        "//fizz/client:async_fizz_client",
+        "//fizz/client:synchronized_lru_psk_cache",
+        "//fizz/crypto/test:TestUtil",
+        "//fizz/experimental/ktls:ktls",
+        "//fizz/protocol:certificate",
+        "//fizz/protocol/test:mocks",
+        "//fizz/server:aead_ticket_cipher",
+        "//fizz/server:async_fizz_server",
+        "//fizz/server:cert_manager",
+        "//fizz/server:fizz_server_context",
+        "//fizz/server:ticket_codec",
+        "//folly:function",
+        "//folly/futures:core",
+        "//folly/io/async:async_socket",
+        "//folly/io/async:server_socket",
+        "//folly/test:test_utils",
+    ],
+)
+
+fbcode_target(
+    _kind = cpp_unittest,
+    name = "async_ktls_socket_test",
+    srcs = [
+        "AsyncKTLSSocketTest.cpp",
+    ],
+    deps = [
+        "//fizz/backend:openssl",
+        "//fizz/experimental/ktls:ktls",
+        "//fizz/record:encrypted_record_layer",
+        "//folly/futures:core",
+        "//folly/io/async:async_socket",
+        "//folly/io/async:server_socket",
+        "//folly/io/async/test:mocks",
+        "//folly/test:test_utils",
+    ],
+)
+
+fbcode_target(
+    _kind = cpp_unittest,
+    name = "async_ktls_rx_socket_test",
+    srcs = [
+        "AsyncKTLSRxSocketTest.cpp",
+    ],
+    deps = [
+        "//fizz/backend:openssl",
+        "//fizz/experimental/ktls:ktls",
+        "//fizz/record:encrypted_record_layer",
+        "//folly/futures:core",
+        "//folly/io/async:async_socket",
+        "//folly/io/async:server_socket",
+        "//folly/io/async/test:mocks",
+        "//folly/test:test_utils",
+    ],
+)

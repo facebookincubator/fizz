@@ -1,0 +1,63 @@
+load("@fbsource//xplat/fizz:defs.bzl", "fizz_cpp_library", "fizz_cpp_unittest")
+
+oncall("secure_pipes")
+
+fizz_cpp_unittest(
+    name = "dhkem_test",
+    srcs = [
+        "DHKEMTest.cpp",
+    ],
+    deps = [
+        "//fizz/backend:openssl",
+        "//fizz/crypto/exchange:key_exchange",
+        "//fizz/crypto/hpke:dhkem",
+        "//fizz/crypto/test:TestUtil",
+        "//fizz/record:record",
+        "//folly/portability:gtest",
+    ],
+)
+
+fizz_cpp_unittest(
+    name = "context_test",
+    srcs = [
+        "ContextTest.cpp",
+    ],
+    supports_static_listing = False,
+    deps = [
+        "//fizz/backend:openssl",
+        "//fizz/crypto/aead/test:test_util",
+        "//fizz/crypto/hpke:context",
+        "//fizz/crypto/hpke:utils",
+        "//fizz/crypto/test:TestUtil",
+        "//fizz/record:record",
+    ],
+)
+
+fizz_cpp_library(
+    name = "mocks",
+    headers = [
+        "Mocks.h",
+    ],
+    exported_deps = [
+        "//fizz/backend:libsodium",
+        "//fizz/crypto/aead:aead",
+        "//fizz/crypto/hpke:context",
+        "//folly/portability:gmock",
+    ],
+)
+
+fizz_cpp_unittest(
+    name = "hpke_test",
+    srcs = [
+        "HpkeTest.cpp",
+    ],
+    deps = [
+        ":mocks",
+        "//fizz/backend:libsodium",
+        "//fizz/backend:openssl",
+        "//fizz/crypto/hpke:hpke",
+        "//fizz/crypto/hpke:utils",
+        "//fizz/crypto/test:TestUtil",
+        "//fizz/protocol:default_factory",
+    ],
+)

@@ -1,0 +1,15 @@
+load("@fbsource//xplat/fizz:defs.bzl", "fizz_cpp_unittest")
+
+oncall("secure_pipes")
+
+fizz_cpp_unittest(
+    name = "batch_signature_types_test",
+    srcs = [
+        "BatchSignatureTypesTest.cpp",
+    ],
+    deps = [
+        "//fizz/experimental/protocol:batch_signature_types",
+        "//folly/portability:gmock",
+        "//folly/portability:gtest",
+    ],
+)

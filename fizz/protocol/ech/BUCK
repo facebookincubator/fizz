@@ -1,0 +1,82 @@
+load("@fbsource//xplat/fizz:defs.bzl", "fizz_cpp_library")
+
+oncall("secure_pipes")
+
+fizz_cpp_library(
+    name = "encrypted_client_hello",
+    headers = [
+        "ECHExtensions.h",
+        "ECHExtensions-inl.h",
+        "Types.h",
+        "Types-inl.h",
+    ],
+    exported_deps = [
+        "//fizz/crypto/hpke:types",
+        "//fizz/record:record",
+        "//folly/io:iobuf",
+    ],
+)
+
+fizz_cpp_library(
+    name = "encryption",
+    srcs = [
+        "Encryption.cpp",
+    ],
+    headers = [
+        "Encryption.h",
+    ],
+    deps = [
+        "//fizz/crypto/hpke:utils",
+        "//fizz/protocol:protocol",
+        "//fizz/record:record",
+    ],
+    exported_deps = [
+        ":encrypted_client_hello",
+        "//fizz/crypto/exchange:key_exchange",
+        "//fizz/crypto/hpke:hpke",
+        "//fizz/protocol:factory",
+    ],
+)
+
+fizz_cpp_library(
+    name = "decrypter",
+    srcs = [
+        "Decrypter.cpp",
+    ],
+    headers = [
+        "Decrypter.h",
+    ],
+    exported_deps = [
+        ":encrypted_client_hello",
+        ":encryption",
+        "//fizz/protocol:factory",
+    ],
+)
+
+fizz_cpp_library(
+    name = "grease_ech_setting",
+    headers = [
+        "GreaseECHSetting.h",
+    ],
+    exported_deps = [
+        "//fizz/crypto/hpke:hpke",
+    ],
+)
+
+fizz_cpp_library(
+    name = "grease_ech",
+    srcs = [
+        "GreaseECH.cpp",
+    ],
+    headers = [
+        "GreaseECH.h",
+    ],
+    deps = [
+        "//fizz/crypto/hpke:utils",
+    ],
+    exported_deps = [
+        ":encrypted_client_hello",
+        ":grease_ech_setting",
+        "//fizz/protocol:factory",
+    ],
+)

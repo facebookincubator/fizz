@@ -1,0 +1,38 @@
+load("@fbsource//tools/build_defs:fb_native_wrapper.bzl", "fb_native")
+
+oncall("mobile_networking_core")
+
+# Only applies when manually opted into with platforms:fizz-mobile
+fb_native.config_setting(
+    name = "mobile",
+    constraint_values = [
+        "fbsource//xplat/fizz/constraints:mobile",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+fb_native.config_setting(
+    name = "xplat",
+    constraint_values = [
+        "fbsource//xplat/fizz/constraints:xplat",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+fb_native.config_setting(
+    name = "oqs-disabled",
+    constraint_values = [
+        "fbsource//xplat/fizz/constraints:oqs-disabled",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+# Joint config for buck1 compatibility
+fb_native.config_setting(
+    name = "mobile-oqs-disabled",
+    constraint_values = [
+        "fbsource//xplat/fizz/constraints:mobile",
+        "fbsource//xplat/fizz/constraints:oqs-disabled",
+    ],
+    visibility = ["PUBLIC"],
+)

@@ -1,0 +1,138 @@
+load("@fbsource//xplat/fizz:defs.bzl", "fizz_cpp_binary", "fizz_cpp_library", "fizz_cpp_unittest")
+
+oncall("secure_pipes")
+
+fizz_cpp_library(
+    name = "mocks",
+    headers = [
+        "Mocks.h",
+    ],
+    exported_deps = [
+        "//fizz/protocol:types",
+        "//fizz/record:encrypted_record_layer",
+        "//fizz/record:plaintext_record_layer",
+        "//folly/portability:gmock",
+    ],
+)
+
+fizz_cpp_library(
+    name = "extension_tests_base",
+    headers = [
+        "ExtensionTestsBase.h",
+    ],
+    exported_deps = [
+        "//fizz/record:record",
+        "//folly:string",
+        "//folly/portability:gmock",
+        "//folly/portability:gtest",
+    ],
+)
+
+fizz_cpp_unittest(
+    name = "handshake_types_test",
+    srcs = [
+        "HandshakeTypesTest.cpp",
+    ],
+    deps = [
+        "//fizz/record:record",
+        "//folly:string",
+        "//folly/portability:gmock",
+        "//folly/portability:gtest",
+    ],
+)
+
+fizz_cpp_unittest(
+    name = "extensions_test",
+    srcs = [
+        "ExtensionsTest.cpp",
+    ],
+    deps = [
+        ":extension_tests_base",
+        "//fizz/record:record",
+        "//folly/portability:gmock",
+        "//folly/portability:gtest",
+    ],
+)
+
+fizz_cpp_unittest(
+    name = "types_test",
+    srcs = [
+        "TypesTest.cpp",
+    ],
+    deps = [
+        "//fizz/record:record",
+        "//folly/io:iobuf",
+        "//folly/portability:gmock",
+        "//folly/portability:gtest",
+    ],
+)
+
+fizz_cpp_unittest(
+    name = "plaintext_record_test",
+    srcs = [
+        "PlaintextRecordTest.cpp",
+    ],
+    deps = [
+        "//fizz/record:plaintext_record_layer",
+        "//folly:string",
+        "//folly/portability:gmock",
+        "//folly/portability:gtest",
+    ],
+)
+
+fizz_cpp_unittest(
+    name = "record_test",
+    srcs = [
+        "RecordTest.cpp",
+    ],
+    deps = [
+        ":mocks",
+        "//fizz/record:record_layer",
+        "//folly:string",
+        "//folly/portability:gmock",
+        "//folly/portability:gtest",
+    ],
+)
+
+fizz_cpp_unittest(
+    name = "encrypted_record_test",
+    srcs = [
+        "EncryptedRecordTest.cpp",
+    ],
+    deps = [
+        "//fizz/crypto/aead/test:mocks",
+        "//fizz/record:buf_and_padding_policy",
+        "//fizz/record:encrypted_record_layer",
+        "//folly:string",
+        "//folly/portability:gmock",
+        "//folly/portability:gtest",
+    ],
+)
+
+fizz_cpp_unittest(
+    name = "buf_and_padding_policy_test",
+    srcs = [
+        "BufAndPaddingPolicyTest.cpp",
+    ],
+    deps = [
+        "//fizz/record:buf_and_padding_policy",
+        "//folly/portability:gtest",
+    ],
+)
+
+fizz_cpp_binary(
+    name = "record_bench",
+    srcs = [
+        "EncryptedRecordBench.cpp",
+    ],
+    compiler_flags = ["-Wno-unused-variable"],
+    deps = [
+        "//fizz/backend:libaegis",
+        "//fizz/backend:openssl",
+        "//fizz/crypto:utils",
+        "//fizz/record:encrypted_record_layer",
+        "//folly:benchmark",
+        "//folly:random",
+        "//folly/init:init",
+    ],
+)

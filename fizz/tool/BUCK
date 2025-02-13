@@ -1,0 +1,108 @@
+load("@fbcode_macros//build_defs:build_file_migration.bzl", "fbcode_target")
+load("@fbcode_macros//build_defs:cpp_binary.bzl", "cpp_binary")
+load("@fbcode_macros//build_defs:cpp_library.bzl", "cpp_library")
+
+oncall("secure_pipes")
+
+fbcode_target(
+    _kind = cpp_library,
+    name = "tool_lib",
+    srcs = [
+        "FizzCommandCommon.cpp",
+    ],
+    headers = [
+        "FizzCommandCommon.h",
+    ],
+    deps = [
+        "//fizz/backend:libsodium",
+        "//fizz/backend:openssl",
+        "//fizz/protocol:certificate",
+        "//folly:base64",
+        "//folly:string",
+    ],
+    exported_deps = [
+        "//fizz/crypto/exchange:key_exchange",
+        "//fizz/protocol:async_fizz_base",
+        "//fizz/protocol/ech:encrypted_client_hello",
+        "//fizz/util:parse",
+        "//folly:file_util",
+        "//folly/experimental/io:io_uring_backend",
+        "//folly/io:iobuf",
+        "//folly/io/async:async_base",
+        "//folly/json:dynamic",
+    ],
+)
+
+fbcode_target(
+    _kind = cpp_binary,
+    name = "fizz",
+    srcs = [
+        "FizzClientCommand.cpp",
+        "FizzClientLoadGenCommand.cpp",
+        "FizzGenerateDelegatedCredentialCommand.cpp",
+        "FizzServerBenchmarkCommand.cpp",
+        "FizzServerCommand.cpp",
+        "Main.cpp",
+    ],
+    headers = [
+        "CertificateVerifiers.h",
+        "Commands.h",
+    ],
+    preprocessor_flags = [
+        "-DFIZZ_TOOL_ENABLE_BROTLI",
+        "-DFIZZ_TOOL_ENABLE_ZSTD",
+        "-DFIZZ_TOOL_ENABLE_IO_URING",
+    ],
+    deps = [
+        ":tool_lib",
+        "//fizz/backend:libsodium",
+        "//fizz/backend:openssl",
+        "//fizz/client:async_fizz_client",
+        "//fizz/client:multi_client_extensions",
+        "//fizz/client:psk_serialization_utils",
+        "//fizz/compression:brotli_certificate_compressor",
+        "//fizz/compression:brotli_certificate_decompressor",
+        "//fizz/compression:zlib_certificate_compressor",
+        "//fizz/compression:zlib_certificate_decompressor",
+        "//fizz/compression:zstd_certificate_compressor",
+        "//fizz/compression:zstd_certificate_decompressor",
+        "//fizz/crypto:random",
+        "//fizz/crypto/hpke:utils",
+        "//fizz/experimental/batcher:batcher",
+        "//fizz/experimental/protocol:batch_signature_factory",
+        "//fizz/experimental/server:batch_signature_async_self_cert",
+        "//fizz/extensions/clientpadding:padding_client_extension",
+        "//fizz/extensions/delegatedcred:delegated_credential_cert_manager",
+        "//fizz/extensions/delegatedcred:delegated_credential_client_extension",
+        "//fizz/extensions/delegatedcred:delegated_credential_factory",
+        "//fizz/extensions/delegatedcred:delegated_credential_utils",
+        "//fizz/extensions/delegatedcred:self_delegated_credential",
+        "//fizz/extensions/delegatedcred:serialization",
+        "//fizz/protocol:certificate_verifier",
+        "//fizz/protocol:default_certificate_verifier",
+        "//fizz/protocol:default_factory",
+        "//fizz/protocol/test:cert_util",
+        "//fizz/server:async_fizz_server",
+        "//fizz/server:sliding_bloom_replay_cache",
+        "//fizz/server:ticket_types",
+        "//fizz/util:fizz_util",
+        "//fizz/util:key_log_writer",
+        "//fizz/util:parse",
+        "//folly:conv",
+        "//folly:file_util",
+        "//folly:format",
+        "//folly/executors:io_thread_pool_executor",
+        "//folly/futures:core",
+        "//folly/io/async:async_ssl_socket",
+        "//folly/io/async:server_socket",
+        "//folly/io/async:ssl_context",
+        "//folly/io/async/ssl:openssl_transport_certificate",
+        "//folly/json:dynamic",
+        "//folly/portability:gflags",
+        "//folly/ssl:openssl_cert_utils",
+        "//folly/stats:histogram",
+    ],
+    external_deps = [
+        "glog",
+    ],
+)

@@ -1,0 +1,23 @@
+load("@fbsource//xplat/fizz:defs.bzl", "fizz_cpp_library")
+
+oncall("secure_pipes")
+
+fizz_cpp_library(
+    name = "clock",
+    headers = [
+        "Clock.h",
+    ],
+)
+
+fizz_cpp_library(
+    name = "system_clock",
+    srcs = [
+        "SystemClock.cpp",
+    ],
+    headers = [
+        "SystemClock.h",
+    ],
+    exported_deps = [
+        ":clock",
+    ],
+)

@@ -1,0 +1,401 @@
+load("@fbsource//xplat/fizz:defs.bzl", "fizz_cpp_library")
+
+oncall("secure_pipes")
+
+fizz_cpp_library(
+    name = "protocol",
+    srcs = [
+        "ServerProtocol.cpp",
+        "State.cpp",
+    ],
+    headers = [
+        "Actions.h",
+        "ServerProtocol.h",
+        "State.h",
+    ],
+    deps = [
+        ":async_self_cert",
+        ":negotiator",
+        ":replay_cache",
+        "//fizz/crypto:utils",
+        "//fizz/crypto/exchange:async_key_exchange",
+        "//fizz/protocol:certificate_verifier",
+        "//fizz/protocol:protocol",
+        "//fizz/protocol:state_machine",
+        "//fizz/protocol/ech:decrypter",
+        "//fizz/record:plaintext_record_layer",
+        "//fizz/util:workarounds",
+        "//folly:overload",
+        "//folly/tracing:static_tracepoint",
+    ],
+    exported_deps = [
+        ":fizz_server_context",
+        ":handshake_logging",
+        ":resumption_state",
+        ":server_extensions",
+        "//fizz/protocol:actions",
+        "//fizz/protocol:certificate",
+        "//fizz/protocol:key_scheduler",
+        "//fizz/protocol:params",
+        "//fizz/protocol:types",
+        "//fizz/protocol/ech:encrypted_client_hello",
+        "//fizz/record:record",
+        "//fizz/record:record_layer",
+        "//fizz/util:variant",
+        "//folly:optional",
+        "//folly:small_vector",
+        "//folly/futures:core",
+    ],
+    exported_external_deps = [
+        ("boost", None, "boost_variant"),
+    ],
+)
+
+fizz_cpp_library(
+    name = "negotiator",
+    headers = [
+        "Negotiator.h",
+    ],
+    exported_deps = [
+        "//folly:optional",
+    ],
+)
+
+fizz_cpp_library(
+    name = "fizz_server_context",
+    srcs = [
+        "FizzServerContext.cpp",
+    ],
+    headers = [
+        "FizzServerContext.h",
+    ],
+    deps = [
+        "//fizz/protocol:default_factory",
+    ],
+    exported_deps = [
+        ":cert_manager",
+        ":cookie_cipher",
+        ":negotiator",
+        ":replay_cache",
+        ":ticket_cipher",
+        "//fizz/protocol:certificate",
+        "//fizz/protocol:factory",
+        "//fizz/protocol/clock:system_clock",
+        "//fizz/protocol/ech:decrypter",
+        "//fizz/record:record",
+    ],
+)
+
+fizz_cpp_library(
+    name = "ticket_policy",
+    headers = [
+        "TicketPolicy.h",
+    ],
+    exported_deps = [
+        ":resumption_state",
+        "//fizz/protocol:types",
+        "//fizz/protocol/clock:system_clock",
+    ],
+)
+
+fizz_cpp_library(
+    name = "ticket_cipher",
+    headers = [
+        "TicketCipher.h",
+    ],
+    exported_deps = [
+        ":resumption_state",
+        "//folly:optional",
+        "//folly/futures:core",
+        "//folly/io:iobuf",
+    ],
+)
+
+fizz_cpp_library(
+    name = "dual_ticket_cipher",
+    headers = [
+        "DualTicketCipher.h",
+    ],
+    exported_deps = [
+        ":ticket_cipher",
+    ],
+)
+
+fizz_cpp_library(
+    name = "ticket_codec",
+    srcs = [
+        "TicketCodec.cpp",
+    ],
+    headers = [
+        "TicketCodec.h",
+        "TicketCodec-inl.h",
+    ],
+    deps = [
+        "//folly/io/async/ssl:openssl_transport_certificate",
+        "//folly/ssl:openssl_cert_utils",
+    ],
+    exported_deps = [
+        ":fizz_server_context",
+        ":resumption_state",
+        "//fizz/record:record",
+    ],
+)
+
+fizz_cpp_library(
+    name = "aead_ticket_cipher",
+    headers = [
+        "AeadTicketCipher.h",
+    ],
+    exported_deps = [
+        ":aead_token_cipher",
+        ":fizz_server_context",
+        ":ticket_cipher",
+        ":ticket_policy",
+    ],
+)
+
+fizz_cpp_library(
+    name = "token_cipher",
+    headers = [
+        "TokenCipher.h",
+    ],
+    exported_deps = [
+        "//folly:optional",
+        "//folly:range",
+        "//folly/io:iobuf",
+    ],
+)
+
+fizz_cpp_library(
+    name = "aead_token_cipher",
+    srcs = [
+        "AeadTokenCipher.cpp",
+    ],
+    headers = [
+        "AeadTokenCipher.h",
+    ],
+    deps = [
+        "//fizz/crypto:random",
+        "//fizz/crypto:utils",
+        "//fizz/crypto/aead:aead",
+    ],
+    exported_deps = [
+        ":token_cipher",
+        "//fizz/backend:openssl",
+        "//fizz/crypto:hkdf",
+        "//fizz/record:record",
+        "//folly:optional",
+        "//folly/io:iobuf",
+    ],
+)
+
+fizz_cpp_library(
+    name = "ticket_types",
+    headers = [
+        "TicketTypes.h",
+    ],
+    exported_deps = [
+        ":aead_ticket_cipher",
+        ":ticket_codec",
+        "//fizz/backend:openssl",
+        "//fizz/crypto:hkdf",
+        "//fizz/protocol:types",
+    ],
+)
+
+fizz_cpp_library(
+    name = "resumption_state",
+    headers = [
+        "ResumptionState.h",
+    ],
+    exported_deps = [
+        "//fizz/protocol:certificate",
+        "//fizz/protocol:types",
+        "//fizz/record:record",
+    ],
+)
+
+fizz_cpp_library(
+    name = "cookie_cipher",
+    srcs = [
+        "CookieCipher.cpp",
+    ],
+    headers = [
+        "CookieCipher.h",
+    ],
+    deps = [
+        ":negotiator",
+        "//fizz/protocol:handshake_context",
+    ],
+    exported_deps = [
+        "//fizz/protocol:factory",
+        "//fizz/protocol/ech:encrypted_client_hello",
+        "//fizz/record:record",
+    ],
+)
+
+fizz_cpp_library(
+    name = "aead_cookie_cipher",
+    srcs = [
+        "AeadCookieCipher.cpp",
+    ],
+    headers = [
+        "AeadCookieCipher.h",
+    ],
+    deps = [
+        "//fizz/record:record",
+    ],
+    exported_deps = [
+        ":cookie_cipher",
+        ":fizz_server_context",
+        ":token_cipher",
+    ],
+    exported_external_deps = [
+        ("boost", None, "boost_variant"),
+    ],
+)
+
+fizz_cpp_library(
+    name = "cookie_types",
+    headers = [
+        "CookieTypes.h",
+    ],
+    exported_deps = [
+        ":aead_cookie_cipher",
+        "//fizz/backend:openssl",
+        "//fizz/crypto:hkdf",
+        "//fizz/protocol:types",
+    ],
+)
+
+fizz_cpp_library(
+    name = "async_self_cert",
+    headers = [
+        "AsyncSelfCert.h",
+    ],
+    exported_deps = [
+        "//fizz/protocol:certificate",
+        "//folly/futures:core",
+    ],
+)
+
+fizz_cpp_library(
+    name = "fizz_server",
+    srcs = [
+        "FizzServer.cpp",
+    ],
+    headers = [
+        "FizzServer.h",
+        "FizzServer-inl.h",
+    ],
+    exported_deps = [
+        ":fizz_server_context",
+        ":protocol",
+        "//fizz/protocol:fizz_base",
+        "//fizz/util:workarounds",
+        "//folly:overload",
+    ],
+)
+
+fizz_cpp_library(
+    name = "async_fizz_server",
+    headers = [
+        "AsyncFizzServer.h",
+        "AsyncFizzServer-inl.h",
+    ],
+    exported_deps = [
+        ":fizz_server",
+        ":fizz_server_context",
+        ":protocol",
+        "//fizz/protocol:async_fizz_base",
+        "//fizz/protocol:exporter",
+        "//fizz/util:tracer",
+    ],
+)
+
+fizz_cpp_library(
+    name = "cert_manager",
+    srcs = [
+        "CertManager.cpp",
+    ],
+    headers = [
+        "CertManager.h",
+    ],
+    deps = [
+        "//folly:string",
+    ],
+    exported_deps = [
+        "//fizz/protocol:certificate",
+    ],
+)
+
+fizz_cpp_library(
+    name = "server_extensions",
+    headers = [
+        "ServerExtensions.h",
+    ],
+    exported_deps = [
+        "//fizz/record:record",
+    ],
+)
+
+fizz_cpp_library(
+    name = "replay_cache",
+    srcs = [
+        "ReplayCache.cpp",
+    ],
+    headers = [
+        "ReplayCache.h",
+    ],
+    exported_deps = [
+        "//folly:range",
+        "//folly/futures:core",
+        "//folly/io:iobuf",
+    ],
+)
+
+fizz_cpp_library(
+    name = "sliding_bloom_replay_cache",
+    srcs = [
+        "SlidingBloomReplayCache.cpp",
+    ],
+    headers = [
+        "SlidingBloomReplayCache.h",
+    ],
+    deps = [
+        "//fizz/crypto:random",
+        "//folly:range",
+        "//folly/io:iobuf",
+        "//folly/portability:unistd",
+    ],
+    exported_deps = [
+        ":replay_cache",
+        "//folly/io/async:async_base",
+    ],
+)
+
+fizz_cpp_library(
+    name = "multi_server_extensions",
+    srcs = [
+        "MultiServerExtensions.cpp",
+    ],
+    headers = [
+        "MultiServerExtensions.h",
+    ],
+    exported_deps = [
+        ":server_extensions",
+    ],
+)
+
+fizz_cpp_library(
+    name = "handshake_logging",
+    srcs = [
+        "HandshakeLogging.cpp",
+    ],
+    headers = [
+        "HandshakeLogging.h",
+    ],
+    exported_deps = [
+        "//fizz/record:record",
+    ],
+)

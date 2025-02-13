@@ -1,0 +1,16 @@
+load("@fbsource//xplat/fizz:defs.bzl", "fizz_cpp_unittest")
+
+oncall("secure_pipes")
+
+fizz_cpp_unittest(
+    name = "padding_client_extension_test",
+    srcs = [
+        "PaddingClientExtensionTest.cpp",
+    ],
+    deps = [
+        "//fizz/extensions/clientpadding:padding_client_extension",
+        "//fizz/record/test:extension_tests_base",
+        "//folly/portability:gmock",
+        "//folly/portability:gtest",
+    ],
+)

@@ -1,0 +1,43 @@
+load("@fbsource//xplat/fizz:defs.bzl", "fizz_cpp_library")
+
+oncall("secure_pipes")
+
+fizz_cpp_library(
+    name = "ktls",
+    srcs = [
+        "AsyncFizzBaseKTLS.cpp",
+        "AsyncKTLSSocket.cpp",
+        "FizzKTLSCallback.cpp",
+        "KTLS.cpp",
+    ],
+    headers = [
+        "AsyncFizzBaseKTLS.h",
+        "AsyncKTLSSocket.h",
+        "FizzKTLSCallback.h",
+        "KTLS.h",
+        "LinuxKTLS.h",
+    ],
+    deps = [
+        "//fizz/backend:openssl",
+        "//fizz/client:state",
+        "//folly:file",
+        "//folly/portability:sockets",
+    ],
+    exported_deps = [
+        "//fizz/crypto/aead:aead",
+        "//fizz/experimental/util:cert_extraction",
+        "//fizz/protocol:async_fizz_base",
+        "//fizz/protocol:key_scheduler",
+        "//fizz/record:record",
+        "//fizz/record:record_layer",
+        "//folly:c_portability",
+        "//folly:exception_wrapper",
+        "//folly:expected",
+        "//folly:function",
+        "//folly/io/async:async_socket",
+        "//folly/net:network_socket",
+    ],
+    exported_external_deps = [
+        "glog",
+    ],
+)

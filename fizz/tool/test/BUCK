@@ -1,0 +1,19 @@
+load("@fbcode_macros//build_defs:build_file_migration.bzl", "fbcode_target")
+load("@fbcode_macros//build_defs:cpp_unittest.bzl", "cpp_unittest")
+
+oncall("secure_pipes")
+
+fbcode_target(
+    _kind = cpp_unittest,
+    name = "fizz_command_common",
+    srcs = [
+        "FizzCommandCommonTest.cpp",
+    ],
+    deps = [
+        "//fizz/protocol/ech:encrypted_client_hello",
+        "//fizz/tool:tool_lib",
+        "//folly/container:array",
+        "//folly/portability:gmock",
+        "//folly/portability:gtest",
+    ],
+)

@@ -1,0 +1,156 @@
+load("@fbsource//xplat/fizz:defs.bzl", "fizz_cpp_library", "fizz_cpp_unittest")
+
+oncall("secure_pipes")
+
+fizz_cpp_unittest(
+    name = "client_protocol_test",
+    srcs = [
+        "ClientProtocolTest.cpp",
+    ],
+    deps = [
+        ":mocks",
+        ":utilities",
+        "//fizz/client:fizz_client_context",
+        "//fizz/client:protocol",
+        "//fizz/compression/test:mocks",
+        "//fizz/crypto/hpke:utils",
+        "//fizz/crypto/hpke/test:mocks",
+        "//fizz/protocol:default_factory",
+        "//fizz/protocol/clock/test:mock_clock",
+        "//fizz/protocol/ech:encrypted_client_hello",
+        "//fizz/protocol/ech/test:test_util",
+        "//fizz/protocol/test:matchers",
+        "//fizz/protocol/test:protocol_test",
+        "//fizz/protocol/test:test_util",
+        "//fizz/record/test:mocks",
+        "//folly/portability:gmock",
+        "//folly/portability:gtest",
+    ],
+)
+
+fizz_cpp_unittest(
+    name = "cert_manager_test",
+    srcs = [
+        "CertManagerTest.cpp",
+    ],
+    deps = [
+        "//fizz/client:cert_manager",
+        "//fizz/protocol/test:mocks",
+        "//folly/portability:gmock",
+        "//folly/portability:gtest",
+    ],
+)
+
+fizz_cpp_unittest(
+    name = "client_context_test",
+    srcs = [
+        "FizzClientContextTest.cpp",
+    ],
+    deps = [
+        "fbsource//third-party/googletest:gmock",
+        "fbsource//third-party/googletest:gtest",
+        "//fizz/client:fizz_client_context",
+        "//fizz/client:protocol",
+        "//fizz/protocol/test:mocks",
+        "//fizz/protocol/test:protocol_test",
+    ],
+)
+
+fizz_cpp_library(
+    name = "mocks",
+    headers = [
+        "Mocks.h",
+    ],
+    exported_deps = [
+        "//fizz/client:async_fizz_client",
+        "//fizz/client:client_extensions",
+        "//fizz/client:ech_policy",
+        "//fizz/client:psk_cache",
+        "//folly/io/async/test:mocks",
+    ],
+)
+
+fizz_cpp_library(
+    name = "utilities",
+    headers = [
+        "Utilities.h",
+    ],
+    exported_deps = [
+        "//fizz/client:psk_cache",
+        "//folly/portability:gtest",
+    ],
+)
+
+fizz_cpp_unittest(
+    name = "fizz_client_test",
+    srcs = [
+        "FizzClientTest.cpp",
+    ],
+    deps = [
+        ":mocks",
+        "//fizz/client:fizz_client",
+        "//fizz/client:psk_cache",
+        "//folly/portability:gmock",
+        "//folly/portability:gtest",
+    ],
+)
+
+fizz_cpp_unittest(
+    name = "async_fizz_client_test",
+    srcs = [
+        "AsyncFizzClientTest.cpp",
+    ],
+    deps = [
+        ":mocks",
+        "//fizz/client:async_fizz_client",
+        "//fizz/protocol/ech/test:test_util",
+        "//fizz/protocol/test:mocks",
+        "//folly/io:socket_option_map",
+        "//folly/io/async/test:async_socket_test_lib",
+        "//folly/io/async/test:mocks",
+        "//folly/portability:gmock",
+        "//folly/portability:gtest",
+    ],
+)
+
+fizz_cpp_unittest(
+    name = "synchronized_lru_psk_cache_test",
+    srcs = [
+        "SynchronizedLruPskCacheTest.cpp",
+    ],
+    deps = [
+        ":utilities",
+        "//fizz/client:synchronized_lru_psk_cache",
+        "//folly:format",
+        "//folly/portability:gmock",
+        "//folly/portability:gtest",
+    ],
+)
+
+fizz_cpp_unittest(
+    name = "psk_serialization_test",
+    srcs = [
+        "PskSerializationTest.cpp",
+    ],
+    deps = [
+        ":utilities",
+        "//fizz/backend:openssl",
+        "//fizz/client:psk_serialization_utils",
+        "//fizz/crypto/test:TestUtil",
+        "//fizz/protocol/test:mocks",
+        "//folly/portability:gmock",
+        "//folly/portability:gtest",
+    ],
+)
+
+fizz_cpp_unittest(
+    name = "multi_client_extensions_test",
+    srcs = [
+        "MultiClientExtensionsTest.cpp",
+    ],
+    deps = [
+        "//fizz/client:multi_client_extensions",
+        "//folly/portability:gmock",
+        "//folly/portability:gtest",
+    ],
+)

@@ -1,0 +1,38 @@
+load("@fbsource//xplat/fizz:defs.bzl", "fizz_cpp_library")
+
+oncall("secure_pipes")
+
+fizz_cpp_library(
+    name = "key_exchange",
+    headers = [
+        "KeyExchange.h",
+    ],
+    exported_deps = [
+        "//folly:range",
+        "//folly/io:iobuf",
+    ],
+)
+
+fizz_cpp_library(
+    name = "async_key_exchange",
+    headers = [
+        "AsyncKeyExchange.h",
+    ],
+    exported_deps = [
+        ":key_exchange",
+        "//folly/futures:core",
+    ],
+)
+
+fizz_cpp_library(
+    name = "hybrid_key_exchange",
+    srcs = [
+        "HybridKeyExchange.cpp",
+    ],
+    headers = [
+        "HybridKeyExchange.h",
+    ],
+    exported_deps = [
+        ":key_exchange",
+    ],
+)

@@ -1,0 +1,20 @@
+load("@fbsource//xplat/fizz:defs.bzl", "fizz_cpp_unittest")
+
+oncall("secure_pipes")
+
+fizz_cpp_unittest(
+    name = "batch_signature_peer_cert_test",
+    srcs = [
+        "BatchSignaturePeerCertTest.cpp",
+    ],
+    deps = [
+        "//fizz/backend:openssl",
+        "//fizz/crypto/test:TestUtil",
+        "//fizz/experimental/batcher:batcher",
+        "//fizz/experimental/client:batch_signature_peer_cert",
+        "//fizz/experimental/server:batch_signature_async_self_cert",
+        "//fizz/protocol/test:mocks",
+        "//folly/executors:manual_executor",
+        "//folly/portability:gtest",
+    ],
+)
