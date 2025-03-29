@@ -135,7 +135,7 @@ We'd love to have your help in making Fizz better. If you're interested, please
 read our guide to [guide to contributing](CONTRIBUTING.md)
 
 ## License
-Fizz is BSD licensed, as found in the LICENSE file.
+Fizz is [BSD licensed](LICENSE).
 
 ## Reporting and Fixing Security Issues
 
