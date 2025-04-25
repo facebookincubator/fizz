@@ -83,6 +83,7 @@ fizz_cpp_library(
     ],
     exported_deps = [
         ":record",
+        "//fizz/crypto/aead:aead",
         "//folly/io:iobuf",
     ],
 )
