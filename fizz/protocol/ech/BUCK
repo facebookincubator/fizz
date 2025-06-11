@@ -4,6 +4,9 @@ oncall("secure_pipes")
 
 fizz_cpp_library(
     name = "encrypted_client_hello",
+    srcs = [
+        "Types.cpp",
+    ],
     headers = [
         "ECHExtensions.h",
         "ECHExtensions-inl.h",
