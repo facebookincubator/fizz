@@ -115,6 +115,7 @@ fizz_cpp_unittest(
         "RecordLayerUtilsTest.cpp",
     ],
     deps = [
+        "//fizz/crypto/aead:iobuf",
         "//fizz/crypto/aead/test:mocks",
         "//fizz/record:buf_and_padding_policy",
         "//fizz/record:record_layer_utils",
