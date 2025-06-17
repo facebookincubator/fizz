@@ -82,6 +82,7 @@ fizz_cpp_library(
         "RecordLayerUtils-inl.h",
     ],
     exported_deps = [
+        ":buf_and_padding_policy",
         ":record",
         "//fizz/crypto/aead:aead",
         "//fizz/crypto/aead:iobuf",
