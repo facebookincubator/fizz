@@ -84,9 +84,13 @@ fizz_cpp_library(
         "Utils.h",
     ],
     exported_deps = [
+        "//fizz:config",
         "//folly:range",
     ],
-    external_deps = [
-        ("libsodium", None, "sodium"),
-    ],
+    external_deps = select({
+        "DEFAULT": [
+            ("libsodium", None, "sodium"),
+        ],
+        "fbsource//xplat/fizz/config:mobile": [],
+    }),
 )
