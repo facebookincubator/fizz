@@ -16,7 +16,6 @@ fbcode_target(
     deps = [
         "//fizz/backend:libsodium",
         "//fizz/backend:openssl",
-        "//fizz/protocol:certificate",
         "//folly:base64",
         "//folly:string",
     ],
