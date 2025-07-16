@@ -6,6 +6,16 @@ oncall("mobile_networking_core")
 fb_native.config_setting(
     name = "mobile",
     constraint_values = [
+        "fbsource//xplat/fizz/constraints:cert-mnscrypto",
+        "fbsource//xplat/fizz/constraints:mobile",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+fb_native.config_setting(
+    name = "mobile-with-openssl-cert",
+    constraint_values = [
+        "fbsource//xplat/fizz/constraints:cert-openssl",
         "fbsource//xplat/fizz/constraints:mobile",
     ],
     visibility = ["PUBLIC"],

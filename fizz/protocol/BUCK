@@ -144,6 +144,9 @@ fizz_cpp_library(
         "fbsource//xplat/fizz/config:mobile": [
             "//fizz/facebook/protocol:mnscrypto_factory",
         ],
+        "fbsource//xplat/fizz/config:mobile-with-openssl-cert": [
+            "//fizz/facebook/protocol:mnscrypto_factory",
+        ],
         "fbsource//xplat/fizz/config:xplat": [
             ":multi_backend_factory",
         ],

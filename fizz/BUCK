@@ -18,6 +18,7 @@ fizz_cpp_library(
             # @fb-only[end= ]: "ovr_config//runtime:fbcode": {"fizz-config.h": "facebook/fizz-config-fbcode.h"},
         }),
         # @fb-only[end= ]: "fbsource//xplat/fizz/config:mobile": {"fizz-config.h": "facebook/fizz-config-mobile.h"},
+        # @fb-only[end= ]: "fbsource//xplat/fizz/config:mobile-with-openssl-cert": {"fizz-config.h": "facebook/fizz-config-mobile-with-openssl-cert.h"},
         # @fb-only[end= ]: "fbsource//xplat/fizz/config:xplat": {"fizz-config.h": "facebook/fizz-config-xplat.h"},
         # @fb-only[end= ]: "ovr_config//toolchain/fb:arista": {"fizz-config.h": "facebook/fizz-config-xplat.h"},
     }),
