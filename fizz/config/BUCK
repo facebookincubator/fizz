@@ -28,21 +28,3 @@ fb_native.config_setting(
     ],
     visibility = ["PUBLIC"],
 )
-
-fb_native.config_setting(
-    name = "oqs-disabled",
-    constraint_values = [
-        "fbsource//xplat/fizz/constraints:oqs-disabled",
-    ],
-    visibility = ["PUBLIC"],
-)
-
-# Joint config for buck1 compatibility
-fb_native.config_setting(
-    name = "mobile-oqs-disabled",
-    constraint_values = [
-        "fbsource//xplat/fizz/constraints:mobile",
-        "fbsource//xplat/fizz/constraints:oqs-disabled",
-    ],
-    visibility = ["PUBLIC"],
-)

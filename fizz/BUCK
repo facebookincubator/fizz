@@ -22,11 +22,14 @@ fizz_cpp_library(
         # @fb-only[end= ]: "fbsource//xplat/fizz/config:xplat": {"fizz-config.h": "facebook/fizz-config-xplat.h"},
         # @fb-only[end= ]: "ovr_config//toolchain/fb:arista": {"fizz-config.h": "facebook/fizz-config-xplat.h"},
     }),
+    # propagated_cpp_flags should only be used for features **that do not
+    # affect public APIs** (e.g. the feature should be **purely** internal
+    # within Fizz and no public header is affected)
+    #
+    # Each individual feature should have its own select().
     propagated_pp_flags = select({
         "DEFAULT": ["-DFIZZ_HAVE_OQS"],
-        "fbsource//xplat/fizz/config:mobile": [],
-        "fbsource//xplat/fizz/config:mobile-oqs-disabled": [],
-        "fbsource//xplat/fizz/config:oqs-disabled": [],
+        "fbsource//xplat/fizz/constraints:oqs-disabled": [],
     }),
 )
 
