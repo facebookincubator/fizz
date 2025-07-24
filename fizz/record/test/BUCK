@@ -110,22 +110,6 @@ fizz_cpp_unittest(
 )
 
 fizz_cpp_unittest(
-    name = "record_utils_test",
-    srcs = [
-        "RecordLayerUtilsTest.cpp",
-    ],
-    deps = [
-        "//fizz/crypto/aead:iobuf",
-        "//fizz/crypto/aead/test:mocks",
-        "//fizz/record:buf_and_padding_policy",
-        "//fizz/record:record_layer_utils",
-        "//folly:string",
-        "//folly/portability:gmock",
-        "//folly/portability:gtest",
-    ],
-)
-
-fizz_cpp_unittest(
     name = "buf_and_padding_policy_test",
     srcs = [
         "BufAndPaddingPolicyTest.cpp",
