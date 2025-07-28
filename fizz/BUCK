@@ -1,3 +1,4 @@
+load("@fbcode//registry:defs.bzl", "rpm")
 load("@fbcode_macros//build_defs:build_file_migration.bzl", "fbcode_target")
 load("@fbcode_macros//build_defs:export_files.bzl", "export_files")
 load(":defs.bzl", "fizz_cpp_library")
@@ -45,4 +46,23 @@ fbcode_target(
         "CMakeListsForBuck2.txt",
         "fizz-config.h.in",
     ],
+)
+
+rpm.builder(
+    name = "fb-fizz",
+    configurations = [
+        rpm.configuration(
+            arch = "x86_64",
+        ),
+        rpm.configuration(
+            arch = "aarch64",
+        ),
+    ],
+    features = [
+        rpm.install(
+            src = "fbcode//fizz/tool:fizz",
+            dst = "/usr/local/bin/fizz",
+        ),
+    ],
+    summary = "Fizz TLS library command-line tool",
 )
