@@ -62,10 +62,8 @@ fizz_cpp_library(
         "ZlibCertificateCompressor.h",
     ],
     exported_deps = [
+        "fbsource//third-party/zlib:z",
         "//fizz/compression:certificate_compressor",
-    ],
-    exported_external_deps = [
-        ("zlib", None, "z"),
     ],
 )
 
@@ -78,10 +76,8 @@ fizz_cpp_library(
         "ZlibCertificateDecompressor.h",
     ],
     exported_deps = [
+        "fbsource//third-party/zlib:z",
         "//fizz/compression:certificate_compressor",
-    ],
-    exported_external_deps = [
-        ("zlib", None, "z"),
     ],
 )
 
