@@ -18,6 +18,7 @@ FIZZY_PUBLIC_HEADERS = [
     "facebook/fizzy/include/fizzy/certificate.h",
     "facebook/fizzy/include/fizzy/client.h",
     "facebook/fizzy/include/fizzy/protocol.h",
+    "facebook/fizzy/include/fizzy/tls_params.h",
 ]
 
 FIZZY_INTERNAL_HEADERS = [
@@ -43,6 +44,7 @@ FIZZY_SRCS = [
     "facebook/fizzy/src/protocol.cpp",
     "facebook/fizzy/src/client.cpp",
     "facebook/fizzy/src/factory.cpp",
+    "facebook/fizzy/src/tls_params.cpp",
 ]
 
 def fizzy_library(name):
@@ -61,6 +63,7 @@ def fizzy_library(name):
             "fbsource//xplat/fizz/client:fizz_client",
             "fbsource//xplat/fizz/client:psk_serialization_utils",
             "fbsource//xplat/fizz/protocol:default_factory",
+            "fbsource//xplat/fizz/protocol:certificate_verifier",
             "fbsource//third-party/boost:boost",
         ],
     )
