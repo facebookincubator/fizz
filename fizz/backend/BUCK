@@ -36,12 +36,17 @@ fizz_cpp_library(
         "liboqs/OQSKeyExchange.h",
     ],
     exported_deps = [
-        "fbsource//third-party/liboqs:oqs",
         "//fizz:config",
-        "//fizz/crypto:crypto",
-        "//fizz/crypto/exchange:key_exchange",
-        "//folly:memory",
-    ],
+    ] + select({
+        "DEFAULT": [
+            "fbsource//third-party/liboqs:oqs",
+            "//fizz/crypto:crypto",
+            "//fizz/crypto/exchange:key_exchange",
+            "//folly:memory",
+        ],
+        "fbsource//xplat/fizz/constraints:oqs-disabled": [
+        ],
+    }),
 )
 
 fizz_cpp_library(
