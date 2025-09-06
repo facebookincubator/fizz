@@ -9,6 +9,7 @@ fizz_cpp_unittest(
     ],
     deps = [
         "//fizz/backend:openssl",
+        "//fizz/crypto:utils",
         "//fizz/crypto/test:TestUtil",
         "//fizz/experimental/batcher:batcher",
         "//fizz/experimental/client:batch_signature_peer_cert",
