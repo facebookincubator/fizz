@@ -45,7 +45,6 @@ FIZZY_SRCS = [
     "facebook/fizzy/src/protocol.cpp",
     "facebook/fizzy/src/client.cpp",
     "facebook/fizzy/src/factory.cpp",
-    "facebook/fizzy/src/tls_params.cpp",
 ]
 
 COMMON_FLAGS = [] + select({
