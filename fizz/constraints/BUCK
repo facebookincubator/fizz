@@ -33,19 +33,13 @@ fb_native.constraint_value(
 )
 
 fb_native.constraint_setting(
-    name = "cert-backend",
-    visibility = ["PUBLIC"],
-)
-
-fb_native.constraint_value(
-    name = "cert-mnscrypto",
-    constraint_setting = ":cert-backend",
+    name = "mobile-setting-certificate-should-use-openssl",
     visibility = ["PUBLIC"],
 )
 
 fb_native.constraint_value(
     name = "cert-openssl",
-    constraint_setting = ":cert-backend",
+    constraint_setting = ":mobile-setting-certificate-should-use-openssl",
     visibility = ["PUBLIC"],
 )
 

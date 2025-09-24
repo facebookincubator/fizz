@@ -67,6 +67,11 @@ fizz_cpp_library(
     ],
 )
 
+_certificate_openssl_deps = [
+    "//folly/io/async:async_transport_certificate",
+    "//folly/io/async/ssl:openssl_transport_certificate",
+]
+
 fizz_cpp_library(
     name = "certificate",
     srcs = [
@@ -80,11 +85,14 @@ fizz_cpp_library(
         "//fizz:config",
         "//fizz/record:record",
     ] + select({
-        "DEFAULT": [
-            "//folly/io/async:async_transport_certificate",
-            "//folly/io/async/ssl:openssl_transport_certificate",
-        ],
-        "fbsource//xplat/fizz/config:mobile": [],
+        "DEFAULT": _certificate_openssl_deps,
+
+        # Under a mobile base profile, we do not include OpenSSL dependencies
+        # unless explicitly opted in.
+        "fbsource//xplat/fizz/constraints:mobile": select({
+            "DEFAULT": [],
+            "fbsource//xplat/fizz/constraints:cert-openssl": _certificate_openssl_deps,
+        }),
     }),
 )
 
@@ -141,14 +149,8 @@ fizz_cpp_library(
         "DEFAULT": [
             ":multi_backend_factory",
         ],
-        "fbsource//xplat/fizz/config:mobile": [
+        "fbsource//xplat/fizz/constraints:mobile": [
             "//fizz/facebook/protocol:mnscrypto_factory",
-        ],
-        "fbsource//xplat/fizz/config:mobile-with-openssl-cert": [
-            "//fizz/facebook/protocol:mnscrypto_factory",
-        ],
-        "fbsource//xplat/fizz/config:xplat": [
-            ":multi_backend_factory",
         ],
     }),
 )

@@ -8,7 +8,6 @@ deps = [x for x in [get_host_target_platform()] if x != None]
 fb_native.platform(
     name = "fizz-mobile",
     constraint_values = [
-        "fbsource//xplat/fizz/constraints:cert-mnscrypto",
         "fbsource//xplat/fizz/constraints:mobile",
     ],
     visibility = ["PUBLIC"],

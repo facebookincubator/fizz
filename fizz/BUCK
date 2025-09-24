@@ -18,19 +18,20 @@ fizz_cpp_library(
             # @fb-only[end= ]: "DEFAULT": {"fizz-config.h": "facebook/fizz-config-xplat.h"},
             # @fb-only[end= ]: "ovr_config//runtime:fbcode": {"fizz-config.h": "facebook/fizz-config-fbcode.h"},
         }),
-        # @fb-only[end= ]: "fbsource//xplat/fizz/config:mobile": {"fizz-config.h": "facebook/fizz-config-mobile.h"},
-        # @fb-only[end= ]: "fbsource//xplat/fizz/config:mobile-with-openssl-cert": {"fizz-config.h": "facebook/fizz-config-mobile-with-openssl-cert.h"},
-        # @fb-only[end= ]: "fbsource//xplat/fizz/config:xplat": {"fizz-config.h": "facebook/fizz-config-xplat.h"},
+        # @fb-only[end= ]: "fbsource//xplat/fizz/constraints:mobile": {"fizz-config.h": "facebook/fizz-config-mobile.h"},
+        # @fb-only[end= ]: "fbsource//xplat/fizz/constraints:xplat": {"fizz-config.h": "facebook/fizz-config-xplat.h"},
         # @fb-only[end= ]: "ovr_config//toolchain/fb:arista": {"fizz-config.h": "facebook/fizz-config-xplat.h"},
     }),
-    # propagated_cpp_flags should only be used for features **that do not
-    # affect public APIs** (e.g. the feature should be **purely** internal
-    # within Fizz and no public header is affected)
-    #
-    # Each individual feature should have its own select().
+    # Each individual tunable should have its own select().
     propagated_pp_flags = select({
         "DEFAULT": ["-DFIZZ_HAVE_OQS"],
         "fbsource//xplat/fizz/constraints:oqs-disabled": [],
+    }) + select({
+        "DEFAULT": [],
+        "fbsource//xplat/fizz/constraints:mobile": select({
+            "DEFAULT": [],
+            "fbsource//xplat/fizz/constraints:cert-openssl": ["-DFIZZ_CERTIFICATE_USE_OPENSSL_CERT"],
+        }),
     }),
 )
 

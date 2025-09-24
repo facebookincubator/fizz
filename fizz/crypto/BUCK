@@ -91,6 +91,6 @@ fizz_cpp_library(
         "DEFAULT": [
             ("libsodium", None, "sodium"),
         ],
-        "fbsource//xplat/fizz/config:mobile": [],
+        "fbsource//xplat/fizz/constraints:mobile": [],
     }),
 )
