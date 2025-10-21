@@ -86,13 +86,7 @@ fizz_cpp_library(
         "//fizz/record:record",
     ] + select({
         "DEFAULT": _certificate_openssl_deps,
-
-        # Under a mobile base profile, we do not include OpenSSL dependencies
-        # unless explicitly opted in.
-        "fbsource//xplat/fizz/constraints:mobile": select({
-            "DEFAULT": [],
-            "fbsource//xplat/fizz/constraints:cert-openssl": _certificate_openssl_deps,
-        }),
+        "fbsource//xplat/fizz/constraints:mnscrypto-only": [],
     }),
 )
 
@@ -149,7 +143,7 @@ fizz_cpp_library(
         "DEFAULT": [
             ":multi_backend_factory",
         ],
-        "fbsource//xplat/fizz/constraints:mobile": [
+        "fbsource//xplat/fizz/constraints:mnscrypto-only": [
             "//fizz/facebook/protocol:mnscrypto_factory",
         ],
     }),

@@ -7,9 +7,9 @@ fb_native.constraint_setting(
     visibility = ["PUBLIC"],
 )
 
-# Only applies when manually opted into with platforms:fizz-mobile
+# Uses MNS crypto instead of OpenSSL certificate dependencies
 fb_native.constraint_value(
-    name = "mobile",
+    name = "mnscrypto-only",
     constraint_setting = ":profile",
     visibility = ["PUBLIC"],
 )
@@ -29,17 +29,6 @@ fb_native.constraint_setting(
 fb_native.constraint_value(
     name = "oqs-disabled",
     constraint_setting = ":oqs",
-    visibility = ["PUBLIC"],
-)
-
-fb_native.constraint_setting(
-    name = "mobile-setting-certificate-should-use-openssl",
-    visibility = ["PUBLIC"],
-)
-
-fb_native.constraint_value(
-    name = "cert-openssl",
-    constraint_setting = ":mobile-setting-certificate-should-use-openssl",
     visibility = ["PUBLIC"],
 )
 

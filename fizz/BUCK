@@ -18,7 +18,7 @@ fizz_cpp_library(
             # @fb-only[end= ]: "DEFAULT": {"fizz-config.h": "facebook/fizz-config-xplat.h"},
             # @fb-only[end= ]: "ovr_config//runtime:fbcode": {"fizz-config.h": "facebook/fizz-config-fbcode.h"},
         }),
-        # @fb-only[end= ]: "fbsource//xplat/fizz/constraints:mobile": {"fizz-config.h": "facebook/fizz-config-mobile.h"},
+        # @fb-only[end= ]: "fbsource//xplat/fizz/constraints:mnscrypto-only": {"fizz-config.h": "facebook/fizz-config-mnscrypto-only.h"},
         # @fb-only[end= ]: "fbsource//xplat/fizz/constraints:xplat": {"fizz-config.h": "facebook/fizz-config-xplat.h"},
         # @fb-only[end= ]: "ovr_config//toolchain/fb:arista": {"fizz-config.h": "facebook/fizz-config-xplat.h"},
     }),
@@ -26,12 +26,6 @@ fizz_cpp_library(
     propagated_pp_flags = select({
         "DEFAULT": ["-DFIZZ_HAVE_OQS"],
         "fbsource//xplat/fizz/constraints:oqs-disabled": [],
-    }) + select({
-        "DEFAULT": [],
-        "fbsource//xplat/fizz/constraints:mobile": select({
-            "DEFAULT": [],
-            "fbsource//xplat/fizz/constraints:cert-openssl": ["-DFIZZ_CERTIFICATE_USE_OPENSSL_CERT"],
-        }),
     }),
 )
 

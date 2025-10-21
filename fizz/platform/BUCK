@@ -8,17 +8,16 @@ deps = [x for x in [get_host_target_platform()] if x != None]
 fb_native.platform(
     name = "fizz-mobile",
     constraint_values = [
-        "fbsource//xplat/fizz/constraints:mobile",
+        "fbsource//xplat/fizz/constraints:mnscrypto-only",
     ],
     visibility = ["PUBLIC"],
     deps = deps,
 )
 
 fb_native.platform(
-    name = "fizz-mobile-with-openssl-cert",
+    name = "fizz-mobile-keep-openssl",
     constraint_values = [
-        "fbsource//xplat/fizz/constraints:cert-openssl",
-        "fbsource//xplat/fizz/constraints:mobile",
+        "fbsource//xplat/fizz/constraints:fizzy-user-must-set-factory-explicitly",
     ],
     visibility = ["PUBLIC"],
     deps = deps,
