@@ -45,6 +45,7 @@ fbcode_target(
 
 rpm.builder(
     name = "fb-fizz",
+    autoclean_keep_versions = 200,
     configurations = [
         rpm.configuration(
             arch = "x86_64",
