@@ -7,6 +7,7 @@ load(":fizzy_defs.bzl", "fizzy_library")
 oncall("secure_pipes")
 
 fizzy_library(
+    # @autodeps-skip
     name = "fizzy",
 )
 

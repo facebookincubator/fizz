@@ -108,8 +108,8 @@ fizz_cpp_library(
         "//folly/ssl:openssl_ptr_types",
     ],
     exported_external_deps = [
-        "glog",
         ("openssl", None, "crypto"),
+        "glog",
     ],
 )
 
