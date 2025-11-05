@@ -54,7 +54,7 @@ COMMON_FLAGS = [] + select({
     ],
 })
 
-def fizzy_library(name, deps = []):
+def fizzy_library(name):
     fb_xplat_cxx_library(
         name = name,
         raw_headers = FIZZY_INTERNAL_HEADERS + FIZZY_PUBLIC_HEADERS,
@@ -71,7 +71,7 @@ def fizzy_library(name, deps = []):
             "fbsource//xplat/fizz/client:psk_serialization_utils",
             "fbsource//xplat/fizz/protocol:certificate_verifier",
             "fbsource//third-party/boost:boost",
-        ] + deps + select({
+        ] + select({
             "DEFAULT": [
                 "fbsource//xplat/fizz/protocol:default_factory",
             ],

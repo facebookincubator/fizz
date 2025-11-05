@@ -92,12 +92,12 @@ fizz_cpp_library(
         "Signature.h",
     ],
     deps = [
+        "//fizz/protocol:certificate",
         "//folly:range",
         "//folly/io:iobuf",
     ],
     exported_deps = [
         ":signature_test_data",
-        "//fizz/protocol:certificate",
         "//folly/portability:gtest",
     ],
 )

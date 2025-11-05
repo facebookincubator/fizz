@@ -92,5 +92,5 @@ fizz_cpp_library(
             ("libsodium", None, "sodium"),
         ],
         "fbsource//xplat/fizz/constraints:mnscrypto-only": [],
-    }) + [("libsodium", None, "sodium")],
+    }),
 )

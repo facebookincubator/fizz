@@ -183,7 +183,6 @@ fizz_cpp_library(
         "//fizz/crypto:crypto",
         "//fizz/record:record",
         "//folly:range",
-        "//folly/lang:assume",
     ],
 )
 

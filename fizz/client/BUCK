@@ -122,7 +122,6 @@ fizz_cpp_library(
         ":psk_cache",
         "//fizz/protocol:certificate_verifier",
         "//fizz/protocol:fizz_base",
-        "//folly/lang:switch",
     ],
 )
 
