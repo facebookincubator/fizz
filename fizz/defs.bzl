@@ -129,6 +129,7 @@ def fizz_cpp_library(
             external_deps = external_deps,
             exported_external_deps = exported_external_deps,
             propagated_pp_flags = propagated_pp_flags,
+            **kwargs
         )
     else:
         converted_deps = deps_map_utils.convert_all_to_fbsource_deps(
