@@ -1,3 +1,4 @@
+load("@fbcode//dependencies/buck:wdl.bzl", "wdls")
 load("@fbsource//xplat/fizz:defs.bzl", "fizz_cpp_library")
 
 oncall("secure_pipes")
@@ -63,6 +64,7 @@ fizz_cpp_library(
     headers = [
         "EncryptedRecordLayer.h",
     ],
+    labels = wdls.FIZZ_ENCRYPTED_RECORD_LAYER,
     deps = [
         "//fizz/crypto/aead:iobuf",
     ],

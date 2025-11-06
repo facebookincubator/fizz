@@ -1,3 +1,4 @@
+load("@fbcode//dependencies/buck:wdl.bzl", "wdls")
 load("@fbsource//xplat/fizz:defs.bzl", "fizz_cpp_library")
 
 oncall("secure_pipes")
@@ -61,6 +62,7 @@ fizz_cpp_library(
     headers = [
         "Serialization.h",
     ],
+    labels = wdls.FIZZ_SERIALIZATION,
     deps = [
         ":delegated_credential_utils",
         "//folly:base64",
@@ -110,6 +112,7 @@ fizz_cpp_library(
     headers = [
         "DelegatedCredentialFactory.h",
     ],
+    labels = wdls.FIZZ_DELEGATED_CREDENTIAL_FACTORY,
     deps = [
         ":peer_delegated_credential",
         "//folly/portability:openssl",
@@ -128,6 +131,7 @@ fizz_cpp_library(
     headers = [
         "DelegatedCredentialCertManager.h",
     ],
+    labels = wdls.FIZZ_DELEGATED_CREDENTIAL_CERT_MANAGER,
     exported_deps = [
         ":delegated_credential",
         ":self_delegated_credential",

@@ -1,3 +1,4 @@
+load("@fbcode//dependencies/buck:wdl.bzl", "wdls")
 load("@fbsource//xplat/fizz:defs.bzl", "fizz_cpp_library")
 
 oncall("secure_pipes")
@@ -25,6 +26,7 @@ fizz_cpp_library(
     headers = [
         "TokenBindingServerExtension.h",
     ],
+    labels = wdls.FIZZ_TOKEN_BINDING_SERVER_EXTENSION,
     exported_deps = [
         ":token_binding",
         ":token_binding_context",

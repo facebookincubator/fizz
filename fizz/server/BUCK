@@ -1,3 +1,4 @@
+load("@fbcode//dependencies/buck:wdl.bzl", "wdls")
 load("@fbsource//xplat/fizz:defs.bzl", "fizz_cpp_library")
 
 oncall("secure_pipes")
@@ -116,6 +117,7 @@ fizz_cpp_library(
     headers = [
         "DualTicketCipher.h",
     ],
+    labels = wdls.FIZZ_DUAL_TICKET_CIPHER,
     exported_deps = [
         ":ticket_cipher",
     ],
@@ -382,6 +384,7 @@ fizz_cpp_library(
     headers = [
         "MultiServerExtensions.h",
     ],
+    labels = wdls.FIZZ_MULTI_SERVER_EXTENSIONS,
     exported_deps = [
         ":server_extensions",
     ],

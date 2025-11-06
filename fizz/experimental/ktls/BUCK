@@ -1,3 +1,4 @@
+load("@fbcode//dependencies/buck:wdl.bzl", "wdls")
 load("@fbsource//xplat/fizz:defs.bzl", "fizz_cpp_library")
 
 oncall("secure_pipes")
@@ -17,6 +18,7 @@ fizz_cpp_library(
         "KTLS.h",
         "LinuxKTLS.h",
     ],
+    labels = wdls.FIZZ_KTLS,
     deps = [
         "//fizz/backend:openssl",
         "//fizz/client:state",
