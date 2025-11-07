@@ -23,8 +23,8 @@ fizz_cpp_library(
     headers = [
         "PaddingClientExtension.h",
     ],
+    deps = [":types"],
     exported_deps = [
-        ":types",
         "//fizz/client:client_extensions",
     ],
 )

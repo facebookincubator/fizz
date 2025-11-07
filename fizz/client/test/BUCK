@@ -47,12 +47,12 @@ fizz_cpp_unittest(
         "FizzClientContextTest.cpp",
     ],
     deps = [
-        "fbsource//third-party/googletest:gmock",
-        "fbsource//third-party/googletest:gtest",
         "//fizz/client:fizz_client_context",
         "//fizz/client:protocol",
         "//fizz/protocol/test:mocks",
         "//fizz/protocol/test:protocol_test",
+        "//folly/portability:gmock",
+        "//folly/portability:gtest",
     ],
 )
 
