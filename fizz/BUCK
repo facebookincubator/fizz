@@ -1,6 +1,7 @@
 load("@fbcode//registry:defs.bzl", "rpm")
 load("@fbcode_macros//build_defs:build_file_migration.bzl", "fbcode_target")
 load("@fbcode_macros//build_defs:export_files.bzl", "export_files")
+load("@fbsource//tools/build_defs:fb_native_wrapper.bzl", "fb_native")
 load(":defs.bzl", "fizz_cpp_library")
 load(":fizzy_defs.bzl", "fizzy_library")
 
@@ -62,4 +63,11 @@ rpm.builder(
         ),
     ],
     summary = "Fizz TLS library command-line tool",
+)
+
+fb_native.export_file(
+    name = "src-tree",
+    src = ".",
+    mode = "reference",
+    visibility = ["PUBLIC"],
 )
