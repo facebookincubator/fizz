@@ -47,9 +47,6 @@ fizz_cpp_library(
         "//folly:small_vector",
         "//folly/futures:core",
     ],
-    exported_external_deps = [
-        ("boost", None, "boost_variant"),
-    ],
 )
 
 fizz_cpp_library(
@@ -251,9 +248,6 @@ fizz_cpp_library(
         ":cookie_cipher",
         ":fizz_server_context",
         ":token_cipher",
-    ],
-    exported_external_deps = [
-        ("boost", None, "boost_variant"),
     ],
 )
 

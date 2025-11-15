@@ -63,9 +63,6 @@ fizz_cpp_unittest(
         "//folly/portability:gmock",
         "//folly/portability:gtest",
     ],
-    external_deps = [
-        ("boost", None, "boost_variant"),
-    ],
 )
 
 fizz_cpp_unittest(
