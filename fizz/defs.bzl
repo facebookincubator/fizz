@@ -34,14 +34,9 @@ load("@fbsource//xplat/pfh/Infra_Networking_Core:DEFS.bzl", "Infra_Networking_Co
 # about this after land) since some of these environments define `-Werror`.
 #
 FIZZ_EXTRA_CXX_WARNINGS = [
-    # Apple builds warn against this, but Fizz requires static initializers
-    # so we *need* global-constructors.
-    "-Wno-error=global-constructors",
     "-Werror=mismatched-tags",
     "-Werror=shadow",
     "-Werror=sign-compare",
-    "-Werror=unused-exception-parameter",
-    "-Werror=constant-conversion",
 ]
 
 FIZZ_CXX_WARNINGS = [

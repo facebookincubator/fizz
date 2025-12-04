@@ -19,6 +19,10 @@ _extra_clang_flags = _common_flags + [
     # Default value for clang (3.4) is 256, change it to GCC's default value
     # (https://fburl.com/23278774).
     "-ftemplate-depth=900",
+    # Clang-specific warning flags (not supported by GCC)
+    "-Wno-error=global-constructors",
+    "-Werror=unused-exception-parameter",
+    "-Werror=constant-conversion",
 ]
 
 _extra_gcc_flags = _common_flags + [
