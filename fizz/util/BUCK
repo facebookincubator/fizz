@@ -90,3 +90,15 @@ fizz_cpp_library(
         ":key_log_writer",
     ],
 )
+
+fizz_cpp_library(
+    name = "status",
+    headers = [
+        "Status.h",
+    ],
+    deps = [],
+    exported_deps = [
+        "//fizz/record:record",
+        "//folly:optional",
+    ],
+)

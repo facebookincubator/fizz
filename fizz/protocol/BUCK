@@ -8,6 +8,7 @@ fizz_cpp_library(
         "StateMachine.h",
         "StateMachine-inl.h",
     ],
+    exported_deps = ["//fizz/util:status"],
     exported_external_deps = [
         "glog",
     ],

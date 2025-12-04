@@ -95,6 +95,7 @@ fizz_cpp_library(
         ":psk_cache",
         ":state",
         "//fizz/protocol/ech:encrypted_client_hello",
+        "//fizz/util:status",
     ],
 )
 

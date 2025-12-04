@@ -42,6 +42,7 @@ fizz_cpp_library(
         "//fizz/protocol/ech:encrypted_client_hello",
         "//fizz/record:record",
         "//fizz/record:record_layer",
+        "//fizz/util:status",
         "//fizz/util:variant",
         "//folly:optional",
         "//folly:small_vector",
