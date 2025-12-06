@@ -176,7 +176,7 @@ def fizz_cxx_library(
 
     fb_xplat_cxx_library(
         name = name,
-        srcs = native.glob(srcs) if srcs else [],
+        srcs = srcs if srcs else [],
         feature = feature,
         enable_static_variant = enable_static_variant,
         platforms = platforms,
