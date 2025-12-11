@@ -10,6 +10,7 @@ fizz_cpp_unittest(
     ],
     deps = [
         "//fizz/experimental/psp:psp",
+        "//folly/futures:core",
         "//folly/io/async:async_socket",
         "//folly/io/async:async_transport",
         "//folly/io/async/test:mocks",

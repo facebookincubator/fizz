@@ -14,10 +14,14 @@ psp_library(
     ],
     deps = [
         "fbsource//third-party/fmt:fmt",
+        "//folly/io/async:async_base",
         "//folly/io/async:async_socket",
     ],
     exported_deps = [
         "//folly:exception_wrapper",
+        "//folly:executor",
+        "//folly:unit",
+        "//folly/futures:core",
         "//folly/io:iobuf",
         "//folly/io/async:async_transport",
     ],
