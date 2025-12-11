@@ -1,0 +1,19 @@
+load("@fbsource//xplat/fizz:defs.bzl", "fizz_cpp_unittest")
+
+oncall("secure_pipes")
+
+fizz_cpp_unittest(
+    name = "test",
+    srcs = [
+        "PSPTest.cpp",
+        "PSPUpgradeTest.cpp",
+    ],
+    deps = [
+        "//fizz/experimental/psp:psp",
+        "//folly/io/async:async_socket",
+        "//folly/io/async:async_transport",
+        "//folly/io/async/test:mocks",
+        "//folly/portability:gmock",
+        "//folly/test:test_utils",
+    ],
+)

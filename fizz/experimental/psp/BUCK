@@ -1,0 +1,24 @@
+load(":defs.bzl", "psp_library") # @oss-only
+# @fb-only[end= ]: load("facebook/defs.bzl", "psp_library")
+
+oncall("secure_pipes")
+
+psp_library(
+    name = "psp",
+    srcs = [
+        "KernelPSP.cpp",
+        "PSP.cpp",
+    ],
+    headers = [
+        "PSP.h",
+    ],
+    deps = [
+        "fbsource//third-party/fmt:fmt",
+        "//folly/io/async:async_socket",
+    ],
+    exported_deps = [
+        "//folly:exception_wrapper",
+        "//folly/io:iobuf",
+        "//folly/io/async:async_transport",
+    ],
+)
