@@ -25,7 +25,6 @@ fbcode_target(
         "//fizz/protocol/ech:encrypted_client_hello",
         "//fizz/util:parse",
         "//folly:file_util",
-        "//folly/experimental/io:io_uring_backend",
         "//folly/io:iobuf",
         "//folly/io/async:async_base",
         "//folly/json:dynamic",
@@ -50,7 +49,6 @@ fbcode_target(
     preprocessor_flags = [
         "-DFIZZ_TOOL_ENABLE_BROTLI",
         "-DFIZZ_TOOL_ENABLE_ZSTD",
-        "-DFIZZ_TOOL_ENABLE_IO_URING",
     ],
     deps = [
         ":tool_lib",
