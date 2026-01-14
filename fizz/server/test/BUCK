@@ -206,6 +206,7 @@ fizz_cpp_unittest(
     deps = [
         ":mocks",
         "//fizz/extensions/tokenbinding:token_binding",
+        "//fizz/protocol/test:test_util",
         "//fizz/server:async_fizz_server",
         "//folly/io/async/test:mocks",
         "//folly/portability:gmock",
