@@ -67,6 +67,7 @@ fizz_cpp_library(
         "openssl/certificate/CertUtils-inl.h",
         "openssl/certificate/OpenSSLPeerCertImpl.h",
         "openssl/certificate/OpenSSLPeerCertImpl-inl.h",
+        "openssl/certificate/OpenSSLSelfCertBase.h",
         "openssl/certificate/OpenSSLSelfCertImpl.h",
         "openssl/certificate/OpenSSLSelfCertImpl-inl.h",
         "openssl/crypto/ECCurve.h",
