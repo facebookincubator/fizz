@@ -313,10 +313,11 @@ fizz_cpp_library(
 fizz_cpp_library(
     name = "cert_manager",
     srcs = [
-        "CertManager.cpp",
+        "DefaultCertManager.cpp",
     ],
     headers = [
         "CertManager.h",
+        "DefaultCertManager.h",
     ],
     deps = [
         "//folly:string",
