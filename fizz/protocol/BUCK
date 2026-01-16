@@ -79,7 +79,7 @@ fizz_cpp_library(
         "Certificate.cpp",
     ],
     headers = [
-        "CertManagerBase.h",
+        "CertMatch.h",
         "Certificate.h",
     ],
     exported_deps = [
