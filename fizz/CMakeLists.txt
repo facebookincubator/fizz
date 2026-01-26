@@ -9,6 +9,10 @@ endif()
 
 project("fizz" VERSION ${PACKAGE_VERSION} LANGUAGES CXX C)
 
+# Set for FetchContent to skip find_package(fizz)
+set(fizz_SOURCE_DIR "${CMAKE_CURRENT_SOURCE_DIR}"
+  CACHE INTERNAL "fizz source directory")
+
 if (NOT DEFINED CPACK_GENERATOR)
   set(CPACK_GENERATOR "RPM")
 endif()
@@ -49,7 +53,10 @@ set(BIN_INSTALL_DIR bin CACHE STRING
 set(CMAKE_INSTALL_DIR lib/cmake/fizz CACHE STRING
     "The subdirectory where CMake package config files should be installed")
 
-find_package(folly CONFIG REQUIRED)
+# If folly is being built from source (FetchContent), skip find_package
+if (NOT DEFINED folly_SOURCE_DIR)
+  find_package(folly CONFIG REQUIRED)
+endif()
 find_package(fmt CONFIG REQUIRED)
 
 find_package(OpenSSL REQUIRED)
@@ -112,134 +119,80 @@ if(aegis_FOUND)
 endif()
 
 include(FizzOptions)
-include(FizzSources)
+include(FizzFunctions)
 
-configure_file(fizz-config.h.in ${CMAKE_CURRENT_BINARY_DIR}/generated/fizz/fizz-config.h)
-install(FILES ${CMAKE_CURRENT_BINARY_DIR}/generated/fizz/fizz-config.h DESTINATION ${INCLUDE_INSTALL_DIR}/fizz/)
+# Set the generated directory for FetchContent compatibility
+set(FIZZ_GENERATED_DIR ${CMAKE_CURRENT_BINARY_DIR}/generated)
 
-set(FIZZ_HEADER_DIRS
-  backend
-  backend/liboqs
-  backend/openssl
-  backend/openssl/certificate
-  backend/openssl/crypto
-  backend/openssl/crypto/aead
-  backend/openssl/crypto/exchange
-  backend/openssl/crypto/signature
-  client
-  compression
-  crypto
-  crypto/aead
-  crypto/exchange
-  crypto/hpke
-  crypto/signature
-  crypto/openssl
-  experimental/crypto/exchange
-  experimental/ktls
-  experimental/util
-  extensions/clientpadding
-  extensions/delegatedcred
-  extensions/exportedauth
-  extensions/tokenbinding
-  protocol
-  protocol/clock
-  protocol/ech
-  record
-  server
-  util
-  tool
-)
+configure_file(fizz-config.h.in ${FIZZ_GENERATED_DIR}/fizz/fizz-config.h)
+install(FILES ${FIZZ_GENERATED_DIR}/fizz/fizz-config.h
+  DESTINATION ${INCLUDE_INSTALL_DIR}/fizz/)
 
-set(FIZZ_TEST_HEADER_DIRS
-  client/test
-  compression/test
-  crypto/aead/test
-  crypto/exchange/test
-  crypto/test
-  crypto/hpke/test
-  protocol/test
-  protocol/clock/test
-  protocol/ech/test
-  record/test
-  server/test
-  tool/test
-  util/test
-  test
-)
+# Collect all headers via recursive glob (like folly does)
+file(GLOB_RECURSE FIZZ_HEADERS "${CMAKE_CURRENT_SOURCE_DIR}/*.h")
+# Filter out test, facebook, and other non-public directories
+list(FILTER FIZZ_HEADERS EXCLUDE REGEX "/test/")
+list(FILTER FIZZ_HEADERS EXCLUDE REGEX "/facebook/")
+list(FILTER FIZZ_HEADERS EXCLUDE REGEX "/buck_config/")
+list(FILTER FIZZ_HEADERS EXCLUDE REGEX "/build/")
 
-foreach(dir ${FIZZ_HEADER_DIRS})
-  file(GLOB_RECURSE headers ${dir}/*.h)
-  set(FIZZ_HEADERS
-    ${FIZZ_HEADERS}
-    ${headers})
-endforeach()
+# Collect test headers separately
+file(GLOB_RECURSE FIZZ_TEST_HEADERS "${CMAKE_CURRENT_SOURCE_DIR}/*.h")
+list(FILTER FIZZ_TEST_HEADERS INCLUDE REGEX "/test/")
+list(FILTER FIZZ_TEST_HEADERS EXCLUDE REGEX "/facebook/")
 
-foreach(dir ${FIZZ_TEST_HEADER_DIRS})
-  file(GLOB_RECURSE headers ${dir}/*.h)
-  set(FIZZ_TEST_HEADERS
-    ${FIZZ_TEST_HEADERS}
-    ${headers})
-endforeach()
+# =============================================================================
+# Configuration interface library (matches //fizz:config BUCK target)
+# =============================================================================
+get_filename_component(FIZZ_BASE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/.. ABSOLUTE)
 
-
-add_library(fizz
-  ${FIZZ_LIBRARY_SOURCES}
-)
-
-if (BUILD_SHARED_LIBS)
-  set_target_properties(fizz
-    PROPERTIES VERSION ${PACKAGE_VERSION})
-endif()
-
-get_filename_component(FIZZ_BASE_DIR ${CMAKE_SOURCE_DIR}/.. ABSOLUTE)
-
-target_include_directories(
-  fizz
-  PUBLIC
+add_library(fizz_config INTERFACE)
+target_include_directories(fizz_config
+  INTERFACE
     $<BUILD_INTERFACE:${FIZZ_BASE_DIR}>
-    $<BUILD_INTERFACE:${CMAKE_CURRENT_BINARY_DIR}/generated>
+    $<BUILD_INTERFACE:${FIZZ_GENERATED_DIR}>
     $<INSTALL_INTERFACE:${INCLUDE_INSTALL_DIR}>
-    ${FOLLY_INCLUDE_DIR}
-    ${OPENSSL_INCLUDE_DIR}
-    ${sodium_INCLUDE_DIR}
-    ${ZSTD_INCLUDE_DIR}
-  PRIVATE
-    ${GLOG_INCLUDE_DIRS}
-    ${FIZZ_INCLUDE_DIRECTORIES}
 )
+install(TARGETS fizz_config EXPORT fizz-exports)
+add_library(fizz::fizz_config ALIAS fizz_config)
 
+# =============================================================================
+# Build granular libraries from subdirectory CMakeLists.txt files
+# Sources are compiled ONCE via OBJECT libraries, then reused for both
+# granular .a files and the monolithic libfizz.a
+# =============================================================================
 
-target_link_libraries(fizz
-  PUBLIC
-    ${FOLLY_LIBRARIES}
-    ${OPENSSL_LIBRARIES}
-    sodium
-    Threads::Threads
-    ZLIB::ZLIB
-    ${ZSTD_LIBRARY}
-  PRIVATE
-    ${GLOG_LIBRARIES}
-    ${GFLAGS_LIBRARIES}
-    ${FIZZ_LINK_LIBRARIES}
-    ${CMAKE_DL_LIBS}
-    ${LIBRT_LIBRARIES})
+# Order matters - dependencies must be added first
+add_subdirectory(util)
+add_subdirectory(protocol/clock)
+add_subdirectory(protocol/ech)
+add_subdirectory(record)
+add_subdirectory(crypto)
+add_subdirectory(crypto/aead)
+add_subdirectory(crypto/exchange)
+add_subdirectory(crypto/hpke)
+add_subdirectory(protocol)
+add_subdirectory(compression)
+add_subdirectory(backend)
+add_subdirectory(client)
+add_subdirectory(server)
+add_subdirectory(extensions/clientpadding)
+add_subdirectory(extensions/delegatedcred)
+add_subdirectory(extensions/exportedauth)
+add_subdirectory(extensions/tokenbinding)
+add_subdirectory(experimental/batcher)
+add_subdirectory(experimental/client)
+add_subdirectory(experimental/crypto)
+add_subdirectory(experimental/ktls)
+add_subdirectory(experimental/protocol)
+add_subdirectory(experimental/server)
+add_subdirectory(experimental/util)
 
-if (liboqs_FOUND)
-  target_link_libraries(fizz PRIVATE OQS::oqs)
-endif()
-
-if (aegis_FOUND)
-    target_link_libraries(fizz PRIVATE aegis::aegis)
-endif()
-
-if ($FIZZ_SHINY_DEPENDENCIES)
-  add_dependencies(fizz ${FIZZ_SHINY_DEPENDENCIES})
-endif()
-
-if (${CMAKE_CXX_COMPILER_ID} STREQUAL MSVC)
-  # Work around C1128: number of sections exceeded object file format limit.
-  target_compile_options(fizz PUBLIC /bigobj)
-endif()
+# =============================================================================
+# Create monolithic fizz library and resolve deferred dependencies
+# =============================================================================
+fizz_create_monolithic_library()
+fizz_resolve_deferred_dependencies()
 
 install(
   TARGETS fizz
@@ -247,15 +200,8 @@ install(
   DESTINATION ${LIB_INSTALL_DIR}
 )
 
-# We unfortunately cannot install fizz's headers with the install()
-# statement above.  install(TARGETS) appears to only support installing
-# PUBLIC_HEADER in a flat include directory, and not a deeper tree.
-foreach(dir ${FIZZ_HEADER_DIRS})
-  get_filename_component(PARENT_DIR "/${dir}" DIRECTORY)
-  install(DIRECTORY ${dir} DESTINATION "${INCLUDE_INSTALL_DIR}/fizz${PARENT_DIR}"
-          FILES_MATCHING PATTERN "*.h"
-          PATTERN "test" EXCLUDE)
-endforeach()
+# Install headers preserving directory structure (using recursive glob like folly)
+fizz_install_headers(fizz ${CMAKE_CURRENT_SOURCE_DIR} ${FIZZ_HEADERS})
 
 # Install CMake package configuration files for fizz
 include(CMakePackageConfigHelpers)
@@ -299,6 +245,11 @@ add_library(fizz_test_support
 target_link_libraries(fizz_test_support
   PUBLIC
     fizz
+    Folly::folly_init_init
+    Folly::folly_testing_test_util
+    Folly::folly_executors_manual_executor
+    Folly::folly_io_async_scoped_event_base_thread
+    Folly::folly_detail_base64_detail_base64_api
 )
 
 # export fizz headers and targets for unit tests utils
@@ -310,14 +261,8 @@ install(
   LIBRARY DESTINATION ${LIB_INSTALL_DIR}
 )
 
-foreach(dir ${FIZZ_TEST_HEADER_DIRS})
-  get_filename_component(PARENT_DIR "/${dir}" DIRECTORY)
-  install(
-    DIRECTORY ${dir}
-    DESTINATION "${FIZZ_TEST_INSTALL_PREFIX}/include/fizz${PARENT_DIR}"
-    FILES_MATCHING PATTERN "*.h"
-  )
-endforeach()
+# Install test headers using recursive glob
+fizz_install_headers(fizz ${CMAKE_CURRENT_SOURCE_DIR} ${FIZZ_TEST_HEADERS})
 
 macro(add_gtest test_source test_name)
   add_executable(${test_name} ${test_source} test/CMakeTestMain.cpp)
