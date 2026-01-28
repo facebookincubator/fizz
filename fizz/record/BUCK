@@ -15,7 +15,9 @@ fizz_cpp_library(
         "Types-inl.h",
     ],
     exported_deps = [
+        ":alerts",
         "//fizz/protocol:events",
+        "//fizz/util:status",
         "//folly:conv",
         "//folly:optional",
         "//folly:string",
@@ -86,5 +88,12 @@ fizz_cpp_library(
     exported_deps = [
         ":record",
         "//folly/io:iobuf",
+    ],
+)
+
+fizz_cpp_library(
+    name = "alerts",
+    headers = [
+        "Alerts.h",
     ],
 )

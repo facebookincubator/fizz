@@ -93,12 +93,27 @@ fizz_cpp_library(
 
 fizz_cpp_library(
     name = "status",
+    srcs = [
+        "Status.cpp",
+    ],
     headers = [
         "Status.h",
     ],
-    deps = [],
     exported_deps = [
-        "//fizz/record:record",
+        ":exceptions",
+        "//fizz/record:alerts",
+        "//folly:exception_wrapper",
+        "//folly:optional",
+    ],
+)
+
+fizz_cpp_library(
+    name = "exceptions",
+    headers = [
+        "Exceptions.h",
+    ],
+    exported_deps = [
+        "//fizz/record:alerts",
         "//folly:optional",
     ],
 )
