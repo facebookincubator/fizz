@@ -54,7 +54,6 @@ fbcode_target(
         "//fizz/backend:openssl",
         "//fizz/experimental/ktls:ktls",
         "//fizz/record:encrypted_record_layer",
-        "//folly/futures:core",
         "//folly/io/async:async_socket",
         "//folly/io/async:server_socket",
         "//folly/io/async/test:mocks",
