@@ -117,3 +117,14 @@ fizz_cpp_library(
         "//folly:optional",
     ],
 )
+
+# @noautodeps
+fizz_cpp_library(
+    name = "logging",
+    headers = [
+        "Logging.h",
+    ],
+    exported_deps = [
+        "//folly:glog",
+    ],
+)
