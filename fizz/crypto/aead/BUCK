@@ -22,6 +22,7 @@ fizz_cpp_library(
         "IOBufUtil.h",
     ],
     exported_deps = [
+        "//fizz/util:logging",
         "//folly:range",
         "//folly/io:iobuf",
     ],

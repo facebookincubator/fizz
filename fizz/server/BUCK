@@ -320,6 +320,7 @@ fizz_cpp_library(
         "DefaultCertManager.h",
     ],
     deps = [
+        "//fizz/util:logging",
         "//folly:string",
     ],
     exported_deps = [
@@ -362,6 +363,7 @@ fizz_cpp_library(
     ],
     deps = [
         "//fizz/crypto:random",
+        "//fizz/util:logging",
         "//folly:range",
         "//folly/io:iobuf",
         "//folly/portability:unistd",

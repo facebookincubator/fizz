@@ -20,6 +20,9 @@ fizz_cpp_library(
     headers = [
         "CertDecompressionManager.h",
     ],
+    deps = [
+        "//fizz/util:logging",
+    ],
     exported_deps = [
         "//fizz/compression:certificate_compressor",
     ],

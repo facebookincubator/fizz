@@ -65,6 +65,9 @@ fizz_cpp_library(
     headers = [
         "CertManager.h",
     ],
+    deps = [
+        "//fizz/util:logging",
+    ],
     exported_deps = [
         "//fizz/protocol:certificate",
     ],
@@ -196,6 +199,9 @@ fizz_cpp_library(
     ],
     headers = [
         "SynchronizedLruPskCache.h",
+    ],
+    deps = [
+        "//fizz/util:logging",
     ],
     exported_deps = [
         ":psk_cache",

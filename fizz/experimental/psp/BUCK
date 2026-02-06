@@ -14,6 +14,7 @@ psp_library(
     ],
     deps = [
         "fbsource//third-party/fmt:fmt",
+        "//fizz/util:logging",
         "//folly/io/async:async_base",
         "//folly/io/async:async_socket",
     ],

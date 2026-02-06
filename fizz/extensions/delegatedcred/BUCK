@@ -132,6 +132,9 @@ fizz_cpp_library(
         "DelegatedCredentialCertManager.h",
     ],
     labels = wdls.FIZZ_DELEGATED_CREDENTIAL_CERT_MANAGER,
+    deps = [
+        "//fizz/util:logging",
+    ],
     exported_deps = [
         ":delegated_credential",
         ":self_delegated_credential",
@@ -149,6 +152,7 @@ fizz_cpp_library(
     ],
     deps = [
         ":delegated_credential",
+        "//fizz/util:logging",
     ],
     exported_deps = [
         "//fizz/client:cert_manager",

@@ -82,6 +82,7 @@ fizz_cpp_library(
     ],
     deps = [
         "//fizz/crypto/aead:cryptoutil",
+        "//fizz/util:logging",
         "//folly/lang:checked_math",
     ],
     exported_deps = [

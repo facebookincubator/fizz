@@ -43,6 +43,9 @@ fizz_cpp_library(
     headers = [
         "TokenBindingClientExtension.h",
     ],
+    deps = [
+        "//fizz/util:logging",
+    ],
     exported_deps = [
         ":token_binding",
         ":token_binding_context",

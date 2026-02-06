@@ -26,6 +26,9 @@ fizz_cpp_library(
         "Hasher.h",
         "Hmac.h",
     ],
+    deps = [
+        "//fizz/util:logging",
+    ],
     exported_deps = [
         "//fizz/crypto:crypto",
         "//folly/io:iobuf",
@@ -39,6 +42,9 @@ fizz_cpp_library(
     ],
     headers = [
         "Hkdf.h",
+    ],
+    deps = [
+        "//fizz/util:logging",
     ],
     exported_deps = [
         "//fizz/crypto:crypto",
@@ -54,6 +60,9 @@ fizz_cpp_library(
     ],
     headers = [
         "KeyDerivation.h",
+    ],
+    deps = [
+        "//fizz/util:logging",
     ],
     exported_deps = [
         "//fizz/crypto:crypto",

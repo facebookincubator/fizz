@@ -41,6 +41,7 @@ fizz_cpp_unittest(
     deps = [
         "//fizz/backend:openssl",
         "//fizz/crypto/test:TestUtil",
+        "//fizz/util:logging",
         "//folly:fixed_string",
         "//folly:string",
         "//folly/portability:gtest",

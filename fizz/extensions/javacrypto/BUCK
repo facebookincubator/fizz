@@ -22,6 +22,7 @@ fizz_cpp_library(
     modular_headers = False,
     platforms = (ANDROID,),
     deps = [
+        "//fizz/util:logging",
         "//folly/ssl:openssl_cert_utils",
     ],
     exported_deps = [
