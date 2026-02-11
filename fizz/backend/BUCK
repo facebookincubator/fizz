@@ -86,6 +86,7 @@ fizz_cpp_library(
         "//folly/lang:checked_math",
     ],
     exported_deps = [
+        "fbsource//third-party/glog:glog",
         "//fizz:config",
         "//fizz/compression:certificate_compressor",
         "//fizz/crypto:crypto",
@@ -111,7 +112,6 @@ fizz_cpp_library(
     ],
     exported_external_deps = [
         ("openssl", None, "crypto"),
-        "glog",
     ],
 )
 

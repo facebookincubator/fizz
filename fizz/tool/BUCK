@@ -51,6 +51,7 @@ fbcode_target(
         "-DFIZZ_TOOL_ENABLE_ZSTD",
     ],
     deps = [
+        "fbsource//third-party/glog:glog",
         ":tool_lib",
         "//fizz/backend:libsodium",
         "//fizz/backend:openssl",
@@ -98,8 +99,5 @@ fbcode_target(
         "//folly/portability:gflags",
         "//folly/ssl:openssl_cert_utils",
         "//folly/stats:histogram",
-    ],
-    external_deps = [
-        "glog",
     ],
 )

@@ -22,6 +22,7 @@ fizz_cpp_library(
     modular_headers = False,
     platforms = (ANDROID,),
     deps = [
+        "fbsource//third-party/glog:glog",
         "//fizz/util:logging",
         "//folly/ssl:openssl_cert_utils",
     ],
@@ -38,7 +39,4 @@ fizz_cpp_library(
             "fbsource//third-party/jvm:jvm",
         ],
     }),
-    external_deps = [
-        "glog",
-    ],
 )

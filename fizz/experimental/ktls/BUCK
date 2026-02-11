@@ -26,6 +26,7 @@ fizz_cpp_library(
         "//folly/portability:sockets",
     ],
     exported_deps = [
+        "fbsource//third-party/glog:glog",
         "//fizz/crypto/aead:aead",
         "//fizz/experimental/util:cert_extraction",
         "//fizz/protocol:async_fizz_base",
@@ -39,8 +40,5 @@ fizz_cpp_library(
         "//folly:function",
         "//folly/io/async:async_socket",
         "//folly/net:network_socket",
-    ],
-    exported_external_deps = [
-        "glog",
     ],
 )
