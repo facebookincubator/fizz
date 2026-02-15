@@ -193,6 +193,7 @@ endforeach()
 add_library(fizz
   ${FIZZ_LIBRARY_SOURCES}
 )
+add_library(fizz::fizz ALIAS fizz)
 
 if (BUILD_SHARED_LIBS)
   set_target_properties(fizz
