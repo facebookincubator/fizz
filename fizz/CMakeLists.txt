@@ -9,6 +9,10 @@ endif()
 
 project("fizz" VERSION ${PACKAGE_VERSION} LANGUAGES CXX C)
 
+# Set for FetchContent to skip find_package(fizz)
+set(fizz_SOURCE_DIR "${CMAKE_CURRENT_SOURCE_DIR}"
+  CACHE INTERNAL "fizz source directory")
+
 if (NOT DEFINED CPACK_GENERATOR)
   set(CPACK_GENERATOR "RPM")
 endif()
@@ -49,7 +53,10 @@ set(BIN_INSTALL_DIR bin CACHE STRING
 set(CMAKE_INSTALL_DIR lib/cmake/fizz CACHE STRING
     "The subdirectory where CMake package config files should be installed")
 
-find_package(folly CONFIG REQUIRED)
+# If folly is being built from source (FetchContent), skip find_package
+if (NOT DEFINED folly_SOURCE_DIR)
+  find_package(folly CONFIG REQUIRED)
+endif()
 find_package(fmt CONFIG REQUIRED)
 
 find_package(OpenSSL REQUIRED)
@@ -192,7 +199,7 @@ if (BUILD_SHARED_LIBS)
     PROPERTIES VERSION ${PACKAGE_VERSION})
 endif()
 
-get_filename_component(FIZZ_BASE_DIR ${CMAKE_SOURCE_DIR}/.. ABSOLUTE)
+get_filename_component(FIZZ_BASE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/.. ABSOLUTE)
 
 target_include_directories(
   fizz
