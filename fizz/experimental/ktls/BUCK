@@ -18,7 +18,7 @@ fizz_cpp_library(
         "KTLS.h",
         "LinuxKTLS.h",
     ],
-    labels = wdls.FIZZ_KTLS,
+    labels = wdls.FIZZ,
     deps = [
         "//fizz/backend:openssl",
         "//fizz/client:state",

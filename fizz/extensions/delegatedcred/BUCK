@@ -11,6 +11,7 @@ fizz_cpp_library(
     headers = [
         "Types.h",
     ],
+    labels = wdls.FIZZ,
     deps = [
         "//folly/io:iobuf",
     ],
@@ -28,6 +29,7 @@ fizz_cpp_library(
     headers = [
         "DelegatedCredentialClientExtension.h",
     ],
+    labels = wdls.FIZZ,
     exported_deps = [
         ":delegated_credential",
         "//fizz/client:client_extensions",
@@ -62,7 +64,7 @@ fizz_cpp_library(
     headers = [
         "Serialization.h",
     ],
-    labels = wdls.FIZZ_SERIALIZATION,
+    labels = wdls.FIZZ,
     deps = [
         ":delegated_credential_utils",
         "//folly:base64",
@@ -81,6 +83,7 @@ fizz_cpp_library(
         "PeerDelegatedCredential.h",
         "PeerDelegatedCredential-inl.h",
     ],
+    labels = wdls.FIZZ,
     exported_deps = [
         ":delegated_credential",
         ":delegated_credential_utils",
@@ -112,7 +115,7 @@ fizz_cpp_library(
     headers = [
         "DelegatedCredentialFactory.h",
     ],
-    labels = wdls.FIZZ_DELEGATED_CREDENTIAL_FACTORY,
+    labels = wdls.FIZZ,
     deps = [
         ":peer_delegated_credential",
         "//folly/portability:openssl",
@@ -131,7 +134,7 @@ fizz_cpp_library(
     headers = [
         "DelegatedCredentialCertManager.h",
     ],
-    labels = wdls.FIZZ_DELEGATED_CREDENTIAL_CERT_MANAGER,
+    labels = wdls.FIZZ,
     deps = [
         "//fizz/util:logging",
     ],

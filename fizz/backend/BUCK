@@ -1,3 +1,4 @@
+load("@fbcode//dependencies/buck:wdl.bzl", "wdls")
 load("@fbsource//xplat/fizz:defs.bzl", "fizz_cpp_library")
 
 oncall("secure_pipes")
@@ -80,6 +81,7 @@ fizz_cpp_library(
         "openssl/crypto/signature/Signature.h",
         "openssl/crypto/signature/Signature-inl.h",
     ],
+    labels = wdls.FIZZ,
     deps = [
         "//fizz/crypto/aead:cryptoutil",
         "//fizz/util:logging",

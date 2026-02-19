@@ -13,7 +13,7 @@ fizz_cpp_library(
         [
             "FizzUtil.h",
         ],
-    labels = wdls.FIZZ_UTIL,
+    labels = wdls.FIZZ,
     deps = [
         "//fizz/backend:libsodium",
         "//fizz/server:ticket_types",

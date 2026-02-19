@@ -1,3 +1,4 @@
+load("@fbcode//dependencies/buck:wdl.bzl", "wdls")
 load("@fbcode//registry:defs.bzl", "rpm")
 load("@fbcode_macros//build_defs:build_file_migration.bzl", "fbcode_target")
 load("@fbcode_macros//build_defs:export_files.bzl", "export_files")
@@ -24,6 +25,7 @@ fizz_cpp_library(
         # @fb-only[end= ]: "fbsource//xplat/fizz/constraints:xplat": {"fizz-config.h": "facebook/fizz-config-xplat.h"},
         # @fb-only[end= ]: "ovr_config//toolchain/fb:arista": {"fizz-config.h": "facebook/fizz-config-xplat.h"},
     }),
+    labels = wdls.FIZZ,
     # Each individual tunable should have its own select().
     propagated_pp_flags = select({
         "DEFAULT": ["-DFIZZ_HAVE_OQS"],

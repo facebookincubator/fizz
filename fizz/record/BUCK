@@ -14,6 +14,7 @@ fizz_cpp_library(
         "Types.h",
         "Types-inl.h",
     ],
+    labels = wdls.FIZZ,
     exported_deps = [
         ":alerts",
         "//fizz/protocol:events",
@@ -33,6 +34,7 @@ fizz_cpp_library(
     headers = [
         "RecordLayer.h",
     ],
+    labels = wdls.FIZZ,
     deps = [
         "//fizz/util:logging",
     ],
@@ -69,7 +71,7 @@ fizz_cpp_library(
     headers = [
         "EncryptedRecordLayer.h",
     ],
-    labels = wdls.FIZZ_ENCRYPTED_RECORD_LAYER,
+    labels = wdls.FIZZ,
     deps = [
         "//fizz/crypto/aead:iobuf",
     ],
@@ -89,6 +91,7 @@ fizz_cpp_library(
     headers = [
         "BufAndPaddingPolicy.h",
     ],
+    labels = wdls.FIZZ,
     exported_deps = [
         ":record",
         "//folly/io:iobuf",

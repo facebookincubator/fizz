@@ -11,6 +11,7 @@ fizz_cpp_library(
     headers = [
         "Types.h",
     ],
+    labels = wdls.FIZZ,
     deps = [
         "//folly:string",
         "//folly/io:iobuf",
@@ -26,7 +27,7 @@ fizz_cpp_library(
     headers = [
         "TokenBindingServerExtension.h",
     ],
-    labels = wdls.FIZZ_TOKEN_BINDING_SERVER_EXTENSION,
+    labels = wdls.FIZZ,
     exported_deps = [
         ":token_binding",
         ":token_binding_context",
@@ -59,6 +60,7 @@ fizz_cpp_library(
     headers = [
         "TokenBindingContext.h",
     ],
+    labels = wdls.FIZZ,
     exported_deps = [
         ":token_binding",
     ],

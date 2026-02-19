@@ -9,6 +9,7 @@ fizz_cpp_library(
     headers = [
         "FizzClientContext.h",
     ],
+    labels = wdls.FIZZ,
     deps = [
         "//fizz/protocol:default_factory",
     ],
@@ -137,6 +138,7 @@ fizz_cpp_library(
         "AsyncFizzClient.h",
         "AsyncFizzClient-inl.h",
     ],
+    labels = wdls.FIZZ,
     exported_deps = [
         ":client_extensions",
         ":early_data_rejection",
@@ -200,6 +202,7 @@ fizz_cpp_library(
     headers = [
         "SynchronizedLruPskCache.h",
     ],
+    labels = wdls.FIZZ,
     deps = [
         "//fizz/util:logging",
     ],
@@ -228,7 +231,7 @@ fizz_cpp_library(
     headers = [
         "MultiClientExtensions.h",
     ],
-    labels = wdls.FIZZ_MULTI_CLIENT_EXTENSIONS,
+    labels = wdls.FIZZ,
     exported_deps = [
         ":client_extensions",
     ],

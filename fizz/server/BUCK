@@ -68,6 +68,7 @@ fizz_cpp_library(
     headers = [
         "FizzServerContext.h",
     ],
+    labels = wdls.FIZZ,
     deps = [
         "//fizz/protocol:default_factory",
     ],
@@ -115,7 +116,7 @@ fizz_cpp_library(
     headers = [
         "DualTicketCipher.h",
     ],
-    labels = wdls.FIZZ_DUAL_TICKET_CIPHER,
+    labels = wdls.FIZZ,
     exported_deps = [
         ":ticket_cipher",
     ],
@@ -130,6 +131,7 @@ fizz_cpp_library(
         "TicketCodec.h",
         "TicketCodec-inl.h",
     ],
+    labels = wdls.FIZZ,
     deps = [
         "//folly/io/async/ssl:openssl_transport_certificate",
         "//folly/ssl:openssl_cert_utils",
@@ -194,6 +196,7 @@ fizz_cpp_library(
     headers = [
         "TicketTypes.h",
     ],
+    labels = wdls.FIZZ,
     exported_deps = [
         ":aead_ticket_cipher",
         ":ticket_codec",
@@ -300,6 +303,7 @@ fizz_cpp_library(
         "AsyncFizzServer.h",
         "AsyncFizzServer-inl.h",
     ],
+    labels = wdls.FIZZ,
     exported_deps = [
         ":fizz_server",
         ":fizz_server_context",
@@ -319,6 +323,7 @@ fizz_cpp_library(
         "CertManager.h",
         "DefaultCertManager.h",
     ],
+    labels = wdls.FIZZ,
     deps = [
         "//fizz/util:logging",
         "//folly:string",
@@ -333,6 +338,7 @@ fizz_cpp_library(
     headers = [
         "ServerExtensions.h",
     ],
+    labels = wdls.FIZZ,
     exported_deps = [
         "//fizz/record:record",
     ],
@@ -382,7 +388,7 @@ fizz_cpp_library(
     headers = [
         "MultiServerExtensions.h",
     ],
-    labels = wdls.FIZZ_MULTI_SERVER_EXTENSIONS,
+    labels = wdls.FIZZ,
     exported_deps = [
         ":server_extensions",
     ],

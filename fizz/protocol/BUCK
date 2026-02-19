@@ -1,3 +1,4 @@
+load("@fbcode//dependencies/buck:wdl.bzl", "wdls")
 load("@fbsource//xplat/fizz:defs.bzl", "fizz_cpp_library")
 
 oncall("secure_pipes")
@@ -244,6 +245,7 @@ fizz_cpp_library(
     headers = [
         "AsyncFizzBase.h",
     ],
+    labels = wdls.FIZZ,
     deps = [
         "//folly:conv",
     ],
@@ -266,6 +268,7 @@ fizz_cpp_library(
     headers = [
         "DefaultCertificateVerifier.h",
     ],
+    labels = wdls.FIZZ,
     deps = [
         "//folly:file_util",
         "//folly/ssl:openssl_cert_utils",
@@ -281,6 +284,7 @@ fizz_cpp_library(
     headers = [
         "CertificateVerifier.h",
     ],
+    labels = wdls.FIZZ,
     exported_deps = [
         ":certificate",
         "//fizz/record:record",
