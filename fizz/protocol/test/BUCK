@@ -28,6 +28,18 @@ fizz_cpp_unittest(
 )
 
 fizz_cpp_unittest(
+    name = "certificate_verifier_test",
+    srcs = [
+        "CertificateVerifierTest.cpp",
+    ],
+    deps = [
+        ":mocks",
+        "//fizz/protocol:certificate_verifier",
+        "//folly/portability:gtest",
+    ],
+)
+
+fizz_cpp_unittest(
     name = "handshake_context_test",
     srcs = [
         "HandshakeContextTest.cpp",
