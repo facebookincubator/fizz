@@ -133,6 +133,16 @@ fizz_cpp_library(
 )
 
 fizz_cpp_library(
+    name = "ech_retry_callback",
+    headers = [
+        "ECHRetryCallback.h",
+    ],
+    exported_deps = [
+        ":actions",
+    ],
+)
+
+fizz_cpp_library(
     name = "async_fizz_client",
     headers = [
         "AsyncFizzClient.h",
@@ -142,6 +152,7 @@ fizz_cpp_library(
     exported_deps = [
         ":client_extensions",
         ":early_data_rejection",
+        ":ech_retry_callback",
         ":fizz_client",
         ":fizz_client_context",
         ":protocol",
