@@ -108,7 +108,7 @@ def fizz_cpp_library(
         exported_external_deps = None,
         propagated_pp_flags = (),
         # fb_xplat API
-        enable_static_variant = True,
+        enable_static_variant = False,
         platforms = None,
         **kwargs):
     """Translate a simpler declartion into the more complete library target"""
@@ -152,7 +152,7 @@ def fizz_cxx_library(
         apple_sdks = None,
         headers = [],
         exported_headers = [],
-        enable_static_variant = True,
+        enable_static_variant = False,
         header_namespace = "",
         feature = None,
         srcs = [],
