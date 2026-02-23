@@ -270,11 +270,19 @@ fizz_cpp_library(
 
 fizz_cpp_library(
     name = "async_self_cert",
+    srcs = [
+        "AsyncSelfCert.cpp",
+    ],
     headers = [
         "AsyncSelfCert.h",
     ],
+    deps = [
+        "//fizz/record:record",
+        "//fizz/util:status",
+    ],
     exported_deps = [
         "//fizz/protocol:certificate",
+        "//fizz/protocol:handshake_context",
         "//folly/futures:core",
     ],
 )
