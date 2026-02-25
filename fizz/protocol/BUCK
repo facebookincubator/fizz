@@ -72,9 +72,21 @@ fizz_cpp_library(
 )
 
 _certificate_openssl_deps = [
-    "//folly/io/async:async_transport_certificate",
     "//folly/io/async/ssl:openssl_transport_certificate",
 ]
+
+fizz_cpp_library(
+    name = "certificate_base",
+    headers = [
+        "CertificateBase.h",
+    ],
+    exported_deps = [
+        "//fizz:config",
+    ] + select({
+        "DEFAULT": ["//folly/io/async:async_transport_certificate"],
+        "fbsource//xplat/fizz/constraints:mnscrypto-only": [],
+    }),
+)
 
 fizz_cpp_library(
     name = "certificate",
@@ -86,6 +98,7 @@ fizz_cpp_library(
         "Certificate.h",
     ],
     exported_deps = [
+        ":certificate_base",
         "//fizz:config",
         "//fizz/record:record",
     ] + select({
