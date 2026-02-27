@@ -275,28 +275,15 @@ fizz_cpp_library(
 
 fizz_cpp_library(
     name = "default_certificate_verifier",
-    srcs = select({
-        "DEFAULT": [
-            "DefaultCertificateVerifier.cpp",
-        ],
-        "fbsource//xplat/fizz/constraints:mnscrypto-only": [],
-    }),
     headers = [
         "DefaultCertificateVerifier.h",
     ],
     labels = wdls.FIZZ,
-    deps = select({
-        "DEFAULT": [
-            "//folly:file_util",
-            "//folly/ssl:openssl_cert_utils",
-        ],
-        "fbsource//xplat/fizz/constraints:mnscrypto-only": [],
-    }),
     exported_deps = [
         ":certificate_verifier",
     ] + select({
         "DEFAULT": [
-            "//folly/ssl:openssl_ptr_types",
+            "//fizz/backend:openssl",
         ],
         "fbsource//xplat/fizz/constraints:mnscrypto-only": [],
     }),

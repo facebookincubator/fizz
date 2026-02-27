@@ -54,6 +54,7 @@ fizz_cpp_library(
     name = "openssl",
     srcs = [
         "openssl/certificate/CertUtils.cpp",
+        "openssl/certificate/OpenSSLCertificateVerifier.cpp",
         "openssl/crypto/OpenSSLKeyUtils.cpp",
         "openssl/crypto/Sha.cpp",
         "openssl/crypto/aead/OpenSSLEVPCipher.cpp",
@@ -66,6 +67,7 @@ fizz_cpp_library(
         "openssl/Properties.h",
         "openssl/certificate/CertUtils.h",
         "openssl/certificate/CertUtils-inl.h",
+        "openssl/certificate/OpenSSLCertificateVerifier.h",
         "openssl/certificate/OpenSSLPeerCertImpl.h",
         "openssl/certificate/OpenSSLPeerCertImpl-inl.h",
         "openssl/certificate/OpenSSLSelfCertImpl.h",
@@ -85,6 +87,7 @@ fizz_cpp_library(
     deps = [
         "//fizz/crypto/aead:cryptoutil",
         "//fizz/util:logging",
+        "//folly:file_util",
         "//folly/lang:checked_math",
     ],
     exported_deps = [
@@ -98,6 +101,7 @@ fizz_cpp_library(
         "//fizz/crypto/aead:iobuf",
         "//fizz/crypto/exchange:key_exchange",
         "//fizz/protocol:certificate",
+        "//fizz/protocol:certificate_verifier",
         "//fizz/record:record",
         "//folly:conv",
         "//folly:memory",
