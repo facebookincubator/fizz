@@ -13,6 +13,7 @@ fizz_cpp_library(
     ],
     deps = [
         "//fizz/backend:openssl",
+        "//fizz/crypto:utils",
         "//fizz/protocol:default_factory",
     ],
     exported_deps = [
