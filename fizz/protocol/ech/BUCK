@@ -29,6 +29,7 @@ fizz_cpp_library(
         "Encryption.h",
     ],
     deps = [
+        "//fizz/crypto:utils",
         "//fizz/crypto/hpke:utils",
         "//fizz/protocol:protocol",
         "//fizz/record:record",
