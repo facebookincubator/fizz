@@ -12,14 +12,10 @@ fizz_cpp_library(
         "libaegis/LibAEGIS.h",
     ],
     deps = [
+        "fbsource//third-party/libaegis:aegis",
         "//fizz/crypto/aead:cryptoutil",
         "//folly/lang:checked_math",
-    ] + select({
-        "DEFAULT": [
-            "fbsource//third-party/libaegis:aegis",
-        ],
-        # @fb-only[end= ]: "ovr_config//toolchain/fb:arista": [],
-    }),
+    ],
     exported_deps = [
         "//fizz:config",
         "//fizz/crypto:crypto",
