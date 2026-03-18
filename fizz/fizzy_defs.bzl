@@ -19,6 +19,7 @@ FIZZY_PUBLIC_HEADERS = [
     "facebook/fizzy/include/fizzy/client.h",
     "facebook/fizzy/include/fizzy/factory.h",
     "facebook/fizzy/include/fizzy/protocol.h",
+    "facebook/fizzy/include/fizzy/cpp/psk.h",
     "facebook/fizzy/include/fizzy/tls_params.h",
 ]
 
@@ -45,6 +46,7 @@ FIZZY_SRCS = [
     "facebook/fizzy/src/protocol.cpp",
     "facebook/fizzy/src/client.cpp",
     "facebook/fizzy/src/factory.cpp",
+    "facebook/fizzy/src/psk.cpp",
 ]
 
 COMMON_FLAGS = [] + select({
