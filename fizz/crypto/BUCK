@@ -72,6 +72,7 @@ fizz_cpp_library(
 )
 
 fizz_cpp_library(
+    # @autodeps-skip
     name = "random",
     headers = [
         "RandomGenerator.h",
@@ -85,6 +86,7 @@ fizz_cpp_library(
 )
 
 fizz_cpp_library(
+    # @autodeps-skip
     name = "utils",
     srcs = [
         "Utils.cpp",
@@ -101,5 +103,5 @@ fizz_cpp_library(
             ("libsodium", None, "sodium"),
         ],
         "fbsource//xplat/fizz/constraints:mnscrypto-only": [],
-    }) + [("libsodium", None, "sodium")],
+    }),
 )
