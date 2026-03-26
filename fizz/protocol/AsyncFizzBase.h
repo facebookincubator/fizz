@@ -233,9 +233,23 @@ class AsyncFizzBase : public folly::WriteChainAsyncTransportWrapper<
 
   /**
    * Identify the transport as Fizz.
+   * Can be overridden via setSecurityProtocolOverride() to distinguish
+   * protocol variants (e.g. StopTLSV2).
    */
   std::string getSecurityProtocol() const override {
+    if (securityProtocolOverride_.has_value()) {
+      return *securityProtocolOverride_;
+    }
     return "Fizz";
+  }
+
+  /**
+   * Override the security protocol string returned by
+   * getSecurityProtocol(). Used to distinguish protocol variants like
+   * StopTLSV2 from plain Fizz in server-side logging/scuba.
+   */
+  void setSecurityProtocolOverride(std::string protocol) {
+    securityProtocolOverride_ = std::move(protocol);
   }
 
   int getNapiId() const override;
@@ -596,6 +610,8 @@ class AsyncFizzBase : public folly::WriteChainAsyncTransportWrapper<
 
   SecretCallback* secretCallback_{nullptr};
   EndOfTLSCallback* endOfTLSCallback_{nullptr};
+
+  folly::Optional<std::string> securityProtocolOverride_;
 
   TransportOptions transportOptions_;
 
