@@ -17,16 +17,6 @@ template <class T>
 struct Properties;
 
 template <>
-struct Properties<fizz::Kyber512> {
-  static constexpr const char* id = OQS_KEM_alg_kyber_512;
-};
-
-template <>
-struct Properties<fizz::Kyber768> {
-  static constexpr const char* id = OQS_KEM_alg_kyber_768;
-};
-
-template <>
 struct Properties<fizz::MLKEM512> {
   static constexpr const char* id = OQS_KEM_alg_ml_kem_512;
 };

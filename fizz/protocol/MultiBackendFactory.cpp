@@ -33,11 +33,6 @@ std::unique_ptr<KeyExchange> MultiBackendFactory::makeKeyExchange(
     case NamedGroup::x25519:
       return fizz::libsodium::makeKeyExchange<fizz::X25519>();
 #if FIZZ_HAVE_OQS
-    case NamedGroup::x25519_kyber512:
-    case NamedGroup::x25519_kyber512_experimental:
-      return std::make_unique<HybridKeyExchange>(
-          fizz::libsodium::makeKeyExchange<fizz::X25519>(),
-          fizz::liboqs::makeKeyExchange<Kyber512>(role));
     case NamedGroup::X25519MLKEM768:
       return std::make_unique<HybridKeyExchange>(
           fizz::liboqs::makeKeyExchange<MLKEM768>(role),
@@ -46,17 +41,6 @@ std::unique_ptr<KeyExchange> MultiBackendFactory::makeKeyExchange(
       return std::make_unique<HybridKeyExchange>(
           fizz::liboqs::makeKeyExchange<MLKEM512>(role),
           fizz::libsodium::makeKeyExchange<fizz::X25519>());
-    case NamedGroup::kyber512:
-      return fizz::liboqs::makeKeyExchange<Kyber512>(role);
-    case NamedGroup::x25519_kyber768_draft00:
-    case NamedGroup::x25519_kyber768_experimental:
-      return std::make_unique<HybridKeyExchange>(
-          fizz::libsodium::makeKeyExchange<fizz::X25519>(),
-          fizz::liboqs::makeKeyExchange<Kyber768>(role));
-    case NamedGroup::secp256r1_kyber768_draft00:
-      return std::make_unique<HybridKeyExchange>(
-          fizz::openssl::makeKeyExchange<fizz::P256>(),
-          fizz::liboqs::makeKeyExchange<Kyber768>(role));
 #endif
     default:
       throw std::runtime_error("ke: not implemented");

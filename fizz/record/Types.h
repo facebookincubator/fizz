@@ -320,6 +320,8 @@ enum class NamedGroup : uint16_t {
   X25519MLKEM512_FB = 65026,
   X25519MLKEM768 = 4588,
 
+  // Deprecated: Kyber groups are no longer used for key exchange but are
+  // retained for logging/observability.
   /**
    * x25519 and secp256r1 hybrids with NIST Round 3 version of Kyber, see
    * https://datatracker.ietf.org/doc/draft-tls-westerbaan-xyber768d00/02/

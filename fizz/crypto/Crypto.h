@@ -133,8 +133,6 @@ struct X25519 {
 };
 
 // KEMs
-struct Kyber512 {};
-struct Kyber768 {};
 struct MLKEM512 {};
 struct MLKEM768 {};
 

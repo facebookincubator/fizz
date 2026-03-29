@@ -1212,7 +1212,7 @@ TEST_F(ClientProtocolTest, TestConnectECHWithHybridSupportedGroup) {
   Connect connect;
   // Should not crash on named group not recognized by HPKE
   std::vector<NamedGroup> supportedGroups(context_->getSupportedGroups());
-  supportedGroups.push_back(NamedGroup::x25519_kyber768_draft00);
+  supportedGroups.push_back(NamedGroup::X25519MLKEM768);
   context_->setSupportedGroups(supportedGroups);
   connect.context = context_;
   connect.echConfigs.emplace({ech::test::getParsedECHConfig()});

@@ -21,8 +21,8 @@ TEST(OQSKeyExchangeTest, InvalidKeyGenerationTest) {
 }
 
 TEST(OQSKeyExchangeTest, SuccessKeyExchangeTest) {
-  auto clientKex = OQSClientKeyExchange(OQS_KEM_alg_kyber_768);
-  auto serverKex = OQSServerKeyExchange(OQS_KEM_alg_kyber_768);
+  auto clientKex = OQSClientKeyExchange(OQS_KEM_alg_ml_kem_768);
+  auto serverKex = OQSServerKeyExchange(OQS_KEM_alg_ml_kem_768);
 
   clientKex.generateKeyPair();
   serverKex.generateKeyPair();
@@ -37,17 +37,17 @@ TEST(OQSKeyExchangeTest, SuccessKeyExchangeTest) {
 }
 
 TEST(OQSKeyExchangeTest, GetKeyShareBeforeGenerationTest) {
-  auto clientKex = OQSClientKeyExchange(OQS_KEM_alg_kyber_768);
-  auto serverKex = OQSServerKeyExchange(OQS_KEM_alg_kyber_768);
+  auto clientKex = OQSClientKeyExchange(OQS_KEM_alg_ml_kem_768);
+  auto serverKex = OQSServerKeyExchange(OQS_KEM_alg_ml_kem_768);
   EXPECT_THROW(clientKex.getKeyShare(), std::runtime_error);
   EXPECT_THROW(serverKex.getKeyShare(), std::runtime_error);
 }
 
 TEST(OQSKeyExchangeTest, InvalidExternalInputTest) {
-  auto clientKex = OQSClientKeyExchange(OQS_KEM_alg_kyber_512);
-  auto serverKex = OQSServerKeyExchange(OQS_KEM_alg_kyber_512);
-  auto wrongClientKex = OQSClientKeyExchange(OQS_KEM_alg_kyber_768);
-  auto wrongServerKex = OQSServerKeyExchange(OQS_KEM_alg_kyber_768);
+  auto clientKex = OQSClientKeyExchange(OQS_KEM_alg_ml_kem_512);
+  auto serverKex = OQSServerKeyExchange(OQS_KEM_alg_ml_kem_512);
+  auto wrongClientKex = OQSClientKeyExchange(OQS_KEM_alg_ml_kem_768);
+  auto wrongServerKex = OQSServerKeyExchange(OQS_KEM_alg_ml_kem_768);
 
   clientKex.generateKeyPair();
   serverKex.generateKeyPair();
@@ -67,8 +67,8 @@ TEST(OQSKeyExchangeTest, InvalidExternalInputTest) {
 }
 
 TEST(OQSKeyExchangeTest, CloneTest) {
-  auto clientKex = OQSClientKeyExchange(OQS_KEM_alg_kyber_512);
-  auto serverKex = OQSServerKeyExchange(OQS_KEM_alg_kyber_512);
+  auto clientKex = OQSClientKeyExchange(OQS_KEM_alg_ml_kem_512);
+  auto serverKex = OQSServerKeyExchange(OQS_KEM_alg_ml_kem_512);
 
   clientKex.generateKeyPair();
   serverKex.generateKeyPair();
@@ -96,8 +96,8 @@ TEST(OQSKeyExchangeTest, CloneTest) {
 }
 
 TEST(OQSKeyExchangeTest, FailedCloneTest) {
-  auto clientKex = OQSClientKeyExchange(OQS_KEM_alg_kyber_768);
-  auto serverKex = OQSServerKeyExchange(OQS_KEM_alg_kyber_768);
+  auto clientKex = OQSClientKeyExchange(OQS_KEM_alg_ml_kem_768);
+  auto serverKex = OQSServerKeyExchange(OQS_KEM_alg_ml_kem_768);
   EXPECT_THROW(clientKex.clone(), std::runtime_error);
   EXPECT_THROW(serverKex.clone(), std::runtime_error);
 }
