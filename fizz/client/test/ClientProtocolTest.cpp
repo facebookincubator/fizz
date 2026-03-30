@@ -55,6 +55,8 @@ class ClientProtocolTest : public ProtocolTest<ClientTypes, Actions> {
         {ExtensionType::supported_groups,
          ExtensionType::supported_versions,
          ExtensionType::key_share});
+    context_->setSupportedGroups({NamedGroup::x25519, NamedGroup::secp256r1});
+    context_->setDefaultShares({NamedGroup::x25519});
     auto mockFactory = std::make_unique<MockFactory>();
     mockFactory->setDefaults();
     factory_ = mockFactory.get();
