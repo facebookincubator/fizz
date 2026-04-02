@@ -2602,6 +2602,8 @@ EventHandler<ServerTypes, StateEnum::ExpectingFinished, Event::Finished>::
                          resumptionMasterSecret](State& newState) mutable {
     newState.readRecordLayer() = std::move(readRecordLayer);
     newState.resumptionMasterSecret() = std::move(resumptionMasterSecret);
+    newState.handshakeContext().reset();
+    newState.clientHandshakeSecret() = folly::none;
   });
 
   SecretAvailable appReadTrafficSecretAvailable(std::move(readSecret));

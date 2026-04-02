@@ -2603,6 +2603,7 @@ EventHandler<ClientTypes, StateEnum::ExpectingFinished, Event::Finished>::
         newState.selectedClientCert() = nullptr;
         newState.clientCert() = std::move(clientCert);
         newState.sentCCS() = sentCCS;
+        newState.handshakeContext().reset();
       }),
       MutateState(&Transition<StateEnum::Established>),
       SecretAvailable(std::move(readSecret)),
