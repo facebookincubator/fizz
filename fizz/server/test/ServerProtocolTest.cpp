@@ -7304,7 +7304,7 @@ TEST_F(ServerProtocolTest, TestCertificateVerifyWithVerifier) {
           RangeMatches("signature")))
       .InSequence(contextSeq);
 
-  EXPECT_CALL(*certVerifier_, verify(_))
+  EXPECT_CALL(*certVerifier_, _verify(_))
       .InSequence(contextSeq)
       .WillOnce(Invoke(
           [this](const std::vector<std::shared_ptr<const PeerCert>>& certs) {
@@ -7386,7 +7386,7 @@ TEST_F(ServerProtocolTest, TestCertificateVerifyVerifierFailure) {
           RangeMatches("signature")))
       .InSequence(contextSeq);
 
-  EXPECT_CALL(*certVerifier_, verify(_))
+  EXPECT_CALL(*certVerifier_, _verify(_))
       .InSequence(contextSeq)
       .WillOnce(Throw(FizzVerificationException(
           "verifier failed", AlertDescription::bad_certificate)));
@@ -7443,7 +7443,7 @@ TEST_F(ServerProtocolTest, TestOptionalCertificateVerifyVerifierFailure) {
           RangeMatches("signature")))
       .InSequence(contextSeq);
 
-  EXPECT_CALL(*certVerifier_, verify(_))
+  EXPECT_CALL(*certVerifier_, _verify(_))
       .InSequence(contextSeq)
       .WillOnce(Throw(
           FizzException("verifier failed", AlertDescription::bad_certificate)));
@@ -7472,7 +7472,7 @@ TEST_F(ServerProtocolTest, TestCertificateVerifyVerifierGenericFailure) {
           RangeMatches("signature")))
       .InSequence(contextSeq);
 
-  EXPECT_CALL(*certVerifier_, verify(_))
+  EXPECT_CALL(*certVerifier_, _verify(_))
       .InSequence(contextSeq)
       .WillOnce(Throw(std::runtime_error("oops")));
 

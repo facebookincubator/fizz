@@ -21,10 +21,13 @@ class InsecureAcceptAnyCertificate : public CertificateVerifier {
  public:
   InsecureAcceptAnyCertificate() {}
 
-  std::shared_ptr<const Cert> verify(
+  Status verify(
+      std::shared_ptr<const Cert>& ret,
+      Error& /* err */,
       const std::vector<std::shared_ptr<const fizz::PeerCert>>& certs)
       const override {
-    return certs.front();
+    ret = certs.front();
+    return Status::Success;
   }
 
   std::vector<Extension> getCertificateRequestExtensions() const override {
@@ -46,11 +49,13 @@ class StoreCertificateChain : public CertificateVerifier {
       std::unique_ptr<CertificateVerifier> delegateVerifier)
       : delegateVerifier_(std::move(delegateVerifier)) {}
 
-  std::shared_ptr<const Cert> verify(
+  Status verify(
+      std::shared_ptr<const Cert>& ret,
+      Error& err,
       const std::vector<std::shared_ptr<const fizz::PeerCert>>& certs)
       const override {
     certs_ = certs;
-    return delegateVerifier_->verify(certs);
+    return delegateVerifier_->verify(ret, err, certs);
   }
 
   std::vector<Extension> getCertificateRequestExtensions() const override {

@@ -4844,7 +4844,7 @@ TEST_F(ClientProtocolTest, TestCertificateVerifyFlow) {
           CertificateVerifyContext::Server,
           RangeMatches("certcontext"),
           RangeMatches("signature")));
-  EXPECT_CALL(*verifier_, verify(_))
+  EXPECT_CALL(*verifier_, _verify(_))
       .WillOnce(Invoke(
           [this](const std::vector<std::shared_ptr<const PeerCert>>& certs) {
             EXPECT_EQ(certs.size(), 2);
@@ -4910,7 +4910,7 @@ TEST_F(ClientProtocolTest, TestCertificateVerifyFailure) {
 
 TEST_F(ClientProtocolTest, TestCertificateVerifyVerifierFailure) {
   setupExpectingCertificateVerify();
-  EXPECT_CALL(*verifier_, verify(_))
+  EXPECT_CALL(*verifier_, _verify(_))
       .WillOnce(Throw(FizzVerificationException(
           "verify failed", AlertDescription::bad_record_mac)));
   fizz::Param param(TestMessages::certificateVerify());
@@ -4921,7 +4921,7 @@ TEST_F(ClientProtocolTest, TestCertificateVerifyVerifierFailure) {
 
 TEST_F(ClientProtocolTest, TestCertificateVerifyVerifierFailureOtherException) {
   setupExpectingCertificateVerify();
-  EXPECT_CALL(*verifier_, verify(_))
+  EXPECT_CALL(*verifier_, _verify(_))
       .WillOnce(Throw(std::runtime_error("no good")));
   fizz::Param param(TestMessages::certificateVerify());
   auto actions = detail::processEvent(state_, param);

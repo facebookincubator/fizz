@@ -205,9 +205,16 @@ class MockCertificateVerifier : public CertificateVerifier {
  public:
   MOCK_METHOD(
       std::shared_ptr<const Cert>,
-      verify,
+      _verify,
       (const std::vector<std::shared_ptr<const PeerCert>>&),
       (const));
+  Status verify(
+      std::shared_ptr<const Cert>& ret,
+      Error& err,
+      const std::vector<std::shared_ptr<const PeerCert>>& certs)
+      const override {
+    FIZZ_THROW_TO_ERROR(ret, _verify(certs));
+  }
 
   MOCK_METHOD(
       std::vector<Extension>,

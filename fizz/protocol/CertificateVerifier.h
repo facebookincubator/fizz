@@ -28,14 +28,16 @@ class CertificateVerifier {
 
   /**
    * Verifies the certificates in certs. The peer has been already proven
-   * possession of the first certificate in certs. Throws on error or if
-   * verification fails.
+   * possession of the first certificate in certs. Returns error status on
+   * error or if verification fails.
    * The returned cert will be used for replacing peer cert in fizz State
    * if it is a valid fizz::Cert. Implementation
    * can return a null shared_ptr if replacing the peer cert is not desired.
    */
   // NOLINTNEXTLINE(modernize-use-nodiscard)
-  virtual std::shared_ptr<const Cert> verify(
+  virtual Status verify(
+      std::shared_ptr<const Cert>& ret,
+      Error& err,
       const std::vector<std::shared_ptr<const PeerCert>>& certs) const = 0;
 
   /**
@@ -55,7 +57,9 @@ class TerminatingCertificateVerifier : public CertificateVerifier {
  public:
   explicit TerminatingCertificateVerifier(VerificationContext) {}
 
-  std::shared_ptr<const Cert> verify(
+  Status verify(
+      std::shared_ptr<const Cert>& /* ret */,
+      Error& /* err */,
       const std::vector<std::shared_ptr<const PeerCert>>&) const override {
     fprintf(
         stderr,
@@ -79,10 +83,16 @@ class InsecureCertificateVerifier : public CertificateVerifier {
  public:
   explicit InsecureCertificateVerifier(VerificationContext) {}
 
-  std::shared_ptr<const Cert> verify(
+  Status verify(
+      std::shared_ptr<const Cert>& ret,
+      Error& /* err */,
       const std::vector<std::shared_ptr<const PeerCert>>& certs)
       const override {
-    return certs.empty() ? nullptr : certs.front();
+    ret = nullptr;
+    if (!certs.empty()) {
+      ret = certs.front();
+    }
+    return Status::Success;
   }
 
   std::vector<Extension> getCertificateRequestExtensions() const override {

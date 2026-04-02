@@ -33,6 +33,8 @@ using namespace fizz::server::detail;
 // We only ever use the first PSK sent.
 static constexpr uint16_t kPskIndex = 0;
 
+#define TRY FIZZ_RETURN_ON_ERROR
+
 namespace fizz {
 namespace sm {
 
@@ -2486,7 +2488,7 @@ Status EventHandler<
     Event::CertificateVerify>::
     handle(
         AsyncActions& ret,
-        InvocationContext& /* ctx */,
+        InvocationContext& ctx,
         const State& state,
         Param& param) {
   auto certVerify = std::move(*param.asCertificateVerify());
@@ -2516,7 +2518,10 @@ Status EventHandler<
   try {
     const auto& verifier = state.context()->getClientCertVerifier();
     if (verifier) {
-      if (auto verifiedCert = verifier->verify(certs)) {
+      std::shared_ptr<const Cert> verifiedCert;
+      FIZZ_THROW_ON_ERROR(
+          verifier->verify(verifiedCert, ctx.err, certs), ctx.err);
+      if (verifiedCert) {
         newCert = std::move(verifiedCert);
       } else {
         newCert = std::move(leafCert);

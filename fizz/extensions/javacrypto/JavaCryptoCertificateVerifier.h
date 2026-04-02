@@ -31,7 +31,9 @@ class JavaCryptoCertificateVerifier : public CertificateVerifier {
     createAuthorities();
   }
 
-  std::shared_ptr<const Cert> verify(
+  Status verify(
+      std::shared_ptr<const Cert>& ret,
+      Error& err,
       const std::vector<std::shared_ptr<const fizz::PeerCert>>& certs)
       const override;
 

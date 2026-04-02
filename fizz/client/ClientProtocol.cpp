@@ -2386,8 +2386,12 @@ Status EventHandler<
 
   if (state.verifier()) {
     try {
-      if (auto verifiedCert =
-              state.verifier()->verify(state.unverifiedCertChain())) {
+      std::shared_ptr<const Cert> verifiedCert;
+      FIZZ_THROW_ON_ERROR(
+          state.verifier()->verify(
+              verifiedCert, ctx.err, state.unverifiedCertChain()),
+          ctx.err);
+      if (verifiedCert) {
         newCert = verifiedCert;
       } else {
         newCert = std::move(leaf);

@@ -17,7 +17,10 @@ TEST(TerminatingCertificateVerifierTest, TerminatesOnVerify) {
   TerminatingCertificateVerifier verifier(VerificationContext::Client);
   auto cert = std::make_shared<MockPeerCert>();
   std::vector<std::shared_ptr<const PeerCert>> certs{cert};
-  EXPECT_DEATH(verifier.verify(certs), "not supported on this platform");
+  std::shared_ptr<const Cert> ret;
+  Error err;
+  EXPECT_DEATH(
+      (void)verifier.verify(ret, err, certs), "not supported on this platform");
 }
 
 TEST(TerminatingCertificateVerifierTest, GetExtensionsReturnsEmpty) {
@@ -29,13 +32,19 @@ TEST(InsecureCertificateVerifierTest, ReturnsFirstCert) {
   InsecureCertificateVerifier verifier(VerificationContext::Client);
   auto cert = std::make_shared<MockPeerCert>();
   std::vector<std::shared_ptr<const PeerCert>> certs{cert};
-  EXPECT_EQ(verifier.verify(certs), cert);
+  std::shared_ptr<const Cert> ret;
+  Error err;
+  EXPECT_EQ(verifier.verify(ret, err, certs), Status::Success);
+  EXPECT_EQ(ret, cert);
 }
 
 TEST(InsecureCertificateVerifierTest, ReturnsNullOnEmpty) {
   InsecureCertificateVerifier verifier(VerificationContext::Client);
   std::vector<std::shared_ptr<const PeerCert>> certs;
-  EXPECT_EQ(verifier.verify(certs), nullptr);
+  std::shared_ptr<const Cert> ret;
+  Error err;
+  EXPECT_EQ(verifier.verify(ret, err, certs), Status::Success);
+  EXPECT_EQ(ret, nullptr);
 }
 
 TEST(InsecureCertificateVerifierTest, GetExtensionsReturnsEmpty) {
