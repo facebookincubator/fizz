@@ -771,14 +771,16 @@ static Status getNegotiatedECHConfig(
     const std::vector<CipherSuite>& supportedCiphers,
     const std::vector<NamedGroup>& supportedGroups) {
   // Convert vectors to use HPKE types.
-  std::vector<hpke::KEMId> supportedKEMs(supportedGroups.size());
+  std::vector<hpke::KEMId> supportedKEMs;
+  supportedKEMs.reserve(supportedGroups.size());
   for (const auto& group : supportedGroups) {
     const auto kemId = hpke::tryGetKEMId(group);
     if (kemId.has_value()) {
       supportedKEMs.push_back(*kemId);
     }
   }
-  std::vector<hpke::AeadId> supportedAeads(supportedCiphers.size());
+  std::vector<hpke::AeadId> supportedAeads;
+  supportedAeads.reserve(supportedCiphers.size());
   for (const auto& suite : supportedCiphers) {
     const auto aeadId = hpke::tryGetAeadId(suite);
     if (aeadId.has_value()) {
