@@ -1651,8 +1651,13 @@ EventHandler<ServerTypes, StateEnum::ExpectingClientHello, Event::ClientHello>::
                   state.context()->getFactory()->makeKeyScheduler(cipher);
               echScheduler->deriveEarlySecret(folly::range(chlo.random));
               // Add acceptance extension
-              ech::setAcceptConfirmation(
-                  hrr, handshakeContext->clone(), std::move(echScheduler));
+              FIZZ_THROW_ON_ERROR(
+                  ech::setAcceptConfirmation(
+                      err,
+                      hrr,
+                      handshakeContext->clone(),
+                      std::move(echScheduler)),
+                  err);
             }
 
             Buf encodedHelloRetryRequest;
@@ -1813,10 +1818,13 @@ EventHandler<ServerTypes, StateEnum::ExpectingClientHello, Event::ClientHello>::
                     state.context()->getFactory()->makeKeyScheduler(cipher);
                 echScheduler->deriveEarlySecret(folly::range(chlo.random));
                 // Add acceptance extension
-                ech::setAcceptConfirmation(
-                    serverHello,
-                    handshakeContext->clone(),
-                    std::move(echScheduler));
+                FIZZ_THROW_ON_ERROR(
+                    ech::setAcceptConfirmation(
+                        err,
+                        serverHello,
+                        handshakeContext->clone(),
+                        std::move(echScheduler)),
+                    err);
               } else if (echStatus == ECHStatus::Rejected) {
                 auto decrypter = state.context()->getECHDecrypter();
                 FIZZ_DCHECK(decrypter);

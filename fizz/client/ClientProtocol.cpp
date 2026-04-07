@@ -1540,8 +1540,16 @@ Status sm::EventHandler<
 
     auto echScheduler = state.context()->getFactory()->makeKeyScheduler(cipher);
     echScheduler->deriveEarlySecret(folly::range(state.echState()->random));
-    bool acceptedECH = ech::checkECHAccepted(
-        shlo, echHandshakeContext->clone(), std::move(echScheduler));
+    bool acceptedECH = false;
+    Error echErr;
+    FIZZ_THROW_ON_ERROR(
+        ech::checkECHAccepted(
+            acceptedECH,
+            echErr,
+            shlo,
+            echHandshakeContext->clone(),
+            std::move(echScheduler)),
+        echErr);
     if (state.echState()->status != ECHStatus::Requested &&
         acceptedECH != (state.echState()->status == ECHStatus::Accepted)) {
       // ECH acceptance mismatch with hrr
@@ -1869,8 +1877,17 @@ Status EventHandler<
     // the server will already let us know here.
     auto echScheduler = state.context()->getFactory()->makeKeyScheduler(cipher);
     echScheduler->deriveEarlySecret(folly::range(state.echState()->random));
-    if (ech::checkECHAccepted(
-            hrr, echHandshakeContext->clone(), std::move(echScheduler))) {
+    bool echAccepted = false;
+    Error echErr;
+    FIZZ_THROW_ON_ERROR(
+        ech::checkECHAccepted(
+            echAccepted,
+            echErr,
+            hrr,
+            echHandshakeContext->clone(),
+            std::move(echScheduler)),
+        echErr);
+    if (echAccepted) {
       echStatus = ECHStatus::Accepted;
     } else {
       echStatus = ECHStatus::Rejected;

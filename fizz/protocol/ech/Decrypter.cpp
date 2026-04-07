@@ -67,15 +67,20 @@ Status tryToDecodeECH(
         configIdResult->echExtension.enc,
         configIdResult->matchingParam.kex->clone(),
         0);
-    auto chlo = decryptECHWithContext(
-        clientHelloOuter,
-        configIdResult->matchingParam.echConfig,
-        configIdResult->echExtension.cipher_suite,
-        configIdResult->echExtension.enc->clone(),
-        configIdResult->echExtension.config_id,
-        configIdResult->echExtension.payload->clone(),
-        ECHVersion::Draft15,
-        context);
+    ClientHello chlo;
+    FIZZ_THROW_ON_ERROR(
+        decryptECHWithContext(
+            chlo,
+            err,
+            clientHelloOuter,
+            configIdResult->matchingParam.echConfig,
+            configIdResult->echExtension.cipher_suite,
+            configIdResult->echExtension.enc->clone(),
+            configIdResult->echExtension.config_id,
+            configIdResult->echExtension.payload->clone(),
+            ECHVersion::Draft15,
+            context),
+        err);
     ret = DecrypterResult{
         std::move(chlo),
         configIdResult->echExtension.config_id,
@@ -115,15 +120,19 @@ Status decodeClientHelloHRR(
 
   try {
     if (context) {
-      ret = decryptECHWithContext(
-          chlo,
-          configIdResult->matchingParam.echConfig,
-          configIdResult->echExtension.cipher_suite,
-          configIdResult->echExtension.enc->clone(),
-          configIdResult->echExtension.config_id,
-          configIdResult->echExtension.payload->clone(),
-          ECHVersion::Draft15,
-          context);
+      FIZZ_THROW_ON_ERROR(
+          decryptECHWithContext(
+              ret,
+              err,
+              chlo,
+              configIdResult->matchingParam.echConfig,
+              configIdResult->echExtension.cipher_suite,
+              configIdResult->echExtension.enc->clone(),
+              configIdResult->echExtension.config_id,
+              configIdResult->echExtension.payload->clone(),
+              ECHVersion::Draft15,
+              context),
+          err);
       return Status::Success;
     } else {
       auto recreatedContext = setupDecryptionContext(
@@ -133,15 +142,19 @@ Status decodeClientHelloHRR(
           encapsulatedKey,
           configIdResult->matchingParam.kex->clone(),
           1);
-      ret = decryptECHWithContext(
-          chlo,
-          configIdResult->matchingParam.echConfig,
-          configIdResult->echExtension.cipher_suite,
-          configIdResult->echExtension.enc->clone(),
-          configIdResult->echExtension.config_id,
-          configIdResult->echExtension.payload->clone(),
-          ECHVersion::Draft15,
-          recreatedContext);
+      FIZZ_THROW_ON_ERROR(
+          decryptECHWithContext(
+              ret,
+              err,
+              chlo,
+              configIdResult->matchingParam.echConfig,
+              configIdResult->echExtension.cipher_suite,
+              configIdResult->echExtension.enc->clone(),
+              configIdResult->echExtension.config_id,
+              configIdResult->echExtension.payload->clone(),
+              ECHVersion::Draft15,
+              recreatedContext),
+          err);
       return Status::Success;
     }
   } catch (const OuterExtensionsError& e) {
