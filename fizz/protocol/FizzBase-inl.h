@@ -142,9 +142,7 @@ void FizzBase<Derived, ActionMoveVisitor, StateMachine>::processActions(
 template <typename Derived, typename ActionMoveVisitor, typename StateMachine>
 void FizzBase<Derived, ActionMoveVisitor, StateMachine>::addProcessingActions(
     typename StateMachine::ProcessingActions actions) {
-  if (actionGuard_) {
-    throw std::runtime_error("actions already processing");
-  }
+  FIZZ_DCHECK(!actionGuard_);
 
   actionGuard_ = folly::DelayedDestruction::DestructorGuard(owner_);
 
