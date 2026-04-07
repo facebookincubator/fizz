@@ -1604,8 +1604,9 @@ TEST_F(ServerProtocolTest, TestECHDecryptionSuccess) {
   r.fill(0xEC);
   EXPECT_CALL(
       *mockEchKeyScheduler,
-      deriveEarlySecret(RangeMatches(std::string(r.begin(), r.end()))))
-      .InSequence(contextSeq);
+      deriveEarlySecret(_, RangeMatches(std::string(r.begin(), r.end()))))
+      .InSequence(contextSeq)
+      .WillOnce(Return(Status::Success));
   EXPECT_CALL(*mockHandshakeContext_, clone())
       .InSequence(contextSeq)
       .WillOnce(Invoke(
@@ -2567,7 +2568,8 @@ TEST_F(ServerProtocolTest, TestClientHelloPskFlow) {
         return std::unique_ptr<HandshakeContext>(mockHandshakeContext_);
       }));
   EXPECT_CALL(
-      *mockKeyScheduler_, deriveEarlySecret(RangeMatches("resumesecret")));
+      *mockKeyScheduler_, deriveEarlySecret(_, RangeMatches("resumesecret")))
+      .WillOnce(Return(Status::Success));
   EXPECT_CALL(*mockHandshakeContext_, appendToTranscript(BufMatches("client")))
       .InSequence(contextSeq);
   EXPECT_CALL(*mockHandshakeContext_, getFinishedData(RangeMatches("bdr")))
@@ -2806,7 +2808,8 @@ TEST_F(ServerProtocolTest, TestClientHelloPskDheFlow) {
         return std::unique_ptr<HandshakeContext>(mockHandshakeContext_);
       }));
   EXPECT_CALL(
-      *mockKeyScheduler_, deriveEarlySecret(RangeMatches("resumesecret")));
+      *mockKeyScheduler_, deriveEarlySecret(_, RangeMatches("resumesecret")))
+      .WillOnce(Return(Status::Success));
   EXPECT_CALL(*mockHandshakeContext_, appendToTranscript(BufMatches("client")))
       .InSequence(contextSeq);
   EXPECT_CALL(*mockHandshakeContext_, getFinishedData(RangeMatches("bdr")))
@@ -3398,7 +3401,8 @@ TEST_F(ServerProtocolTest, TestRetryClientHelloPskDheFlow) {
         return std::unique_ptr<KeyScheduler>(mockKeyScheduler_);
       }));
   EXPECT_CALL(
-      *mockKeyScheduler_, deriveEarlySecret(RangeMatches("resumesecret")));
+      *mockKeyScheduler_, deriveEarlySecret(_, RangeMatches("resumesecret")))
+      .WillOnce(Return(Status::Success));
   EXPECT_CALL(*mockHandshakeContext_, appendToTranscript(BufMatches("client")))
       .InSequence(contextSeq);
   EXPECT_CALL(*mockHandshakeContext_, getFinishedData(RangeMatches("bdr")))
@@ -3670,8 +3674,9 @@ TEST_F(ServerProtocolTest, TestRetryClientHelloECHFlow) {
   r.fill(0xEC);
   EXPECT_CALL(
       *mockEchKeyScheduler,
-      deriveEarlySecret(RangeMatches(std::string(r.begin(), r.end()))))
-      .InSequence(contextSeq);
+      deriveEarlySecret(_, RangeMatches(std::string(r.begin(), r.end()))))
+      .InSequence(contextSeq)
+      .WillOnce(Return(Status::Success));
   auto mockEchContext = new MockHandshakeContext();
   EXPECT_CALL(*mockHandshakeContext_, clone())
       .InSequence(contextSeq)
@@ -4282,7 +4287,8 @@ TEST_F(ServerProtocolTest, TestClientHelloPskDheEarlyFlow) {
         return std::unique_ptr<HandshakeContext>(mockHandshakeContext_);
       }));
   EXPECT_CALL(
-      *mockKeyScheduler_, deriveEarlySecret(RangeMatches("resumesecret")));
+      *mockKeyScheduler_, deriveEarlySecret(_, RangeMatches("resumesecret")))
+      .WillOnce(Return(Status::Success));
   EXPECT_CALL(*mockHandshakeContext_, appendToTranscript(BufMatches("client")))
       .InSequence(contextSeq);
   EXPECT_CALL(*mockHandshakeContext_, getFinishedData(RangeMatches("bdr")))
@@ -4589,7 +4595,8 @@ TEST_F(ServerProtocolTest, TestClientHelloPskEarlyFlow) {
         return std::unique_ptr<HandshakeContext>(mockHandshakeContext_);
       }));
   EXPECT_CALL(
-      *mockKeyScheduler_, deriveEarlySecret(RangeMatches("resumesecret")));
+      *mockKeyScheduler_, deriveEarlySecret(_, RangeMatches("resumesecret")))
+      .WillOnce(Return(Status::Success));
   EXPECT_CALL(*mockHandshakeContext_, appendToTranscript(BufMatches("client")))
       .InSequence(contextSeq);
   EXPECT_CALL(*mockHandshakeContext_, getFinishedData(RangeMatches("bdr")))
@@ -6603,7 +6610,7 @@ TEST_F(ServerProtocolTest, TestFullHandshakeFinished) {
         content.data = folly::IOBuf::copyBuffer("handshake");
         return content;
       }));
-  EXPECT_CALL(*mockKeyScheduler_, clearMasterSecret());
+  EXPECT_CALL(*mockKeyScheduler_, clearMasterSecret(_));
 
   fizz::Param param = TestMessages::finished();
   auto actions = getActions(detail::processEvent(state_, param));
@@ -6698,7 +6705,7 @@ TEST_F(ServerProtocolTest, TestFinishedNoAutomaticNewSessionTicket) {
   setUpExpectingFinished();
   context_->setSendNewSessionTicket(false);
 
-  EXPECT_CALL(*mockKeyScheduler_, clearMasterSecret());
+  EXPECT_CALL(*mockKeyScheduler_, clearMasterSecret(_));
   fizz::Param param = TestMessages::finished();
   auto actions = getActions(detail::processEvent(state_, param));
   expectActions<MutateState, ReportHandshakeSuccess, SecretAvailable>(actions);

@@ -491,7 +491,9 @@ TEST_F(ClientProtocolTest, TestConnectPskFlow) {
         return std::unique_ptr<KeyScheduler>(mockKeyScheduler_);
       }));
   EXPECT_CALL(
-      *mockKeyScheduler_, deriveEarlySecret(RangeMatches("resumptionsecret")));
+      *mockKeyScheduler_,
+      deriveEarlySecret(_, RangeMatches("resumptionsecret")))
+      .WillOnce(Return(Status::Success));
   EXPECT_CALL(
       *mockKeyScheduler_, getSecret(EarlySecrets::ResumptionPskBinder, _))
       .WillOnce(InvokeWithoutArgs([]() {
@@ -592,7 +594,9 @@ TEST_F(ClientProtocolTest, TestConnectPskEarlyFlow) {
         return std::unique_ptr<KeyScheduler>(mockKeyScheduler_);
       }));
   EXPECT_CALL(
-      *mockKeyScheduler_, deriveEarlySecret(RangeMatches("resumptionsecret")));
+      *mockKeyScheduler_,
+      deriveEarlySecret(_, RangeMatches("resumptionsecret")))
+      .WillOnce(Return(Status::Success));
   EXPECT_CALL(
       *mockKeyScheduler_, getSecret(EarlySecrets::ResumptionPskBinder, _))
       .WillOnce(InvokeWithoutArgs([]() {
@@ -1739,8 +1743,9 @@ TEST_F(ClientProtocolTest, TestServerHelloECHFlow) {
   r.fill(0xEC);
   EXPECT_CALL(
       *mockEchAcceptScheduler,
-      deriveEarlySecret(RangeMatches(std::string(r.begin(), r.end()))))
-      .InSequence(contextSeq);
+      deriveEarlySecret(_, RangeMatches(std::string(r.begin(), r.end()))))
+      .InSequence(contextSeq)
+      .WillOnce(Return(Status::Success));
   auto mockEchAcceptContext = new MockHandshakeContext();
   EXPECT_CALL(*mockEchHandshakeContext, clone())
       .InSequence(contextSeq)
@@ -1919,8 +1924,9 @@ TEST_F(ClientProtocolTest, TestServerHelloECHRejectedFlow) {
   r.fill(0xEC);
   EXPECT_CALL(
       *mockEchKeyScheduler,
-      deriveEarlySecret(RangeMatches(std::string(r.begin(), r.end()))))
-      .InSequence(contextSeq);
+      deriveEarlySecret(_, RangeMatches(std::string(r.begin(), r.end()))))
+      .InSequence(contextSeq)
+      .WillOnce(Return(Status::Success));
   auto mockEchAcceptContext = new MockHandshakeContext();
   EXPECT_CALL(*mockEchHandshakeContext, clone())
       .InSequence(contextSeq)
@@ -2175,7 +2181,9 @@ TEST_F(ClientProtocolTest, TestServerHelloPskFlow) {
       .WillOnce(InvokeWithoutArgs(
           []() { return folly::IOBuf::copyBuffer("sharedsecret"); }));
   EXPECT_CALL(
-      *mockKeyScheduler_, deriveEarlySecret(RangeMatches("resumptionsecret")));
+      *mockKeyScheduler_,
+      deriveEarlySecret(_, RangeMatches("resumptionsecret")))
+      .WillOnce(Return(Status::Success));
   EXPECT_CALL(
       *mockKeyScheduler_, deriveHandshakeSecret(RangeMatches("sharedsecret")));
   EXPECT_CALL(
@@ -2285,7 +2293,9 @@ TEST_F(ClientProtocolTest, TestServerHelloPskNoDhFlow) {
       .WillRepeatedly(
           Invoke([]() { return folly::IOBuf::copyBuffer("chlo_shlo"); }));
   EXPECT_CALL(
-      *mockKeyScheduler_, deriveEarlySecret(RangeMatches("resumptionsecret")));
+      *mockKeyScheduler_,
+      deriveEarlySecret(_, RangeMatches("resumptionsecret")))
+      .WillOnce(Return(Status::Success));
   EXPECT_CALL(*mockKeyScheduler_, deriveHandshakeSecret());
   EXPECT_CALL(
       *mockKeyScheduler_,
@@ -2542,8 +2552,9 @@ TEST_F(ClientProtocolTest, TestServerHelloECHAcceptedAfterHRRRejected) {
   r.fill(0xEC);
   EXPECT_CALL(
       *mockEchKeyScheduler,
-      deriveEarlySecret(RangeMatches(std::string(r.begin(), r.end()))))
-      .InSequence(contextSeq);
+      deriveEarlySecret(_, RangeMatches(std::string(r.begin(), r.end()))))
+      .InSequence(contextSeq)
+      .WillOnce(Return(Status::Success));
   auto mockEchAcceptContext = new MockHandshakeContext();
   EXPECT_CALL(*echHandshakeContextPtr, clone())
       .InSequence(contextSeq)
@@ -3114,7 +3125,9 @@ TEST_F(ClientProtocolTest, TestHelloRetryRequestPskFlow) {
         return std::unique_ptr<KeyScheduler>(mockKeyScheduler_);
       }));
   EXPECT_CALL(
-      *mockKeyScheduler_, deriveEarlySecret(RangeMatches("resumptionsecret")));
+      *mockKeyScheduler_,
+      deriveEarlySecret(_, RangeMatches("resumptionsecret")))
+      .WillOnce(Return(Status::Success));
   EXPECT_CALL(
       *mockKeyScheduler_, getSecret(EarlySecrets::ResumptionPskBinder, _))
       .WillOnce(InvokeWithoutArgs([]() {
@@ -3298,8 +3311,9 @@ TEST_F(ClientProtocolTest, TestHelloRetryRequestECHFlow) {
   r.fill(0x66);
   EXPECT_CALL(
       *mockKeyScheduler_,
-      deriveEarlySecret(RangeMatches(std::string(r.begin(), r.end()))))
-      .InSequence(contextSeq);
+      deriveEarlySecret(_, RangeMatches(std::string(r.begin(), r.end()))))
+      .InSequence(contextSeq)
+      .WillOnce(Return(Status::Success));
   auto mockEchAcceptContext = new MockHandshakeContext();
   EXPECT_CALL(*mockEchHandshakeContext2, clone())
       .InSequence(contextSeq)
@@ -3612,8 +3626,9 @@ TEST_F(ClientProtocolTest, TestHelloRetryRequestECHRejectedFlow) {
   r.fill(0x66);
   EXPECT_CALL(
       *mockKeyScheduler_,
-      deriveEarlySecret(RangeMatches(std::string(r.begin(), r.end()))))
-      .InSequence(contextSeq);
+      deriveEarlySecret(_, RangeMatches(std::string(r.begin(), r.end()))))
+      .InSequence(contextSeq)
+      .WillOnce(Return(Status::Success));
   auto mockEchAcceptContext = new MockHandshakeContext();
   EXPECT_CALL(*mockEchHandshakeContext2, clone())
       .InSequence(contextSeq)
@@ -3937,8 +3952,9 @@ TEST_F(ClientProtocolTest, TestHelloRetryRequestECHPSKFlow) {
   r.fill(0x66);
   EXPECT_CALL(
       *mockAcceptKeyScheduler,
-      deriveEarlySecret(RangeMatches(std::string(r.begin(), r.end()))))
-      .InSequence(contextSeq);
+      deriveEarlySecret(_, RangeMatches(std::string(r.begin(), r.end()))))
+      .InSequence(contextSeq)
+      .WillOnce(Return(Status::Success));
   auto mockEchAcceptContext = new MockHandshakeContext();
   EXPECT_CALL(*mockEchHandshakeContext2, clone())
       .InSequence(contextSeq)
@@ -3990,8 +4006,10 @@ TEST_F(ClientProtocolTest, TestHelloRetryRequestECHPSKFlow) {
         return std::unique_ptr<HandshakeContext>(mockResumptionContext);
       }));
   EXPECT_CALL(
-      *mockKeyScheduler_, deriveEarlySecret(RangeMatches("resumptionsecret")))
-      .InSequence(contextSeq);
+      *mockKeyScheduler_,
+      deriveEarlySecret(_, RangeMatches("resumptionsecret")))
+      .InSequence(contextSeq)
+      .WillOnce(Return(Status::Success));
   EXPECT_CALL(
       *mockKeyScheduler_, getSecret(EarlySecrets::ResumptionPskBinder, _))
       .InSequence(contextSeq)
@@ -5199,7 +5217,7 @@ TEST_F(ClientProtocolTest, TestFinishedEarlyFlow) {
       &rrl, &raead, folly::StringPiece("sat"));
   expectEncryptedWriteRecordLayerCreation(
       &wrl, &waead, folly::StringPiece("cat"));
-  EXPECT_CALL(*mockKeyScheduler_, clearMasterSecret());
+  EXPECT_CALL(*mockKeyScheduler_, clearMasterSecret(_));
 
   fizz::Param param(TestMessages::finished());
   auto actions = detail::processEvent(state_, param);
@@ -5349,7 +5367,7 @@ TEST_F(ClientProtocolTest, TestFinishedEarlyFlowOmitEarlyRecord) {
       false);
   expectEncryptedWriteRecordLayerCreation(
       &wrl, &waead, folly::StringPiece("cat"), nullptr, nullptr, true, false);
-  EXPECT_CALL(*mockKeyScheduler_, clearMasterSecret());
+  EXPECT_CALL(*mockKeyScheduler_, clearMasterSecret(_));
 
   fizz::Param param(TestMessages::finished());
   auto actions = detail::processEvent(state_, param);
@@ -5586,7 +5604,7 @@ void ClientProtocolTest::doFinishedFlow(ClientAuthType authType) {
       &rrl, &raead, folly::StringPiece("sat"));
   expectEncryptedWriteRecordLayerCreation(
       &wrl, &waead, folly::StringPiece("cat"));
-  EXPECT_CALL(*mockKeyScheduler_, clearMasterSecret());
+  EXPECT_CALL(*mockKeyScheduler_, clearMasterSecret(_));
 
   fizz::Param param(TestMessages::finished());
   auto actions = detail::processEvent(state_, param);

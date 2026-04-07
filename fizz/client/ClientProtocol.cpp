@@ -687,7 +687,7 @@ static Status encodeAndAddBinders(
     KeyScheduler& scheduler,
     HandshakeContext& handshakeContext,
     const Clock& clock) {
-  scheduler.deriveEarlySecret(folly::range(psk.secret));
+  TRY(scheduler.deriveEarlySecret(err, folly::range(psk.secret)));
 
   auto binderKey = scheduler.getSecret(
       psk.type == PskType::External ? EarlySecrets::ExternalPskBinder
@@ -1479,7 +1479,8 @@ Status sm::EventHandler<
   auto scheduler = state.context()->getFactory()->makeKeyScheduler(cipher);
 
   if (negotiatedPsk.mode) {
-    scheduler->deriveEarlySecret(folly::range(state.attemptedPsk()->secret));
+    TRY(scheduler->deriveEarlySecret(
+        ctx.err, folly::range(state.attemptedPsk()->secret)));
   }
 
   Optional<NamedGroup> group;
@@ -1539,7 +1540,8 @@ Status sm::EventHandler<
     FIZZ_VLOG(8) << "Checking if ECH was accepted...";
 
     auto echScheduler = state.context()->getFactory()->makeKeyScheduler(cipher);
-    echScheduler->deriveEarlySecret(folly::range(state.echState()->random));
+    TRY(echScheduler->deriveEarlySecret(
+        ctx.err, folly::range(state.echState()->random)));
     bool acceptedECH = false;
     Error echErr;
     FIZZ_THROW_ON_ERROR(
@@ -1876,7 +1878,8 @@ Status EventHandler<
     // Check for acceptance. We'll still generate another ECH per the RFC, but
     // the server will already let us know here.
     auto echScheduler = state.context()->getFactory()->makeKeyScheduler(cipher);
-    echScheduler->deriveEarlySecret(folly::range(state.echState()->random));
+    TRY(echScheduler->deriveEarlySecret(
+        ctx.err, folly::range(state.echState()->random)));
     bool echAccepted = false;
     Error echErr;
     FIZZ_THROW_ON_ERROR(
@@ -2570,7 +2573,7 @@ EventHandler<ClientTypes, StateEnum::ExpectingFinished, Event::Finished>::
 
   state.keyScheduler()->deriveAppTrafficSecrets(
       clientFinishedContext->coalesce());
-  state.keyScheduler()->clearMasterSecret();
+  TRY(state.keyScheduler()->clearMasterSecret(ctx.err));
 
   auto writeRecordLayer =
       state.context()->getFactory()->makeEncryptedWriteRecordLayer(

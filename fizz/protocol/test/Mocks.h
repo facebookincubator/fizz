@@ -31,14 +31,18 @@ using namespace testing;
 
 class MockKeyScheduler : public KeyScheduler {
  public:
-  MockKeyScheduler() : KeyScheduler(std::make_unique<MockKeyDerivation>()) {}
+  MockKeyScheduler() : KeyScheduler(std::make_unique<MockKeyDerivation>()) {
+    ON_CALL(*this, deriveEarlySecret(_, _))
+        .WillByDefault(Return(Status::Success));
+    ON_CALL(*this, clearMasterSecret(_)).WillByDefault(Return(Status::Success));
+  }
 
-  MOCK_METHOD(void, deriveEarlySecret, (folly::ByteRange psk));
+  MOCK_METHOD(Status, deriveEarlySecret, (Error & err, folly::ByteRange psk));
   MOCK_METHOD(void, deriveHandshakeSecret, ());
   MOCK_METHOD(void, deriveHandshakeSecret, (folly::ByteRange ecdhe));
   MOCK_METHOD(void, deriveMasterSecret, ());
   MOCK_METHOD(void, deriveAppTrafficSecrets, (folly::ByteRange transcript));
-  MOCK_METHOD(void, clearMasterSecret, ());
+  MOCK_METHOD(Status, clearMasterSecret, (Error & err));
   MOCK_METHOD(uint32_t, clientKeyUpdate, ());
   MOCK_METHOD(uint32_t, serverKeyUpdate, ());
   MOCK_METHOD(
@@ -78,6 +82,8 @@ class MockKeyScheduler : public KeyScheduler {
       (const));
 
   void setDefaults() {
+    ON_CALL(*this, deriveEarlySecret(_, _))
+        .WillByDefault(Return(Status::Success));
     ON_CALL(*this, getTrafficKey(_, _, _))
         .WillByDefault(InvokeWithoutArgs([]() {
           return TrafficKey{

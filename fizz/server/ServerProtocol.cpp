@@ -737,7 +737,11 @@ static std::
   }
 
   if (resState) {
-    scheduler->deriveEarlySecret(resState->resumptionSecret->coalesce());
+    Error err;
+    FIZZ_THROW_ON_ERROR(
+        scheduler->deriveEarlySecret(
+            err, resState->resumptionSecret->coalesce()),
+        err);
 
     auto binderKey = scheduler
                          ->getSecret(
@@ -750,7 +754,6 @@ static std::
     folly::IOBufQueue chloQueue(folly::IOBufQueue::cacheChainLength());
     chloQueue.append((*chlo.originalEncoding)->clone());
     size_t binderLength;
-    Error err;
     FIZZ_THROW_ON_ERROR(getBinderLength(binderLength, err, chlo), err);
     auto chloPrefix = chloQueue.split(chloQueue.chainLength() - binderLength);
     handshakeContext->appendToTranscript(chloPrefix);
@@ -1649,7 +1652,10 @@ EventHandler<ServerTypes, StateEnum::ExpectingClientHello, Event::ClientHello>::
               // Set up acceptance scheduler
               auto echScheduler =
                   state.context()->getFactory()->makeKeyScheduler(cipher);
-              echScheduler->deriveEarlySecret(folly::range(chlo.random));
+              FIZZ_THROW_ON_ERROR(
+                  echScheduler->deriveEarlySecret(
+                      err, folly::range(chlo.random)),
+                  err);
               // Add acceptance extension
               FIZZ_THROW_ON_ERROR(
                   ech::setAcceptConfirmation(
@@ -1816,7 +1822,10 @@ EventHandler<ServerTypes, StateEnum::ExpectingClientHello, Event::ClientHello>::
                 // Set up acceptance scheduler
                 auto echScheduler =
                     state.context()->getFactory()->makeKeyScheduler(cipher);
-                echScheduler->deriveEarlySecret(folly::range(chlo.random));
+                FIZZ_THROW_ON_ERROR(
+                    echScheduler->deriveEarlySecret(
+                        err, folly::range(chlo.random)),
+                    err);
                 // Add acceptance extension
                 FIZZ_THROW_ON_ERROR(
                     ech::setAcceptConfirmation(
@@ -2615,7 +2624,7 @@ EventHandler<ServerTypes, StateEnum::ExpectingFinished, Event::Finished>::
               MasterSecrets::ResumptionMaster,
               state.handshakeContext()->getHandshakeContext()->coalesce())
           .secret;
-  state.keyScheduler()->clearMasterSecret();
+  FIZZ_THROW_ON_ERROR(state.keyScheduler()->clearMasterSecret(err), err);
 
   MutateState saveState([readRecordLayer = std::move(readRecordLayer),
                          resumptionMasterSecret](State& newState) mutable {
