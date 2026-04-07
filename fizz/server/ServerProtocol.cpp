@@ -1257,8 +1257,10 @@ static std::tuple<ECHStatus, uint8_t> processECHHRR(
           "ech hrr config id mismatch", AlertDescription::illegal_parameter);
     }
 
-    chlo =
-        decrypter->decryptClientHelloHRR(chlo, state.echState()->hpkeContext);
+    FIZZ_THROW_ON_ERROR(
+        decrypter->decryptClientHelloHRR(
+            chlo, err, chlo, state.echState()->hpkeContext),
+        err);
 
     return {ECHStatus::Accepted, echExt->config_id};
   } else if (cookieHasECH) {
@@ -1272,7 +1274,9 @@ static std::tuple<ECHStatus, uint8_t> processECHHRR(
           "ech hrr config id mismatch", AlertDescription::illegal_parameter);
     }
 
-    chlo = decrypter->decryptClientHelloHRR(chlo, cookieState->echEnc);
+    FIZZ_THROW_ON_ERROR(
+        decrypter->decryptClientHelloHRR(chlo, err, chlo, cookieState->echEnc),
+        err);
 
     return {ECHStatus::Accepted, echExt->config_id};
   }
@@ -1339,7 +1343,9 @@ static std::pair<ECHStatus, folly::Optional<ECHState>> processECH(
       echState = ECHState{
           echExt->cipher_suite, echExt->config_id, nullptr, getSNI(chlo)};
       if (decrypter) {
-        auto gotChlo = decrypter->decryptClientHello(chlo);
+        folly::Optional<ech::DecrypterResult> gotChlo;
+        FIZZ_THROW_ON_ERROR(
+            decrypter->decryptClientHello(gotChlo, err, chlo), err);
         if (gotChlo.has_value()) {
           echStatus = ECHStatus::Accepted;
           echState->hpkeContext = std::move(gotChlo->context);

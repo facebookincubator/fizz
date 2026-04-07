@@ -461,18 +461,27 @@ class MockECHDecrypter : public ech::Decrypter {
  public:
   MOCK_METHOD(
       folly::Optional<ech::DecrypterResult>,
-      decryptClientHello,
+      _decryptClientHello,
       (const ClientHello& chlo));
+
+  Status decryptClientHello(
+      folly::Optional<ech::DecrypterResult>& ret,
+      Error& err,
+      const ClientHello& chlo) override {
+    FIZZ_THROW_TO_ERROR(ret, _decryptClientHello(chlo));
+  }
 
   MOCK_METHOD(
       ClientHello,
       _decryptClientHelloHRR_Stateful,
       (const ClientHello& chlo, std::unique_ptr<hpke::HpkeContext>& context));
 
-  ClientHello decryptClientHelloHRR(
+  Status decryptClientHelloHRR(
+      ClientHello& ret,
+      Error& err,
       const ClientHello& chlo,
       std::unique_ptr<hpke::HpkeContext>& context) override {
-    return _decryptClientHelloHRR_Stateful(chlo, context);
+    FIZZ_THROW_TO_ERROR(ret, _decryptClientHelloHRR_Stateful(chlo, context));
   }
 
   MOCK_METHOD(
@@ -481,10 +490,13 @@ class MockECHDecrypter : public ech::Decrypter {
       (const ClientHello& chlo,
        const std::unique_ptr<folly::IOBuf>& encapsulatedKey));
 
-  ClientHello decryptClientHelloHRR(
+  Status decryptClientHelloHRR(
+      ClientHello& ret,
+      Error& err,
       const ClientHello& chlo,
       const std::unique_ptr<folly::IOBuf>& encapsulatedKey) override {
-    return _decryptClientHelloHRR_Stateless(chlo, encapsulatedKey);
+    FIZZ_THROW_TO_ERROR(
+        ret, _decryptClientHelloHRR_Stateless(chlo, encapsulatedKey));
   }
 
   MOCK_METHOD(

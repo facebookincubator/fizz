@@ -45,7 +45,9 @@ folly::Optional<DecrypterLookupResult> decodeAndGetParam(
   return folly::none;
 }
 
-folly::Optional<DecrypterResult> tryToDecodeECH(
+Status tryToDecodeECH(
+    folly::Optional<DecrypterResult>& ret,
+    Error& err,
     const fizz::Factory& factory,
     const ClientHello& clientHelloOuter,
     const Extension& encodedECHExtension,
@@ -53,7 +55,8 @@ folly::Optional<DecrypterResult> tryToDecodeECH(
   auto configIdResult = decodeAndGetParam(encodedECHExtension, decrypterParams);
 
   if (!configIdResult.has_value()) {
-    return folly::none;
+    ret = folly::none;
+    return Status::Success;
   }
 
   try {
@@ -73,41 +76,46 @@ folly::Optional<DecrypterResult> tryToDecodeECH(
         configIdResult->echExtension.payload->clone(),
         ECHVersion::Draft15,
         context);
-    return DecrypterResult{
+    ret = DecrypterResult{
         std::move(chlo),
         configIdResult->echExtension.config_id,
         std::move(context)};
+    return Status::Success;
   } catch (const OuterExtensionsError& e) {
-    throw FizzException(e.what(), AlertDescription::illegal_parameter);
+    return err.error(
+        std::string(e.what()), AlertDescription::illegal_parameter);
   } catch (const std::exception&) {
-    return folly::none;
+    ret = folly::none;
+    return Status::Success;
   }
 }
 
-ClientHello decodeClientHelloHRR(
+Status decodeClientHelloHRR(
+    ClientHello& ret,
+    Error& err,
     const fizz::Factory& factory,
     const ClientHello& chlo,
     const std::unique_ptr<folly::IOBuf>& encapsulatedKey,
     std::unique_ptr<hpke::HpkeContext>& context,
     const std::vector<DecrypterParams>& decrypterParams) {
-  // Check for the ECH extension. If not found, throw.
+  // Check for the ECH extension. If not found, return error.
   auto it =
       findExtension(chlo.extensions, ExtensionType::encrypted_client_hello);
   if (it == chlo.extensions.end()) {
-    throw FizzException(
+    return err.error(
         "ech not sent for hrr", AlertDescription::missing_extension);
   }
 
   auto configIdResult = decodeAndGetParam(*it, decrypterParams);
 
   if (!configIdResult.has_value()) {
-    throw FizzException(
+    return err.error(
         "failed to decrypt hrr ech", AlertDescription::decrypt_error);
   }
 
   try {
     if (context) {
-      return decryptECHWithContext(
+      ret = decryptECHWithContext(
           chlo,
           configIdResult->matchingParam.echConfig,
           configIdResult->echExtension.cipher_suite,
@@ -116,6 +124,7 @@ ClientHello decodeClientHelloHRR(
           configIdResult->echExtension.payload->clone(),
           ECHVersion::Draft15,
           context);
+      return Status::Success;
     } else {
       auto recreatedContext = setupDecryptionContext(
           factory,
@@ -124,7 +133,7 @@ ClientHello decodeClientHelloHRR(
           encapsulatedKey,
           configIdResult->matchingParam.kex->clone(),
           1);
-      return decryptECHWithContext(
+      ret = decryptECHWithContext(
           chlo,
           configIdResult->matchingParam.echConfig,
           configIdResult->echExtension.cipher_suite,
@@ -133,13 +142,11 @@ ClientHello decodeClientHelloHRR(
           configIdResult->echExtension.payload->clone(),
           ECHVersion::Draft15,
           recreatedContext);
+      return Status::Success;
     }
   } catch (const OuterExtensionsError& e) {
-    throw FizzException(e.what(), AlertDescription::illegal_parameter);
+    return err.error(e.what(), AlertDescription::illegal_parameter);
   }
-
-  throw FizzException(
-      "failed to decrypt hrr ech", AlertDescription::decrypt_error);
 }
 
 } // namespace
@@ -148,30 +155,38 @@ void ECHConfigManager::addDecryptionConfig(DecrypterParams decrypterParams) {
   configs_.push_back(std::move(decrypterParams));
 }
 
-folly::Optional<DecrypterResult> ECHConfigManager::decryptClientHello(
+Status ECHConfigManager::decryptClientHello(
+    folly::Optional<DecrypterResult>& ret,
+    Error& err,
     const ClientHello& chlo) {
   // Check for the ECH extension
   auto it =
       findExtension(chlo.extensions, ExtensionType::encrypted_client_hello);
   if (it != chlo.extensions.end()) {
-    return tryToDecodeECH(*factory_, chlo, *it, configs_);
+    return tryToDecodeECH(ret, err, *factory_, chlo, *it, configs_);
   }
 
-  return folly::none;
+  ret = folly::none;
+  return Status::Success;
 }
 
-ClientHello ECHConfigManager::decryptClientHelloHRR(
+Status ECHConfigManager::decryptClientHelloHRR(
+    ClientHello& ret,
+    Error& err,
     const ClientHello& chlo,
     std::unique_ptr<hpke::HpkeContext>& context) {
-  return decodeClientHelloHRR(*factory_, chlo, nullptr, context, configs_);
+  return decodeClientHelloHRR(
+      ret, err, *factory_, chlo, nullptr, context, configs_);
 }
 
-ClientHello ECHConfigManager::decryptClientHelloHRR(
+Status ECHConfigManager::decryptClientHelloHRR(
+    ClientHello& ret,
+    Error& err,
     const ClientHello& chlo,
     const std::unique_ptr<folly::IOBuf>& encapsulatedKey) {
   std::unique_ptr<hpke::HpkeContext> dummy;
   return decodeClientHelloHRR(
-      *factory_, chlo, encapsulatedKey, dummy, configs_);
+      ret, err, *factory_, chlo, encapsulatedKey, dummy, configs_);
 }
 
 std::vector<ech::ECHConfig> ECHConfigManager::getRetryConfigs(

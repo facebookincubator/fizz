@@ -1554,7 +1554,7 @@ TEST_F(ServerProtocolTest, TestECHDecryptionSuccess) {
 
   size_t innerChloSize = 0;
   auto decrypter = std::make_shared<MockECHDecrypter>();
-  EXPECT_CALL(*decrypter, decryptClientHello(_))
+  EXPECT_CALL(*decrypter, _decryptClientHello(_))
       .WillOnce(InvokeWithoutArgs(
           [&innerChloSize]() mutable -> folly::Optional<ech::DecrypterResult> {
             auto chlo = TestMessages::clientHello();
@@ -1919,7 +1919,7 @@ TEST_F(ServerProtocolTest, TestECHMissingInnerExtension) {
   Sequence contextSeq;
 
   auto decrypter = std::make_shared<MockECHDecrypter>();
-  EXPECT_CALL(*decrypter, decryptClientHello(_))
+  EXPECT_CALL(*decrypter, _decryptClientHello(_))
       .WillOnce(
           InvokeWithoutArgs([=]() -> folly::Optional<ech::DecrypterResult> {
             return ech::DecrypterResult{
@@ -1942,7 +1942,7 @@ TEST_F(ServerProtocolTest, TestECHDecryptionFailure) {
   context_->setClientAuthMode(ClientAuthMode::Required);
 
   auto decrypter = std::make_shared<MockECHDecrypter>();
-  EXPECT_CALL(*decrypter, decryptClientHello(_))
+  EXPECT_CALL(*decrypter, _decryptClientHello(_))
       .WillOnce(InvokeWithoutArgs([=]() { return folly::none; }));
   EXPECT_CALL(*decrypter, getRetryConfigs(_))
       .WillOnce(InvokeWithoutArgs([]() -> std::vector<ech::ECHConfig> {
