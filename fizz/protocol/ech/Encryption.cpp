@@ -765,9 +765,9 @@ Status substituteOuterExtensions(
 
   // Track seen types to detect duplicates
   std::unordered_set<ExtensionType> seenTypes;
-  auto dupeCheck = [&seenTypes](Error& err, ExtensionType t) {
+  auto dupeCheck = [&seenTypes](Error& errInner, ExtensionType t) {
     if (seenTypes.count(t) != 0) {
-      return err.error(
+      return errInner.error(
           "inner client hello has duplicate extensions",
           folly::none,
           Error::Category::OuterExtensions);
