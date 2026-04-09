@@ -23,8 +23,9 @@ Status FizzClientContext::validate(Error& err) const {
     if (!FIZZ_CONTEXT_VALIDATION_SHOULD_CHECK_CIPHER(c)) {
       continue;
     }
-    // will throw if factory doesn't support this cipher
-    factory_->makeAead(c);
+    // will fail if factory doesn't support this cipher
+    std::unique_ptr<Aead> aead;
+    FIZZ_RETURN_ON_ERROR(factory_->makeAead(aead, err, c));
   }
 
   for (auto& g : supportedGroups_) {

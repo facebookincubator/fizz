@@ -55,38 +55,52 @@ Status MultiBackendFactory::makeKeyExchange(
   }
 }
 
-std::unique_ptr<Aead> MultiBackendFactory::makeAead(CipherSuite cipher) const {
+Status MultiBackendFactory::makeAead(
+    std::unique_ptr<Aead>& ret,
+    Error& err,
+    CipherSuite cipher) const {
   switch (cipher) {
     case CipherSuite::TLS_CHACHA20_POLY1305_SHA256:
-      return openssl::OpenSSLEVPCipher::makeCipher<fizz::ChaCha20Poly1305>();
+      ret = openssl::OpenSSLEVPCipher::makeCipher<fizz::ChaCha20Poly1305>();
+      return Status::Success;
     case CipherSuite::TLS_AES_128_GCM_SHA256:
-      return openssl::OpenSSLEVPCipher::makeCipher<fizz::AESGCM128>();
+      ret = openssl::OpenSSLEVPCipher::makeCipher<fizz::AESGCM128>();
+      return Status::Success;
     case CipherSuite::TLS_AES_256_GCM_SHA384:
-      return openssl::OpenSSLEVPCipher::makeCipher<fizz::AESGCM256>();
+      ret = openssl::OpenSSLEVPCipher::makeCipher<fizz::AESGCM256>();
+      return Status::Success;
     case CipherSuite::TLS_AES_128_OCB_SHA256_EXPERIMENTAL:
-      return openssl::OpenSSLEVPCipher::makeCipher<fizz::AESOCB128>();
+      ret = openssl::OpenSSLEVPCipher::makeCipher<fizz::AESOCB128>();
+      return Status::Success;
 #if FIZZ_HAVE_LIBAEGIS
     case CipherSuite::TLS_AEGIS_256_SHA512:
-      return libaegis::makeCipher<fizz::AEGIS256>();
+      ret = libaegis::makeCipher<fizz::AEGIS256>();
+      return Status::Success;
     case CipherSuite::TLS_AEGIS_128L_SHA256:
-      return libaegis::makeCipher<fizz::AEGIS128L>();
+      ret = libaegis::makeCipher<fizz::AEGIS128L>();
+      return Status::Success;
 #endif
     default:
-      throw std::runtime_error("aead: not implemented");
+      return err.error("aead: not implemented");
   }
 }
 
-const HasherFactoryWithMetadata* MultiBackendFactory::makeHasherFactory(
+Status MultiBackendFactory::makeHasherFactory(
+    const HasherFactoryWithMetadata*& ret,
+    Error& err,
     HashFunction digest) const {
   switch (digest) {
     case HashFunction::Sha256:
-      return openssl::hasherFactory<fizz::Sha256>();
+      ret = openssl::hasherFactory<fizz::Sha256>();
+      return Status::Success;
     case HashFunction::Sha384:
-      return openssl::hasherFactory<fizz::Sha384>();
+      ret = openssl::hasherFactory<fizz::Sha384>();
+      return Status::Success;
     case HashFunction::Sha512:
-      return openssl::hasherFactory<fizz::Sha512>();
+      ret = openssl::hasherFactory<fizz::Sha512>();
+      return Status::Success;
     default:
-      throw std::runtime_error("makeHasher: not implemented");
+      return err.error("makeHasher: not implemented");
   }
 }
 

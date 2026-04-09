@@ -57,9 +57,11 @@ class BatchSignatureFactory : public Factory {
     return original_->makeKeyDeriver(cipher);
   }
 
-  const HasherFactoryWithMetadata* makeHasherFactory(
+  Status makeHasherFactory(
+      const HasherFactoryWithMetadata*& ret,
+      Error& err,
       HashFunction digest) const override {
-    return original_->makeHasherFactory(digest);
+    return original_->makeHasherFactory(ret, err, digest);
   }
 
   std::unique_ptr<HandshakeContext> makeHandshakeContext(
@@ -75,8 +77,9 @@ class BatchSignatureFactory : public Factory {
     return original_->makeKeyExchange(ret, err, group, role);
   }
 
-  std::unique_ptr<Aead> makeAead(CipherSuite cipher) const override {
-    return original_->makeAead(cipher);
+  Status makeAead(std::unique_ptr<Aead>& ret, Error& err, CipherSuite cipher)
+      const override {
+    return original_->makeAead(ret, err, cipher);
   }
 
   void makeRandomBytes(unsigned char* out, size_t count) const override {

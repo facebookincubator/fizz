@@ -155,9 +155,15 @@ auto hpkeContext(OuterECHClientHello& clientECH) {
       std::make_unique<fizz::hpke::Hkdf>(
           fizz::hpke::Hkdf::v1(openssl::hasherFactory<fizz::Sha256>())));
 
+  std::unique_ptr<Aead> aead;
+  FIZZ_THROW_ON_ERROR(
+      fizz::DefaultFactory().makeAead(
+          aead, err, CipherSuite::TLS_AES_128_GCM_SHA256),
+      err);
+
   hpke::SetupParam setupParam{
       std::move(dhkem),
-      fizz::DefaultFactory().makeAead(CipherSuite::TLS_AES_128_GCM_SHA256),
+      std::move(aead),
       std::make_unique<fizz::hpke::Hkdf>(
           fizz::hpke::Hkdf::v1(openssl::hasherFactory<fizz::Sha256>())),
       std::move(suiteId),

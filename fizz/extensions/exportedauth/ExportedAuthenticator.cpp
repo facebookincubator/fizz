@@ -43,7 +43,11 @@ Buf ExportedAuthenticator::getAuthenticator(
   auto cipher = transport.getCipher();
   auto hashFunction = getHashFunction(*cipher);
   auto hashLength = getHashSize(hashFunction);
-  auto makeHasher = ::fizz::DefaultFactory().makeHasherFactory(hashFunction);
+  const HasherFactoryWithMetadata* makeHasher = nullptr;
+  Error err;
+  FIZZ_THROW_ON_ERROR(
+      ::fizz::DefaultFactory().makeHasherFactory(makeHasher, err, hashFunction),
+      err);
 
   auto supportedSchemes = transport.getSupportedSigSchemes();
   Buf handshakeContext;
@@ -93,7 +97,11 @@ ExportedAuthenticator::validateAuthenticator(
   auto cipher = transport.getCipher();
   auto hashFunction = getHashFunction(*cipher);
   auto hashLength = getHashSize(hashFunction);
-  auto&& makeHasher = ::fizz::DefaultFactory().makeHasherFactory(hashFunction);
+  const HasherFactoryWithMetadata* makeHasher = nullptr;
+  Error err;
+  FIZZ_THROW_ON_ERROR(
+      ::fizz::DefaultFactory().makeHasherFactory(makeHasher, err, hashFunction),
+      err);
 
   Buf handshakeContext;
   Buf finishedMacKey;

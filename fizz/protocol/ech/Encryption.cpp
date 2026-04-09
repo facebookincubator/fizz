@@ -189,7 +189,9 @@ folly::Optional<NegotiatedECHConfig> negotiateECHConfig(
   return folly::none;
 }
 
-static hpke::SetupParam getSetupParam(
+static Status getSetupParam(
+    hpke::SetupParam& ret,
+    Error& err,
     const fizz::Factory& factory,
     std::unique_ptr<DHKEM> dhkem,
     hpke::KEMId kemId,
@@ -200,15 +202,22 @@ static hpke::SetupParam getSetupParam(
   auto suite = getCipherSuite(cipherSuite.aead_id);
   auto suiteId = hpke::generateHpkeSuiteId(group, hash, suite);
 
-  auto hkdf = std::make_unique<fizz::hpke::Hkdf>(
-      fizz::hpke::Hkdf::v1(factory.makeHasherFactory(hash)));
+  const HasherFactoryWithMetadata* hasherFactory = nullptr;
+  FIZZ_RETURN_ON_ERROR(factory.makeHasherFactory(hasherFactory, err, hash));
+  auto hkdf =
+      std::make_unique<fizz::hpke::Hkdf>(fizz::hpke::Hkdf::v1(hasherFactory));
 
-  return hpke::SetupParam{
+  std::unique_ptr<Aead> aead;
+  FIZZ_RETURN_ON_ERROR(
+      factory.makeAead(aead, err, getCipherSuite(cipherSuite.aead_id)));
+
+  ret = hpke::SetupParam{
       std::move(dhkem),
-      factory.makeAead(getCipherSuite(cipherSuite.aead_id)),
+      std::move(aead),
       std::move(hkdf),
       std::move(suiteId),
       0};
+  return Status::Success;
 }
 
 hpke::SetupResult constructHpkeSetupResult(
@@ -220,8 +229,11 @@ hpke::SetupResult constructHpkeSetupResult(
   auto hash = getHashFunction(cipherSuite.kdf_id);
 
   // Get shared secret
-  auto hkdf = std::make_unique<fizz::hpke::Hkdf>(
-      fizz::hpke::Hkdf::v1(factory.makeHasherFactory(hash)));
+  const HasherFactoryWithMetadata* hasherFactory = nullptr;
+  Error err;
+  FIZZ_THROW_ON_ERROR(factory.makeHasherFactory(hasherFactory, err, hash), err);
+  auto hkdf =
+      std::make_unique<fizz::hpke::Hkdf>(fizz::hpke::Hkdf::v1(hasherFactory));
   std::unique_ptr<DHKEM> dhkem = std::make_unique<DHKEM>(
       std::move(kex),
       getKexGroup(echConfigContent.key_config.kem_id),
@@ -231,16 +243,22 @@ hpke::SetupResult constructHpkeSetupResult(
   std::unique_ptr<folly::IOBuf> info =
       makeHpkeContextInfoParam(negotiatedECHConfig.config);
 
+  hpke::SetupParam setupParam;
+  FIZZ_THROW_ON_ERROR(
+      getSetupParam(
+          setupParam,
+          err,
+          factory,
+          std::move(dhkem),
+          echConfigContent.key_config.kem_id,
+          cipherSuite),
+      err);
   return setupWithEncap(
       hpke::Mode::Base,
       echConfigContent.key_config.public_key->clone()->coalesce(),
       std::move(info),
       folly::none,
-      getSetupParam(
-          factory,
-          std::move(dhkem),
-          echConfigContent.key_config.kem_id,
-          cipherSuite));
+      std::move(setupParam));
 }
 
 ServerHello makeDummyServerHello(const ServerHello& shlo) {
@@ -729,19 +747,27 @@ std::unique_ptr<hpke::HpkeContext> setupDecryptionContext(
   auto kemId = echConfig.key_config.kem_id;
   NamedGroup group = hpke::getKexGroup(kemId);
   auto hash = getHashFunction(cipherSuite.kdf_id);
-  auto hkdf = std::make_unique<fizz::hpke::Hkdf>(
-      fizz::hpke::Hkdf::v1(factory.makeHasherFactory(hash)));
+  const HasherFactoryWithMetadata* hasherFactory = nullptr;
+  Error err;
+  FIZZ_THROW_ON_ERROR(factory.makeHasherFactory(hasherFactory, err, hash), err);
+  auto hkdf =
+      std::make_unique<fizz::hpke::Hkdf>(fizz::hpke::Hkdf::v1(hasherFactory));
 
   auto dhkem = std::make_unique<DHKEM>(std::move(kex), group, std::move(hkdf));
   auto aeadId = cipherSuite.aead_id;
   auto suiteId = hpke::generateHpkeSuiteId(
       group, hpke::getHashFunction(kdfId), hpke::getCipherSuite(aeadId));
 
+  std::unique_ptr<Aead> aead;
+  FIZZ_THROW_ON_ERROR(factory.makeAead(aead, err, getCipherSuite(aeadId)), err);
+
+  const HasherFactoryWithMetadata* hasherFactory2 = nullptr;
+  FIZZ_THROW_ON_ERROR(
+      factory.makeHasherFactory(hasherFactory2, err, hash), err);
   hpke::SetupParam setupParam{
       std::move(dhkem),
-      factory.makeAead(getCipherSuite(aeadId)),
-      std::make_unique<fizz::hpke::Hkdf>(
-          fizz::hpke::Hkdf::v1(factory.makeHasherFactory(hash))),
+      std::move(aead),
+      std::make_unique<fizz::hpke::Hkdf>(fizz::hpke::Hkdf::v1(hasherFactory2)),
       std::move(suiteId),
       seqNum};
 

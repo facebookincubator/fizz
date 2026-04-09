@@ -23,10 +23,12 @@ class MultiBackendFactory : public Factory {
       NamedGroup group,
       KeyExchangeRole role) const override;
 
-  [[nodiscard]] std::unique_ptr<Aead> makeAead(
-      CipherSuite cipher) const override;
+  Status makeAead(std::unique_ptr<Aead>& ret, Error& err, CipherSuite cipher)
+      const override;
 
-  const HasherFactoryWithMetadata* makeHasherFactory(
+  Status makeHasherFactory(
+      const HasherFactoryWithMetadata*& ret,
+      Error& err,
       HashFunction digest) const override;
 
   [[nodiscard]] std::unique_ptr<PeerCert> makePeerCert(

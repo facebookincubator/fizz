@@ -60,10 +60,16 @@ class ClientProtocolTest : public ProtocolTest<ClientTypes, Actions> {
     auto mockFactory = std::make_unique<MockFactory>();
     mockFactory->setDefaults();
     factory_ = mockFactory.get();
-    ON_CALL(*factory_, makeHasherFactory(_))
+    ON_CALL(*factory_, _makeHasherFactory(_))
         .WillByDefault(Invoke([](HashFunction digest) {
           FIZZ_LOG(INFO) << "DefaultFactory makeHasher";
-          return fizz::DefaultFactory().makeHasherFactory(digest);
+          const HasherFactoryWithMetadata* hasherFactory;
+          Error err;
+          FIZZ_THROW_ON_ERROR(
+              fizz::DefaultFactory().makeHasherFactory(
+                  hasherFactory, err, digest),
+              err);
+          return hasherFactory;
         }));
 
     context_->setFactory(std::move(mockFactory));

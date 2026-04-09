@@ -26,10 +26,12 @@ Buf Exporter::getExportedKeyingMaterial(
 
   std::vector<uint8_t> base(deriver->hashLength());
   folly::MutableByteRange hashedContext(base.data(), base.size());
-  fizz::hash(
-      factory.makeHasherFactory(getHashFunction(cipher)),
-      *context,
-      hashedContext);
+  const HasherFactoryWithMetadata* hasherFactory = nullptr;
+  Error err;
+  FIZZ_THROW_ON_ERROR(
+      factory.makeHasherFactory(hasherFactory, err, getHashFunction(cipher)),
+      err);
+  fizz::hash(hasherFactory, *context, hashedContext);
 
   auto secret = deriver->deriveSecret(
       exporterMaster, label, deriver->blankHash(), deriver->hashLength());

@@ -1706,7 +1706,7 @@ TEST_F(ServerProtocolTest, TestECHDecryptionSuccess) {
       {"serverkey", &waead},
       {"serverappkey", &appwaead}};
 
-  EXPECT_CALL(*factory_, makeAead(_)).WillRepeatedly(InvokeWithoutArgs([=]() {
+  EXPECT_CALL(*factory_, _makeAead(_)).WillRepeatedly(InvokeWithoutArgs([=]() {
     auto ret = std::make_unique<MockAead>();
     EXPECT_CALL(*ret, _setKey(_))
         .WillOnce(Invoke([keys, ptr = ret.get()](TrafficKey& key) {
@@ -2051,7 +2051,7 @@ TEST_F(ServerProtocolTest, TestECHDecryptionFailure) {
       {"serverkey", &waead},
       {"serverappkey", &appwaead}};
 
-  EXPECT_CALL(*factory_, makeAead(_)).WillRepeatedly(InvokeWithoutArgs([=]() {
+  EXPECT_CALL(*factory_, _makeAead(_)).WillRepeatedly(InvokeWithoutArgs([=]() {
     auto ret = std::make_unique<MockAead>();
     EXPECT_CALL(*ret, _setKey(_))
         .WillOnce(Invoke([keys, ptr = ret.get()](TrafficKey& key) {

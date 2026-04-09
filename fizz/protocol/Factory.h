@@ -84,10 +84,15 @@ class Factory {
       NamedGroup group,
       KeyExchangeRole role) const = 0;
 
-  virtual const HasherFactoryWithMetadata* makeHasherFactory(
+  virtual Status makeHasherFactory(
+      const HasherFactoryWithMetadata*& ret,
+      Error& err,
       HashFunction digest) const = 0;
 
-  virtual std::unique_ptr<Aead> makeAead(CipherSuite cipher) const = 0;
+  virtual Status makeAead(
+      std::unique_ptr<Aead>& ret,
+      Error& err,
+      CipherSuite cipher) const = 0;
 
   virtual void makeRandomBytes(unsigned char* out, size_t count) const = 0;
 

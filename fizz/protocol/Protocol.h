@@ -24,35 +24,41 @@ class Protocol {
       folly::ByteRange secret,
       const Factory& factory,
       const KeyScheduler& scheduler) {
-    auto aead = deriveRecordAead(factory, scheduler, cipher, secret);
+    std::unique_ptr<Aead> aead;
+    FIZZ_RETURN_ON_ERROR(
+        deriveRecordAead(aead, err, factory, scheduler, cipher, secret));
     FIZZ_RETURN_ON_ERROR(recordLayer.setAead(err, secret, std::move(aead)));
     return Status::Success;
   }
 
-  static std::unique_ptr<Aead> deriveRecordAead(
+  static Status deriveRecordAead(
+      std::unique_ptr<Aead>& ret,
+      Error& err,
       const Factory& factory,
       const KeyScheduler& scheduler,
       CipherSuite cipher,
       folly::ByteRange secret) {
-    auto aead = factory.makeAead(cipher);
+    FIZZ_RETURN_ON_ERROR(factory.makeAead(ret, err, cipher));
     auto trafficKey =
-        scheduler.getTrafficKey(secret, aead->keyLength(), aead->ivLength());
-    aead->setKey(std::move(trafficKey));
-    return aead;
+        scheduler.getTrafficKey(secret, ret->keyLength(), ret->ivLength());
+    ret->setKey(std::move(trafficKey));
+    return Status::Success;
   }
 
-  static std::unique_ptr<Aead> deriveRecordAeadWithLabel(
+  static Status deriveRecordAeadWithLabel(
+      std::unique_ptr<Aead>& ret,
+      Error& err,
       const Factory& factory,
       const KeyScheduler& scheduler,
       CipherSuite cipher,
       folly::ByteRange secret,
       folly::StringPiece keyLabel,
       folly::StringPiece ivLabel) {
-    auto aead = factory.makeAead(cipher);
+    FIZZ_RETURN_ON_ERROR(factory.makeAead(ret, err, cipher));
     auto trafficKey = scheduler.getTrafficKeyWithLabel(
-        secret, keyLabel, ivLabel, aead->keyLength(), aead->ivLength());
-    aead->setKey(std::move(trafficKey));
-    return aead;
+        secret, keyLabel, ivLabel, ret->keyLength(), ret->ivLength());
+    ret->setKey(std::move(trafficKey));
+    return Status::Success;
   }
 
   static Buf getFinished(

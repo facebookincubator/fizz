@@ -48,7 +48,7 @@ class FizzClientContextTest : public ::testing::Test {
 
 TEST_F(FizzClientContextTest, TestValidateUnsupportedCipher) {
   const auto unsupportedCipher = static_cast<fizz::CipherSuite>(0xFFFF);
-  EXPECT_CALL(*factory_, makeAead(_)).WillRepeatedly([](CipherSuite cipher) {
+  EXPECT_CALL(*factory_, _makeAead(_)).WillRepeatedly([](CipherSuite cipher) {
     if (cipher == unsupportedCipher) {
       throw std::runtime_error("unsupported cipher");
     } else {
@@ -90,7 +90,7 @@ TEST_F(FizzClientContextTest, TestValidateUnsupportedDefaultShare) {
 }
 
 TEST_F(FizzClientContextTest, TestValidateSuccess) {
-  EXPECT_CALL(*factory_, makeAead(_)).WillRepeatedly([](CipherSuite cipher) {
+  EXPECT_CALL(*factory_, _makeAead(_)).WillRepeatedly([](CipherSuite cipher) {
     if (cipher == static_cast<fizz::CipherSuite>(0xFFFF)) {
       throw std::runtime_error("unsupported cipher");
     } else {

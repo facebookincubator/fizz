@@ -289,10 +289,20 @@ class MockFactory : public ::fizz::DefaultFactory {
   }
   MOCK_METHOD(
       const HasherFactoryWithMetadata*,
-      makeHasherFactory,
+      _makeHasherFactory,
       (HashFunction),
       (const));
-  MOCK_METHOD(std::unique_ptr<Aead>, makeAead, (CipherSuite cipher), (const));
+  Status makeHasherFactory(
+      const HasherFactoryWithMetadata*& ret,
+      Error& err,
+      HashFunction digest) const override {
+    FIZZ_THROW_TO_ERROR(ret, _makeHasherFactory(digest));
+  }
+  MOCK_METHOD(std::unique_ptr<Aead>, _makeAead, (CipherSuite cipher), (const));
+  Status makeAead(std::unique_ptr<Aead>& ret, Error& err, CipherSuite cipher)
+      const override {
+    FIZZ_THROW_TO_ERROR(ret, _makeAead(cipher));
+  }
 
   MOCK_METHOD(
       std::unique_ptr<PeerCert>,
@@ -354,7 +364,7 @@ class MockFactory : public ::fizz::DefaultFactory {
           ret->setDefaults();
           return ret;
         }));
-    ON_CALL(*this, makeHasherFactory(_))
+    ON_CALL(*this, _makeHasherFactory(_))
         .WillByDefault(
             InvokeWithoutArgs([]() -> const fizz::HasherFactoryWithMetadata* {
               const static HasherFactoryWithMetadata instance =
@@ -364,7 +374,7 @@ class MockFactory : public ::fizz::DefaultFactory {
                       });
               return &instance;
             }));
-    ON_CALL(*this, makeAead(_)).WillByDefault(InvokeWithoutArgs([]() {
+    ON_CALL(*this, _makeAead(_)).WillByDefault(InvokeWithoutArgs([]() {
       auto ret = std::make_unique<NiceMock<MockAead>>();
       ret->setDefaults();
       return ret;
