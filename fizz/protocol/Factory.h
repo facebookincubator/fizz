@@ -78,7 +78,9 @@ class Factory {
   virtual std::unique_ptr<HandshakeContext> makeHandshakeContext(
       CipherSuite cipher) const;
 
-  virtual std::unique_ptr<KeyExchange> makeKeyExchange(
+  virtual Status makeKeyExchange(
+      std::unique_ptr<KeyExchange>& ret,
+      Error& err,
       NamedGroup group,
       KeyExchangeRole role) const = 0;
 

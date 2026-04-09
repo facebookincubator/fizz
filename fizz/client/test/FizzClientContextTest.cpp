@@ -63,7 +63,7 @@ TEST_F(FizzClientContextTest, TestValidateUnsupportedCipher) {
 
 TEST_F(FizzClientContextTest, TestValidateUnsupportedGroup) {
   const auto unsupportedGroup = static_cast<fizz::NamedGroup>(0xFFFF);
-  EXPECT_CALL(*factory_, makeKeyExchange(_, _))
+  EXPECT_CALL(*factory_, _makeKeyExchange(_, _))
       .WillRepeatedly([](NamedGroup group, KeyExchangeRole /*unused*/) {
         if (group == unsupportedGroup) {
           throw std::runtime_error("unsupported group");
@@ -97,7 +97,7 @@ TEST_F(FizzClientContextTest, TestValidateSuccess) {
       return std::make_unique<MockAead>();
     }
   });
-  EXPECT_CALL(*factory_, makeKeyExchange(_, _))
+  EXPECT_CALL(*factory_, _makeKeyExchange(_, _))
       .WillRepeatedly([](NamedGroup group, KeyExchangeRole /*unused*/) {
         if (group == static_cast<fizz::NamedGroup>(0xFFFF)) {
           throw std::runtime_error("unsupported group");

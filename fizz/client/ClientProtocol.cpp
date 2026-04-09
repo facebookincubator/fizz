@@ -508,16 +508,18 @@ static folly::Optional<CachedPsk> validatePsk(
   return psk;
 }
 
-static std::map<NamedGroup, std::unique_ptr<KeyExchange>> getKeyExchangers(
+static Status getKeyExchangers(
+    std::map<NamedGroup, std::unique_ptr<KeyExchange>>& keyExchangers,
+    Error& err,
     const Factory& factory,
     const std::vector<NamedGroup>& groups) {
-  std::map<NamedGroup, std::unique_ptr<KeyExchange>> keyExchangers;
   for (auto group : groups) {
-    auto kex = factory.makeKeyExchange(group, KeyExchangeRole::Client);
+    std::unique_ptr<KeyExchange> kex;
+    TRY(factory.makeKeyExchange(kex, err, group, KeyExchangeRole::Client));
     kex->generateKeyPair();
     keyExchangers.emplace(group, std::move(kex));
   }
-  return keyExchangers;
+  return Status::Success;
 }
 
 static Status getClientHello(
@@ -830,8 +832,9 @@ static Status setupECH(
 
   auto fakeSni = negotiatedECHConfig.config.public_name;
   auto kemId = negotiatedECHConfig.config.key_config.kem_id;
-  auto kex =
-      factory.makeKeyExchange(getKexGroup(kemId), KeyExchangeRole::Client);
+  std::unique_ptr<KeyExchange> kex;
+  TRY(factory.makeKeyExchange(
+      kex, ctx.err, getKexGroup(kemId), KeyExchangeRole::Client));
   auto setupResult =
       constructHpkeSetupResult(factory, std::move(kex), negotiatedECHConfig);
   ret = ECHParams{
@@ -996,7 +999,9 @@ EventHandler<ClientTypes, StateEnum::Uninitialized, Event::Connect>::handle(
     legacySessionId = folly::IOBuf::create(0);
   }
 
-  auto keyExchangers = getKeyExchangers(*context->getFactory(), selectedShares);
+  std::map<NamedGroup, std::unique_ptr<KeyExchange>> keyExchangers;
+  TRY(getKeyExchangers(
+      keyExchangers, ctx.err, *context->getFactory(), selectedShares));
 
   // If ECH requested, setup ECH primitives.
   // These will also be used later in the construction of the client hello outer
@@ -1737,7 +1742,7 @@ static Status getHrrKeyExchangers(
           "hrr selected already-sent group",
           AlertDescription::illegal_parameter);
     }
-    ret = getKeyExchangers(factory, {*negotiatedGroup});
+    TRY(getKeyExchangers(ret, ctx.err, factory, {*negotiatedGroup}));
   } else {
     ret = std::move(previous);
   }

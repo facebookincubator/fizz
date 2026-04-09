@@ -277,9 +277,16 @@ class MockFactory : public ::fizz::DefaultFactory {
       (const));
   MOCK_METHOD(
       std::unique_ptr<KeyExchange>,
-      makeKeyExchange,
+      _makeKeyExchange,
       (NamedGroup group, KeyExchangeRole role),
       (const));
+  Status makeKeyExchange(
+      std::unique_ptr<KeyExchange>& ret,
+      Error& err,
+      NamedGroup group,
+      KeyExchangeRole role) const override {
+    FIZZ_THROW_TO_ERROR(ret, _makeKeyExchange(group, role));
+  }
   MOCK_METHOD(
       const HasherFactoryWithMetadata*,
       makeHasherFactory,
@@ -341,11 +348,12 @@ class MockFactory : public ::fizz::DefaultFactory {
           ret->setDefaults();
           return ret;
         }));
-    ON_CALL(*this, makeKeyExchange(_, _)).WillByDefault(InvokeWithoutArgs([]() {
-      auto ret = std::make_unique<NiceMock<MockKeyExchange>>();
-      ret->setDefaults();
-      return ret;
-    }));
+    ON_CALL(*this, _makeKeyExchange(_, _))
+        .WillByDefault(InvokeWithoutArgs([]() {
+          auto ret = std::make_unique<NiceMock<MockKeyExchange>>();
+          ret->setDefaults();
+          return ret;
+        }));
     ON_CALL(*this, makeHasherFactory(_))
         .WillByDefault(
             InvokeWithoutArgs([]() -> const fizz::HasherFactoryWithMetadata* {
@@ -381,9 +389,16 @@ class MockAsyncKexFactory : public ::fizz::DefaultFactory {
  public:
   MOCK_METHOD(
       std::unique_ptr<KeyExchange>,
-      makeKeyExchange,
+      _makeKeyExchange,
       (NamedGroup group, KeyExchangeRole role),
       (const));
+  Status makeKeyExchange(
+      std::unique_ptr<KeyExchange>& ret,
+      Error& err,
+      NamedGroup group,
+      KeyExchangeRole role) const override {
+    FIZZ_THROW_TO_ERROR(ret, _makeKeyExchange(group, role));
+  }
 };
 
 class MockAsyncFizzBase : public AsyncFizzBase {

@@ -17,7 +17,9 @@ namespace fizz {
  */
 class MultiBackendFactory : public Factory {
  public:
-  [[nodiscard]] std::unique_ptr<KeyExchange> makeKeyExchange(
+  Status makeKeyExchange(
+      std::unique_ptr<KeyExchange>& ret,
+      Error& err,
       NamedGroup group,
       KeyExchangeRole role) const override;
 

@@ -19,31 +19,39 @@
 
 namespace fizz {
 
-std::unique_ptr<KeyExchange> MultiBackendFactory::makeKeyExchange(
+Status MultiBackendFactory::makeKeyExchange(
+    std::unique_ptr<KeyExchange>& ret,
+    Error& err,
     NamedGroup group,
     KeyExchangeRole role) const {
   (void)role;
   switch (group) {
     case NamedGroup::secp256r1:
-      return fizz::openssl::makeKeyExchange<fizz::P256>();
+      ret = fizz::openssl::makeKeyExchange<fizz::P256>();
+      return Status::Success;
     case NamedGroup::secp384r1:
-      return fizz::openssl::makeKeyExchange<fizz::P384>();
+      ret = fizz::openssl::makeKeyExchange<fizz::P384>();
+      return Status::Success;
     case NamedGroup::secp521r1:
-      return fizz::openssl::makeKeyExchange<fizz::P521>();
+      ret = fizz::openssl::makeKeyExchange<fizz::P521>();
+      return Status::Success;
     case NamedGroup::x25519:
-      return fizz::libsodium::makeKeyExchange<fizz::X25519>();
+      ret = fizz::libsodium::makeKeyExchange<fizz::X25519>();
+      return Status::Success;
 #if FIZZ_HAVE_OQS
     case NamedGroup::X25519MLKEM768:
-      return std::make_unique<HybridKeyExchange>(
+      ret = std::make_unique<HybridKeyExchange>(
           fizz::liboqs::makeKeyExchange<MLKEM768>(role),
           fizz::libsodium::makeKeyExchange<fizz::X25519>());
+      return Status::Success;
     case NamedGroup::X25519MLKEM512_FB:
-      return std::make_unique<HybridKeyExchange>(
+      ret = std::make_unique<HybridKeyExchange>(
           fizz::liboqs::makeKeyExchange<MLKEM512>(role),
           fizz::libsodium::makeKeyExchange<fizz::X25519>());
+      return Status::Success;
 #endif
     default:
-      throw std::runtime_error("ke: not implemented");
+      return err.error("ke: not implemented");
   }
 }
 

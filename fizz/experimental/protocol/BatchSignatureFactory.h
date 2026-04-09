@@ -67,10 +67,12 @@ class BatchSignatureFactory : public Factory {
     return original_->makeHandshakeContext(cipher);
   }
 
-  std::unique_ptr<KeyExchange> makeKeyExchange(
+  Status makeKeyExchange(
+      std::unique_ptr<KeyExchange>& ret,
+      Error& err,
       NamedGroup group,
       KeyExchangeRole role) const override {
-    return original_->makeKeyExchange(group, role);
+    return original_->makeKeyExchange(ret, err, group, role);
   }
 
   std::unique_ptr<Aead> makeAead(CipherSuite cipher) const override {

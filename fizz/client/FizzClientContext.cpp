@@ -28,8 +28,10 @@ Status FizzClientContext::validate(Error& err) const {
   }
 
   for (auto& g : supportedGroups_) {
-    // will throw if factory doesn't support this named group
-    factory_->makeKeyExchange(g, KeyExchangeRole::Client);
+    // will fail if factory doesn't support this named group
+    std::unique_ptr<KeyExchange> kex;
+    FIZZ_RETURN_ON_ERROR(
+        factory_->makeKeyExchange(kex, err, g, KeyExchangeRole::Client));
   }
 
   for (auto& share : defaultShares_) {
