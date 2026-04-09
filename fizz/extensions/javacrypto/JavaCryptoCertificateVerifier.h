@@ -42,7 +42,9 @@ class JavaCryptoCertificateVerifier : public CertificateVerifier {
     createAuthorities();
   }
 
-  std::vector<Extension> getCertificateRequestExtensions() const override;
+  Status getCertificateRequestExtensions(
+      std::vector<Extension>& ret,
+      Error& err) const override;
 
   static X509_STORE* getDefaultX509Store();
 

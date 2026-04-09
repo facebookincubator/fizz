@@ -1198,7 +1198,10 @@ static std::pair<std::vector<ExtensionType>, Buf> getCertificateRequest(
   FIZZ_THROW_ON_ERROR(encodeExtension(encodedExt, err, algos), err);
   request.extensions.push_back(std::move(encodedExt));
   if (verifier) {
-    auto verifierExtensions = verifier->getCertificateRequestExtensions();
+    std::vector<Extension> verifierExtensions;
+    FIZZ_THROW_ON_ERROR(
+        verifier->getCertificateRequestExtensions(verifierExtensions, err),
+        err);
     for (auto& ext : verifierExtensions) {
       certReqExtensions.push_back(ext.extension_type);
       request.extensions.push_back(std::move(ext));

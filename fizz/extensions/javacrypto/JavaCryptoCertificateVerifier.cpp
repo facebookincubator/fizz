@@ -137,13 +137,14 @@ X509_STORE* JavaCryptoCertificateVerifier::getDefaultX509Store() {
   return defaultStore.get();
 }
 
-std::vector<Extension>
-JavaCryptoCertificateVerifier::getCertificateRequestExtensions() const {
+Status JavaCryptoCertificateVerifier::getCertificateRequestExtensions(
+    std::vector<Extension>& ret,
+    Error& err) const {
   std::vector<Extension> exts;
   Extension ext;
-  Error err;
-  FIZZ_THROW_ON_ERROR(encodeExtension(ext, err, authorities_), err);
+  FIZZ_RETURN_ON_ERROR(encodeExtension(ext, err, authorities_));
   exts.push_back(std::move(ext));
-  return exts;
+  ret = std::move(exts);
+  return Status::Success;
 }
 } // namespace fizz

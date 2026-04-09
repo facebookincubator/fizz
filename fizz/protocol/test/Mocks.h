@@ -221,12 +221,16 @@ class MockCertificateVerifier : public CertificateVerifier {
       const override {
     FIZZ_THROW_TO_ERROR(ret, _verify(certs));
   }
-
   MOCK_METHOD(
       std::vector<Extension>,
-      getCertificateRequestExtensions,
+      _getCertificateRequestExtensions,
       (),
       (const));
+  Status getCertificateRequestExtensions(
+      std::vector<Extension>& ret,
+      Error& err) const override {
+    FIZZ_THROW_TO_ERROR(ret, _getCertificateRequestExtensions());
+  }
 };
 
 class MockCertificateSerialization : public CertificateSerialization {

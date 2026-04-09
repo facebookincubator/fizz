@@ -25,7 +25,11 @@ TEST(TerminatingCertificateVerifierTest, TerminatesOnVerify) {
 
 TEST(TerminatingCertificateVerifierTest, GetExtensionsReturnsEmpty) {
   TerminatingCertificateVerifier verifier(VerificationContext::Client);
-  EXPECT_TRUE(verifier.getCertificateRequestExtensions().empty());
+  std::vector<Extension> ret;
+  Error err;
+  EXPECT_EQ(
+      verifier.getCertificateRequestExtensions(ret, err), Status::Success);
+  EXPECT_TRUE(ret.empty());
 }
 
 TEST(InsecureCertificateVerifierTest, ReturnsFirstCert) {
@@ -49,7 +53,11 @@ TEST(InsecureCertificateVerifierTest, ReturnsNullOnEmpty) {
 
 TEST(InsecureCertificateVerifierTest, GetExtensionsReturnsEmpty) {
   InsecureCertificateVerifier verifier(VerificationContext::Client);
-  EXPECT_TRUE(verifier.getCertificateRequestExtensions().empty());
+  std::vector<Extension> ret;
+  Error err;
+  EXPECT_EQ(
+      verifier.getCertificateRequestExtensions(ret, err), Status::Success);
+  EXPECT_TRUE(ret.empty());
 }
 
 } // namespace test

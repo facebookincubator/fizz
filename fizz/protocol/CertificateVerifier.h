@@ -43,7 +43,9 @@ class CertificateVerifier {
   /**
    * Returns a vector of extensions to send in a certificate request.
    */
-  virtual std::vector<Extension> getCertificateRequestExtensions() const = 0;
+  virtual Status getCertificateRequestExtensions(
+      std::vector<Extension>& ret,
+      Error& err) const = 0;
 };
 
 /**
@@ -68,8 +70,10 @@ class TerminatingCertificateVerifier : public CertificateVerifier {
     std::abort();
   }
 
-  std::vector<Extension> getCertificateRequestExtensions() const override {
-    return {};
+  Status getCertificateRequestExtensions(
+      std::vector<Extension>& /* ret */,
+      Error& /* err */) const override {
+    return Status::Success;
   }
 };
 
@@ -95,8 +99,10 @@ class InsecureCertificateVerifier : public CertificateVerifier {
     return Status::Success;
   }
 
-  std::vector<Extension> getCertificateRequestExtensions() const override {
-    return {};
+  Status getCertificateRequestExtensions(
+      std::vector<Extension>& /* ret */,
+      Error& /* err */) const override {
+    return Status::Success;
   }
 };
 
