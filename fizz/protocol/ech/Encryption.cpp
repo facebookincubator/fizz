@@ -138,7 +138,9 @@ static bool echConfigHasMandatoryExtension(const ParsedECHConfig& config) {
       });
 }
 
-folly::Optional<NegotiatedECHConfig> negotiateECHConfig(
+Status negotiateECHConfig(
+    folly::Optional<NegotiatedECHConfig>& ret,
+    Error& err,
     const std::vector<ParsedECHConfig>& configs,
     std::vector<hpke::KEMId> supportedKEMs,
     std::vector<hpke::AeadId> supportedAeads) {
@@ -174,19 +176,23 @@ folly::Optional<NegotiatedECHConfig> negotiateECHConfig(
               supportedAeads.begin(), supportedAeads.end(), suite.aead_id) !=
           supportedAeads.end();
       if (isCipherSupported) {
-        auto associatedCipherKdf =
-            hpke::getKDFId(getHashFunction(getCipherSuite(suite.aead_id)));
+        HashFunction hashFunc;
+        FIZZ_RETURN_ON_ERROR(
+            getHashFunction(hashFunc, err, getCipherSuite(suite.aead_id)));
+        auto associatedCipherKdf = hpke::getKDFId(hashFunc);
         if (suite.kdf_id == associatedCipherKdf) {
           auto negotiatedECHConfig = config;
           auto configId = config.key_config.config_id;
           auto maxLen = config.maximum_name_length;
-          return NegotiatedECHConfig{
-              negotiatedECHConfig, configId, maxLen, suite};
+          ret =
+              NegotiatedECHConfig{negotiatedECHConfig, configId, maxLen, suite};
+          return Status::Success;
         }
       }
     }
   }
-  return folly::none;
+  ret = folly::none;
+  return Status::Success;
 }
 
 static Status getSetupParam(

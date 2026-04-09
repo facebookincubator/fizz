@@ -651,10 +651,11 @@ static Status getClientHello(
   return Status::Success;
 }
 
-static ClientPresharedKey getPskExtension(
+static Status getPskExtension(
+    ClientPresharedKey& ret,
+    Error& err,
     const CachedPsk& psk,
     const Clock& clock) {
-  ClientPresharedKey pskExt;
   PskIdentity ident;
   ident.psk_identity = folly::IOBuf::copyBuffer(psk.psk);
   if (psk.type == PskType::Resumption) {
@@ -666,14 +667,17 @@ static ClientPresharedKey getPskExtension(
   } else {
     ident.obfuscated_ticket_age = 0;
   }
-  pskExt.identities.push_back(std::move(ident));
+  ret.identities.push_back(std::move(ident));
   PskBinder binder;
-  size_t binderSize = getHashSize(getHashFunction(psk.cipher));
+  HashFunction hashFunc;
+  size_t binderSize;
+  TRY(getHashFunction(hashFunc, err, psk.cipher));
+  TRY(getHashSize(binderSize, err, hashFunc));
   binder.binder = folly::IOBuf::create(binderSize);
   memset(binder.binder->writableData(), 0, binderSize);
   binder.binder->append(binderSize);
-  pskExt.binders.push_back(std::move(binder));
-  return pskExt;
+  ret.binders.push_back(std::move(binder));
+  return Status::Success;
 }
 
 /**
@@ -696,7 +700,8 @@ static Status encodeAndAddBinders(
                                     : EarlySecrets::ResumptionPskBinder,
       handshakeContext.getBlankContext());
 
-  auto pskExt = getPskExtension(psk, clock);
+  ClientPresharedKey pskExt;
+  TRY(getPskExtension(pskExt, err, psk, clock));
   Extension pskExtEnc;
   TRY(encodeExtension(pskExtEnc, err, pskExt));
   chlo.extensions.push_back(std::move(pskExtEnc));
@@ -791,8 +796,9 @@ static Status getNegotiatedECHConfig(
   }
 
   // Get a supported ECH config.
-  folly::Optional<ech::NegotiatedECHConfig> negotiatedECHConfig =
-      negotiateECHConfig(echConfigs, supportedKEMs, supportedAeads);
+  folly::Optional<ech::NegotiatedECHConfig> negotiatedECHConfig;
+  TRY(ech::negotiateECHConfig(
+      negotiatedECHConfig, ctx.err, echConfigs, supportedKEMs, supportedAeads));
   if (!negotiatedECHConfig.hasValue()) {
     return ctx.err.error(
         "ECH requested but we don't support any of the provided configs",
@@ -1398,7 +1404,11 @@ static Status negotiatePsk(
       return ctx.err.error(
           "different version in psk", AlertDescription::handshake_failure);
     }
-    if (getHashFunction(cipher) != getHashFunction(attemptedPsk->cipher)) {
+    HashFunction cipherHash;
+    HashFunction pskHash;
+    TRY(getHashFunction(cipherHash, ctx.err, cipher));
+    TRY(getHashFunction(pskHash, ctx.err, attemptedPsk->cipher));
+    if (cipherHash != pskHash) {
       return ctx.err.error(
           "incompatible cipher in psk", AlertDescription::handshake_failure);
     }
@@ -1432,7 +1442,8 @@ Status sm::EventHandler<
         Param& param) {
   auto shlo = std::move(*param.asServerHello());
 
-  Protocol::checkAllowedExtensions(shlo, *state.requestedExtensions());
+  TRY(Protocol::checkAllowedExtensions(
+      ctx.err, shlo, *state.requestedExtensions()));
 
   ProtocolVersion version;
   CipherSuite cipher;
@@ -1760,7 +1771,8 @@ Status EventHandler<
         Param& param) {
   auto hrr = std::move(*param.asHelloRetryRequest());
 
-  Protocol::checkAllowedExtensions(hrr, *state.requestedExtensions());
+  TRY(Protocol::checkAllowedExtensions(
+      ctx.err, hrr, *state.requestedExtensions()));
 
   if (state.keyExchangeType().has_value()) {
     return ctx.err.error("two HRRs", AlertDescription::unexpected_message);
@@ -1782,9 +1794,14 @@ Status EventHandler<
   TRY(getExtension(cookie, ctx.err, hrr.extensions));
 
   auto attemptedPsk = state.attemptedPsk();
-  if (attemptedPsk &&
-      getHashFunction(attemptedPsk->cipher) != getHashFunction(cipher)) {
-    attemptedPsk = folly::none;
+  if (attemptedPsk) {
+    HashFunction cipherHash;
+    HashFunction pskHash;
+    TRY(getHashFunction(cipherHash, ctx.err, cipher));
+    TRY(getHashFunction(pskHash, ctx.err, attemptedPsk->cipher));
+    if (cipherHash != pskHash) {
+      attemptedPsk = folly::none;
+    }
   }
 
   // We move the current key exchangers in so getHrrKeyExchangers can either
@@ -2068,7 +2085,8 @@ Status EventHandler<
         Param& param) {
   auto ee = std::move(*param.asEncryptedExtensions());
 
-  Protocol::checkAllowedExtensions(ee, *state.requestedExtensions());
+  TRY(Protocol::checkAllowedExtensions(
+      ctx.err, ee, *state.requestedExtensions()));
 
   state.handshakeContext()->appendToTranscript(*ee.originalEncoding);
 

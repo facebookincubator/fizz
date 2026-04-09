@@ -184,14 +184,21 @@ auto hpkeContext(OuterECHClientHello& clientECH) {
 TEST(EncryptionTest, TestNegotiatedParsedECHConfig) {
   std::vector<ParsedECHConfig> configs = {
       getUnsupportedParsedECHConfig(), getParsedECHConfig()};
-  auto result = negotiateECHConfig(configs, supportedKEMs, supportedAeads);
+  folly::Optional<NegotiatedECHConfig> result;
+  Error err;
+  EXPECT_EQ(
+      negotiateECHConfig(result, err, configs, supportedKEMs, supportedAeads),
+      Status::Success);
   checkSupportedConfigValid(result, getParsedECHConfig());
 }
 
 TEST(EncryptionTest, TestNoNegotiatedParsedECHConfig) {
   std::vector<ParsedECHConfig> configs = {getUnsupportedParsedECHConfig()};
-  folly::Optional<NegotiatedECHConfig> result =
-      negotiateECHConfig(configs, supportedKEMs, supportedAeads);
+  folly::Optional<NegotiatedECHConfig> result;
+  Error err;
+  EXPECT_EQ(
+      negotiateECHConfig(result, err, configs, supportedKEMs, supportedAeads),
+      Status::Success);
   EXPECT_FALSE(result.hasValue());
 }
 
@@ -200,40 +207,55 @@ TEST(EncryptionTest, TestNegotiatedECHPublicNameValidationFails) {
     auto echConfig = getParsedECHConfig();
     echConfig.public_name = "";
     std::vector<ParsedECHConfig> configs = {std::move(echConfig)};
-    folly::Optional<NegotiatedECHConfig> result =
-        negotiateECHConfig(configs, supportedKEMs, supportedAeads);
+    folly::Optional<NegotiatedECHConfig> result;
+    Error err;
+    EXPECT_EQ(
+        negotiateECHConfig(result, err, configs, supportedKEMs, supportedAeads),
+        Status::Success);
     EXPECT_FALSE(result.hasValue());
   }
   {
     auto echConfig = getParsedECHConfig();
     echConfig.public_name = ".dummy.com";
     std::vector<ParsedECHConfig> configs = {std::move(echConfig)};
-    folly::Optional<NegotiatedECHConfig> result =
-        negotiateECHConfig(configs, supportedKEMs, supportedAeads);
+    folly::Optional<NegotiatedECHConfig> result;
+    Error err;
+    EXPECT_EQ(
+        negotiateECHConfig(result, err, configs, supportedKEMs, supportedAeads),
+        Status::Success);
     EXPECT_FALSE(result.hasValue());
   }
   {
     auto echConfig = getParsedECHConfig();
     echConfig.public_name = "dummy.com.";
     std::vector<ParsedECHConfig> configs = {std::move(echConfig)};
-    folly::Optional<NegotiatedECHConfig> result =
-        negotiateECHConfig(configs, supportedKEMs, supportedAeads);
+    folly::Optional<NegotiatedECHConfig> result;
+    Error err;
+    EXPECT_EQ(
+        negotiateECHConfig(result, err, configs, supportedKEMs, supportedAeads),
+        Status::Success);
     EXPECT_FALSE(result.hasValue());
   }
   {
     auto echConfig = getParsedECHConfig();
     echConfig.public_name = "public..dummy.com";
     std::vector<ParsedECHConfig> configs = {std::move(echConfig)};
-    folly::Optional<NegotiatedECHConfig> result =
-        negotiateECHConfig(configs, supportedKEMs, supportedAeads);
+    folly::Optional<NegotiatedECHConfig> result;
+    Error err;
+    EXPECT_EQ(
+        negotiateECHConfig(result, err, configs, supportedKEMs, supportedAeads),
+        Status::Success);
     EXPECT_FALSE(result.hasValue());
   }
   {
     auto echConfig = getParsedECHConfig();
     echConfig.public_name = "dummy!.com";
     std::vector<ParsedECHConfig> configs = {std::move(echConfig)};
-    folly::Optional<NegotiatedECHConfig> result =
-        negotiateECHConfig(configs, supportedKEMs, supportedAeads);
+    folly::Optional<NegotiatedECHConfig> result;
+    Error err;
+    EXPECT_EQ(
+        negotiateECHConfig(result, err, configs, supportedKEMs, supportedAeads),
+        Status::Success);
     EXPECT_FALSE(result.hasValue());
   }
 }
@@ -252,8 +274,11 @@ TEST(EncryptionTest, TestUnsupportedMandatoryExtension) {
 
   std::vector<ParsedECHConfig> configs = {std::move(invalidConfigContent)};
 
-  folly::Optional<NegotiatedECHConfig> result =
-      negotiateECHConfig(configs, supportedKEMs, supportedAeads);
+  folly::Optional<NegotiatedECHConfig> result;
+  Error err;
+  EXPECT_EQ(
+      negotiateECHConfig(result, err, configs, supportedKEMs, supportedAeads),
+      Status::Success);
 
   // Expect no result thanks to mandatory extension.
   EXPECT_FALSE(result.hasValue());

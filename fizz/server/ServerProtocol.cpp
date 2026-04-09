@@ -514,7 +514,9 @@ static void validateClientHello(const ClientHello& chlo) {
         "client compression methods not exactly NULL",
         AlertDescription::illegal_parameter);
   }
-  Protocol::checkDuplicateExtensions(chlo.extensions);
+  Error err;
+  FIZZ_THROW_ON_ERROR(
+      Protocol::checkDuplicateExtensions(err, chlo.extensions), err);
 }
 
 static Optional<ProtocolVersion> negotiateVersion(
@@ -671,7 +673,12 @@ static bool validateResumptionState(
     return false;
   }
 
-  if (getHashFunction(resState.cipher) != getHashFunction(cipher)) {
+  HashFunction resHash;
+  Error err;
+  FIZZ_THROW_ON_ERROR(getHashFunction(resHash, err, resState.cipher), err);
+  HashFunction cipherHash;
+  FIZZ_THROW_ON_ERROR(getHashFunction(cipherHash, err, cipher), err);
+  if (resHash != cipherHash) {
     FOLLY_SDT(fizz, resumption_state_HashFunctionMismatch);
     FIZZ_VLOG(8) << "Hash mismatch, rejecting PSK.";
     return false;
@@ -2460,7 +2467,7 @@ Status
 EventHandler<ServerTypes, StateEnum::ExpectingCertificate, Event::Certificate>::
     handle(
         AsyncActions& ret,
-        InvocationContext& /* ctx */,
+        InvocationContext& ctx,
         const State& state,
         Param& param) {
   auto certMsg = std::move(*param.asCertificateMsg());
@@ -2477,7 +2484,10 @@ EventHandler<ServerTypes, StateEnum::ExpectingCertificate, Event::Certificate>::
   bool leaf = true;
   const auto& certExtensionsSupported = state.certReqExtensions();
   for (auto& certEntry : certMsg.certificate_list) {
-    Protocol::checkAllowedExtensions(certEntry, certExtensionsSupported);
+    FIZZ_THROW_ON_ERROR(
+        Protocol::checkAllowedExtensions(
+            ctx.err, certEntry, certExtensionsSupported),
+        ctx.err);
     clientCerts.emplace_back(state.context()->getFactory()->makePeerCert(
         std::move(certEntry), leaf));
     leaf = false;

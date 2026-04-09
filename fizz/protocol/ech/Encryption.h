@@ -24,7 +24,9 @@ struct NegotiatedECHConfig {
   HpkeSymmetricCipherSuite cipherSuite;
 };
 
-folly::Optional<NegotiatedECHConfig> negotiateECHConfig(
+Status negotiateECHConfig(
+    folly::Optional<NegotiatedECHConfig>& ret,
+    Error& err,
     const std::vector<ParsedECHConfig>& configs,
     std::vector<hpke::KEMId> supportedKEMs,
     std::vector<hpke::AeadId> supportedAeads);
