@@ -11,7 +11,9 @@
 
 namespace fizz {
 
-Buf Exporter::getExportedKeyingMaterial(
+Status Exporter::getExportedKeyingMaterial(
+    Buf& ret,
+    Error& err,
     const Factory& factory,
     CipherSuite cipher,
     folly::ByteRange exporterMaster,
@@ -28,17 +30,17 @@ Buf Exporter::getExportedKeyingMaterial(
   folly::MutableByteRange hashedContext(base.data(), base.size());
   HashFunction hash;
   const HasherFactoryWithMetadata* hasherFactory = nullptr;
-  Error err;
-  FIZZ_THROW_ON_ERROR(getHashFunction(hash, err, cipher), err);
-  FIZZ_THROW_ON_ERROR(factory.makeHasherFactory(hasherFactory, err, hash), err);
+  FIZZ_RETURN_ON_ERROR(getHashFunction(hash, err, cipher));
+  FIZZ_RETURN_ON_ERROR(factory.makeHasherFactory(hasherFactory, err, hash));
   fizz::hash(hasherFactory, *context, hashedContext);
 
   auto secret = deriver->deriveSecret(
       exporterMaster, label, deriver->blankHash(), deriver->hashLength());
-  return deriver->expandLabel(
+  ret = deriver->expandLabel(
       folly::range(secret),
       "exporter",
       folly::IOBuf::wrapBuffer(hashedContext),
       length);
+  return Status::Success;
 }
 } // namespace fizz

@@ -218,12 +218,19 @@ Buf FizzBase<Derived, ActionMoveVisitor, StateMachine>::
   if (!state_.cipher() || !state_.exporterMasterSecret()) {
     return nullptr;
   }
-  return Exporter::getExportedKeyingMaterial(
-      factory,
-      *state_.cipher(),
-      (*state_.exporterMasterSecret())->coalesce(),
-      label,
-      std::move(context),
-      length);
+  Buf ret;
+  Error err;
+  FIZZ_THROW_ON_ERROR(
+      Exporter::getExportedKeyingMaterial(
+          ret,
+          err,
+          factory,
+          *state_.cipher(),
+          (*state_.exporterMasterSecret())->coalesce(),
+          label,
+          std::move(context),
+          length),
+      err);
+  return ret;
 }
 } // namespace fizz
