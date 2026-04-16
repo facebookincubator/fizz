@@ -46,6 +46,7 @@ fizz_cpp_library(
     ],
     deps = [
         "//fizz/backend:openssl",
+        "//fizz/util:logging",
         "//folly/ssl:openssl_cert_utils",
     ],
     exported_deps = [
