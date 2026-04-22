@@ -34,5 +34,6 @@ fizz_cpp_library(
     ],
     exported_deps = [
         ":key_exchange",
+        "//fizz/util:status",
     ],
 )

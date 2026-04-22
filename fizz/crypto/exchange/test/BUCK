@@ -35,6 +35,7 @@ fizz_cpp_unittest(
     deps = [
         ":mocks",
         "//fizz/crypto/exchange:hybrid_key_exchange",
+        "//fizz/util:status",
         "//folly/portability:gtest",
     ],
 )
