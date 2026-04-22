@@ -24,6 +24,7 @@ fizz_cpp_library(
     ],
     exported_deps = [
         "//fizz/util:logging",
+        "//fizz/util:status",
         "//folly:range",
         "//folly/io:iobuf",
     ],
