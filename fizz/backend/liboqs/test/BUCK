@@ -9,6 +9,7 @@ fizz_cpp_unittest(
     ],
     deps = [
         "//fizz/backend:liboqs",
+        "//fizz/util:status",
         "//folly/portability:gtest",
     ],
 )

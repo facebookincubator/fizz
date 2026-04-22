@@ -12,6 +12,7 @@ fizz_cpp_unittest(
         "//fizz/backend:openssl",
         "//fizz/crypto/test:TestKeys",
         "//fizz/crypto/test:TestUtil",
+        "//fizz/util:status",
         "//folly:string",
         "//folly/portability:gtest",
         "//folly/ssl:openssl_ptr_types",

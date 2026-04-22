@@ -21,6 +21,7 @@ fizz_cpp_unittest(
     ],
     deps = [
         "//fizz/backend:libsodium",
+        "//fizz/util:status",
         "//folly:range",
         "//folly:string",
         "//folly/portability:gtest",

@@ -8,6 +8,7 @@ fizz_cpp_library(
         "KeyExchange.h",
     ],
     exported_deps = [
+        "//fizz/util:status",
         "//folly:range",
         "//folly/io:iobuf",
     ],
