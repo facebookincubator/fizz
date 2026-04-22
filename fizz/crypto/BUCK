@@ -11,6 +11,7 @@ fizz_cpp_library(
         "Crypto.h",
     ],
     exported_deps = [
+        "//fizz/util:status",
         "//folly:range",
         "//folly/io:iobuf",
     ],
@@ -96,6 +97,7 @@ fizz_cpp_library(
     ],
     exported_deps = [
         "//fizz:config",
+        "//fizz/util:status",
         "//folly:range",
     ],
     external_deps = select({
