@@ -10,7 +10,6 @@ fizz_cpp_library(
         "StateMachine-inl.h",
     ],
     exported_deps = [
-        "fbsource//third-party/glog:glog",
         "//fizz/util:logging",
         "//fizz/util:status",
     ],
