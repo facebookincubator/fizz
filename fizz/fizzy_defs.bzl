@@ -93,7 +93,8 @@ def fizzy_library(name):
 
     fb_xplat_cxx_library(
         name = name + "_mnscrypto_factory",
-        raw_headers = FIZZY_INTERNAL_HEADERS + [
+        raw_headers = FIZZY_INTERNAL_HEADERS
+        + [
             "facebook/fizzy/include/fizzy/factories/mnscrypto.h",
         ],
         public_include_directories = ["facebook/fizzy/include"],
