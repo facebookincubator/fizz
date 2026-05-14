@@ -99,6 +99,7 @@ fizz_cpp_library(
         "//fizz/protocol:certificate",
         "//fizz/protocol:certificate_verifier",
         "//fizz/record:record",
+        "//fizz/util:status",
         "//folly:conv",
         "//folly:memory",
         "//folly:range",
