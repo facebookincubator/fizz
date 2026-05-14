@@ -67,9 +67,9 @@ fizz_cpp_library(
     ],
     labels = wdls.FIZZ,
     deps = [
+        "fbsource//third-party/fmt:fmt",
         ":delegated_credential_utils",
         "//folly:base64",
-        "//folly:format",
         "//folly:range",
     ],
     exported_deps = [
