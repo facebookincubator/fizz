@@ -51,6 +51,7 @@ fbcode_target(
         "-DFIZZ_TOOL_ENABLE_ZSTD",
     ],
     deps = [
+        "fbsource//third-party/fmt:fmt",
         "fbsource//third-party/glog:glog",
         ":tool_lib",
         "//fizz/backend:libsodium",
@@ -88,7 +89,6 @@ fbcode_target(
         "//fizz/util:parse",
         "//folly:conv",
         "//folly:file_util",
-        "//folly:format",
         "//folly/executors:io_thread_pool_executor",
         "//folly/futures:core",
         "//folly/io/async:async_ssl_socket",
