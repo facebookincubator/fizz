@@ -26,6 +26,7 @@ fizz_cpp_unittest(
         "FizzVariantTest.cpp",
     ],
     deps = [
+        "//fizz/util:status",
         "//fizz/util:variant",
         "//folly/portability:gtest",
     ],
