@@ -59,5 +59,6 @@ fizz_cpp_unittest(
         "//fizz/crypto/hpke:utils",
         "//fizz/crypto/test:TestUtil",
         "//fizz/protocol:default_factory",
+        "//fizz/util:logging",
     ],
 )

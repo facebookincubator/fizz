@@ -72,6 +72,7 @@ fizz_cpp_unittest(
         ":cert_test_types",
         "//fizz/backend:openssl",
         "//fizz/crypto/test:TestUtil",
+        "//fizz/util:logging",
         "//folly:string",
         "//folly/portability:gtest",
     ],

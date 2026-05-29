@@ -118,6 +118,10 @@ fizz_cpp_library(
     ],
 )
 
+# Logging shim. Selects between folly::GLog (default), folly::xlog, or a noop
+# backend based on the FIZZ_LOGGING_* macro defined in <fizz/fizz-config.h>.
+# Header-only; consumers should add this target to their deps and include
+# <fizz/util/Logging.h> in place of <folly/logging/xlog.h> or <glog/logging.h>.
 # @noautodeps
 fizz_cpp_library(
     name = "logging",
@@ -125,6 +129,7 @@ fizz_cpp_library(
         "Logging.h",
     ],
     exported_deps = [
+        "//fizz:config",
         "//folly:glog",
     ],
 )

@@ -131,6 +131,7 @@ fizz_cpp_binary(
         "//fizz/backend:openssl",
         "//fizz/crypto:utils",
         "//fizz/record:encrypted_record_layer",
+        "//fizz/util:logging",
         "//folly:benchmark",
         "//folly:random",
         "//folly/init:init",

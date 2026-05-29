@@ -91,6 +91,7 @@ fizz_cpp_library(
         "//fizz/protocol/ech:encryption",
         "//fizz/protocol/ech:grease_ech",
         "//fizz/record:record",
+        "//fizz/util:logging",
     ],
     exported_deps = [
         ":actions",
@@ -159,6 +160,7 @@ fizz_cpp_library(
         "//fizz/protocol:async_fizz_base",
         "//fizz/protocol:default_certificate_verifier",
         "//fizz/protocol:exporter",
+        "//fizz/util:logging",
         "//fizz/util:tracer",
         "//folly/io:socket_option_map",
     ],
