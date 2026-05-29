@@ -266,6 +266,7 @@ fizz_cpp_library(
         ":key_scheduler",
         "//fizz/record:record",
         "//fizz/util:logging",
+        "//folly:function",
         "//folly/io:iobuf",
         "//folly/io/async:async_socket",
         "//folly/io/async:decorated_async_transport_wrapper",
