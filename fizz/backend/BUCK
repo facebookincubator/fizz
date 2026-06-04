@@ -85,6 +85,7 @@ fizz_cpp_library(
         "//fizz/util:logging",
         "//folly:file_util",
         "//folly/lang:checked_math",
+        "//folly/synchronization:call_once",
     ],
     exported_deps = [
         "fbsource//third-party/glog:glog",
