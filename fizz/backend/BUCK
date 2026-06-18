@@ -41,8 +41,7 @@ fizz_cpp_library(
             "//fizz/crypto/exchange:key_exchange",
             "//folly:memory",
         ],
-        "fbsource//xplat/fizz/constraints:oqs-disabled": [
-        ],
+        "fbsource//xplat/fizz/constraints:oqs-disabled": [],
     }),
 )
 

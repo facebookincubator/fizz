@@ -8,8 +8,7 @@ fizz_cpp_library(
     headers = [
         "CertExtraction.h",
     ],
-    deps = [
-    ],
+    deps = [],
     exported_deps = [
         "//fizz/client:async_fizz_client",
         "//fizz/server:async_fizz_server",

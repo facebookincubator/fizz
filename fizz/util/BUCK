@@ -5,14 +5,12 @@ oncall("secure_pipes")
 
 fizz_cpp_library(
     name = "fizz_util",
-    srcs =
-        [
-            "FizzUtil.cpp",
-        ],
-    headers =
-        [
-            "FizzUtil.h",
-        ],
+    srcs = [
+        "FizzUtil.cpp",
+    ],
+    headers = [
+        "FizzUtil.h",
+    ],
     labels = wdls.FIZZ,
     deps = [
         "//fizz/backend:libsodium",

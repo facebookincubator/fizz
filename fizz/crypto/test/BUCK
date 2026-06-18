@@ -62,8 +62,7 @@ fizz_cpp_library(
     headers = [
         "TestKeys.h",
     ],
-    deps = [
-    ],
+    deps = [],
     exported_deps = [
         "//fizz/crypto:crypto",
         "//folly:string",
