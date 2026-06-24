@@ -22,6 +22,7 @@ fizz_cpp_library(
         "//folly:conv",
         "//folly:optional",
         "//folly:string",
+        "//folly/container:array",
         "//folly/io:iobuf",
     ],
 )
