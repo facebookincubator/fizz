@@ -21,3 +21,21 @@ fizz_cpp_unittest(
         ("openssl", None, "crypto"),
     ],
 )
+
+fizz_cpp_unittest(
+    name = "OpenSSLKemKeyExchange",
+    srcs = [
+        "OpenSSLKemKeyExchangeTest.cpp",
+    ],
+    supports_static_listing = False,
+    deps = [
+        "//fizz/backend:openssl",
+        "//fizz/protocol:default_factory",
+        "//fizz/record:record",
+        "//fizz/util:status",
+        "//folly/portability:gtest",
+    ],
+    external_deps = [
+        ("openssl", None, "crypto"),
+    ],
+)
