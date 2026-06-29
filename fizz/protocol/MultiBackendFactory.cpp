@@ -15,6 +15,7 @@
 #include <fizz/backend/libsodium/LibSodium.h>
 #include <fizz/backend/openssl/OpenSSL.h>
 #include <fizz/backend/openssl/certificate/CertUtils.h>
+#include <fizz/backend/openssl/crypto/exchange/OpenSSLKemKeyExchange.h>
 #include <fizz/crypto/exchange/HybridKeyExchange.h>
 
 namespace fizz {
@@ -38,8 +39,21 @@ Status MultiBackendFactory::makeKeyExchange(
     case NamedGroup::x25519:
       ret = fizz::libsodium::makeKeyExchange<fizz::X25519>();
       return Status::Success;
-#if FIZZ_HAVE_OQS
+#if FIZZ_HAVE_OQS || (OPENSSL_VERSION_NUMBER >= 0x30500000L)
     case NamedGroup::X25519MLKEM768: {
+#if OPENSSL_VERSION_NUMBER >= 0x30500000L
+      // Prefer OpenSSL 3.5's native, FIPS-capable hybrid group when the
+      // provider exposes it. OpenSSL performs the X25519+ML-KEM combine, so
+      // no fizz-side HybridKeyExchange is needed; fall back to liboqs below
+      // when unavailable.
+      if (fizz::openssl::isKemGroupAvailable("X25519MLKEM768")) {
+        FIZZ_RETURN_ON_ERROR(
+            fizz::openssl::OpenSSLKemKeyExchange::createKeyExchange(
+                ret, err, role, "X25519MLKEM768"));
+        return Status::Success;
+      }
+#endif
+#if FIZZ_HAVE_OQS
       std::unique_ptr<KeyExchange> oqsKex;
       FIZZ_RETURN_ON_ERROR(
           fizz::liboqs::makeKeyExchange<MLKEM768>(oqsKex, err, role));
@@ -52,7 +66,12 @@ Status MultiBackendFactory::makeKeyExchange(
               fizz::libsodium::makeKeyExchange<fizz::X25519>()));
       ret = std::move(hybridKex);
       return Status::Success;
+#else
+      return err.error("ke: X25519MLKEM768 not available");
+#endif
     }
+#endif
+#if FIZZ_HAVE_OQS
     case NamedGroup::X25519MLKEM512_FB: {
       std::unique_ptr<KeyExchange> oqsKex;
       FIZZ_RETURN_ON_ERROR(
