@@ -15,19 +15,6 @@ fizz_cpp_unittest(
 )
 
 fizz_cpp_unittest(
-    name = "cert_verifier",
-    srcs = [
-        "DefaultCertificateVerifierTest.cpp",
-    ],
-    deps = [
-        ":cert_util",
-        "//fizz/protocol:default_certificate_verifier",
-        "//folly/portability:gtest",
-        "//folly/ssl:openssl_cert_utils",
-    ],
-)
-
-fizz_cpp_unittest(
     name = "certificate_verifier_test",
     srcs = [
         "CertificateVerifierTest.cpp",

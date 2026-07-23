@@ -11,3 +11,16 @@ fizz_cpp_unittest(
         "//folly/portability:gtest",
     ],
 )
+
+fizz_cpp_unittest(
+    name = "openssl_certificate_verifier_test",
+    srcs = [
+        "OpenSSLCertificateVerifierTest.cpp",
+    ],
+    deps = [
+        "//fizz/backend:openssl",
+        "//fizz/protocol/test:cert_util",
+        "//folly/portability:gtest",
+        "//folly/ssl:openssl_cert_utils",
+    ],
+)
