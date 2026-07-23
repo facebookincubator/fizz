@@ -218,3 +218,14 @@ def fizz_cpp_unittest(name, deps, external_deps = (), supports_static_listing = 
 
 def fizz_cxx_test(name, **kwargs):
     fb_xplat_cxx_test(name = name, platforms = (CXX,), contacts = ["oncall+secure_pipes@xmail.facebook.com"], **kwargs)
+
+def fizz_multi_cxx_test(name, suffixes_and_constraints, **kwargs):
+    if "constraint_overrides" in kwargs:
+        fail("'constraint_overrides' not supported in fizz_multi_cxx_test.")
+    for suffix, constraints in suffixes_and_constraints:
+        actual_name = "{}{}".format(name, suffix)
+        fizz_cxx_test(
+            name = actual_name,
+            constraint_overrides = constraints,
+            **kwargs,
+        )
