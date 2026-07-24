@@ -119,6 +119,7 @@ fizz_cpp_unittest(
         "SynchronizedLruPskCacheTest.cpp",
     ],
     deps = [
+        "fbsource//third-party/fmt:fmt",
         ":utilities",
         "//fizz/client:synchronized_lru_psk_cache",
         "//folly:format",
