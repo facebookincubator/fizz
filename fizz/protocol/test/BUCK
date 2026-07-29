@@ -15,6 +15,20 @@ fizz_cpp_unittest(
 )
 
 fizz_cpp_unittest(
+    name = "key_scheduler_test_vectors",
+    srcs = [
+        "KeySchedulerTestVectors.cpp",
+    ],
+    deps = [
+        "//fizz/backend:openssl",
+        "//fizz/crypto:key_derivation",
+        "//fizz/protocol:key_scheduler",
+        "//folly:string",
+        "//folly/portability:gtest",
+    ],
+)
+
+fizz_cpp_unittest(
     name = "certificate_verifier_test",
     srcs = [
         "CertificateVerifierTest.cpp",
