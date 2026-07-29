@@ -1,14 +1,19 @@
-load("@fbsource//xplat/fizz:defs.bzl", "fizz_cpp_unittest")
+load("@fbsource//xplat/fizz:defs.bzl", "fizz_multi_cpp_unittest")
 
 oncall("secure_pipes")
 
-fizz_cpp_unittest(
+fizz_multi_cpp_unittest(
     name = "test",
     srcs = glob(["*.cpp"]),
+    suffixes_and_constraints = [
+        ("", []),
+        ("_mnscrypto_only", ["fbsource//xplat/fizz/constraints:mnscrypto-only"]),
+    ],
     deps = [
         "//fizz/backend:openssl",
         "//fizz/protocol/test:cert_test_types",
         "//fizz/protocol/test:cert_util",
+        "//folly/portability:gmock",
         "//folly/portability:gtest",
         "//folly/ssl:openssl_cert_utils",
     ],
