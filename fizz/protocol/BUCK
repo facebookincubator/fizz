@@ -1,7 +1,25 @@
 load("@fbcode//dependencies/buck:wdl.bzl", "wdls")
-load("@fbsource//xplat/fizz:defs.bzl", "fizz_cpp_library")
+load("@fbsource//xplat/fizz:defs.bzl", "fizz_cpp_binary", "fizz_cpp_library")
 
 oncall("secure_pipes")
+
+fizz_cpp_binary(
+    name = "key_scheduler_bench",
+    srcs = [
+        "KeySchedulerBench.cpp",
+    ],
+    deps = [
+        ":key_scheduler",
+        "//fizz/backend:openssl",
+        "//fizz/crypto:key_derivation",
+        "//fizz/crypto:utils",
+        "//fizz/crypto/aead:aead",
+        "//fizz/util:status",
+        "//folly:benchmark",
+        "//folly:random",
+        "//folly/init:init",
+    ],
+)
 
 fizz_cpp_library(
     name = "state_machine",
