@@ -7,7 +7,6 @@
 load("@fbcode_macros//build_defs:cpp_binary.bzl", "cpp_binary")
 load("@fbcode_macros//build_defs:cpp_library.bzl", "cpp_library")
 load("@fbcode_macros//build_defs:cpp_unittest.bzl", "cpp_unittest")
-load("@fbsource//tools/build_defs:buckconfig.bzl", "read", "read_bool")
 load("@fbsource//tools/build_defs:cell_defs.bzl", "get_fbsource_cell")
 load("@fbsource//tools/build_defs:fb_xplat_cxx_binary.bzl", "fb_xplat_cxx_binary")
 load("@fbsource//tools/build_defs:fb_xplat_cxx_library.bzl", "fb_xplat_cxx_library")
@@ -25,6 +24,7 @@ load(
 )
 load("@fbsource//tools/build_defs/xplat:deps_map_utils.bzl", "deps_map_utils")
 load("@fbsource//xplat/pfh/Infra_Networking_Core:DEFS.bzl", "Infra_Networking_Core")
+load("@prelude//utils:buckconfig.bzl", "read", "read_bool")
 
 # Fizz is a cross platform library used across fbcode, fbobjc, fbandroid, etc.
 #
