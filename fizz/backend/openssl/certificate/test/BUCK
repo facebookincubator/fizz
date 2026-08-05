@@ -7,7 +7,7 @@ fizz_multi_cpp_unittest(
     srcs = glob(["*.cpp"]),
     suffixes_and_constraints = [
         ("", []),
-        ("_mnscrypto_only", ["fbsource//xplat/fizz/constraints:mnscrypto-only"]),
+        ("_mnscrypto_only", ["fbsource//xplat/fizz/constraints:profile[mnscrypto-only]"]),
     ],
     deps = [
         "//fizz/backend:openssl",

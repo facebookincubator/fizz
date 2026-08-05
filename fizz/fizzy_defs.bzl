@@ -51,7 +51,7 @@ FIZZY_SRCS = [
 
 COMMON_FLAGS = [] + select({
     "DEFAULT": [],
-    "fbsource//xplat/fizz/constraints:fizzy-user-must-set-factory-explicitly": [
+    "fbsource//xplat/fizz/constraints:fizzy-factory-setting[user-must-set-factory-explicitly]": [
         "-DFIZZY_USER_MUST_SET_FACTORY",
     ],
 })
@@ -77,7 +77,7 @@ def fizzy_library(name):
             "DEFAULT": [
                 "fbsource//xplat/fizz/protocol:default_factory",
             ],
-            "fbsource//xplat/fizz/constraints:fizzy-user-must-set-factory-explicitly": [
+            "fbsource//xplat/fizz/constraints:fizzy-factory-setting[user-must-set-factory-explicitly]": [
                 "fbsource//xplat/fizz/facebook/protocol:dispatch_factory",
             ],
         }),

@@ -104,6 +104,6 @@ fizz_cpp_library(
         "DEFAULT": [
             ("libsodium", None, "sodium"),
         ],
-        "fbsource//xplat/fizz/constraints:mnscrypto-only": [],
+        "fbsource//xplat/fizz/constraints:profile[mnscrypto-only]": [],
     }),
 )
