@@ -13,6 +13,7 @@ fizz_cpp_library(
     ],
     labels = wdls.FIZZ,
     deps = [
+        ":hex",
         "//fizz/backend:libsodium",
         "//fizz/server:ticket_types",
         "//folly:file_util",
@@ -31,6 +32,20 @@ fizz_cpp_library(
     external_deps = [
         ("libsodium", None, "sodium"),
         ("openssl", None, "crypto"),
+    ],
+)
+
+fizz_cpp_library(
+    name = "hex",
+    srcs = [
+        "Hex.cpp",
+    ],
+    headers = [
+        "Hex.h",
+    ],
+    exported_deps = [
+        ":status",
+        "//folly:range",
     ],
 )
 
@@ -67,6 +82,7 @@ fizz_cpp_library(
     ],
     exported_deps = [
         "fbsource//third-party/fmt:fmt",
+        ":hex",
         "//fizz/protocol:key_scheduler",
         "//fizz/protocol:types",
         "//folly:range",
