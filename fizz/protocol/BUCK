@@ -62,7 +62,6 @@ fizz_cpp_library(
         "//fizz/protocol/ech:encrypted_client_hello",
         "//fizz/record:record",
         "//fizz/util:variant",
-        "//folly:executor",
         "//folly/io:iobuf",
         "//folly/io/async:write_flags",
     ],
