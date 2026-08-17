@@ -16,6 +16,7 @@
 #include <fizz/crypto/KeyDerivation.h>
 #include <fizz/crypto/aead/Aead.h>
 #include <fizz/crypto/exchange/KeyExchange.h>
+#include <fizz/crypto/exchange/X25519.h>
 #include <fizz/protocol/Certificate.h>
 #include <fizz/protocol/HandshakeContext.h>
 #include <fizz/protocol/KeyScheduler.h>
