@@ -50,7 +50,7 @@ class BufAndModuloPaddingPolicy : public BufAndPaddingPolicy {
       uint16_t maxRecord) const override;
 
   /**
-   * Sets the variable used to determine the ammount of padding to add.
+   * Sets the variable used to determine the amount of padding to add.
    */
   void setPaddingModulo(uint16_t paddingModulo) {
     paddingModulo_ = paddingModulo;
@@ -75,7 +75,7 @@ class BufAndConstPaddingPolicy : public BufAndPaddingPolicy {
       uint16_t maxRecord) const override;
 
   /**
-   * Sets the variable used to determine the ammount of padding to add.
+   * Sets the variable used to determine the amount of padding to add.
    */
   void setPaddingSize(uint16_t paddingSize) {
     paddingSize_ = paddingSize;
