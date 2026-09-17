@@ -181,7 +181,8 @@ Status decodeClientHelloHRR(
       return Status::Success;
     }
   } catch (const OuterExtensionsError& e) {
-    return err.error(e.what(), AlertDescription::illegal_parameter);
+    return err.error(
+        std::string(e.what()), AlertDescription::illegal_parameter);
   }
 }
 
