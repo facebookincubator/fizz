@@ -2287,8 +2287,8 @@ TEST_F(ServerProtocolTest, TestClientHelloCertRequestFlow) {
   EXPECT_CALL(
       *mockKeyScheduler_, _deriveHandshakeSecret(RangeMatches("sharedsecret")));
   EXPECT_CALL(*factory_, _makeRandomBytes(_, 32))
-      .WillOnce(Invoke(
-          [](unsigned char* out, size_t count) { memset(out, 0x44, count); }));
+      .WillOnce(
+          [](unsigned char* out, size_t count) { memset(out, 0x44, count); });
   EXPECT_CALL(*mockWrite_, _write(_, _))
       .WillOnce(Invoke([&](TLSMessage& msg, Aead::AeadOptions) {
         TLSContent content;
