@@ -141,7 +141,10 @@ inline CertAndKey createCert(CreateCertOptions options) {
   throwIfNeq(
       X509_set_pubkey(crt.get(), pk.get()), 1, "public key assignment failed");
 
-  X509_NAME* name = X509_get_subject_name(crt.get());
+  // X509_get_subject_name() returns const X509_NAME* since OpenSSL 4.0.
+  // The cast is safe (a no-op on older versions): the cert was just created
+  // above and its subject is populated by the add_entry calls below.
+  X509_NAME* name = const_cast<X509_NAME*>(X509_get_subject_name(crt.get()));
   const std::vector<std::pair<std::string, std::string>> entries{
       {"C", "US"}, {"O", "Facebook, Inc."}, {"CN", cn}};
   for (const auto& entry : entries) {
@@ -212,7 +215,10 @@ authorityKeyIdentifier  = keyid:always, issuer
   if (issuer) {
     throwIfNeq(
         X509_set_issuer_name(
-            crt.get(), X509_get_subject_name(issuer->cert.get())),
+            crt.get(),
+            // X509_set_issuer_name() duplicates the name; casting away the
+            // const returned since OpenSSL 4.0 is safe (no-op on older).
+            const_cast<X509_NAME*>(X509_get_subject_name(issuer->cert.get()))),
         1,
         "failed to set issuer");
     if (X509_sign(crt.get(), issuer->key.get(), EVP_sha256()) == 0) {
