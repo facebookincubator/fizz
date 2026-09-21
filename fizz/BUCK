@@ -1,5 +1,5 @@
 load("@fbcode//dependencies/buck:wdl.bzl", "wdls")
-load("@fbcode//registry:defs.bzl", "rpm")
+# @fb-only[end= ]: load("@fbcode//registry:defs.bzl", "rpm")
 load("@fbcode_macros//build_defs:build_file_migration.bzl", "fbcode_target")
 load("@fbcode_macros//build_defs:export_files.bzl", "export_files")
 load("@fbsource//tools/build_defs:fb_native_wrapper.bzl", "fb_native")
@@ -46,29 +46,29 @@ fbcode_target(
     ],
 )
 
-rpm.builder(
-    name = "fb-fizz",
-    autoclean_keep_versions = 200,
-    configurations = [
-        rpm.configuration(
-            arch = "x86_64",
-        ),
-        rpm.configuration(
-            arch = "aarch64",
-        ),
-    ],
-    features = [
-        rpm.install(
-            src = "fbcode//fizz/tool:fizz",
-            dst = "/usr/local/bin/fizz",
-        ),
-    ],
-    summary = "Fizz TLS library command-line tool",
-)
+# @fb-only[end= ]: rpm.builder(
+    # @fb-only[end= ]: name = "fb-fizz",
+    # @fb-only[end= ]: autoclean_keep_versions = 200,
+    # @fb-only[end= ]: configurations = [
+        # @fb-only[end= ]: rpm.configuration(
+            # @fb-only[end= ]: arch = "x86_64",
+        # @fb-only[end= ]: ),
+        # @fb-only[end= ]: rpm.configuration(
+            # @fb-only[end= ]: arch = "aarch64",
+        # @fb-only[end= ]: ),
+    # @fb-only[end= ]: ],
+    # @fb-only[end= ]: features = [
+        # @fb-only[end= ]: rpm.install(
+            # @fb-only[end= ]: src = "fbcode//fizz/tool:fizz",
+            # @fb-only[end= ]: dst = "/usr/local/bin/fizz",
+        # @fb-only[end= ]: ),
+    # @fb-only[end= ]: ],
+    # @fb-only[end= ]: summary = "Fizz TLS library command-line tool",
+# @fb-only[end= ]: )
 
-fb_native.export_file(
-    name = "src-tree",
-    src = ".",
-    mode = "reference",
-    visibility = ["PUBLIC"],
-)
+# @fb-only[end= ]: fb_native.export_file(
+    # @fb-only[end= ]: name = "src-tree",
+    # @fb-only[end= ]: src = ".",
+    # @fb-only[end= ]: mode = "reference",
+    # @fb-only[end= ]: visibility = ["PUBLIC"],
+# @fb-only[end= ]: )
