@@ -6918,7 +6918,7 @@ TEST_F(ServerProtocolTest, TestAppData) {
 TEST_F(ServerProtocolTest, TestAppWrite) {
   setUpAcceptingData();
   EXPECT_CALL(*appWrite_, _write(_, _))
-      .WillOnce(Invoke([&](TLSMessage& msg, Aead::AeadOptions) {
+      .WillOnce([&](TLSMessage& msg, Aead::AeadOptions) {
         TLSContent content;
         content.contentType = msg.type;
         content.encryptionLevel = appWrite_->getEncryptionLevel();
@@ -6928,7 +6928,7 @@ TEST_F(ServerProtocolTest, TestAppWrite) {
                 msg.fragment, folly::IOBuf::copyBuffer("appdata")));
         content.data = folly::IOBuf::copyBuffer("writtenappdata");
         return content;
-      }));
+      });
 
   fizz::Param param = TestMessages::appWrite();
   auto actions = getActions(detail::processEvent(state_, param));
