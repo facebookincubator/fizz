@@ -16,6 +16,7 @@ set(
         backend/openssl/crypto/Sha.cpp
         backend/openssl/crypto/aead/OpenSSLEVPCipher.cpp
         backend/openssl/crypto/exchange/OpenSSLKeyExchange.cpp
+        backend/openssl/crypto/exchange/OpenSSLKemKeyExchange.cpp
         backend/openssl/crypto/signature/Signature.cpp
         client/CertManager.cpp
         client/ClientProtocol.cpp
@@ -127,6 +128,7 @@ set(
         backend/openssl/crypto/aead/OpenSSLEVPCipher-inl.h
         backend/openssl/crypto/aead/OpenSSLEVPCipher.h
         backend/openssl/crypto/exchange/OpenSSLKeyExchange.h
+        backend/openssl/crypto/exchange/OpenSSLKemKeyExchange.h
         backend/openssl/crypto/signature/Signature-inl.h
         backend/openssl/crypto/signature/Signature.h
         client/Actions.h

@@ -54,6 +54,7 @@ fizz_cpp_library(
         "openssl/crypto/Sha.cpp",
         "openssl/crypto/aead/OpenSSLEVPCipher.cpp",
         "openssl/crypto/exchange/OpenSSLKeyExchange.cpp",
+        "openssl/crypto/exchange/OpenSSLKemKeyExchange.cpp",
         "openssl/crypto/signature/Signature.cpp",
     ],
     headers = [
@@ -75,6 +76,7 @@ fizz_cpp_library(
         "openssl/crypto/aead/OpenSSLEVPCipher.h",
         "openssl/crypto/aead/OpenSSLEVPCipher-inl.h",
         "openssl/crypto/exchange/OpenSSLKeyExchange.h",
+        "openssl/crypto/exchange/OpenSSLKemKeyExchange.h",
         "openssl/crypto/signature/Signature.h",
         "openssl/crypto/signature/Signature-inl.h",
     ],
