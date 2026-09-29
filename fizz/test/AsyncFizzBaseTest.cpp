@@ -411,6 +411,38 @@ TEST_F(AsyncFizzBaseTest, TestReadEOFDelayedCallback) {
   EXPECT_EQ(this->getReadCallback(), nullptr);
 }
 
+class MockEndOfTLSCallback : public AsyncFizzBase::EndOfTLSCallback {
+ public:
+  MOCK_METHOD(
+      void,
+      endOfTLS,
+      (AsyncFizzBase*, std::unique_ptr<folly::IOBuf>),
+      (override));
+};
+
+TEST_F(AsyncFizzBaseTest, TestEndOfTLSStopsTransportReadsWhenRequested) {
+  StrictMock<MockEndOfTLSCallback> endOfTLSCallback;
+  this->setEndOfTLSCallback(
+      &endOfTLSCallback, AsyncFizzBase::EndOfTLSPolicy::StopTransportReads);
+  this->expectTransportReadCallback();
+  this->setReadCB(&this->readCallback_);
+
+  EXPECT_CALL(*this->socket_, setReadCB(nullptr));
+  EXPECT_CALL(endOfTLSCallback, endOfTLS(this, _));
+  this->endOfTLS(IOBuf::create(0));
+}
+
+TEST_F(AsyncFizzBaseTest, TestEndOfTLSKeepsTransportReadsByDefault) {
+  StrictMock<MockEndOfTLSCallback> endOfTLSCallback;
+  this->setEndOfTLSCallback(&endOfTLSCallback);
+  this->expectTransportReadCallback();
+  this->setReadCB(&this->readCallback_);
+
+  EXPECT_CALL(*this->socket_, setReadCB(nullptr)).Times(0);
+  EXPECT_CALL(endOfTLSCallback, endOfTLS(this, _));
+  this->endOfTLS(IOBuf::create(0));
+}
+
 TEST_F(AsyncFizzBaseTest, TestReadEOFSetCallbackAgain) {
   this->expectTransportReadCallback();
   this->setReadCB(&this->readCallback_);
