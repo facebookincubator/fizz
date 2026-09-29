@@ -353,7 +353,7 @@ TEST(IOBufUtilTest, TransformBufferBlocksRange) {
                 0),
             err);
       },
-      std::out_of_range);
+      std::runtime_error);
   EXPECT_THROW(
       {
         folly::io::RWPrivateCursor cursor(output.get());
@@ -369,7 +369,7 @@ TEST(IOBufUtilTest, TransformBufferBlocksRange) {
                 256),
             err);
       },
-      std::out_of_range);
+      std::runtime_error);
 }
 
 } // namespace test

@@ -26,18 +26,8 @@ void Error::throwException() const {
       throw FizzVerificationException(msg, alert_);
     case Error::Category::OuterExtensions:
       throw OuterExtensionsError(msg);
-    case Error::Category::StdRuntime:
+    case Error::Category::Other:
       throw std::runtime_error(msg);
-    case Error::Category::StdOverFlow:
-      throw std::overflow_error(msg);
-    case Error::Category::StdLogic:
-      throw std::logic_error(msg);
-    case Error::Category::StdOutOfRange:
-      throw std::out_of_range(msg);
-    case Error::Category::StdBadAlloc:
-      throw std::bad_alloc();
-    case Error::Category::Unknown:
-      throw std::exception();
   }
 }
 folly::exception_wrapper Error::toException() const {
@@ -49,18 +39,8 @@ folly::exception_wrapper Error::toException() const {
           msg(), alert());
     case Error::Category::OuterExtensions:
       return folly::make_exception_wrapper<OuterExtensionsError>(msg());
-    case Error::Category::StdRuntime:
+    case Error::Category::Other:
       return folly::make_exception_wrapper<std::runtime_error>(msg());
-    case Error::Category::StdOverFlow:
-      return folly::make_exception_wrapper<std::overflow_error>(msg());
-    case Error::Category::StdLogic:
-      return folly::make_exception_wrapper<std::logic_error>(msg());
-    case Error::Category::StdOutOfRange:
-      return folly::make_exception_wrapper<std::out_of_range>(msg());
-    case Error::Category::StdBadAlloc:
-      return folly::make_exception_wrapper<std::bad_alloc>();
-    case Error::Category::Unknown:
-      return folly::make_exception_wrapper<std::exception>();
   }
   return {};
 }

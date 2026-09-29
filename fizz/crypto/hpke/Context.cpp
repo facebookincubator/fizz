@@ -54,10 +54,7 @@ Status HpkeContextImpl::seal(
     const folly::IOBuf* aad,
     std::unique_ptr<folly::IOBuf> pt) {
   if (role_ != Role::Sender) {
-    return err.error(
-        "sealing can only be done from a sender context",
-        folly::none,
-        Error::Category::StdLogic);
+    return err.error("sealing can only be done from a sender context");
   }
   FIZZ_RETURN_ON_ERROR(cipher_->encrypt(ret, err, std::move(pt), aad, seqNum_));
   FIZZ_RETURN_ON_ERROR(incrementSeq(err));
@@ -70,10 +67,7 @@ Status HpkeContextImpl::open(
     const folly::IOBuf* aad,
     std::unique_ptr<folly::IOBuf> ct) {
   if (role_ != Role::Receiver) {
-    return err.error(
-        "opening can only be done from a receiver context",
-        folly::none,
-        Error::Category::StdLogic);
+    return err.error("opening can only be done from a receiver context");
   }
   FIZZ_RETURN_ON_ERROR(cipher_->decrypt(ret, err, std::move(ct), aad, seqNum_));
   FIZZ_RETURN_ON_ERROR(incrementSeq(err));

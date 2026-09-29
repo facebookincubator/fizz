@@ -157,7 +157,7 @@ Status OpenSSLCertificateVerifier::verifyWithX509StoreCtx(
   auto certChainStack = std::unique_ptr<STACK_OF(X509), STACK_OF_X509_deleter>(
       sk_X509_new_null());
   if (!certChainStack) {
-    return err.error("", folly::none, Error::Category::StdBadAlloc);
+    return err.error("failed to allocate certificate chain stack");
   }
 
   for (size_t i = 1; i < x509s.size(); i++) {
@@ -166,7 +166,7 @@ Status OpenSSLCertificateVerifier::verifyWithX509StoreCtx(
 
   auto ctx = folly::ssl::X509StoreCtxUniquePtr(X509_STORE_CTX_new());
   if (!ctx) {
-    return err.error("", folly::none, Error::Category::StdBadAlloc);
+    return err.error("failed to allocate store context");
   }
 
   X509_STORE* storePtr = nullptr;
@@ -193,7 +193,7 @@ Status OpenSSLCertificateVerifier::verifyWithX509StoreCtx(
 
   folly::ssl::X509VerifyParam param(X509_VERIFY_PARAM_new());
   if (!param) {
-    return err.error("", folly::none, Error::Category::StdBadAlloc);
+    return err.error("failed to allocate verification parameters");
   }
 
   if (X509_VERIFY_PARAM_set_flags(param.get(), X509_V_FLAG_X509_STRICT) != 1) {
@@ -267,7 +267,7 @@ Status OpenSSLCertificateVerifier::getDefaultX509Store(
   bool initialized = folly::try_call_once(flag, [&]() noexcept {
     folly::ssl::X509StoreUniquePtr store(X509_STORE_new());
     if (!store) {
-      status = err.error("", folly::none, Error::Category::StdBadAlloc);
+      status = err.error("failed to allocate default store");
       return false;
     }
     if (X509_STORE_set_default_paths(store.get()) != 1) {

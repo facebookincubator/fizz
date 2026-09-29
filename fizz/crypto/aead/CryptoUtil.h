@@ -238,8 +238,7 @@ Status encryptHelper(
     size_t totalSize{0};
     if (!folly::checked_add<size_t>(
             &totalSize, headroom, inputLength, tagLen)) {
-      return err.error(
-          "Output buffer size", folly::none, Error::Category::StdOverFlow);
+      return err.error("Output buffer size overflow");
     }
     output = folly::IOBuf::create(totalSize);
     output->advance(headroom);

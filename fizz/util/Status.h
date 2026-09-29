@@ -49,35 +49,20 @@ enum class [[nodiscard]] Status : uint8_t { Fail, Success };
  * for a refactored function which returns a status
  * instead of throwing an exception.
  */
-#define FIZZ_THROW_TO_ERROR_CATCH_BLOCKS                                     \
-  catch (const FizzVerificationException& e) {                               \
-    return err.error(                                                        \
-        std::string(e.what()), e.getAlert(), Error::Category::Verifier);     \
-  }                                                                          \
-  catch (const FizzException& e) {                                           \
-    return err.error(                                                        \
-        std::string(e.what()), e.getAlert(), Error::Category::Fizz);         \
-  }                                                                          \
-  catch (const std::out_of_range& e) {                                       \
-    return err.error(                                                        \
-        std::string(e.what()), folly::none, Error::Category::StdOutOfRange); \
-  }                                                                          \
-  catch (const std::logic_error& e) {                                        \
-    return err.error(                                                        \
-        std::string(e.what()), folly::none, Error::Category::StdLogic);      \
-  }                                                                          \
-  catch (const std::overflow_error& e) {                                     \
-    return err.error(                                                        \
-        std::string(e.what()), folly::none, Error::Category::StdOverFlow);   \
-  }                                                                          \
-  catch (const std::bad_alloc&) {                                            \
-    return err.error("", folly::none, Error::Category::StdBadAlloc);         \
-  }                                                                          \
-  catch (const std::runtime_error& e) {                                      \
-    return err.error(std::string(e.what()));                                 \
-  }                                                                          \
-  catch (...) {                                                              \
-    return err.error("unknown", folly::none, Error::Category::Unknown);      \
+#define FIZZ_THROW_TO_ERROR_CATCH_BLOCKS                                 \
+  catch (const FizzVerificationException& e) {                           \
+    return err.error(                                                    \
+        std::string(e.what()), e.getAlert(), Error::Category::Verifier); \
+  }                                                                      \
+  catch (const FizzException& e) {                                       \
+    return err.error(                                                    \
+        std::string(e.what()), e.getAlert(), Error::Category::Fizz);     \
+  }                                                                      \
+  catch (const std::exception& e) {                                      \
+    return err.error(std::string(e.what()));                             \
+  }                                                                      \
+  catch (...) {                                                          \
+    return err.error("unknown");                                         \
   }
 
 #define FIZZ_THROW_TO_ERROR_VOID(expr) \
@@ -128,22 +113,14 @@ class Error {
    * These are generally conditions that the TLS implementation _explicitly_
    * checks for (e.g. argument, protocol validations. etc.).
    * 'OuterExtensions' - The errors thrown from extension expansion failure.
-   * 'StdXXX' - The errors thrown from the standard library:
-   * runtime_error, overflow_error, login_error, out_of_range, etc.
-   * TODO: Will remove all the exception types except for Verifier and Fizz in
-   * another diff.
+   * `Other` - Anything else, including errors escaping the standard library.
    */
   // clang-format off
   enum class Category : uint8_t {
     Verifier,
     Fizz,
     OuterExtensions,
-    StdRuntime,
-    StdOverFlow,
-    StdLogic,
-    StdOutOfRange,
-    StdBadAlloc,
-    Unknown
+    Other
   };
   // clang-format on
   Error() = default;
@@ -175,20 +152,20 @@ class Error {
     source_ = type;
     return Status::Fail;
   }
-  // Record the std::runtime_error with a literal string
+  // Record an uncategorized error with a literal string
   Status error(const char* msg) {
     msgType_ = MessageType::Static;
     staticMsg_ = msg;
     alert_ = folly::none;
-    source_ = Category::StdRuntime;
+    source_ = Category::Other;
     return Status::Fail;
   }
-  // Record the std::runtime_error with a dynamically constructed string
+  // Record an uncategorized error with a dynamically constructed string
   Status error(std::string&& msg) {
     msgType_ = MessageType::Dynamic;
     dynamicMsg_ = std::move(msg);
     alert_ = folly::none;
-    source_ = Category::StdRuntime;
+    source_ = Category::Other;
     return Status::Fail;
   }
   const char* msg() const {
@@ -198,9 +175,9 @@ class Error {
       case MessageType::Dynamic:
         return dynamicMsg_.c_str();
       case MessageType::None:
-        return nullptr;
+        return "";
     }
-    return nullptr;
+    return "";
   }
   const folly::Optional<AlertDescription>& alert() const {
     return alert_;
@@ -225,7 +202,7 @@ class Error {
   const char* staticMsg_{};
   std::string dynamicMsg_;
   folly::Optional<AlertDescription> alert_ = folly::none;
-  Category source_ = Category::Fizz;
+  Category source_ = Category::Other;
 };
 FOLLY_POP_WARNING
 } // namespace fizz

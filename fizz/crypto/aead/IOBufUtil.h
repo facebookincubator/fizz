@@ -96,10 +96,7 @@ Status transformBufferBlocks(
   // context of ciphertext transformation, which operates on blocks size less
   // than 128 bytes.
   if (blockSize == 0 || blockSize > kTransformBufferBlocksMaxBlocksize) {
-    return err.error(
-        "invalid transformBufferBlocks blockSize",
-        folly::none,
-        Error::Category::StdOutOfRange);
+    return err.error("transformBufferBlocks blockSize out of range");
   }
 
   size_t internallyBuffered = 0;

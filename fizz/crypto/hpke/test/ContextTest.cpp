@@ -179,7 +179,7 @@ TEST_P(HpkeContextTest, TestContextRoles) {
                 toIOBuf(testParam.plaintext)),
             err);
       },
-      std::logic_error);
+      std::runtime_error);
   std::unique_ptr<folly::IOBuf> openRet;
   EXPECT_EQ(
       encryptContext.open(

@@ -722,7 +722,7 @@ TEST_P(EVPCipherTest, TestOutputBufferSizeOverflow) {
             std::move(plaintext),
             opts.bufferOpt,
             opts.allocOpt),
-        std::overflow_error);
+        std::runtime_error);
   }
 }
 

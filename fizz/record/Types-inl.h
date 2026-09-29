@@ -329,8 +329,7 @@ struct ReadVector {
       folly::io::Cursor& cursor) {
     auto len = cursor.readBE<N>();
     if (cursor.totalLength() < len) {
-      return err.error(
-          "Not enough data", folly::none, Error::Category::StdOutOfRange);
+      return err.error("Not enough data");
     }
 
     size_t consumed = 0;
@@ -357,8 +356,7 @@ struct ReadVector<bits24, T> {
       folly::io::Cursor& cursor) {
     auto len = readBits24(cursor);
     if (cursor.totalLength() < len) {
-      return err.error(
-          "Not enough data", folly::none, Error::Category::StdOutOfRange);
+      return err.error("Not enough data");
     }
 
     size_t consumed = 0;
