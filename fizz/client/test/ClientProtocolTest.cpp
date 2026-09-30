@@ -147,6 +147,15 @@ class ClientProtocolTest : public ProtocolTest<ClientTypes, Actions> {
     return params;
   }
 
+  KeyExchange* getKeyExchanger(NamedGroup group) {
+    const auto& keyExchangers = *state_.keyExchangers();
+    const auto it = std::find_if(
+        keyExchangers.begin(), keyExchangers.end(), [group](const auto& entry) {
+          return entry.first == group;
+        });
+    return it == keyExchangers.end() ? nullptr : it->second.get();
+  }
+
   void setupExpectingServerHello() {
     setMockRecord();
     state_.context() = context_;
@@ -154,8 +163,8 @@ class ClientProtocolTest : public ProtocolTest<ClientTypes, Actions> {
     auto mockKex = std::make_unique<MockKeyExchange>();
     mockKex_ = mockKex.get();
     mockKex_->setDefaults();
-    std::map<NamedGroup, std::unique_ptr<KeyExchange>> kexs;
-    kexs.emplace(NamedGroup::x25519, std::move(mockKex));
+    KeyExchangers kexs;
+    kexs.emplace_back(NamedGroup::x25519, std::move(mockKex));
     state_.keyExchangers() = std::move(kexs);
     Random random;
     random.fill(0x44);
@@ -424,7 +433,7 @@ TEST_F(ClientProtocolTest, TestConnectFlow) {
       folly::IOBufEqualTo()(
           *state_.encodedClientHello(), expectedEncodedHello));
   EXPECT_EQ(state_.keyExchangers()->size(), 1);
-  EXPECT_EQ(state_.keyExchangers()->at(NamedGroup::x25519).get(), mockKex);
+  EXPECT_EQ(getKeyExchanger(NamedGroup::x25519), mockKex);
   EXPECT_EQ(state_.verifier(), verifier_);
   EXPECT_EQ(*state_.sni(), "www.hostname.com");
   Random random;
@@ -539,7 +548,7 @@ TEST_F(ClientProtocolTest, TestConnectPskFlow) {
   EXPECT_EQ(state_.readRecordLayer().get(), mockRead_);
   EXPECT_EQ(state_.writeRecordLayer().get(), mockWrite_);
   EXPECT_EQ(state_.keyExchangers()->size(), 1);
-  EXPECT_EQ(state_.keyExchangers()->at(NamedGroup::x25519).get(), mockKex);
+  EXPECT_EQ(getKeyExchanger(NamedGroup::x25519), mockKex);
   EXPECT_EQ(state_.verifier(), verifier_);
   EXPECT_EQ(*state_.sni(), "www.hostname.com");
   Random random;
@@ -678,7 +687,7 @@ TEST_F(ClientProtocolTest, TestConnectPskEarlyFlow) {
   EXPECT_EQ(state_.readRecordLayer().get(), mockRead_);
   EXPECT_EQ(state_.writeRecordLayer().get(), mockWrite_);
   EXPECT_EQ(state_.keyExchangers()->size(), 1);
-  EXPECT_EQ(state_.keyExchangers()->at(NamedGroup::x25519).get(), mockKex);
+  EXPECT_EQ(getKeyExchanger(NamedGroup::x25519), mockKex);
   EXPECT_EQ(state_.verifier(), verifier_);
   EXPECT_EQ(*state_.sni(), "www.hostname.com");
   Random random;
@@ -924,8 +933,8 @@ TEST_F(ClientProtocolTest, TestConnectMultipleShares) {
   processStateMutations(actions);
   EXPECT_EQ(state_.state(), StateEnum::ExpectingServerHello);
   EXPECT_EQ(state_.keyExchangers()->size(), 2);
-  EXPECT_EQ(state_.keyExchangers()->at(NamedGroup::x25519).get(), mockKex1);
-  EXPECT_EQ(state_.keyExchangers()->at(NamedGroup::secp256r1).get(), mockKex2);
+  EXPECT_EQ(getKeyExchanger(NamedGroup::x25519), mockKex1);
+  EXPECT_EQ(getKeyExchanger(NamedGroup::secp256r1), mockKex2);
 }
 
 TEST_F(ClientProtocolTest, TestConnectCachedGroup) {
@@ -959,7 +968,7 @@ TEST_F(ClientProtocolTest, TestConnectCachedGroup) {
   processStateMutations(actions);
   EXPECT_EQ(state_.state(), StateEnum::ExpectingServerHello);
   EXPECT_EQ(state_.keyExchangers()->size(), 1);
-  EXPECT_EQ(state_.keyExchangers()->at(NamedGroup::secp256r1).get(), mockKex);
+  EXPECT_EQ(getKeyExchanger(NamedGroup::secp256r1), mockKex);
 }
 
 TEST_F(ClientProtocolTest, TestConnectNoShares) {
@@ -2690,8 +2699,8 @@ TEST_F(ClientProtocolTest, TestServerHelloHrrBadGroup) {
   setupExpectingServerHelloAfterHrr();
   auto mockKex = std::make_unique<MockKeyExchange>();
   mockKex->setDefaults();
-  std::map<NamedGroup, std::unique_ptr<KeyExchange>> kexs;
-  kexs.emplace(NamedGroup::secp256r1, std::move(mockKex));
+  KeyExchangers kexs;
+  kexs.emplace_back(NamedGroup::secp256r1, std::move(mockKex));
   state_.keyExchangers() = std::move(kexs);
 
   fizz::Param param(TestMessages::serverHello());
@@ -2933,7 +2942,7 @@ TEST_F(ClientProtocolTest, TestConnectPskDheKeAlwaysDefaultShares) {
   Connect connect;
   context_->setSendKeyShare(SendKeyShare::AlwaysDefaultShares);
   std::vector<NamedGroup> defaultShares = {
-      NamedGroup::secp256r1, NamedGroup::x25519};
+      NamedGroup::x25519, NamedGroup::secp256r1};
   context_->setDefaultShares(defaultShares);
   connect.context = context_;
   auto psk = getCachedPsk();
@@ -2963,7 +2972,6 @@ TEST_F(ClientProtocolTest, TestConnectPskDheKeAlwaysDefaultShares) {
   for (const auto& clientShare : clientShares) {
     clientSharesNamedGroups.push_back(clientShare.group);
   }
-  std::sort(clientSharesNamedGroups.begin(), clientSharesNamedGroups.end());
   EXPECT_EQ(clientSharesNamedGroups, defaultShares);
   EXPECT_TRUE(!state_.keyExchangers()->empty());
 }
@@ -3063,7 +3071,7 @@ TEST_F(ClientProtocolTest, TestHelloRetryRequestFlow) {
       folly::StringPiece((*state_.encodedClientHello())->coalesce()),
       folly::StringPiece(encodedExpectedChlo->coalesce()));
   EXPECT_EQ(state_.keyExchangers()->size(), 1);
-  EXPECT_EQ(state_.keyExchangers()->at(NamedGroup::secp256r1).get(), mockKex);
+  EXPECT_EQ(getKeyExchanger(NamedGroup::secp256r1), mockKex);
   EXPECT_EQ(state_.verifier(), verifier_);
   EXPECT_EQ(*state_.sni(), "www.hostname.com");
   Random random;
@@ -3179,7 +3187,7 @@ TEST_F(ClientProtocolTest, TestHelloRetryRequestPskFlow) {
       state_.writeRecordLayer()->getEncryptionLevel(),
       EncryptionLevel::Plaintext);
   EXPECT_EQ(state_.keyExchangers()->size(), 1);
-  EXPECT_EQ(state_.keyExchangers()->at(NamedGroup::secp256r1).get(), mockKex);
+  EXPECT_EQ(getKeyExchanger(NamedGroup::secp256r1), mockKex);
   EXPECT_EQ(state_.verifier(), verifier_);
   EXPECT_EQ(*state_.sni(), "www.hostname.com");
   Random random;
@@ -3510,7 +3518,7 @@ TEST_F(ClientProtocolTest, TestHelloRetryRequestECHFlow) {
       folly::IOBufEqualTo()(
           state_.echState()->encodedECH, encodedClientHelloInner));
   EXPECT_EQ(state_.keyExchangers()->size(), 1);
-  EXPECT_EQ(state_.keyExchangers()->at(NamedGroup::secp256r1).get(), mockKex);
+  EXPECT_EQ(getKeyExchanger(NamedGroup::secp256r1), mockKex);
   EXPECT_EQ(state_.verifier(), verifier_);
   EXPECT_EQ(*state_.sni(), "www.hostname.com");
   EXPECT_EQ(state_.echState()->sni, "www.hostname.com");
@@ -3840,7 +3848,7 @@ TEST_F(ClientProtocolTest, TestHelloRetryRequestECHRejectedFlow) {
       folly::IOBufEqualTo()(
           state_.echState()->encodedECH, encodedClientHelloInner));
   EXPECT_EQ(state_.keyExchangers()->size(), 1);
-  EXPECT_EQ(state_.keyExchangers()->at(NamedGroup::secp256r1).get(), mockKex);
+  EXPECT_EQ(getKeyExchanger(NamedGroup::secp256r1), mockKex);
   EXPECT_EQ(state_.verifier(), verifier_);
   EXPECT_EQ(*state_.sni(), "fakehostname.com");
   EXPECT_EQ(state_.echState()->sni, "www.hostname.com");
@@ -4083,7 +4091,7 @@ TEST_F(ClientProtocolTest, TestHelloRetryRequestECHPSKFlow) {
       state_.writeRecordLayer()->getEncryptionLevel(),
       EncryptionLevel::Plaintext);
   EXPECT_EQ(state_.keyExchangers()->size(), 1);
-  EXPECT_EQ(state_.keyExchangers()->at(NamedGroup::secp256r1).get(), mockKex);
+  EXPECT_EQ(getKeyExchanger(NamedGroup::secp256r1), mockKex);
   EXPECT_EQ(state_.verifier(), verifier_);
   EXPECT_EQ(*state_.sni(), "www.hostname.com");
   EXPECT_EQ(state_.echState()->sni, "www.hostname.com");
@@ -4194,10 +4202,11 @@ TEST_F(ClientProtocolTest, TestHelloRetryRequestGroupAlreadySent) {
 
 TEST_F(ClientProtocolTest, TestHelloRetryRequestNoKeyShare) {
   setupExpectingServerHello();
-  auto kex = state_.keyExchangers()->at(NamedGroup::x25519).get();
+  auto kex = getKeyExchanger(NamedGroup::x25519);
   auto mockKex = std::make_unique<MockKeyExchange>();
   mockKex->setDefaults();
-  state_.keyExchangers()->emplace(NamedGroup::secp256r1, std::move(mockKex));
+  state_.keyExchangers()->emplace_back(
+      NamedGroup::secp256r1, std::move(mockKex));
   auto hrr = TestMessages::helloRetryRequest();
   TestMessages::removeExtension(hrr, ExtensionType::key_share);
   fizz::Param param = std::move(hrr);
@@ -4207,7 +4216,7 @@ TEST_F(ClientProtocolTest, TestHelloRetryRequestNoKeyShare) {
   EXPECT_EQ(state_.state(), StateEnum::ExpectingServerHello);
   EXPECT_FALSE(state_.group().has_value());
   EXPECT_EQ(state_.keyExchangers()->size(), 2);
-  EXPECT_EQ(state_.keyExchangers()->at(NamedGroup::x25519).get(), kex);
+  EXPECT_EQ(getKeyExchanger(NamedGroup::x25519), kex);
 }
 
 TEST_F(ClientProtocolTest, TestHelloRetryRequestCookie) {

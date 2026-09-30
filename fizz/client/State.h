@@ -82,6 +82,9 @@ struct ECHState {
   folly::Optional<std::vector<ech::ParsedECHConfig>> retryConfigs;
 };
 
+using KeyExchangers =
+    std::vector<std::pair<NamedGroup, std::unique_ptr<KeyExchange>>>;
+
 class State {
  public:
   /**
@@ -594,8 +597,7 @@ class State {
 
   folly::Optional<ECHState> echState_;
 
-  mutable folly::Optional<std::map<NamedGroup, std::unique_ptr<KeyExchange>>>
-      keyExchangers_;
+  mutable folly::Optional<KeyExchangers> keyExchangers_;
   folly::Optional<std::vector<ExtensionType>> requestedExtensions_;
 
   folly::Optional<Buf> clientHandshakeSecret_;

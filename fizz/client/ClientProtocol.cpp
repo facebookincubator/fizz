@@ -508,7 +508,7 @@ static folly::Optional<CachedPsk> validatePsk(
 }
 
 static Status getKeyExchangers(
-    std::map<NamedGroup, std::unique_ptr<KeyExchange>>& keyExchangers,
+    KeyExchangers& keyExchangers,
     Error& err,
     const Factory& factory,
     const std::vector<NamedGroup>& groups) {
@@ -516,9 +516,19 @@ static Status getKeyExchangers(
     std::unique_ptr<KeyExchange> kex;
     TRY(factory.makeKeyExchange(kex, err, group, KeyExchangeRole::Client));
     TRY(kex->generateKeyPair(err));
-    keyExchangers.emplace(group, std::move(kex));
+    keyExchangers.emplace_back(group, std::move(kex));
   }
   return Status::Success;
+}
+
+static const KeyExchange* findKeyExchanger(
+    const KeyExchangers& keyExchangers,
+    NamedGroup group) {
+  const auto it = std::find_if(
+      keyExchangers.begin(), keyExchangers.end(), [group](const auto& entry) {
+        return entry.first == group;
+      });
+  return it == keyExchangers.end() ? nullptr : it->second.get();
 }
 
 static Status getClientHello(
@@ -529,7 +539,7 @@ static Status getClientHello(
     const std::vector<CipherSuite>& supportedCiphers,
     const std::vector<ProtocolVersion>& supportedVersions,
     const std::vector<NamedGroup>& supportedGroups,
-    const std::map<NamedGroup, std::unique_ptr<KeyExchange>>& shares,
+    const KeyExchangers& shares,
     const std::vector<SignatureScheme>& supportedSigSchemes,
     const std::vector<PskKeyExchangeMode>& supportedPskModes,
     const folly::Optional<std::string>& hostname,
@@ -1004,7 +1014,7 @@ EventHandler<ClientTypes, StateEnum::Uninitialized, Event::Connect>::handle(
     legacySessionId = folly::IOBuf::create(0);
   }
 
-  std::map<NamedGroup, std::unique_ptr<KeyExchange>> keyExchangers;
+  KeyExchangers keyExchangers;
   TRY(getKeyExchangers(
       keyExchangers, ctx.err, *context->getFactory(), selectedShares));
 
@@ -1327,7 +1337,7 @@ static Status negotiateParameters(
     const ServerHello& shlo,
     const std::vector<ProtocolVersion>& supportedVersions,
     const std::vector<CipherSuite>& supportedCiphers,
-    const std::map<NamedGroup, std::unique_ptr<KeyExchange>>& keyExchangers) {
+    const KeyExchangers& keyExchangers) {
   std::pair<ProtocolVersion, CipherSuite> verCiphIn;
   TRY(getAndValidateVersionAndCipher(
       verCiphIn, ctx, shlo, supportedVersions, supportedCiphers));
@@ -1339,8 +1349,9 @@ static Status negotiateParameters(
   folly::Optional<ServerKeyShare> serverShare;
   TRY(getExtension(serverShare, ctx.err, shlo.extensions));
   if (serverShare) {
-    auto kex = keyExchangers.find(serverShare->server_share.group);
-    if (kex == keyExchangers.end()) {
+    const auto kex =
+        findKeyExchanger(keyExchangers, serverShare->server_share.group);
+    if (!kex) {
       return ctx.err.error(
           "server choose unsupported group",
           AlertDescription::handshake_failure);
@@ -1348,7 +1359,7 @@ static Status negotiateParameters(
     exchange = std::make_tuple(
         serverShare->server_share.group,
         serverShare->server_share.key_exchange->clone(),
-        kex->second.get());
+        kex);
   }
 
   ret = std::make_tuple(version, cipher, std::move(exchange));
@@ -1782,13 +1793,13 @@ static Status negotiateParameters(
 }
 
 static Status getHrrKeyExchangers(
-    std::map<NamedGroup, std::unique_ptr<KeyExchange>>& ret,
+    KeyExchangers& ret,
     InvocationContext& ctx,
     const Factory& factory,
-    std::map<NamedGroup, std::unique_ptr<KeyExchange>> previous,
+    KeyExchangers previous,
     Optional<NamedGroup> negotiatedGroup) {
   if (negotiatedGroup) {
-    if (previous.find(*negotiatedGroup) != previous.end()) {
+    if (findKeyExchanger(previous, *negotiatedGroup)) {
       return ctx.err.error(
           "hrr selected already-sent group",
           AlertDescription::illegal_parameter);
@@ -1846,7 +1857,7 @@ Status EventHandler<
 
   // We move the current key exchangers in so getHrrKeyExchangers can either
   // return the current set with ownership or create a new one.
-  std::map<NamedGroup, std::unique_ptr<KeyExchange>> keyExchangers;
+  KeyExchangers keyExchangers;
   TRY(getHrrKeyExchangers(
       keyExchangers,
       ctx,
