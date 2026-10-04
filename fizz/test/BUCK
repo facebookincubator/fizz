@@ -56,6 +56,9 @@ fizz_cpp_unittest(
     srcs = [
         "HandshakeTest.cpp",
     ],
+    source_headers = [
+        "HandshakeTest.h",
+    ],
     supports_static_listing = False,
     deps = [
         ":handshake_test_lib",
