@@ -206,9 +206,11 @@ def fizz_cpp_binary(name, deps, **kwargs):
 def fizz_cxx_binary(name, **kwargs):
     fb_xplat_cxx_binary(name = name, platforms = (CXX,), contacts = ["oncall+secure_pipes@xmail.facebook.com"], **kwargs)
 
-def fizz_cpp_unittest(name, deps, external_deps = (), supports_static_listing = True, **kwargs):
+def fizz_cpp_unittest(name, deps, external_deps = (), supports_static_listing = True, source_headers = None, **kwargs):
     if get_fbsource_cell() == "fbcode":
-        cpp_unittest(name = name, supports_static_listing = supports_static_listing, deps = deps, external_deps = external_deps, **kwargs)
+        cpp_unittest(
+            name = name, supports_static_listing = supports_static_listing, source_headers = source_headers, deps = deps, external_deps = external_deps, **kwargs
+        )
     else:
         converted_deps = deps_map_utils.convert_all_to_fbsource_deps(
             deps = deps,
