@@ -42,6 +42,7 @@ INSTANTIATE_TEST_SUITE_P(
         NamedGroup::x25519
 #if FIZZ_HAVE_OQS
         ,
+        NamedGroup::MLKEM512X25519,
         NamedGroup::X25519MLKEM512_FB,
         NamedGroup::X25519MLKEM768
 #endif

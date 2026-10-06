@@ -59,6 +59,7 @@ inline Status parse(NamedGroup& ret, Error& err, folly::StringPiece s) {
       {"secp384r1", NamedGroup::secp384r1},
       {"secp521r1", NamedGroup::secp521r1},
       {"x25519", NamedGroup::x25519},
+      {"MLKEM512X25519", NamedGroup::MLKEM512X25519},
       {"X25519MLKEM512_FB", NamedGroup::X25519MLKEM512_FB},
       {"X25519MLKEM768", NamedGroup::X25519MLKEM768},
       {"MLKEM512", NamedGroup::MLKEM512},

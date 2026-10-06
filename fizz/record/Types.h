@@ -334,8 +334,9 @@ enum class NamedGroup : uint16_t {
   MLKEM768 = 513,
   MLKEM1024 = 514,
   SecP256r1MLKEM768 = 4587,
-  X25519MLKEM512_FB = 65026,
   X25519MLKEM768 = 4588,
+  MLKEM512X25519 = 4586,
+  X25519MLKEM512_FB = 65026,
 
   // Deprecated: Kyber groups are no longer used for key exchange but are
   // retained for logging/observability.

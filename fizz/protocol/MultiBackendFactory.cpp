@@ -53,6 +53,7 @@ Status MultiBackendFactory::makeKeyExchange(
       ret = std::move(hybridKex);
       return Status::Success;
     }
+    case NamedGroup::MLKEM512X25519:
     case NamedGroup::X25519MLKEM512_FB: {
       std::unique_ptr<KeyExchange> oqsKex;
       FIZZ_RETURN_ON_ERROR(
