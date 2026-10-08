@@ -37,11 +37,11 @@ TEST(GreaseECHTest, TestGenerateRandomGreaseECH) {
       generateGreaseECH(greaseEch, err, setting, factory, 0), Status::Success);
 
   std::array<hpke::KDFId, 3> kdfs{
-      hpke::KDFId::Sha256, hpke::KDFId::Sha384, hpke::KDFId::Sha512};
+      {hpke::KDFId::Sha256, hpke::KDFId::Sha384, hpke::KDFId::Sha512}};
   std::array<hpke::AeadId, 3> aeads{
-      hpke::AeadId::TLS_AES_128_GCM_SHA256,
-      hpke::AeadId::TLS_AES_256_GCM_SHA384,
-      hpke::AeadId::TLS_CHACHA20_POLY1305_SHA256};
+      {hpke::AeadId::TLS_AES_128_GCM_SHA256,
+       hpke::AeadId::TLS_AES_256_GCM_SHA384,
+       hpke::AeadId::TLS_CHACHA20_POLY1305_SHA256}};
 
   EXPECT_NE(
       kdfs.end(),
@@ -50,7 +50,7 @@ TEST(GreaseECHTest, TestGenerateRandomGreaseECH) {
       aeads.end(),
       std::find(aeads.begin(), aeads.end(), greaseEch.cipher_suite.aead_id));
 
-  std::array<size_t, 3> keyLengths{32, 48, 64};
+  std::array<size_t, 3> keyLengths{{32, 48, 64}};
   EXPECT_NE(
       keyLengths.end(),
       std::find(

@@ -31,7 +31,7 @@ TEST(UtilsTest, TestEqual) {
 }
 
 TEST(UtilsTest, TestClean) {
-  std::array<uint8_t, 8> a{'p', 'a', 's', 's', 'w', 'o', 'r', 'd'};
+  std::array<uint8_t, 8> a{{'p', 'a', 's', 's', 'w', 'o', 'r', 'd'}};
   CryptoUtils::clean(range(a));
   for (auto byte : a) {
     EXPECT_EQ(byte, 0);

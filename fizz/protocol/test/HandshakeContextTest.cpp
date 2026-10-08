@@ -83,7 +83,7 @@ TEST_F(HandshakeContextTest, TestEmpty) {
       Status::Success);
   Buf hashBuf;
   EXPECT_EQ(context->getHandshakeContext(hashBuf, err), Status::Success);
-  std::array<uint8_t, Sha256::HashLen> key{4};
+  std::array<uint8_t, Sha256::HashLen> key{{4}};
   Buf f;
   EXPECT_EQ(
       context->getFinishedData(f, err, folly::range(key)), Status::Success);
