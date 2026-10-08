@@ -5366,11 +5366,17 @@ TEST_F(ClientProtocolTest, TestFinishedEarlyFlowOmitEarlyRecord) {
       &raead,
       folly::StringPiece("sat"),
       folly::none,
-      nullptr,
+      Sequence{},
       true,
       false);
   expectEncryptedWriteRecordLayerCreation(
-      &wrl, &waead, folly::StringPiece("cat"), nullptr, nullptr, true, false);
+      &wrl,
+      &waead,
+      folly::StringPiece("cat"),
+      nullptr,
+      Sequence{},
+      true,
+      false);
   EXPECT_CALL(*mockKeyScheduler_, clearMasterSecret(_));
 
   fizz::Param param(TestMessages::finished());
@@ -5884,7 +5890,7 @@ TEST_F(ClientProtocolTest, TestKeyUpdateNotRequested) {
       &raead,
       folly::StringPiece("sat"),
       folly::none,
-      nullptr,
+      Sequence{},
       true,
       false);
 
@@ -5984,11 +5990,17 @@ TEST_F(ClientProtocolTest, TestKeyUpdateRequestFlow) {
       &raead,
       folly::StringPiece("sat"),
       folly::none,
-      nullptr,
+      Sequence{},
       true,
       false);
   expectEncryptedWriteRecordLayerCreation(
-      &wrl, &waead, folly::StringPiece("cat"), nullptr, nullptr, true, false);
+      &wrl,
+      &waead,
+      folly::StringPiece("cat"),
+      nullptr,
+      Sequence{},
+      true,
+      false);
 
   fizz::Param param(TestMessages::keyUpdate(true));
   auto actions = detail::processEvent(state_, param);
@@ -6056,7 +6068,13 @@ TEST_F(ClientProtocolTest, TestClientInitiatedKeyUpdate) {
   MockEncryptedWriteRecordLayer* wrl;
   expectAeadCreation({{"clientkey", &waead}});
   expectEncryptedWriteRecordLayerCreation(
-      &wrl, &waead, folly::StringPiece("cat"), nullptr, nullptr, true, false);
+      &wrl,
+      &waead,
+      folly::StringPiece("cat"),
+      nullptr,
+      Sequence{},
+      true,
+      false);
 
   KeyUpdateInitiation kui;
   kui.request_update = KeyUpdateRequest::update_not_requested;

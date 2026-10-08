@@ -187,11 +187,11 @@ class ProtocolTest : public testing::Test {
       MockAead** readAead,
       folly::ByteRange expectedBaseSecret,
       folly::Optional<bool> skipFailedDecryption = folly::none,
-      Sequence* s = nullptr,
+      const Sequence& s = Sequence{},
       bool expectConfigureClientRecordLayer = false,
       bool expectConfigureServerRecordLayer = false) {
     EXPECT_CALL(*factory_, makeEncryptedReadRecordLayer(_))
-        .InSequence(s ? *s : Sequence())
+        .InSequence(s)
         .WillOnce(Invoke([=](EncryptionLevel encryptionLevel) {
           auto ret =
               std::make_unique<MockEncryptedReadRecordLayer>(encryptionLevel);
@@ -224,11 +224,11 @@ class ProtocolTest : public testing::Test {
       folly::ByteRange expectedBaseSecret,
       std::function<TLSContent(TLSMessage&, MockEncryptedWriteRecordLayer*)>
           expectedWrite = nullptr,
-      Sequence* s = nullptr,
+      const Sequence& s = Sequence{},
       bool expectConfigureClientRecordLayer = false,
       bool expectConfigureServerRecordLayer = false) {
     EXPECT_CALL(*factory_, makeEncryptedWriteRecordLayer(_))
-        .InSequence(s ? *s : Sequence())
+        .InSequence(s)
         .WillOnce(Invoke([=, expectedWrite = std::move(expectedWrite)](
                              EncryptionLevel encryptionLevel) mutable {
           auto ret =

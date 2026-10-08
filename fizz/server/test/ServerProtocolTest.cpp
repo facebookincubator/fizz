@@ -790,9 +790,9 @@ TEST_F(ServerProtocolTest, TestClientHelloFullHandshakeFlow) {
         content.data = folly::IOBuf::copyBuffer("handshake");
         return content;
       },
-      &recSeq);
+      recSeq);
   expectEncryptedWriteRecordLayerCreation(
-      &appwrl, &appwaead, folly::StringPiece("sat"), nullptr, &recSeq);
+      &appwrl, &appwaead, folly::StringPiece("sat"), nullptr, recSeq);
   EXPECT_CALL(*mockHandshakeContext_, _appendToTranscript(_))
       .InSequence(contextSeq);
   EXPECT_CALL(*certManager_, _getCert(_, _, _, _))
@@ -1079,9 +1079,9 @@ TEST_F(ServerProtocolTest, TestClientHelloAsyncCertFullHandshakeFlow) {
         content.data = folly::IOBuf::copyBuffer("handshake");
         return content;
       },
-      &recSeq);
+      recSeq);
   expectEncryptedWriteRecordLayerCreation(
-      &appwrl, &appwaead, folly::StringPiece("sat"), nullptr, &recSeq);
+      &appwrl, &appwaead, folly::StringPiece("sat"), nullptr, recSeq);
   EXPECT_CALL(*mockHandshakeContext_, _appendToTranscript(_))
       .InSequence(contextSeq);
   EXPECT_CALL(*certManager_, _getCert(_, _, _, _))
@@ -1386,9 +1386,9 @@ TEST_F(ServerProtocolTest, TestClientHelloCompressedCertFlow) {
         content.data = folly::IOBuf::copyBuffer("handshake");
         return content;
       },
-      &recSeq);
+      recSeq);
   expectEncryptedWriteRecordLayerCreation(
-      &appwrl, &appwaead, folly::StringPiece("sat"), nullptr, &recSeq);
+      &appwrl, &appwaead, folly::StringPiece("sat"), nullptr, recSeq);
   EXPECT_CALL(*mockHandshakeContext_, _appendToTranscript(_))
       .InSequence(contextSeq);
   EXPECT_CALL(*certManager_, _getCert(_, _, _, _))
@@ -1738,9 +1738,9 @@ TEST_F(ServerProtocolTest, TestECHDecryptionSuccess) {
         content.data = folly::IOBuf::copyBuffer("handshake");
         return content;
       },
-      &recSeq);
+      recSeq);
   expectEncryptedWriteRecordLayerCreation(
-      &appwrl, &appwaead, folly::StringPiece("sat"), nullptr, &recSeq);
+      &appwrl, &appwaead, folly::StringPiece("sat"), nullptr, recSeq);
   EXPECT_CALL(*mockHandshakeContext_, _appendToTranscript(_))
       .InSequence(contextSeq);
   EXPECT_CALL(*mockHandshakeContext_, _appendToTranscript(_))
@@ -2092,9 +2092,9 @@ TEST_F(ServerProtocolTest, TestECHDecryptionFailure) {
         content.data = folly::IOBuf::copyBuffer("handshake");
         return content;
       },
-      &recSeq);
+      recSeq);
   expectEncryptedWriteRecordLayerCreation(
-      &appwrl, &appwaead, folly::StringPiece("sat"), nullptr, &recSeq);
+      &appwrl, &appwaead, folly::StringPiece("sat"), nullptr, recSeq);
   EXPECT_CALL(*mockHandshakeContext_, _appendToTranscript(_))
       .InSequence(contextSeq);
   EXPECT_CALL(*mockHandshakeContext_, _appendToTranscript(_))
@@ -2383,9 +2383,9 @@ TEST_F(ServerProtocolTest, TestClientHelloCertRequestFlow) {
         content.data = folly::IOBuf::copyBuffer("handshake");
         return content;
       },
-      &recSeq);
+      recSeq);
   expectEncryptedWriteRecordLayerCreation(
-      &appwrl, &appwaead, folly::StringPiece("sat"), nullptr, &recSeq);
+      &appwrl, &appwaead, folly::StringPiece("sat"), nullptr, recSeq);
   EXPECT_CALL(*mockHandshakeContext_, _appendToTranscript(_))
       .InSequence(contextSeq);
   EXPECT_CALL(*mockHandshakeContext_, _appendToTranscript(_))
@@ -2662,9 +2662,9 @@ TEST_F(ServerProtocolTest, TestClientHelloPskFlow) {
         content.data = folly::IOBuf::copyBuffer("handshake");
         return content;
       },
-      &recSeq);
+      recSeq);
   expectEncryptedWriteRecordLayerCreation(
-      &appwrl, &appwaead, folly::StringPiece("sat"), nullptr, &recSeq);
+      &appwrl, &appwaead, folly::StringPiece("sat"), nullptr, recSeq);
   EXPECT_CALL(*mockHandshakeContext_, _appendToTranscript(_))
       .InSequence(contextSeq);
   EXPECT_CALL(*mockHandshakeContext_, _getFinishedData(RangeMatches("sht")))
@@ -2912,9 +2912,9 @@ TEST_F(ServerProtocolTest, TestClientHelloPskDheFlow) {
         content.data = folly::IOBuf::copyBuffer("handshake");
         return content;
       },
-      &recSeq);
+      recSeq);
   expectEncryptedWriteRecordLayerCreation(
-      &appwrl, &appwaead, folly::StringPiece("sat"), nullptr, &recSeq);
+      &appwrl, &appwaead, folly::StringPiece("sat"), nullptr, recSeq);
   EXPECT_CALL(*mockHandshakeContext_, _appendToTranscript(_))
       .InSequence(contextSeq);
   EXPECT_CALL(*mockHandshakeContext_, _getFinishedData(RangeMatches("sht")))
@@ -3212,9 +3212,9 @@ TEST_F(ServerProtocolTest, TestRetryClientHelloFullHandshakeFlow) {
         content.data = folly::IOBuf::copyBuffer("handshake");
         return content;
       },
-      &recSeq);
+      recSeq);
   expectEncryptedWriteRecordLayerCreation(
-      &appwrl, &appwaead, folly::StringPiece("sat"), nullptr, &recSeq);
+      &appwrl, &appwaead, folly::StringPiece("sat"), nullptr, recSeq);
   EXPECT_CALL(*mockHandshakeContext_, _appendToTranscript(_))
       .InSequence(contextSeq);
   EXPECT_CALL(*certManager_, _getCert(_, _, _, _))
@@ -3500,9 +3500,9 @@ TEST_F(ServerProtocolTest, TestRetryClientHelloPskDheFlow) {
         content.data = folly::IOBuf::copyBuffer("handshake");
         return content;
       },
-      &recSeq);
+      recSeq);
   expectEncryptedWriteRecordLayerCreation(
-      &appwrl, &appwaead, folly::StringPiece("sat"), nullptr, &recSeq);
+      &appwrl, &appwaead, folly::StringPiece("sat"), nullptr, recSeq);
   EXPECT_CALL(*mockHandshakeContext_, _appendToTranscript(_))
       .InSequence(contextSeq);
   EXPECT_CALL(*mockHandshakeContext_, _getFinishedData(RangeMatches("sht")))
@@ -3765,9 +3765,9 @@ TEST_F(ServerProtocolTest, TestRetryClientHelloECHFlow) {
         content.data = folly::IOBuf::copyBuffer("handshake");
         return content;
       },
-      &recSeq);
+      recSeq);
   expectEncryptedWriteRecordLayerCreation(
-      &appwrl, &appwaead, folly::StringPiece("sat"), nullptr, &recSeq);
+      &appwrl, &appwaead, folly::StringPiece("sat"), nullptr, recSeq);
   EXPECT_CALL(*mockHandshakeContext_, _appendToTranscript(_))
       .InSequence(contextSeq);
   EXPECT_CALL(*certManager_, _getCert(_, _, _, _))
@@ -4077,9 +4077,9 @@ TEST_F(ServerProtocolTest, TestRetryClientHelloECHRejectedFlow) {
         content.data = folly::IOBuf::copyBuffer("handshake");
         return content;
       },
-      &recSeq);
+      recSeq);
   expectEncryptedWriteRecordLayerCreation(
-      &appwrl, &appwaead, folly::StringPiece("sat"), nullptr, &recSeq);
+      &appwrl, &appwaead, folly::StringPiece("sat"), nullptr, recSeq);
   EXPECT_CALL(*mockHandshakeContext_, _appendToTranscript(_))
       .InSequence(contextSeq);
   EXPECT_CALL(*certManager_, _getCert(_, _, _, _))
@@ -4390,9 +4390,9 @@ TEST_F(ServerProtocolTest, TestClientHelloPskDheEarlyFlow) {
       &earlyaead,
       folly::StringPiece("cet"),
       folly::none,
-      &readRecSeq);
+      readRecSeq);
   expectEncryptedReadRecordLayerCreation(
-      &handshakerrl, &raead, folly::StringPiece("cht"), false, &readRecSeq);
+      &handshakerrl, &raead, folly::StringPiece("cht"), false, readRecSeq);
   Sequence recSeq;
   expectEncryptedWriteRecordLayerCreation(
       &wrl,
@@ -4412,9 +4412,9 @@ TEST_F(ServerProtocolTest, TestClientHelloPskDheEarlyFlow) {
         content.data = folly::IOBuf::copyBuffer("handshake");
         return content;
       },
-      &recSeq);
+      recSeq);
   expectEncryptedWriteRecordLayerCreation(
-      &appwrl, &appwaead, folly::StringPiece("sat"), nullptr, &recSeq);
+      &appwrl, &appwaead, folly::StringPiece("sat"), nullptr, recSeq);
   EXPECT_CALL(*mockHandshakeContext_, _appendToTranscript(_))
       .InSequence(contextSeq);
   EXPECT_CALL(*mockHandshakeContext_, _getFinishedData(RangeMatches("sht")))
@@ -4683,9 +4683,9 @@ TEST_F(ServerProtocolTest, TestClientHelloPskEarlyFlow) {
       &earlyaead,
       folly::StringPiece("cet"),
       folly::none,
-      &readRecSeq);
+      readRecSeq);
   expectEncryptedReadRecordLayerCreation(
-      &handshakerrl, &raead, folly::StringPiece("cht"), false, &readRecSeq);
+      &handshakerrl, &raead, folly::StringPiece("cht"), false, readRecSeq);
   Sequence recSeq;
   expectEncryptedWriteRecordLayerCreation(
       &wrl,
@@ -4705,9 +4705,9 @@ TEST_F(ServerProtocolTest, TestClientHelloPskEarlyFlow) {
         content.data = folly::IOBuf::copyBuffer("handshake");
         return content;
       },
-      &recSeq);
+      recSeq);
   expectEncryptedWriteRecordLayerCreation(
-      &appwrl, &appwaead, folly::StringPiece("sat"), nullptr, &recSeq);
+      &appwrl, &appwaead, folly::StringPiece("sat"), nullptr, recSeq);
   EXPECT_CALL(*mockHandshakeContext_, _appendToTranscript(_))
       .InSequence(contextSeq);
   EXPECT_CALL(*mockHandshakeContext_, _getFinishedData(RangeMatches("sht")))
@@ -6528,7 +6528,7 @@ TEST_F(ServerProtocolTest, TestFullHandshakeFinished) {
       &raead,
       folly::StringPiece("cat"),
       folly::none,
-      nullptr,
+      Sequence{},
       false,
       true);
   EXPECT_CALL(*factory_, _makeRandomBytes(_, 4))
@@ -6971,7 +6971,7 @@ TEST_F(ServerProtocolTest, TestKeyUpdateNotRequested) {
       &raead,
       folly::StringPiece("cat"),
       folly::none,
-      nullptr,
+      Sequence{},
       false,
       true);
 
@@ -7064,11 +7064,17 @@ TEST_F(ServerProtocolTest, TestKeyUpdateRequest) {
       &raead,
       folly::StringPiece("cat"),
       folly::none,
-      nullptr,
+      Sequence{},
       false,
       true);
   expectEncryptedWriteRecordLayerCreation(
-      &wrl, &waead, folly::StringPiece("sat"), nullptr, nullptr, false, true);
+      &wrl,
+      &waead,
+      folly::StringPiece("sat"),
+      nullptr,
+      Sequence{},
+      false,
+      true);
   fizz::Param param = TestMessages::keyUpdate(true);
   auto actions = getActions(detail::processEvent(state_, param));
   expectActions<MutateState, WriteToSocket, SecretAvailable>(actions);
