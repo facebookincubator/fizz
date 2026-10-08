@@ -503,13 +503,13 @@ TEST_F(KTLSReadTest, HandshakeRecordSmallBuffer) {
       }));
 
   EXPECT_CALL(*mockTLSCB_, receivedNewSessionTicket(_, _))
-      .WillOnce(Invoke([&](auto&&, fizz::NewSessionTicket ticket) {
+      .WillOnce([&](auto&&, fizz::NewSessionTicket ticket) {
         EXPECT_EQ(ticket.ticket_lifetime, 100);
         EXPECT_EQ(ticket.ticket_age_add, 20);
         EXPECT_EQ("abc", ticket.ticket_nonce->to<std::string>());
         EXPECT_EQ("123", ticket.ticket->to<std::string>());
         serverConn_->setReadCB(nullptr);
-      }));
+      });
   serverConn_->setReadCB(&mockReadCB_);
   evb_.loop();
 }
