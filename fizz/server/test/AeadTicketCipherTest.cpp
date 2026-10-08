@@ -115,7 +115,7 @@ class AeadTicketCipherTest : public Test {
     auto s2 = toIOBuf(ticketSecret2);
     std::vector<folly::ByteRange> ticketSecrets{
         {s1->coalesce(), s2->coalesce()}};
-    EXPECT_TRUE(cipher_.setTicketSecrets(std::move(ticketSecrets)));
+    EXPECT_TRUE(cipher_.setTicketSecrets(ticketSecrets));
   }
 
   void expectDecode() {
