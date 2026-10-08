@@ -5455,8 +5455,8 @@ void ClientProtocolTest::doFinishedFlow(ClientAuthType authType) {
     if (authType == ClientAuthType::Sent) {
       EXPECT_CALL(*mockHandshakeContext_, _getHandshakeContext())
           .InSequence(contextSeq)
-          .WillRepeatedly(Invoke(
-              []() { return folly::IOBuf::copyBuffer("csentcontext"); }));
+          .WillRepeatedly(
+              []() { return folly::IOBuf::copyBuffer("csentcontext"); });
       EXPECT_CALL(
           *mockClientCert_,
           _sign(
