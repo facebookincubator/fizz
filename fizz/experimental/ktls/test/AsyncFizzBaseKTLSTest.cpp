@@ -277,9 +277,9 @@ TEST(AsyncFizzBaseKTLSTest, TestFizzClientKTLSServer) {
     fizzSock->setHandshakeRecordAlignedReads(true);
     fizzAccept(std::move(fizzSock))
         .via(&evb)
-        .thenValue([](AsyncFizzServer::UniquePtr fizzSock) {
+        .thenValue([](AsyncFizzServer::UniquePtr acceptedSock) {
           FIZZ_VLOG(1) << "finished handshaking";
-          auto ktlsSocket = mustConvertKTLS(*fizzSock);
+          auto ktlsSocket = mustConvertKTLS(*acceptedSock);
 
           EXPECT_NE(ktlsSocket->getSelfCertificate(), nullptr);
           EXPECT_EQ(ktlsSocket->getSelfCertificate()->getIdentity(), "Fizz");
@@ -352,12 +352,12 @@ TEST(AsyncFizzBaseKTLSTest, TestKTLSClientFizzServer) {
 
     fizzAccept(std::move(fizzSock))
         .via(&evb)
-        .thenValue([](AsyncFizzServer::UniquePtr fizzSock) {
+        .thenValue([](AsyncFizzServer::UniquePtr acceptedSock) {
           FIZZ_VLOG(1) << "finished handshaking";
-          fizzSock->write(
+          acceptedSock->write(
               nullptr, "hello from fizz", sizeof("hello from fizz") - 1);
           auto read =
-              new OneshotRead<AsyncFizzServer>(std::move(fizzSock), 512);
+              new OneshotRead<AsyncFizzServer>(std::move(acceptedSock), 512);
           return read->await();
         })
         .thenValue([](auto&& res) {
@@ -420,8 +420,8 @@ TEST(AsyncFizzBaseKTLSTest, TestKTLSClientFizzServer) {
     fizzSock.reset(new AsyncFizzServer(std::move(sock), serverCtx));
     fizzAccept(std::move(fizzSock))
         .via(&evb)
-        .thenValue([](auto&& sock) {
-          auto pskType = sock->getState().pskType();
+        .thenValue([](auto&& acceptedSock) {
+          auto pskType = acceptedSock->getState().pskType();
           ASSERT_TRUE(pskType.has_value());
           EXPECT_EQ(pskType.value(), PskType::Resumption);
         })

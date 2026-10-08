@@ -554,13 +554,13 @@ TEST_F(AsyncFizzClientTest, TestSocketConnectWithOpenSocket) {
   MockAsyncSocket mockSocket(&evb);
   EXPECT_CALL(*socket_, getWrappedTransport()).WillOnce(Return(&mockSocket));
   EXPECT_CALL(mockSocket, connect_(_, _, _, _, _, _))
-      .WillOnce(Invoke([](AsyncSocket::ConnectCallback* cb,
+      .WillOnce(Invoke([](AsyncSocket::ConnectCallback* connectCb,
                           const SocketAddress&,
                           int,
                           const SocketOptionMap&,
                           const AsyncSocketTransport::BindOptions&,
                           const std::string&) {
-        cb->connectErr(AsyncSocketException(
+        connectCb->connectErr(AsyncSocketException(
             AsyncSocketException::ALREADY_OPEN, "socket already open"));
       }));
   EXPECT_CALL(*machine_, _processConnect(_, _, _, _, _, _, _)).Times(0);

@@ -48,8 +48,8 @@ INSTANTIATE_TEST_SUITE_P(
 #endif
         ),
     [](const testing::TestParamInfo<
-        MultiBackendFactoryHandshakeTest::ParamType>& info) {
-      return toString(info.param);
+        MultiBackendFactoryHandshakeTest::ParamType>& paramInfo) {
+      return toString(paramInfo.param);
     });
 
 } // namespace test

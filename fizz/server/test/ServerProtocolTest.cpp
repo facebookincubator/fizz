@@ -596,10 +596,10 @@ TEST_F(ServerProtocolTest, TestAppClose) {
   folly::variant_match(
       actions2,
       ::fizz::detail::result_type<void>(),
-      [this](Actions& actions) {
-        expectActions<MutateState, EndOfData>(actions);
-        processStateMutations(actions);
-        auto eod = expectAction<EndOfData>(actions);
+      [this](Actions& eodActions) {
+        expectActions<MutateState, EndOfData>(eodActions);
+        processStateMutations(eodActions);
+        auto eod = expectAction<EndOfData>(eodActions);
         EXPECT_NE(eod.postTlsData, nullptr);
         auto expected = folly::IOBuf::copyBuffer("ignoreddata");
         EXPECT_EQ(eod.postTlsData->coalesce(), expected->coalesce());
