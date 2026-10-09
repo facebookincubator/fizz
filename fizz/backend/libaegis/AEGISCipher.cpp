@@ -34,8 +34,28 @@ class LibAegisCipherBase {
 template <typename Impl>
 class LibAegisCipher : public LibAegisCipherBase {
  public:
-  ~LibAegisCipher() override = default;
   LibAegisCipher() : state_({}) {}
+
+  // state_encrypt_final() / state_decrypt_final() write the AEGIS state back
+  // into state_ and libaegis offers no reset for an AEAD state, so nothing
+  // reads that copy. Erase it rather than leave key-equivalent material in the
+  // allocation. The empty asm block stops the stores being dropped as a dead
+  // store, as in OPENSSL_cleanse().
+  ~LibAegisCipher() override {
+    std::memset(&state_, 0, sizeof(state_));
+#if defined(__GNUC__) || defined(__clang__)
+    __asm__ __volatile__("" : : "r"(&state_) : "memory");
+#endif
+  }
+
+  // Not copyable or movable by design: a copy would duplicate the secret state
+  // into a second object, and a move would leave the source holding a stale
+  // copy that its own destructor then erases. Exactly one owner, erased once.
+  LibAegisCipher(const LibAegisCipher&) = delete;
+  LibAegisCipher& operator=(const LibAegisCipher&) = delete;
+  LibAegisCipher(LibAegisCipher&&) = delete;
+  LibAegisCipher& operator=(LibAegisCipher&&) = delete;
+
   void stateInit(
       const uint8_t* ad,
       size_t adlen,
