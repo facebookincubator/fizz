@@ -511,9 +511,7 @@ void AsyncFizzBase::endOfTLS(std::unique_ptr<folly::IOBuf> endOfData) noexcept {
   }
 
   if (endOfTLSCallback_) {
-    if (endOfTLSPolicy_ == EndOfTLSPolicy::StopTransportReads) {
-      transport_->setReadCB(nullptr);
-    }
+    transport_->setReadCB(nullptr);
     endOfTLSCallback_->endOfTLS(this, std::move(endOfData));
   } else {
     // The end of TLS callback may not want the socket to be closed but by

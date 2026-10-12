@@ -85,23 +85,6 @@ class AsyncFizzBase : public folly::WriteChainAsyncTransportWrapper<
         std::unique_ptr<folly::IOBuf> endOfData) = 0;
   };
 
-  /**
-   * Governs whether Fizz keeps reading the underlying transport once the TLS
-   * session has ended, up until the EndOfTLSCallback takes the socket over.
-   */
-  enum class EndOfTLSPolicy {
-    /**
-     * Fizz keeps reading from the underlying transport.
-     */
-    KeepTransportReads,
-
-    /**
-     * Fizz detaches its read callback from the underlying transport before
-     * invoking endOfTLS().
-     */
-    StopTransportReads,
-  };
-
   /* Interface used to get a reference to a folly::IOBufIovecBuilder
    */
   struct IOVecQueueOps {
@@ -331,17 +314,10 @@ class AsyncFizzBase : public folly::WriteChainAsyncTransportWrapper<
   // data remaining after the close notify. This is passed along to the caller
   // in the endOfTLS method, and the caller must decide what to do with the
   // data.
+  // 4. We detach our read callback from the transport before invoking
+  // endOfTLS, so no further data is drained from it after the close notify.
   virtual void setEndOfTLSCallback(EndOfTLSCallback* cb) {
-    setEndOfTLSCallback(cb, EndOfTLSPolicy::KeepTransportReads);
-  }
-
-  // As above, but selects how Fizz treats the underlying transport between
-  // close_notify and the callback taking the socket over. See EndOfTLSPolicy.
-  virtual void setEndOfTLSCallback(
-      EndOfTLSCallback* cb,
-      EndOfTLSPolicy policy) {
     endOfTLSCallback_ = cb;
-    endOfTLSPolicy_ = policy;
   }
 
   /**
@@ -680,7 +656,6 @@ class AsyncFizzBase : public folly::WriteChainAsyncTransportWrapper<
 
   SecretCallback* secretCallback_{nullptr};
   EndOfTLSCallback* endOfTLSCallback_{nullptr};
-  EndOfTLSPolicy endOfTLSPolicy_{EndOfTLSPolicy::KeepTransportReads};
 
   folly::Optional<std::string> securityProtocolOverride_;
 
