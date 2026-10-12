@@ -269,6 +269,9 @@ struct CertificateRequest : HandshakeStruct<
   X(::fizz::SignatureScheme, rsa_pss_sha512, 0x0806),               \
   X(::fizz::SignatureScheme, ed25519, 0x0807),                      \
   X(::fizz::SignatureScheme, ed448, 0x0808),                        \
+  X(::fizz::SignatureScheme, mldsa44, 0x0904),                      \
+  X(::fizz::SignatureScheme, mldsa65, 0x0905),                      \
+  X(::fizz::SignatureScheme, mldsa87, 0x0906),                      \
   /* all batch scheme type numbers are temporarily assigned */      \
   X(::fizz::SignatureScheme, ecdsa_secp256r1_sha256_batch, 0xFE00), \
   X(::fizz::SignatureScheme, ecdsa_secp384r1_sha384_batch, 0xFE01), \

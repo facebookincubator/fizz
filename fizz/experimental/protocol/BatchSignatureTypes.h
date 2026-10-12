@@ -41,6 +41,9 @@ struct BatchSignatureSchemes<Sha256> {
         return SignatureScheme::rsa_pss_sha256_batch;
       case SignatureScheme::ed25519:
       case SignatureScheme::ed448:
+      case SignatureScheme::mldsa44:
+      case SignatureScheme::mldsa65:
+      case SignatureScheme::mldsa87:
       case SignatureScheme::ecdsa_secp384r1_sha384:
       case SignatureScheme::ecdsa_secp521r1_sha512:
       case SignatureScheme::rsa_pss_sha384:

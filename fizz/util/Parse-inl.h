@@ -41,7 +41,10 @@ inline Status parse(SignatureScheme& ret, Error& err, folly::StringPiece s) {
       {"rsa_pss_sha384", SignatureScheme::rsa_pss_sha384},
       {"rsa_pss_sha512", SignatureScheme::rsa_pss_sha512},
       {"ed25519", SignatureScheme::ed25519},
-      {"ed448", SignatureScheme::ed448}};
+      {"ed448", SignatureScheme::ed448},
+      {"mldsa44", SignatureScheme::mldsa44},
+      {"mldsa65", SignatureScheme::mldsa65},
+      {"mldsa87", SignatureScheme::mldsa87}};
 
   auto location = stringToSchemes.find(s);
   if (location != stringToSchemes.end()) {

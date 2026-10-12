@@ -232,6 +232,12 @@ std::string toString(SignatureScheme sigScheme) {
       return "ed25519";
     case SignatureScheme::ed448:
       return "ed448";
+    case SignatureScheme::mldsa44:
+      return "mldsa44";
+    case SignatureScheme::mldsa65:
+      return "mldsa65";
+    case SignatureScheme::mldsa87:
+      return "mldsa87";
     case SignatureScheme::ecdsa_secp256r1_sha256_batch:
       return "ecdsa_secp256r1_sha256_batch";
     case SignatureScheme::ecdsa_secp384r1_sha384_batch:

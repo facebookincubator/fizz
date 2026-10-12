@@ -41,6 +41,9 @@ folly::Optional<BatchSchemeInfo> getBatchSchemeInfo(
     case SignatureScheme::rsa_pss_sha512:
     case SignatureScheme::ed25519:
     case SignatureScheme::ed448:
+    case SignatureScheme::mldsa44:
+    case SignatureScheme::mldsa65:
+    case SignatureScheme::mldsa87:
       return folly::none;
   }
   if (!supportedBaseSchemes.empty() &&
