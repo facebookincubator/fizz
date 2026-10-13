@@ -6,7 +6,6 @@ constraint_with_aliases(
     name = "profile",
     aliases = {
         "mnscrypto-only": "mnscrypto-only",
-        "xplat": "xplat",
     },
     default = "unspecified",
     values = [
