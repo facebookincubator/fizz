@@ -19,6 +19,7 @@ psp_library(
         "//folly/io/async:async_socket",
     ],
     exported_deps = [
+        "//fizz/protocol:async_fizz_base",
         "//folly:exception_wrapper",
         "//folly:executor",
         "//folly:unit",

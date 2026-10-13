@@ -7,14 +7,17 @@ fizz_cpp_unittest(
     srcs = [
         "PSPTest.cpp",
         "PSPUpgradeTest.cpp",
+        "PSPUpgradeV1Test.cpp",
     ],
     deps = [
         "//fizz/experimental/psp:psp",
+        "//fizz/protocol/test:mocks",
         "//folly/futures:core",
         "//folly/io/async:async_socket",
         "//folly/io/async:async_transport",
         "//folly/io/async/test:mocks",
         "//folly/portability:gmock",
+        "//folly/portability:gtest",
         "//folly/test:test_utils",
     ],
 )

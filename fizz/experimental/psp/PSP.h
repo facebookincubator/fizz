@@ -8,6 +8,7 @@
 
 #pragma once
 
+#include <fizz/protocol/AsyncFizzBase.h>
 #include <folly/ExceptionWrapper.h>
 #include <folly/Executor.h>
 #include <folly/Unit.h>
@@ -140,6 +141,16 @@ class AsyncPSPUpgradeFrame {
  */
 std::unique_ptr<AsyncPSPUpgradeFrame> pspUpgradeV0(
     folly::AsyncTransport* transport,
+    PSPVersion version,
+    const std::shared_ptr<KernelPSP>& ops);
+
+/**
+ * Constructs an asynchronous PSP upgrade operation, using the Fizz PSP Upgrade
+ * Protocol V1. V1 addressed the issue with the post tls data in between tls end
+ * and psp upgrade
+ */
+std::unique_ptr<AsyncPSPUpgradeFrame> pspUpgradeV1(
+    AsyncFizzBase* transport,
     PSPVersion version,
     const std::shared_ptr<KernelPSP>& ops);
 
