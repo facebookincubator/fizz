@@ -137,15 +137,6 @@ class AsyncPSPUpgradeFrame {
 
 /**
  * Constructs an asynchronous PSP upgrade operation, using the Fizz PSP Upgrade
- * Protocol V0.
- */
-std::unique_ptr<AsyncPSPUpgradeFrame> pspUpgradeV0(
-    folly::AsyncTransport* transport,
-    PSPVersion version,
-    const std::shared_ptr<KernelPSP>& ops);
-
-/**
- * Constructs an asynchronous PSP upgrade operation, using the Fizz PSP Upgrade
  * Protocol V1. V1 addressed the issue with the post tls data in between tls end
  * and psp upgrade
  */
