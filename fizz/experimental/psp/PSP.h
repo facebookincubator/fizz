@@ -76,8 +76,13 @@ class Callback {
  public:
   /**
    * pspSuccess indicates that the `fd` is now a fully associated PSP socket.
+   * `postTlsData` carries data pulled in together with close_notify (the end of
+   * TLS), which has to be handled just like how stopTLS does on the post tls
+   * data in AsyncStopTLS.cpp
    */
-  virtual void pspSuccess(folly::NetworkSocket fd) noexcept = 0;
+  virtual void pspSuccess(
+      folly::NetworkSocket fd,
+      std::unique_ptr<folly::IOBuf> postTlsData) noexcept = 0;
 
   /**
    * pspError indicates that the upgrade process failed. The transport should

@@ -38,7 +38,7 @@ class MockCallback : public ::fizz::psp::Callback {
   MOCK_METHOD(
       void,
       pspSuccess,
-      (folly::NetworkSocket fd),
+      (folly::NetworkSocket fd, std::unique_ptr<folly::IOBuf> postTlsData),
       (noexcept, override));
   MOCK_METHOD(
       void,
@@ -536,7 +536,8 @@ TEST_F(AsyncPSPUpgradeTest, SuccessfulNegotiation) {
       });
 
   EXPECT_CALL(
-      mockCallback_, pspSuccess(Eq(folly::NetworkSocket::fromFd(serverFd_))));
+      mockCallback_,
+      pspSuccess(Eq(folly::NetworkSocket::fromFd(serverFd_)), _));
 
   setupLocalAwaitsPeerMessage(
       readCallback,
@@ -581,7 +582,8 @@ TEST_F(AsyncPSPUpgradeTest, SuccessfulNegotiationAsync) {
           });
 
   EXPECT_CALL(
-      mockCallback_, pspSuccess(Eq(folly::NetworkSocket::fromFd(serverFd_))));
+      mockCallback_,
+      pspSuccess(Eq(folly::NetworkSocket::fromFd(serverFd_)), _));
 
   setupLocalAwaitsPeerMessage(
       readCallback,
@@ -625,7 +627,8 @@ TEST_F(AsyncPSPUpgradeTest, SuccessfulNegotiationReadDataAvailableAPI) {
       });
 
   EXPECT_CALL(
-      mockCallback_, pspSuccess(Eq(folly::NetworkSocket::fromFd(serverFd_))));
+      mockCallback_,
+      pspSuccess(Eq(folly::NetworkSocket::fromFd(serverFd_)), _));
 
   setupLocalAwaitsPeerMessage(
       readCallback,
@@ -677,7 +680,8 @@ TEST_F(AsyncPSPUpgradeTest, SuccessfulNegotiationMultipleParts) {
       });
 
   EXPECT_CALL(
-      mockCallback_, pspSuccess(Eq(folly::NetworkSocket::fromFd(serverFd_))));
+      mockCallback_,
+      pspSuccess(Eq(folly::NetworkSocket::fromFd(serverFd_)), _));
 
   setupLocalAwaitsPeerMessage(
       readCallback,

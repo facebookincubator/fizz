@@ -270,7 +270,7 @@ class AsyncPSPUpgradeImpl : public ::fizz::psp::AsyncPSPUpgradeFrame,
 
         transport_ = nullptr;
         return prepareForTerminalCallback()->pspSuccess(
-            folly::NetworkSocket::fromFd(fd_));
+            folly::NetworkSocket::fromFd(fd_), nullptr);
       }
       default:
         FIZZ_LOG(FATAL) << "resumed in invalid state";
