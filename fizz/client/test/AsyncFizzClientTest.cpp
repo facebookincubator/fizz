@@ -492,9 +492,9 @@ TEST_F(AsyncFizzClientTest, TestSocketConnect) {
   EXPECT_CALL(*machine_, _processConnect(_, _, _, _, _, _, _)).WillOnce([]() {
     return detail::actions(ReportHandshakeSuccess(), WaitForData());
   });
-  EXPECT_CALL(cb, _connectSuccess()).WillOnce(Invoke([&evbClient]() {
+  EXPECT_CALL(cb, _connectSuccess()).WillOnce([&evbClient]() {
     evbClient->closeNow();
-  }));
+  });
 
   evbClient->connect(
       server->getAddress(),
