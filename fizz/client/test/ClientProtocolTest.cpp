@@ -3769,7 +3769,7 @@ TEST_F(ClientProtocolTest, TestHelloRetryRequestECHRejectedFlow) {
 
   EXPECT_CALL(*mockHpkeContext, _seal(_, _))
       .InSequence(contextSeq)
-      .WillOnce(Invoke(
+      .WillOnce(
           [&](const folly::IOBuf* aad, std::unique_ptr<folly::IOBuf>& pt) {
             EXPECT_TRUE(folly::IOBufEqualTo()(aad, clientHelloOuterAad.get()));
             EXPECT_TRUE(folly::IOBufEqualTo()(pt, encodedClientHelloInnerAad));
@@ -3777,7 +3777,7 @@ TEST_F(ClientProtocolTest, TestHelloRetryRequestECHRejectedFlow) {
             memset(sealed->writableData(), 0xEC, payloadSize);
             sealed->append(payloadSize);
             return sealed;
-          }));
+          });
   EXPECT_CALL(*mockEchHandshakeContext2, _appendToTranscript(_))
       .InSequence(contextSeq);
   EXPECT_CALL(*mockHandshakeContext2, _appendToTranscript(_))
