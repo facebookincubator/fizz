@@ -5771,6 +5771,53 @@ TEST_F(ClientProtocolTest, TestNewSessionTicket) {
       std::chrono::system_clock::time_point(std::chrono::minutes(4)));
 }
 
+TEST_F(ClientProtocolTest, TestNewSessionTicketWriteSideClosed) {
+  setupAcceptingData();
+  state_.clientCert() = mockClientCert_;
+  EXPECT_CALL(*mockWrite_, _write(_, _))
+      .WillOnce(Invoke([](TLSMessage&, Aead::AeadOptions) {
+        TLSContent content;
+        content.contentType = ContentType::alert;
+        return content;
+      }));
+
+  auto actions = ClientStateMachine().processAppClose(state_);
+  expectActions<MutateState, WriteToSocket>(actions);
+  processStateMutations(actions);
+  ASSERT_EQ(state_.state(), StateEnum::WriteSideClosed);
+  ASSERT_NE(state_.readRecordLayer(), nullptr);
+  ASSERT_EQ(state_.writeRecordLayer(), nullptr);
+
+  EXPECT_CALL(
+      *mockKeyScheduler_,
+      _getResumptionSecret(RangeMatches("resumptionsecret"), RangeMatches("")))
+      .WillOnce([]() { return folly::IOBuf::copyBuffer("derivedsecret"); });
+  fizz::Param param(TestMessages::newSessionTicket());
+  actions = detail::processEvent(state_, param);
+  auto newCachedPsk = expectSingleAction<NewCachedPsk>(std::move(actions));
+  auto psk = newCachedPsk.psk;
+  EXPECT_EQ(psk.psk, "ticket");
+  EXPECT_EQ(psk.secret, "derivedsecret");
+  EXPECT_EQ(psk.type, PskType::Resumption);
+  EXPECT_EQ(psk.version, ProtocolVersion::tls_1_3);
+  EXPECT_EQ(psk.cipher, CipherSuite::TLS_AES_128_GCM_SHA256);
+  EXPECT_EQ(psk.group, NamedGroup::x25519);
+  EXPECT_EQ(psk.serverCert, mockLeaf_);
+  EXPECT_EQ(psk.clientCert, mockClientCert_);
+  EXPECT_EQ(psk.maxEarlyDataSize, 0);
+  EXPECT_EQ(psk.ticketAgeAdd, 0x44444444);
+  EXPECT_EQ(
+      psk.ticketIssueTime,
+      std::chrono::system_clock::time_point(std::chrono::minutes(5)));
+  EXPECT_EQ(
+      psk.ticketHandshakeTime,
+      std::chrono::system_clock::time_point(std::chrono::minutes(4)));
+
+  EXPECT_EQ(state_.state(), StateEnum::WriteSideClosed);
+  EXPECT_NE(state_.readRecordLayer(), nullptr);
+  EXPECT_EQ(state_.writeRecordLayer(), nullptr);
+}
+
 TEST_F(ClientProtocolTest, TestNewSessionTicketNonce) {
   setupAcceptingData();
 

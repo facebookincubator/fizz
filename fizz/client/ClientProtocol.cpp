@@ -165,6 +165,12 @@ FIZZ_DECLARE_EVENT_HANDLER(
 FIZZ_DECLARE_EVENT_HANDLER(
     ClientTypes,
     StateEnum::WriteSideClosed,
+    Event::NewSessionTicket,
+    StateEnum::Error);
+
+FIZZ_DECLARE_EVENT_HANDLER(
+    ClientTypes,
+    StateEnum::WriteSideClosed,
     Event::CloseNotify,
     StateEnum::Closed);
 } // namespace sm
@@ -2816,13 +2822,11 @@ getMaxEarlyDataSize(uint32_t& ret, Error& err, const NewSessionTicket& nst) {
   return Status::Success;
 }
 
-Status
-EventHandler<ClientTypes, StateEnum::Established, Event::NewSessionTicket>::
-    handle(
-        Actions& ret,
-        InvocationContext& ctx,
-        const State& state,
-        Param& param) {
+Status handleNewSessionTicket(
+    Actions& ret,
+    InvocationContext& ctx,
+    const State& state,
+    Param& param) {
   auto nst = std::move(*param.asNewSessionTicket());
 
   Buf derivedResumptionSecret;
@@ -2856,6 +2860,26 @@ EventHandler<ClientTypes, StateEnum::Established, Event::NewSessionTicket>::
 
   ret = actions(std::move(newCachedPsk));
   return Status::Success;
+}
+
+Status
+EventHandler<ClientTypes, StateEnum::Established, Event::NewSessionTicket>::
+    handle(
+        Actions& ret,
+        InvocationContext& ctx,
+        const State& state,
+        Param& param) {
+  return handleNewSessionTicket(ret, ctx, state, param);
+}
+
+Status
+EventHandler<ClientTypes, StateEnum::WriteSideClosed, Event::NewSessionTicket>::
+    handle(
+        Actions& ret,
+        InvocationContext& ctx,
+        const State& state,
+        Param& param) {
+  return handleNewSessionTicket(ret, ctx, state, param);
 }
 
 Status handleAppData(
