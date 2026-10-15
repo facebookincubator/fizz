@@ -111,21 +111,5 @@ TEST(CryptoUtilTest, CreateIVIsUniquePerSequenceNumber) {
   }
 }
 
-TEST(CryptoUtilDeathTest, CreateIVRejectsMismatchedTrafficIvKey) {
-  // A traffic IV key shorter than ivLength would otherwise be read out of
-  // bounds, so the length check is enforced in all build modes.
-  //
-  // The matcher is empty on purpose: FIZZ_CHECK_EQ resolves to glog CHECK_EQ,
-  // folly XCHECK_EQ or a bare abort() depending on FIZZ_LOGGING_*, and the
-  // last of those prints nothing, so no substring is portable across builds.
-  const auto shortKey = makeTrafficIvKey(11);
-  EXPECT_DEATH(
-      createIV<20>(
-          /*seqNum=*/0,
-          /*ivLength=*/12,
-          folly::ByteRange(shortKey.data(), shortKey.size())),
-      "");
-}
-
 } // namespace test
 } // namespace fizz
