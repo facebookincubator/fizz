@@ -854,7 +854,7 @@ TEST_F(AsyncFizzBaseTest, TestSecretAvailable) {
   auto clientAppSecret =
       makeSecret("clientAppSecret", AppTrafficSecrets::ClientAppTraffic);
   EXPECT_CALL(cb, clientAppTrafficSecretAvailable_(_))
-      .WillOnce(Invoke(checkSecret(clientAppSecret)));
+      .WillOnce(checkSecret(clientAppSecret));
   this->secretAvailable(clientAppSecret);
 
   auto serverAppSecret =
