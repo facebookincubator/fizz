@@ -478,13 +478,13 @@ TEST_F(EncryptedRecordTest, TestWriteSeqNum) {
   for (int i = 0; i < 10; i++) {
     TLSMessage msg{ContentType::application_data, getBuf("1234567890")};
     EXPECT_CALL(*writeAead_, _encrypt(_, _, i, _))
-        .WillOnce(Invoke([](std::unique_ptr<IOBuf>& buf,
-                            const IOBuf*,
-                            uint64_t,
-                            Aead::AeadOptions) {
+        .WillOnce([](std::unique_ptr<IOBuf>& buf,
+                     const IOBuf*,
+                     uint64_t,
+                     Aead::AeadOptions) {
           expectSame(buf, "123456789017");
           return getBuf("abcd1234abcd");
-        }));
+        });
     Error err;
     TLSContent result;
     EXPECT_EQ(
