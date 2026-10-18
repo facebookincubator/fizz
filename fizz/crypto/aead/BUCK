@@ -8,9 +8,9 @@ fizz_cpp_library(
         "Aead.h",
     ],
     exported_deps = [
+        "fbsource//xplat/folly:optional",
+        "fbsource//xplat/folly/io:iobuf",
         "//fizz/util:status",
-        "//folly:optional",
-        "//folly/io:iobuf",
     ],
 )
 
@@ -23,10 +23,10 @@ fizz_cpp_library(
         "IOBufUtil.h",
     ],
     exported_deps = [
+        "fbsource//xplat/folly:range",
+        "fbsource//xplat/folly/io:iobuf",
         "//fizz/util:logging",
         "//fizz/util:status",
-        "//folly:range",
-        "//folly/io:iobuf",
     ],
 )
 
@@ -36,12 +36,12 @@ fizz_cpp_library(
         "CryptoUtil.h",
     ],
     exported_deps = [
+        "fbsource//xplat/folly:conv",
+        "fbsource//xplat/folly:memory",
+        "fbsource//xplat/folly:range",
+        "fbsource//xplat/folly/lang:bits",
         ":aead",
         ":iobuf",
         "//fizz/util:logging",
-        "//folly:conv",
-        "//folly:memory",
-        "//folly:range",
-        "//folly/lang:bits",
     ],
 )

@@ -8,6 +8,7 @@ fizz_cpp_library(
         "Utils.h",
     ],
     exported_deps = [
+        "fbsource//xplat/folly/io/async:server_socket",
         "//fizz/backend:openssl",
         "//fizz/crypto:random",
         "//fizz/protocol:default_certificate_verifier",
@@ -16,7 +17,6 @@ fizz_cpp_library(
         "//fizz/server:async_fizz_server",
         "//fizz/server:cert_manager",
         "//fizz/server:ticket_types",
-        "//folly/io/async:server_socket",
     ],
 )
 
@@ -26,6 +26,7 @@ fizz_cpp_library(
         "Mocks.h",
     ],
     exported_deps = [
+        "fbsource//xplat/folly/portability:gmock",
         "//fizz/crypto/aead/test:mocks",
         "//fizz/crypto/exchange/test:mocks",
         "//fizz/protocol/test:mocks",
@@ -37,7 +38,6 @@ fizz_cpp_library(
         "//fizz/server:replay_cache",
         "//fizz/server:server_extensions",
         "//fizz/server:token_cipher",
-        "//folly/portability:gmock",
     ],
 )
 
@@ -47,6 +47,9 @@ fizz_cpp_unittest(
         "ServerProtocolTest.cpp",
     ],
     deps = [
+        "fbsource//xplat/folly/executors:manual_executor",
+        "fbsource//xplat/folly/portability:gmock",
+        "fbsource//xplat/folly/portability:gtest",
         ":mocks",
         "//fizz/crypto/exchange/test:mocks",
         "//fizz/crypto/hpke/test:mocks",
@@ -60,9 +63,6 @@ fizz_cpp_unittest(
         "//fizz/record/test:mocks",
         "//fizz/server:protocol",
         "//fizz/util:workarounds",
-        "//folly/executors:manual_executor",
-        "//folly/portability:gmock",
-        "//folly/portability:gtest",
     ],
 )
 
@@ -72,9 +72,9 @@ fizz_cpp_unittest(
         "NegotiatorTest.cpp",
     ],
     deps = [
+        "fbsource//xplat/folly/portability:gmock",
+        "fbsource//xplat/folly/portability:gtest",
         "//fizz/server:negotiator",
-        "//folly/portability:gmock",
-        "//folly/portability:gtest",
     ],
 )
 
@@ -84,11 +84,11 @@ fizz_cpp_unittest(
         "TicketPolicyTest.cpp",
     ],
     deps = [
+        "fbsource//xplat/folly/portability:gmock",
+        "fbsource//xplat/folly/portability:gtest",
         "//fizz/crypto/test:TestUtil",
         "//fizz/protocol/clock/test:mock_clock",
         "//fizz/server:ticket_policy",
-        "//folly/portability:gmock",
-        "//folly/portability:gtest",
     ],
 )
 
@@ -98,6 +98,8 @@ fizz_cpp_unittest(
         "AeadTicketCipherTest.cpp",
     ],
     deps = [
+        "fbsource//xplat/folly/portability:gmock",
+        "fbsource//xplat/folly/portability:gtest",
         "//fizz/crypto/aead/test:mocks",
         "//fizz/crypto/test:TestUtil",
         "//fizz/crypto/test:mocks",
@@ -105,8 +107,6 @@ fizz_cpp_unittest(
         "//fizz/protocol/test:mocks",
         "//fizz/server:aead_ticket_cipher",
         "//fizz/server:cert_manager",
-        "//folly/portability:gmock",
-        "//folly/portability:gtest",
     ],
 )
 
@@ -116,10 +116,10 @@ fizz_cpp_unittest(
         "DualTicketCipherTest.cpp",
     ],
     deps = [
+        "fbsource//xplat/folly/portability:gmock",
+        "fbsource//xplat/folly/portability:gtest",
         ":mocks",
         "//fizz/server:dual_ticket_cipher",
-        "//folly/portability:gmock",
-        "//folly/portability:gtest",
     ],
 )
 
@@ -129,15 +129,15 @@ fizz_cpp_unittest(
         "TicketCodecTest.cpp",
     ],
     deps = [
+        "fbsource//xplat/folly/io/async/ssl:openssl_transport_certificate",
+        "fbsource//xplat/folly/portability:gmock",
+        "fbsource//xplat/folly/portability:gtest",
         ":mocks",
         "//fizz/crypto/test:TestUtil",
         "//fizz/protocol:default_factory",
         "//fizz/protocol/test:mocks",
         "//fizz/server:cert_manager",
         "//fizz/server:ticket_codec",
-        "//folly/io/async/ssl:openssl_transport_certificate",
-        "//folly/portability:gmock",
-        "//folly/portability:gtest",
     ],
 )
 
@@ -147,13 +147,13 @@ fizz_cpp_unittest(
         "SlidingBloomReplayCacheTest.cpp",
     ],
     deps = [
+        "fbsource//xplat/folly:random",
+        "fbsource//xplat/folly/io:iobuf",
+        "fbsource//xplat/folly/io/async:scoped_event_base_thread",
+        "fbsource//xplat/folly/portability:gmock",
+        "fbsource//xplat/folly/portability:gtest",
+        "fbsource//xplat/folly/synchronization:baton",
         "//fizz/server:sliding_bloom_replay_cache",
-        "//folly:random",
-        "//folly/io:iobuf",
-        "//folly/io/async:scoped_event_base_thread",
-        "//folly/portability:gmock",
-        "//folly/portability:gtest",
-        "//folly/synchronization:baton",
     ],
 )
 
@@ -163,12 +163,12 @@ fizz_cpp_unittest(
         "CookieCipherTest.cpp",
     ],
     deps = [
+        "fbsource//xplat/folly/portability:gmock",
+        "fbsource//xplat/folly/portability:gtest",
         "//fizz/protocol/test:matchers",
         "//fizz/protocol/test:mocks",
         "//fizz/protocol/test:test_util",
         "//fizz/server:cookie_cipher",
-        "//folly/portability:gmock",
-        "//folly/portability:gtest",
     ],
 )
 
@@ -178,13 +178,13 @@ fizz_cpp_unittest(
         "AeadCookieCipherTest.cpp",
     ],
     deps = [
+        "fbsource//xplat/folly/portability:gmock",
+        "fbsource//xplat/folly/portability:gtest",
         "//fizz/crypto:random",
         "//fizz/crypto/test:TestUtil",
         "//fizz/protocol/test:test_util",
         "//fizz/server:aead_token_cipher",
         "//fizz/server:cookie_types",
-        "//folly/portability:gmock",
-        "//folly/portability:gtest",
     ],
 )
 
@@ -194,10 +194,10 @@ fizz_cpp_unittest(
         "FizzServerTest.cpp",
     ],
     deps = [
+        "fbsource//xplat/folly/portability:gmock",
+        "fbsource//xplat/folly/portability:gtest",
         ":mocks",
         "//fizz/server:fizz_server",
-        "//folly/portability:gmock",
-        "//folly/portability:gtest",
     ],
 )
 
@@ -207,13 +207,13 @@ fizz_cpp_unittest(
         "AsyncFizzServerTest.cpp",
     ],
     deps = [
+        "fbsource//xplat/folly/io/async/test:mocks",
+        "fbsource//xplat/folly/portability:gmock",
+        "fbsource//xplat/folly/portability:gtest",
         ":mocks",
         "//fizz/extensions/tokenbinding:token_binding",
         "//fizz/protocol/test:test_util",
         "//fizz/server:async_fizz_server",
-        "//folly/io/async/test:mocks",
-        "//folly/portability:gmock",
-        "//folly/portability:gtest",
     ],
 )
 
@@ -223,10 +223,10 @@ fizz_cpp_unittest(
         "CertManagerTest.cpp",
     ],
     deps = [
+        "fbsource//xplat/folly/portability:gmock",
+        "fbsource//xplat/folly/portability:gtest",
         "//fizz/protocol/test:mocks",
         "//fizz/server:cert_manager",
-        "//folly/portability:gmock",
-        "//folly/portability:gtest",
     ],
 )
 
@@ -236,9 +236,9 @@ fizz_cpp_unittest(
         "MultiServerExtensionsTest.cpp",
     ],
     deps = [
+        "fbsource//xplat/folly/portability:gmock",
+        "fbsource//xplat/folly/portability:gtest",
         "//fizz/server:multi_server_extensions",
-        "//folly/portability:gmock",
-        "//folly/portability:gtest",
     ],
 )
 
@@ -246,10 +246,10 @@ fizz_cpp_unittest(
     name = "aead_token_cipher_test",
     srcs = ["AeadTokenCipherTest.cpp"],
     deps = [
+        "fbsource//xplat/folly:random",
+        "fbsource//xplat/folly/io:iobuf",
+        "fbsource//xplat/folly/portability:gmock",
+        "fbsource//xplat/folly/portability:gtest",
         "//fizz/server:aead_token_cipher",
-        "//folly:random",
-        "//folly/io:iobuf",
-        "//folly/portability:gmock",
-        "//folly/portability:gtest",
     ],
 )

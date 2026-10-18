@@ -8,9 +8,9 @@ fizz_cpp_library(
         "Mocks.h",
     ],
     exported_deps = [
+        "fbsource//xplat/folly/portability:gmock",
         "//fizz/crypto:hasher",
         "//fizz/crypto:key_derivation",
-        "//folly/portability:gmock",
     ],
 )
 
@@ -23,10 +23,10 @@ fizz_cpp_library(
         "HmacTest.h",
     ],
     deps = [
+        "fbsource//xplat/folly:string",
+        "fbsource//xplat/folly/io:iobuf",
+        "fbsource//xplat/folly/portability:gtest",
         "//fizz/crypto:crypto",
-        "//folly:string",
-        "//folly/io:iobuf",
-        "//folly/portability:gtest",
     ],
     exported_deps = [
         "//fizz/crypto:hasher",
@@ -43,10 +43,10 @@ fizz_cpp_library(
         "HashTest.h",
     ],
     deps = [
+        "fbsource//xplat/folly:string",
+        "fbsource//xplat/folly/io:iobuf",
+        "fbsource//xplat/folly/portability:gtest",
         "//fizz/crypto:crypto",
-        "//folly:string",
-        "//folly/io:iobuf",
-        "//folly/portability:gtest",
     ],
     exported_deps = [
         "//fizz/crypto:hasher",
@@ -64,8 +64,8 @@ fizz_cpp_library(
     ],
     deps = [],
     exported_deps = [
+        "fbsource//xplat/folly:string",
         "//fizz/crypto:crypto",
-        "//folly:string",
     ],
 )
 
@@ -91,13 +91,13 @@ fizz_cpp_library(
         "Signature.h",
     ],
     deps = [
-        "//folly:range",
-        "//folly/io:iobuf",
+        "fbsource//xplat/folly:range",
+        "fbsource//xplat/folly/io:iobuf",
     ],
     exported_deps = [
+        "fbsource//xplat/folly/portability:gtest",
         ":signature_test_data",
         "//fizz/protocol:certificate",
-        "//folly/portability:gtest",
     ],
 )
 
@@ -110,18 +110,18 @@ fizz_cpp_library(
         "TestUtil.h",
     ],
     deps = [
+        "fbsource//xplat/folly/ssl:openssl_cert_utils",
         "//fizz:config",
         "//fizz/backend:libaegis",
         "//fizz/backend:openssl",
-        "//folly/ssl:openssl_cert_utils",
     ],
     exported_deps = [
+        "fbsource//xplat/folly:string",
+        "fbsource//xplat/folly/io:iobuf",
+        "fbsource//xplat/folly/ssl:openssl_ptr_types",
         ":TestKeys",
         "//fizz/crypto/aead:aead",
         "//fizz/protocol:types",
-        "//folly:string",
-        "//folly/io:iobuf",
-        "//folly/ssl:openssl_ptr_types",
     ],
     external_deps = [
         ("libsodium", None, "sodium"),
@@ -135,10 +135,10 @@ fizz_cpp_unittest(
     ],
     supports_static_listing = False,
     deps = [
+        "fbsource//xplat/folly/portability:gtest",
         ":TestUtil",
         "//fizz/backend:openssl",
         "//fizz/crypto:hkdf",
-        "//folly/portability:gtest",
     ],
 )
 
@@ -149,11 +149,11 @@ fizz_cpp_unittest(
     ],
     supports_static_listing = False,
     deps = [
+        "fbsource//xplat/folly:string",
+        "fbsource//xplat/folly/io:iobuf",
+        "fbsource//xplat/folly/portability:gtest",
         "//fizz/backend:openssl",
         "//fizz/crypto:key_derivation",
-        "//folly:string",
-        "//folly/io:iobuf",
-        "//folly/portability:gtest",
     ],
 )
 
@@ -163,9 +163,9 @@ fizz_cpp_unittest(
         "RandomGeneratorTest.cpp",
     ],
     deps = [
+        "fbsource//xplat/folly/portability:gtest",
         ":TestUtil",
         "//fizz/crypto:random",
-        "//folly/portability:gtest",
     ],
 )
 
@@ -175,7 +175,7 @@ fizz_cpp_unittest(
         "UtilsTest.cpp",
     ],
     deps = [
+        "fbsource//xplat/folly/portability:gtest",
         "//fizz/crypto:utils",
-        "//folly/portability:gtest",
     ],
 )

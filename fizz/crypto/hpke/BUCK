@@ -11,10 +11,10 @@ fizz_cpp_library(
         "Utils.h",
     ],
     exported_deps = [
+        "fbsource//xplat/folly:optional",
         ":types",
         "//fizz/crypto:crypto",
         "//fizz/protocol:types",
-        "//folly:optional",
     ],
 )
 
@@ -44,7 +44,7 @@ fizz_cpp_library(
         "DHKEM.h",
     ],
     deps = [
-        "//folly/io:iobuf",
+        "fbsource//xplat/folly/io:iobuf",
     ],
     exported_deps = [
         ":hkdf",
@@ -60,7 +60,7 @@ fizz_cpp_library(
         "Types.h",
     ],
     exported_deps = [
-        "//folly/io:iobuf",
+        "fbsource//xplat/folly/io:iobuf",
     ],
 )
 

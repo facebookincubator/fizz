@@ -8,9 +8,9 @@ fizz_cpp_unittest(
         "Hmac.cpp",
     ],
     deps = [
+        "fbsource//xplat/folly/portability:gtest",
         "//fizz/backend:openssl",
         "//fizz/crypto/test:HmacTest",
-        "//folly/portability:gtest",
     ],
 )
 
@@ -20,8 +20,8 @@ fizz_cpp_unittest(
         "OpenSSLKeyUtilsTest.cpp",
     ],
     deps = [
+        "fbsource//xplat/folly/portability:gtest",
         "//fizz/backend:openssl",
         "//fizz/crypto/test:TestUtil",
-        "//folly/portability:gtest",
     ],
 )

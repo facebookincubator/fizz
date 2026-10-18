@@ -13,11 +13,11 @@ fizz_cpp_library(
     ],
     labels = wdls.FIZZ,
     deps = [
-        "//folly/io:iobuf",
+        "fbsource//xplat/folly/io:iobuf",
     ],
     exported_deps = [
+        "fbsource//xplat/folly:optional",
         "//fizz/record:record",
-        "//folly:optional",
     ],
 )
 
@@ -45,15 +45,15 @@ fizz_cpp_library(
         "DelegatedCredentialUtils.h",
     ],
     deps = [
+        "fbsource//xplat/folly/ssl:openssl_cert_utils",
         "//fizz/backend:openssl",
         "//fizz/util:logging",
-        "//folly/ssl:openssl_cert_utils",
     ],
     exported_deps = [
+        "fbsource//xplat/folly/ssl:openssl_ptr_types",
         ":delegated_credential",
         "//fizz/protocol:certificate",
         "//fizz/protocol/clock:clock",
-        "//folly/ssl:openssl_ptr_types",
     ],
 )
 
@@ -68,9 +68,9 @@ fizz_cpp_library(
     labels = wdls.FIZZ,
     deps = [
         "fbsource//third-party/fmt:fmt",
+        "fbsource//xplat/folly:base64",
+        "fbsource//xplat/folly:range",
         ":delegated_credential_utils",
-        "//folly:base64",
-        "//folly:range",
     ],
     exported_deps = [
         ":delegated_credential",
@@ -86,11 +86,11 @@ fizz_cpp_library(
     ],
     labels = wdls.FIZZ,
     exported_deps = [
+        "fbsource//xplat/folly/ssl:openssl_cert_utils",
         ":delegated_credential",
         ":delegated_credential_utils",
         "//fizz/backend:openssl",
         "//fizz/protocol/clock:system_clock",
-        "//folly/ssl:openssl_cert_utils",
     ],
 )
 
@@ -101,10 +101,10 @@ fizz_cpp_library(
         "SelfDelegatedCredential-inl.h",
     ],
     exported_deps = [
+        "fbsource//xplat/folly/ssl:openssl_cert_utils",
         ":delegated_credential",
         ":delegated_credential_utils",
         "//fizz/backend:openssl",
-        "//folly/ssl:openssl_cert_utils",
     ],
 )
 
@@ -118,8 +118,8 @@ fizz_cpp_library(
     ],
     labels = wdls.FIZZ,
     deps = [
+        "fbsource//xplat/folly/portability:openssl",
         ":peer_delegated_credential",
-        "//folly/portability:openssl",
     ],
     exported_deps = [
         ":delegated_credential",

@@ -8,10 +8,10 @@ fizz_cpp_library(
         "Mocks.h",
     ],
     exported_deps = [
+        "fbsource//xplat/folly/portability:gmock",
         "//fizz/protocol:types",
         "//fizz/record:encrypted_record_layer",
         "//fizz/record:plaintext_record_layer",
-        "//folly/portability:gmock",
     ],
 )
 
@@ -21,10 +21,10 @@ fizz_cpp_library(
         "ExtensionTestsBase.h",
     ],
     exported_deps = [
+        "fbsource//xplat/folly:string",
+        "fbsource//xplat/folly/portability:gmock",
+        "fbsource//xplat/folly/portability:gtest",
         "//fizz/record:record",
-        "//folly:string",
-        "//folly/portability:gmock",
-        "//folly/portability:gtest",
     ],
 )
 
@@ -34,10 +34,10 @@ fizz_cpp_unittest(
         "HandshakeTypesTest.cpp",
     ],
     deps = [
+        "fbsource//xplat/folly:string",
+        "fbsource//xplat/folly/portability:gmock",
+        "fbsource//xplat/folly/portability:gtest",
         "//fizz/record:record",
-        "//folly:string",
-        "//folly/portability:gmock",
-        "//folly/portability:gtest",
     ],
 )
 
@@ -47,10 +47,10 @@ fizz_cpp_unittest(
         "ExtensionsTest.cpp",
     ],
     deps = [
+        "fbsource//xplat/folly/portability:gmock",
+        "fbsource//xplat/folly/portability:gtest",
         ":extension_tests_base",
         "//fizz/record:record",
-        "//folly/portability:gmock",
-        "//folly/portability:gtest",
     ],
 )
 
@@ -60,10 +60,10 @@ fizz_cpp_unittest(
         "TypesTest.cpp",
     ],
     deps = [
+        "fbsource//xplat/folly/io:iobuf",
+        "fbsource//xplat/folly/portability:gmock",
+        "fbsource//xplat/folly/portability:gtest",
         "//fizz/record:record",
-        "//folly/io:iobuf",
-        "//folly/portability:gmock",
-        "//folly/portability:gtest",
     ],
 )
 
@@ -73,10 +73,10 @@ fizz_cpp_unittest(
         "PlaintextRecordTest.cpp",
     ],
     deps = [
+        "fbsource//xplat/folly:string",
+        "fbsource//xplat/folly/portability:gmock",
+        "fbsource//xplat/folly/portability:gtest",
         "//fizz/record:plaintext_record_layer",
-        "//folly:string",
-        "//folly/portability:gmock",
-        "//folly/portability:gtest",
     ],
 )
 
@@ -86,11 +86,11 @@ fizz_cpp_unittest(
         "RecordTest.cpp",
     ],
     deps = [
+        "fbsource//xplat/folly:string",
+        "fbsource//xplat/folly/portability:gmock",
+        "fbsource//xplat/folly/portability:gtest",
         ":mocks",
         "//fizz/record:record_layer",
-        "//folly:string",
-        "//folly/portability:gmock",
-        "//folly/portability:gtest",
     ],
 )
 
@@ -100,12 +100,12 @@ fizz_cpp_unittest(
         "EncryptedRecordTest.cpp",
     ],
     deps = [
+        "fbsource//xplat/folly:string",
+        "fbsource//xplat/folly/portability:gmock",
+        "fbsource//xplat/folly/portability:gtest",
         "//fizz/crypto/aead/test:mocks",
         "//fizz/record:buf_and_padding_policy",
         "//fizz/record:encrypted_record_layer",
-        "//folly:string",
-        "//folly/portability:gmock",
-        "//folly/portability:gtest",
     ],
 )
 
@@ -115,8 +115,8 @@ fizz_cpp_unittest(
         "BufAndPaddingPolicyTest.cpp",
     ],
     deps = [
+        "fbsource//xplat/folly/portability:gtest",
         "//fizz/record:buf_and_padding_policy",
-        "//folly/portability:gtest",
     ],
 )
 
@@ -127,13 +127,13 @@ fizz_cpp_binary(
     ],
     compiler_flags = ["-Wno-unused-variable"],
     deps = [
+        "fbsource//xplat/folly:benchmark",
+        "fbsource//xplat/folly:random",
+        "fbsource//xplat/folly/init:init",
         "//fizz/backend:libaegis",
         "//fizz/backend:openssl",
         "//fizz/crypto:utils",
         "//fizz/record:encrypted_record_layer",
         "//fizz/util:logging",
-        "//folly:benchmark",
-        "//folly:random",
-        "//folly/init:init",
     ],
 )

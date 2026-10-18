@@ -10,10 +10,10 @@ fbcode_target(
         "KTLSTest.cpp",
     ],
     deps = [
+        "fbsource//xplat/folly/test:test_utils",
         "//fizz/backend:openssl",
         "//fizz/crypto/aead:aead",
         "//fizz/experimental/ktls:ktls",
-        "//folly/test:test_utils",
     ],
 )
 
@@ -24,6 +24,11 @@ fbcode_target(
         "AsyncFizzBaseKTLSTest.cpp",
     ],
     deps = [
+        "fbsource//xplat/folly:function",
+        "fbsource//xplat/folly/futures:core",
+        "fbsource//xplat/folly/io/async:async_socket",
+        "fbsource//xplat/folly/io/async:server_socket",
+        "fbsource//xplat/folly/test:test_utils",
         "//fizz/backend:openssl",
         "//fizz/client:async_fizz_client",
         "//fizz/client:synchronized_lru_psk_cache",
@@ -36,11 +41,6 @@ fbcode_target(
         "//fizz/server:cert_manager",
         "//fizz/server:fizz_server_context",
         "//fizz/server:ticket_codec",
-        "//folly:function",
-        "//folly/futures:core",
-        "//folly/io/async:async_socket",
-        "//folly/io/async:server_socket",
-        "//folly/test:test_utils",
     ],
 )
 
@@ -51,13 +51,13 @@ fbcode_target(
         "AsyncKTLSSocketTest.cpp",
     ],
     deps = [
+        "fbsource//xplat/folly/io/async:async_socket",
+        "fbsource//xplat/folly/io/async:server_socket",
+        "fbsource//xplat/folly/io/async/test:mocks",
+        "fbsource//xplat/folly/test:test_utils",
         "//fizz/backend:openssl",
         "//fizz/experimental/ktls:ktls",
         "//fizz/record:encrypted_record_layer",
-        "//folly/io/async:async_socket",
-        "//folly/io/async:server_socket",
-        "//folly/io/async/test:mocks",
-        "//folly/test:test_utils",
     ],
 )
 
@@ -68,12 +68,12 @@ fbcode_target(
         "AsyncKTLSRxSocketTest.cpp",
     ],
     deps = [
+        "fbsource//xplat/folly/io/async:async_socket",
+        "fbsource//xplat/folly/io/async:server_socket",
+        "fbsource//xplat/folly/io/async/test:mocks",
+        "fbsource//xplat/folly/test:test_utils",
         "//fizz/backend:openssl",
         "//fizz/experimental/ktls:ktls",
         "//fizz/record:encrypted_record_layer",
-        "//folly/io/async:async_socket",
-        "//folly/io/async:server_socket",
-        "//folly/io/async/test:mocks",
-        "//folly/test:test_utils",
     ],
 )

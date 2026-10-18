@@ -8,10 +8,10 @@ fizz_cpp_unittest(
         "MerkleTreeTest.cpp",
     ],
     deps = [
+        "fbsource//xplat/folly/portability:gtest",
         "//fizz/backend:openssl",
         "//fizz/crypto/test:TestUtil",
         "//fizz/experimental/crypto:merkle_tree",
-        "//folly/portability:gtest",
     ],
 )
 
@@ -21,9 +21,9 @@ fizz_cpp_unittest(
         "BatchSignatureTest.cpp",
     ],
     deps = [
+        "fbsource//xplat/folly/io:iobuf",
+        "fbsource//xplat/folly/portability:gtest",
         "//fizz/crypto/test:TestUtil",
         "//fizz/experimental/crypto:batch_signature",
-        "//folly/io:iobuf",
-        "//folly/portability:gtest",
     ],
 )

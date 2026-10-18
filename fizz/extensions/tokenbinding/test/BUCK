@@ -8,12 +8,12 @@ fizz_cpp_unittest(
         "TokenBindingTest.cpp",
     ],
     deps = [
+        "fbsource//xplat/folly/portability:gmock",
+        "fbsource//xplat/folly/portability:gtest",
         "//fizz/extensions/tokenbinding:token_binding",
         "//fizz/extensions/tokenbinding:token_binding_context",
         "//fizz/record:record",
         "//fizz/record/test:extension_tests_base",
-        "//folly/portability:gmock",
-        "//folly/portability:gtest",
     ],
 )
 
@@ -23,12 +23,12 @@ fizz_cpp_unittest(
         "TokenBindingServerExtensionTest.cpp",
     ],
     deps = [
+        "fbsource//xplat/folly/portability:gmock",
+        "fbsource//xplat/folly/portability:gtest",
         "//fizz/extensions/tokenbinding:token_binding",
         "//fizz/extensions/tokenbinding:token_binding_context",
         "//fizz/extensions/tokenbinding:token_binding_server_extension",
         "//fizz/record:record",
-        "//folly/portability:gmock",
-        "//folly/portability:gtest",
     ],
 )
 
@@ -38,10 +38,10 @@ fizz_cpp_unittest(
         "ValidatorTest.cpp",
     ],
     deps = [
+        "fbsource//xplat/folly/portability:gmock",
+        "fbsource//xplat/folly/portability:gtest",
         "//fizz/extensions/tokenbinding:token_binding",
         "//fizz/extensions/tokenbinding:token_binding_validator",
-        "//folly/portability:gmock",
-        "//folly/portability:gtest",
     ],
 )
 
@@ -51,9 +51,9 @@ fizz_cpp_unittest(
         "TokenBindingClientExtensionTest.cpp",
     ],
     deps = [
+        "fbsource//xplat/folly/portability:gmock",
+        "fbsource//xplat/folly/portability:gtest",
         "//fizz/extensions/tokenbinding:token_binding_client_extension",
-        "//folly/portability:gmock",
-        "//folly/portability:gtest",
     ],
 )
 
@@ -63,9 +63,9 @@ fizz_cpp_unittest(
         "TokenBindingConstructorTest.cpp",
     ],
     deps = [
+        "fbsource//xplat/folly/portability:gmock",
+        "fbsource//xplat/folly/portability:gtest",
         "//fizz/extensions/tokenbinding:token_binding_constructor",
         "//fizz/extensions/tokenbinding:token_binding_validator",
-        "//folly/portability:gmock",
-        "//folly/portability:gtest",
     ],
 )

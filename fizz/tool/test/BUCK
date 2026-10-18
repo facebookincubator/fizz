@@ -10,10 +10,10 @@ fbcode_target(
         "FizzCommandCommonTest.cpp",
     ],
     deps = [
+        "fbsource//xplat/folly/container:array",
+        "fbsource//xplat/folly/portability:gmock",
+        "fbsource//xplat/folly/portability:gtest",
         "//fizz/protocol/ech:encrypted_client_hello",
         "//fizz/tool:tool_lib",
-        "//folly/container:array",
-        "//folly/portability:gmock",
-        "//folly/portability:gtest",
     ],
 )

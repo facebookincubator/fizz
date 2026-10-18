@@ -8,6 +8,7 @@ fizz_cpp_unittest(
         "BatcherTest.cpp",
     ],
     deps = [
+        "fbsource//xplat/folly/portability:gtest",
         "//fizz/backend:openssl",
         "//fizz/crypto:utils",
         "//fizz/crypto/test:TestUtil",
@@ -15,6 +16,5 @@ fizz_cpp_unittest(
         "//fizz/experimental/client:batch_signature_peer_cert",
         "//fizz/experimental/server:batch_signature_async_self_cert",
         "//fizz/server/test:mocks",
-        "//folly/portability:gtest",
     ],
 )

@@ -9,14 +9,14 @@ fizz_cpp_unittest(
     ],
     supports_static_listing = False,
     deps = [
+        "fbsource//xplat/folly:exception_wrapper",
+        "fbsource//xplat/folly:string",
+        "fbsource//xplat/folly/portability:gtest",
         "//fizz:config",
         "//fizz/crypto/aead:iobuf",
         "//fizz/crypto/aead/test:data",
         "//fizz/crypto/aead/test:test_util",
         "//fizz/crypto/test:TestUtil",
         "//fizz/record:record",
-        "//folly:exception_wrapper",
-        "//folly:string",
-        "//folly/portability:gtest",
     ],
 )

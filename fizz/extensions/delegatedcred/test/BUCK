@@ -8,10 +8,10 @@ fizz_cpp_unittest(
         "DelegatedCredTypesTest.cpp",
     ],
     deps = [
+        "fbsource//xplat/folly/io:iobuf",
+        "fbsource//xplat/folly/portability:gmock",
+        "fbsource//xplat/folly/portability:gtest",
         "//fizz/extensions/delegatedcred:delegated_credential",
-        "//folly/io:iobuf",
-        "//folly/portability:gmock",
-        "//folly/portability:gtest",
     ],
 )
 
@@ -21,11 +21,11 @@ fizz_cpp_unittest(
         "SerializationTest.cpp",
     ],
     deps = [
+        "fbsource//xplat/folly:base64",
+        "fbsource//xplat/folly/portability:gmock",
+        "fbsource//xplat/folly/portability:gtest",
         ":test_data",
         "//fizz/extensions/delegatedcred:serialization",
-        "//folly:base64",
-        "//folly/portability:gmock",
-        "//folly/portability:gtest",
     ],
 )
 
@@ -35,15 +35,15 @@ fizz_cpp_unittest(
         "DelegatedCredentialUtilsTest.cpp",
     ],
     deps = [
+        "fbsource//xplat/folly/portability:gmock",
+        "fbsource//xplat/folly/portability:gtest",
+        "fbsource//xplat/folly/ssl:openssl_cert_utils",
+        "fbsource//xplat/folly/ssl:openssl_ptr_types",
         ":test_data",
         "//fizz/crypto:utils",
         "//fizz/crypto/test:TestUtil",
         "//fizz/extensions/delegatedcred:delegated_credential_utils",
         "//fizz/protocol/clock/test:mock_clock",
-        "//folly/portability:gmock",
-        "//folly/portability:gtest",
-        "//folly/ssl:openssl_cert_utils",
-        "//folly/ssl:openssl_ptr_types",
     ],
 )
 
@@ -53,14 +53,14 @@ fizz_cpp_unittest(
         "DelegatedCredentialFactoryTest.cpp",
     ],
     deps = [
+        "fbsource//xplat/folly/portability:gmock",
+        "fbsource//xplat/folly/portability:gtest",
         ":test_data",
         "//fizz/backend:openssl",
         "//fizz/crypto:utils",
         "//fizz/crypto/test:TestUtil",
         "//fizz/extensions/delegatedcred:delegated_credential_factory",
         "//fizz/extensions/delegatedcred:peer_delegated_credential",
-        "//folly/portability:gmock",
-        "//folly/portability:gtest",
     ],
 )
 
@@ -70,13 +70,13 @@ fizz_cpp_unittest(
         "PeerDelegatedCredentialTest.cpp",
     ],
     deps = [
+        "fbsource//xplat/folly/portability:gmock",
+        "fbsource//xplat/folly/portability:gtest",
         ":test_data",
         "//fizz/crypto:utils",
         "//fizz/crypto/test:TestUtil",
         "//fizz/extensions/delegatedcred:peer_delegated_credential",
         "//fizz/protocol/clock/test:mock_clock",
-        "//folly/portability:gmock",
-        "//folly/portability:gtest",
     ],
 )
 
@@ -86,15 +86,15 @@ fizz_cpp_unittest(
         "SelfDelegatedCredentialTest.cpp",
     ],
     deps = [
+        "fbsource//xplat/folly/portability:gmock",
+        "fbsource//xplat/folly/portability:gtest",
+        "fbsource//xplat/folly/ssl:openssl_ptr_types",
         ":test_data",
         "//fizz/backend:openssl",
         "//fizz/crypto:utils",
         "//fizz/crypto/test:TestUtil",
         "//fizz/extensions/delegatedcred:delegated_credential_utils",
         "//fizz/extensions/delegatedcred:self_delegated_credential",
-        "//folly/portability:gmock",
-        "//folly/portability:gtest",
-        "//folly/ssl:openssl_ptr_types",
     ],
 )
 
@@ -104,11 +104,11 @@ fizz_cpp_unittest(
         "DelegatedCredentialCertManagerTest.cpp",
     ],
     deps = [
+        "fbsource//xplat/folly/portability:gmock",
+        "fbsource//xplat/folly/portability:gtest",
         ":mocks",
         "//fizz/extensions/delegatedcred:delegated_credential_cert_manager",
         "//fizz/protocol/test:mocks",
-        "//folly/portability:gmock",
-        "//folly/portability:gtest",
     ],
 )
 
@@ -118,11 +118,11 @@ fizz_cpp_unittest(
         "DelegatedCredentialClientCertManagerTest.cpp",
     ],
     deps = [
+        "fbsource//xplat/folly/portability:gmock",
+        "fbsource//xplat/folly/portability:gtest",
         "//fizz/extensions/delegatedcred:delegated_credential",
         "//fizz/extensions/delegatedcred:delegated_credential_client_cert_manager",
         "//fizz/protocol/test:mocks",
-        "//folly/portability:gmock",
-        "//folly/portability:gtest",
     ],
 )
 
@@ -132,8 +132,8 @@ fizz_cpp_library(
         "Mocks.h",
     ],
     exported_deps = [
+        "fbsource//xplat/folly/io/async/test:mocks",
         "//fizz/extensions/delegatedcred:self_delegated_credential",
-        "//folly/io/async/test:mocks",
     ],
 )
 
@@ -143,6 +143,6 @@ fizz_cpp_library(
         "TestData.h",
     ],
     exported_deps = [
-        "//folly:string",
+        "fbsource//xplat/folly:string",
     ],
 )

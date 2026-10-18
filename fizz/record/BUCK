@@ -16,14 +16,14 @@ fizz_cpp_library(
     ],
     labels = wdls.FIZZ,
     exported_deps = [
+        "fbsource//xplat/folly:conv",
+        "fbsource//xplat/folly:optional",
+        "fbsource//xplat/folly:string",
+        "fbsource//xplat/folly/container:array",
+        "fbsource//xplat/folly/io:iobuf",
         ":alerts",
         "//fizz/protocol:events",
         "//fizz/util:status",
-        "//folly:conv",
-        "//folly:optional",
-        "//folly:string",
-        "//folly/container:array",
-        "//folly/io:iobuf",
     ],
 )
 
@@ -40,11 +40,11 @@ fizz_cpp_library(
         "//fizz/util:logging",
     ],
     exported_deps = [
+        "fbsource//xplat/folly:optional",
+        "fbsource//xplat/folly/io:iobuf",
         ":record",
         "//fizz/crypto/aead:aead",
         "//fizz/protocol:params",
-        "//folly:optional",
-        "//folly/io:iobuf",
     ],
 )
 
@@ -57,7 +57,7 @@ fizz_cpp_library(
         "PlaintextRecordLayer.h",
     ],
     deps = [
-        "//folly:string",
+        "fbsource//xplat/folly:string",
     ],
     exported_deps = [
         ":record_layer",
@@ -94,8 +94,8 @@ fizz_cpp_library(
     ],
     labels = wdls.FIZZ,
     exported_deps = [
+        "fbsource//xplat/folly/io:iobuf",
         ":record",
-        "//folly/io:iobuf",
     ],
 )
 

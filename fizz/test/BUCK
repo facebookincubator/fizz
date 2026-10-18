@@ -8,10 +8,10 @@ fizz_cpp_unittest(
         "AsyncFizzBaseTest.cpp",
     ],
     deps = [
+        "fbsource//xplat/folly/io/async/test:mocks",
+        "fbsource//xplat/folly/portability:gmock",
+        "fbsource//xplat/folly/portability:gtest",
         "//fizz/protocol:async_fizz_base",
-        "//folly/io/async/test:mocks",
-        "//folly/portability:gmock",
-        "//folly/portability:gtest",
     ],
 )
 
@@ -22,6 +22,10 @@ fizz_cpp_library(
         "LocalTransport.h",
     ],
     exported_deps = [
+        "fbsource//xplat/folly/io:iobuf",
+        "fbsource//xplat/folly/io/async:async_transport",
+        "fbsource//xplat/folly/portability:gmock",
+        "fbsource//xplat/folly/portability:gtest",
         "//fizz/backend:libsodium",
         "//fizz/backend:openssl",
         "//fizz/client:async_fizz_client",
@@ -44,10 +48,6 @@ fizz_cpp_library(
         "//fizz/server:ticket_types",
         "//fizz/server/test:mocks",
         "//fizz/util:status",
-        "//folly/io:iobuf",
-        "//folly/io/async:async_transport",
-        "//folly/portability:gmock",
-        "//folly/portability:gtest",
     ],
 )
 
@@ -61,6 +61,8 @@ fizz_cpp_unittest(
     ],
     supports_static_listing = False,
     deps = [
+        "fbsource//xplat/folly/portability:gmock",
+        "fbsource//xplat/folly/portability:gtest",
         ":handshake_test_lib",
         "//fizz/backend:libsodium",
         "//fizz/backend:openssl",
@@ -84,8 +86,6 @@ fizz_cpp_unittest(
         "//fizz/server:ticket_types",
         "//fizz/server/test:mocks",
         "//fizz/util:status",
-        "//folly/portability:gmock",
-        "//folly/portability:gtest",
     ],
 )
 
@@ -95,6 +95,9 @@ fizz_cpp_binary(
         "BogoShim.cpp",
     ],
     deps = [
+        "fbsource//xplat/folly/io/async:async_ssl_socket",
+        "fbsource//xplat/folly/io/async:ssl_context",
+        "fbsource//xplat/folly/portability:gflags",
         "//fizz/backend:openssl",
         "//fizz/client:async_fizz_client",
         "//fizz/crypto:random",
@@ -102,8 +105,5 @@ fizz_cpp_binary(
         "//fizz/server:async_fizz_server",
         "//fizz/server:cert_manager",
         "//fizz/server:ticket_types",
-        "//folly/io/async:async_ssl_socket",
-        "//folly/io/async:ssl_context",
-        "//folly/portability:gflags",
     ],
 )

@@ -15,6 +15,8 @@ fizz_cpp_library(
         "State.h",
     ],
     deps = [
+        "fbsource//xplat/folly:overload",
+        "fbsource//xplat/folly/tracing:static_tracepoint",
         ":async_self_cert",
         ":negotiator",
         ":replay_cache",
@@ -26,10 +28,11 @@ fizz_cpp_library(
         "//fizz/protocol/ech:decrypter",
         "//fizz/record:plaintext_record_layer",
         "//fizz/util:workarounds",
-        "//folly:overload",
-        "//folly/tracing:static_tracepoint",
     ],
     exported_deps = [
+        "fbsource//xplat/folly:optional",
+        "fbsource//xplat/folly:small_vector",
+        "fbsource//xplat/folly/futures:core",
         ":fizz_server_context",
         ":handshake_logging",
         ":resumption_state",
@@ -44,9 +47,6 @@ fizz_cpp_library(
         "//fizz/record:record_layer",
         "//fizz/util:status",
         "//fizz/util:variant",
-        "//folly:optional",
-        "//folly:small_vector",
-        "//folly/futures:core",
     ],
 )
 
@@ -56,7 +56,7 @@ fizz_cpp_library(
         "Negotiator.h",
     ],
     exported_deps = [
-        "//folly:optional",
+        "fbsource//xplat/folly:optional",
     ],
 )
 
@@ -104,10 +104,10 @@ fizz_cpp_library(
         "TicketCipher.h",
     ],
     exported_deps = [
+        "fbsource//xplat/folly:optional",
+        "fbsource//xplat/folly/futures:core",
+        "fbsource//xplat/folly/io:iobuf",
         ":resumption_state",
-        "//folly:optional",
-        "//folly/futures:core",
-        "//folly/io:iobuf",
     ],
 )
 
@@ -133,8 +133,8 @@ fizz_cpp_library(
     ],
     labels = wdls.FIZZ,
     deps = [
-        "//folly/io/async/ssl:openssl_transport_certificate",
-        "//folly/ssl:openssl_cert_utils",
+        "fbsource//xplat/folly/io/async/ssl:openssl_transport_certificate",
+        "fbsource//xplat/folly/ssl:openssl_cert_utils",
     ],
     exported_deps = [
         ":fizz_server_context",
@@ -162,9 +162,9 @@ fizz_cpp_library(
         "TokenCipher.h",
     ],
     exported_deps = [
-        "//folly:optional",
-        "//folly:range",
-        "//folly/io:iobuf",
+        "fbsource//xplat/folly:optional",
+        "fbsource//xplat/folly:range",
+        "fbsource//xplat/folly/io:iobuf",
     ],
 )
 
@@ -182,12 +182,12 @@ fizz_cpp_library(
         "//fizz/crypto/aead:aead",
     ],
     exported_deps = [
+        "fbsource//xplat/folly:optional",
+        "fbsource//xplat/folly/io:iobuf",
         ":token_cipher",
         "//fizz/backend:openssl",
         "//fizz/crypto:hkdf",
         "//fizz/record:record",
-        "//folly:optional",
-        "//folly/io:iobuf",
     ],
 )
 
@@ -281,9 +281,9 @@ fizz_cpp_library(
         "//fizz/util:status",
     ],
     exported_deps = [
+        "fbsource//xplat/folly/futures:core",
         "//fizz/protocol:certificate",
         "//fizz/protocol:handshake_context",
-        "//folly/futures:core",
     ],
 )
 
@@ -297,11 +297,11 @@ fizz_cpp_library(
         "FizzServer-inl.h",
     ],
     exported_deps = [
+        "fbsource//xplat/folly:overload",
         ":fizz_server_context",
         ":protocol",
         "//fizz/protocol:fizz_base",
         "//fizz/util:workarounds",
-        "//folly:overload",
     ],
 )
 
@@ -333,8 +333,8 @@ fizz_cpp_library(
     ],
     labels = wdls.FIZZ,
     deps = [
+        "fbsource//xplat/folly:string",
         "//fizz/util:logging",
-        "//folly:string",
     ],
     exported_deps = [
         "//fizz/protocol:certificate",
@@ -361,9 +361,9 @@ fizz_cpp_library(
         "ReplayCache.h",
     ],
     exported_deps = [
-        "//folly:range",
-        "//folly/futures:core",
-        "//folly/io:iobuf",
+        "fbsource//xplat/folly:range",
+        "fbsource//xplat/folly/futures:core",
+        "fbsource//xplat/folly/io:iobuf",
     ],
 )
 
@@ -376,15 +376,15 @@ fizz_cpp_library(
         "SlidingBloomReplayCache.h",
     ],
     deps = [
+        "fbsource//xplat/folly:range",
+        "fbsource//xplat/folly/io:iobuf",
+        "fbsource//xplat/folly/portability:unistd",
         "//fizz/crypto:random",
         "//fizz/util:logging",
-        "//folly:range",
-        "//folly/io:iobuf",
-        "//folly/portability:unistd",
     ],
     exported_deps = [
+        "fbsource//xplat/folly/io/async:async_base",
         ":replay_cache",
-        "//folly/io/async:async_base",
     ],
 )
 

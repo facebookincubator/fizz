@@ -14,9 +14,9 @@ fizz_cpp_library(
         "Types-inl.h",
     ],
     exported_deps = [
+        "fbsource//xplat/folly/io:iobuf",
         "//fizz/crypto/hpke:types",
         "//fizz/record:record",
-        "//folly/io:iobuf",
     ],
 )
 

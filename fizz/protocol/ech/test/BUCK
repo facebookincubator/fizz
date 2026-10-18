@@ -8,10 +8,10 @@ fizz_cpp_unittest(
         "ECHTest.cpp",
     ],
     deps = [
+        "fbsource//xplat/folly/portability:gmock",
+        "fbsource//xplat/folly/portability:gtest",
         ":test_util",
         "//fizz/protocol/ech:encrypted_client_hello",
-        "//folly/portability:gmock",
-        "//folly/portability:gtest",
     ],
 )
 
@@ -21,6 +21,7 @@ fizz_cpp_unittest(
         "EncryptionTest.cpp",
     ],
     deps = [
+        "fbsource//xplat/folly/lang:bits",
         ":test_util",
         "//fizz/backend:openssl",
         "//fizz/crypto:crypto",
@@ -33,7 +34,6 @@ fizz_cpp_unittest(
         "//fizz/protocol/test:mocks",
         "//fizz/protocol/test:test_util",
         "//fizz/record:record",
-        "//folly/lang:bits",
     ],
 )
 
@@ -63,14 +63,14 @@ fizz_cpp_unittest(
         "DecrypterTest.cpp",
     ],
     deps = [
+        "fbsource//xplat/folly/portability:gmock",
+        "fbsource//xplat/folly/portability:gtest",
         ":test_util",
         "//fizz/backend:openssl",
         "//fizz/crypto/test:TestUtil",
         "//fizz/protocol:default_factory",
         "//fizz/protocol/ech:decrypter",
         "//fizz/protocol/test:test_util",
-        "//folly/portability:gmock",
-        "//folly/portability:gtest",
     ],
 )
 

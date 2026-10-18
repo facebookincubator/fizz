@@ -9,13 +9,13 @@ fizz_cpp_unittest(
     ],
     supports_static_listing = False,
     deps = [
+        "fbsource//xplat/folly:string",
+        "fbsource//xplat/folly/portability:gtest",
+        "fbsource//xplat/folly/ssl:openssl_ptr_types",
         "//fizz/backend:openssl",
         "//fizz/crypto/test:TestKeys",
         "//fizz/crypto/test:TestUtil",
         "//fizz/util:status",
-        "//folly:string",
-        "//folly/portability:gtest",
-        "//folly/ssl:openssl_ptr_types",
     ],
     external_deps = [
         ("openssl", None, "crypto"),

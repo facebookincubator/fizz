@@ -8,9 +8,9 @@ fizz_cpp_library(
         "Mocks.h",
     ],
     exported_deps = [
+        "fbsource//xplat/folly/portability:gmock",
         "//fizz/crypto/exchange:async_key_exchange",
         "//fizz/crypto/exchange:key_exchange",
-        "//folly/portability:gmock",
     ],
 )
 
@@ -20,11 +20,11 @@ fizz_cpp_unittest(
         "X25519KeyExchangeTest.cpp",
     ],
     deps = [
+        "fbsource//xplat/folly:range",
+        "fbsource//xplat/folly:string",
+        "fbsource//xplat/folly/portability:gtest",
         "//fizz/backend:libsodium",
         "//fizz/util:status",
-        "//folly:range",
-        "//folly:string",
-        "//folly/portability:gtest",
     ],
 )
 
@@ -34,9 +34,9 @@ fizz_cpp_unittest(
         "HybridKeyExchangeTest.cpp",
     ],
     deps = [
+        "fbsource//xplat/folly/portability:gtest",
         ":mocks",
         "//fizz/crypto/exchange:hybrid_key_exchange",
         "//fizz/util:status",
-        "//folly/portability:gtest",
     ],
 )

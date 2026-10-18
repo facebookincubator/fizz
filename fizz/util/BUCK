@@ -13,21 +13,21 @@ fizz_cpp_library(
     ],
     labels = wdls.FIZZ,
     deps = [
+        "fbsource//xplat/folly:file_util",
+        "fbsource//xplat/folly:format",
+        "fbsource//xplat/folly/portability:openssl",
         ":hex",
         "//fizz/backend:libsodium",
         "//fizz/server:ticket_types",
-        "//folly:file_util",
-        "//folly:format",
-        "//folly/portability:openssl",
     ],
     exported_deps = [
+        "fbsource//xplat/folly/io/async:password_in_file",
+        "fbsource//xplat/folly/io/async:ssl_context",
+        "fbsource//xplat/folly/ssl:openssl_cert_utils",
         "//fizz/extensions/tokenbinding:token_binding_context",
         "//fizz/protocol:certificate",
         "//fizz/server:fizz_server_context",
         "//fizz/server:ticket_policy",
-        "//folly/io/async:password_in_file",
-        "//folly/io/async:ssl_context",
-        "//folly/ssl:openssl_cert_utils",
     ],
     external_deps = [
         ("libsodium", None, "sodium"),
@@ -44,8 +44,8 @@ fizz_cpp_library(
         "Hex.h",
     ],
     exported_deps = [
+        "fbsource//xplat/folly:range",
         ":status",
-        "//folly:range",
     ],
 )
 
@@ -56,8 +56,8 @@ fizz_cpp_library(
         "Parse-inl.h",
     ],
     exported_deps = [
+        "fbsource//xplat/folly:range",
         "//fizz/record:record",
-        "//folly:range",
     ],
 )
 
@@ -82,10 +82,10 @@ fizz_cpp_library(
     ],
     exported_deps = [
         "fbsource//third-party/fmt:fmt",
+        "fbsource//xplat/folly:range",
         ":hex",
         "//fizz/protocol:key_scheduler",
         "//fizz/protocol:types",
-        "//folly:range",
     ],
 )
 
@@ -98,7 +98,7 @@ fizz_cpp_library(
         "Tracing.h",
     ],
     deps = [
-        "//folly/tracing:static_tracepoint",
+        "fbsource//xplat/folly/tracing:static_tracepoint",
     ],
     exported_deps = [
         ":key_log_writer",
@@ -114,10 +114,10 @@ fizz_cpp_library(
         "Status.h",
     ],
     exported_deps = [
+        "fbsource//xplat/folly:exception_wrapper",
+        "fbsource//xplat/folly:optional",
         ":exceptions",
         "//fizz/record:alerts",
-        "//folly:exception_wrapper",
-        "//folly:optional",
     ],
 )
 
@@ -127,8 +127,8 @@ fizz_cpp_library(
         "Exceptions.h",
     ],
     exported_deps = [
+        "fbsource//xplat/folly:optional",
         "//fizz/record:alerts",
-        "//folly:optional",
     ],
 )
 
@@ -143,7 +143,7 @@ fizz_cpp_library(
         "Logging.h",
     ],
     exported_deps = [
+        "fbsource//xplat/folly:glog",
         "//fizz:config",
-        "//folly:glog",
     ],
 )

@@ -8,9 +8,9 @@ fizz_cpp_library(
         "KeyExchange.h",
     ],
     exported_deps = [
+        "fbsource//xplat/folly:range",
+        "fbsource//xplat/folly/io:iobuf",
         "//fizz/util:status",
-        "//folly:range",
-        "//folly/io:iobuf",
     ],
 )
 
@@ -20,8 +20,8 @@ fizz_cpp_library(
         "AsyncKeyExchange.h",
     ],
     exported_deps = [
+        "fbsource//xplat/folly/futures:core",
         ":key_exchange",
-        "//folly/futures:core",
     ],
 )
 

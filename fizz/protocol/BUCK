@@ -9,15 +9,15 @@ fizz_cpp_binary(
         "KeySchedulerBench.cpp",
     ],
     deps = [
+        "fbsource//xplat/folly:benchmark",
+        "fbsource//xplat/folly:random",
+        "fbsource//xplat/folly/init:init",
         ":key_scheduler",
         "//fizz/backend:openssl",
         "//fizz/crypto:key_derivation",
         "//fizz/crypto:utils",
         "//fizz/crypto/aead:aead",
         "//fizz/util:status",
-        "//folly:benchmark",
-        "//folly:random",
-        "//folly/init:init",
     ],
 )
 
@@ -42,7 +42,7 @@ fizz_cpp_library(
         "Events.h",
     ],
     exported_deps = [
-        "//folly:range",
+        "fbsource//xplat/folly:range",
     ],
 )
 
@@ -55,6 +55,8 @@ fizz_cpp_library(
         "Params.h",
     ],
     exported_deps = [
+        "fbsource//xplat/folly/io:iobuf",
+        "fbsource//xplat/folly/io/async:write_flags",
         ":events",
         "//fizz/client:client_extensions",
         "//fizz/client:psk_cache",
@@ -62,8 +64,6 @@ fizz_cpp_library(
         "//fizz/protocol/ech:encrypted_client_hello",
         "//fizz/record:record",
         "//fizz/util:variant",
-        "//folly/io:iobuf",
-        "//folly/io/async:write_flags",
     ],
 )
 
@@ -80,15 +80,15 @@ fizz_cpp_library(
         "//fizz/util:logging",
     ],
     exported_deps = [
+        "fbsource//xplat/folly:optional",
         "//fizz/crypto:key_derivation",
         "//fizz/crypto/aead:aead",
         "//fizz/util:variant",
-        "//folly:optional",
     ],
 )
 
 _certificate_openssl_deps = [
-    "//folly/io/async/ssl:openssl_transport_certificate",
+    "fbsource//xplat/folly/io/async/ssl:openssl_transport_certificate",
 ]
 
 fizz_cpp_library(
@@ -99,7 +99,7 @@ fizz_cpp_library(
     exported_deps = [
         "//fizz:config",
     ] + select({
-        "DEFAULT": ["//folly/io/async:async_transport_certificate"],
+        "DEFAULT": ["fbsource//xplat/folly/io/async:async_transport_certificate"],
         "fbsource//xplat/fizz/constraints:profile[mnscrypto-only]": [],
     }),
 )
@@ -213,10 +213,10 @@ fizz_cpp_library(
         "Types.h",
     ],
     exported_deps = [
+        "fbsource//xplat/folly:range",
+        "fbsource//xplat/folly/lang:assume",
         "//fizz/crypto:crypto",
         "//fizz/record:record",
-        "//folly:range",
-        "//folly/lang:assume",
     ],
 )
 
@@ -226,15 +226,15 @@ fizz_cpp_library(
         "Actions.h",
     ],
     exported_deps = [
+        "fbsource//xplat/folly:c_portability",
+        "fbsource//xplat/folly:exception_wrapper",
+        "fbsource//xplat/folly:range",
+        "fbsource//xplat/folly:small_vector",
+        "fbsource//xplat/folly/io:iobuf",
+        "fbsource//xplat/folly/io/async:write_flags",
         ":key_scheduler",
         ":types",
         "//fizz/record:record_layer",
-        "//folly:c_portability",
-        "//folly:exception_wrapper",
-        "//folly:range",
-        "//folly:small_vector",
-        "//folly/io:iobuf",
-        "//folly/io/async:write_flags",
     ],
 )
 
@@ -257,12 +257,12 @@ fizz_cpp_library(
         "FizzBase-inl.h",
     ],
     exported_deps = [
+        "fbsource//xplat/folly/io/async:async_socket_exception",
+        "fbsource//xplat/folly/io/async:delayed_destruction",
         ":exporter",
         ":factory",
         ":params",
         "//fizz/util:variant",
-        "//folly/io/async:async_socket_exception",
-        "//folly/io/async:delayed_destruction",
     ],
 )
 
@@ -276,17 +276,17 @@ fizz_cpp_library(
     ],
     labels = wdls.FIZZ,
     deps = [
-        "//folly:conv",
+        "fbsource//xplat/folly:conv",
     ],
     exported_deps = [
+        "fbsource//xplat/folly:function",
+        "fbsource//xplat/folly/io:iobuf",
+        "fbsource//xplat/folly/io/async:async_socket",
+        "fbsource//xplat/folly/io/async:decorated_async_transport_wrapper",
         ":certificate",
         ":key_scheduler",
         "//fizz/record:record",
         "//fizz/util:logging",
-        "//folly:function",
-        "//folly/io:iobuf",
-        "//folly/io/async:async_socket",
-        "//folly/io/async:decorated_async_transport_wrapper",
     ],
 )
 

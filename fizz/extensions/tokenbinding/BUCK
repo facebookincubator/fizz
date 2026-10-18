@@ -13,12 +13,12 @@ fizz_cpp_library(
     ],
     labels = wdls.FIZZ,
     deps = [
-        "//folly:string",
-        "//folly/io:iobuf",
+        "fbsource//xplat/folly:string",
+        "fbsource//xplat/folly/io:iobuf",
     ],
     exported_deps = [
+        "fbsource//xplat/folly:optional",
         "//fizz/record:record",
-        "//folly:optional",
     ],
 )
 
@@ -48,10 +48,10 @@ fizz_cpp_library(
         "//fizz/util:logging",
     ],
     exported_deps = [
+        "fbsource//xplat/folly:optional",
         ":token_binding",
         ":token_binding_context",
         "//fizz/client:client_extensions",
-        "//folly:optional",
     ],
 )
 
@@ -108,7 +108,7 @@ fizz_cpp_library(
         "fbcode//fizz/extensions/tokenbinding:utils",
     ],
     exported_deps = [
+        "fbsource//xplat/folly/ssl:openssl_ptr_types",
         ":token_binding",
-        "//folly/ssl:openssl_ptr_types",
     ],
 )

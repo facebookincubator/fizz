@@ -11,9 +11,9 @@ fizz_cpp_library(
         "Crypto.h",
     ],
     exported_deps = [
+        "fbsource//xplat/folly:range",
+        "fbsource//xplat/folly/io:iobuf",
         "//fizz/util:status",
-        "//folly:range",
-        "//folly/io:iobuf",
     ],
 )
 
@@ -31,8 +31,8 @@ fizz_cpp_library(
         "//fizz/util:logging",
     ],
     exported_deps = [
+        "fbsource//xplat/folly/io:iobuf",
         "//fizz/crypto:crypto",
-        "//folly/io:iobuf",
     ],
 )
 
@@ -48,9 +48,9 @@ fizz_cpp_library(
         "//fizz/util:logging",
     ],
     exported_deps = [
+        "fbsource//xplat/folly/io:iobuf",
         "//fizz/crypto:crypto",
         "//fizz/crypto:hasher",
-        "//folly/io:iobuf",
     ],
 )
 
@@ -79,7 +79,7 @@ fizz_cpp_library(
         "RandomGenerator.h",
     ],
     exported_deps = [
-        "//folly/io:iobuf",
+        "fbsource//xplat/folly/io:iobuf",
     ],
     exported_external_deps = [
         ("libsodium", None, "sodium"),
@@ -96,9 +96,9 @@ fizz_cpp_library(
         "Utils.h",
     ],
     exported_deps = [
+        "fbsource//xplat/folly:range",
         "//fizz:config",
         "//fizz/util:status",
-        "//folly:range",
     ],
     external_deps = select({
         "DEFAULT": [

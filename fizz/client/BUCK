@@ -31,11 +31,11 @@ fizz_cpp_library(
         "Actions.h",
     ],
     exported_deps = [
+        "fbsource//xplat/folly:c_portability",
         ":psk_cache",
         "//fizz/protocol:actions",
         "//fizz/protocol:params",
         "//fizz/util:variant",
-        "//folly:c_portability",
     ],
 )
 
@@ -124,12 +124,12 @@ fizz_cpp_library(
         "FizzClient-inl.h",
     ],
     exported_deps = [
+        "fbsource//xplat/folly/lang:switch",
         ":fizz_client_context",
         ":protocol",
         ":psk_cache",
         "//fizz/protocol:certificate_verifier",
         "//fizz/protocol:fizz_base",
-        "//folly/lang:switch",
     ],
 )
 
@@ -151,6 +151,7 @@ fizz_cpp_library(
     ],
     labels = wdls.FIZZ,
     exported_deps = [
+        "fbsource//xplat/folly/io:socket_option_map",
         ":client_extensions",
         ":early_data_rejection",
         ":ech_retry_callback",
@@ -162,7 +163,6 @@ fizz_cpp_library(
         "//fizz/protocol:exporter",
         "//fizz/util:logging",
         "//fizz/util:tracer",
-        "//folly/io:socket_option_map",
     ],
 )
 
@@ -184,8 +184,8 @@ fizz_cpp_library(
         "ECHPolicy.h",
     ],
     exported_deps = [
+        "fbsource//xplat/folly:optional",
         "//fizz/protocol/ech:encrypted_client_hello",
-        "//folly:optional",
     ],
 )
 
@@ -198,8 +198,8 @@ fizz_cpp_library(
         "PskSerializationUtils.h",
     ],
     deps = [
+        "fbsource//xplat/folly/io:iobuf",
         "//fizz/record:record",
-        "//folly/io:iobuf",
     ],
     exported_deps = [
         ":psk_cache",
@@ -220,9 +220,9 @@ fizz_cpp_library(
         "//fizz/util:logging",
     ],
     exported_deps = [
+        "fbsource//xplat/folly:synchronized",
+        "fbsource//xplat/folly/container:evicting_cache_map",
         ":psk_cache",
-        "//folly:synchronized",
-        "//folly/container:evicting_cache_map",
     ],
 )
 

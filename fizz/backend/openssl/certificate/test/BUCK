@@ -10,11 +10,11 @@ fizz_multi_cpp_unittest(
         ("_mnscrypto_only", ["fbsource//xplat/fizz/constraints:profile[mnscrypto-only]"]),
     ],
     deps = [
+        "fbsource//xplat/folly/portability:gmock",
+        "fbsource//xplat/folly/portability:gtest",
+        "fbsource//xplat/folly/ssl:openssl_cert_utils",
         "//fizz/backend:openssl",
         "//fizz/protocol/test:cert_test_types",
         "//fizz/protocol/test:cert_util",
-        "//folly/portability:gmock",
-        "//folly/portability:gtest",
-        "//folly/ssl:openssl_cert_utils",
     ],
 )

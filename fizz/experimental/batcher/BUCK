@@ -8,9 +8,9 @@ fizz_cpp_library(
         "Batcher.h",
     ],
     exported_deps = [
+        "fbsource//xplat/folly/futures:shared_promise",
         "//fizz/experimental/crypto:batch_signature",
         "//fizz/experimental/protocol:batch_signature_types",
         "//fizz/server:async_self_cert",
-        "//folly/futures:shared_promise",
     ],
 )

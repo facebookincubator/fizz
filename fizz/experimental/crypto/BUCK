@@ -8,10 +8,10 @@ fizz_cpp_library(
         "MerkleTree.h",
     ],
     exported_deps = [
+        "fbsource//xplat/folly/container:f14_hash",
         "//fizz/backend:openssl",
         "//fizz/crypto:random",
         "//fizz/record:record",
-        "//folly/container:f14_hash",
     ],
 )
 

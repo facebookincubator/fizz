@@ -8,9 +8,9 @@ fizz_cpp_unittest(
         "PaddingClientExtensionTest.cpp",
     ],
     deps = [
+        "fbsource//xplat/folly/portability:gmock",
+        "fbsource//xplat/folly/portability:gtest",
         "//fizz/extensions/clientpadding:padding_client_extension",
         "//fizz/record/test:extension_tests_base",
-        "//folly/portability:gmock",
-        "//folly/portability:gtest",
     ],
 )

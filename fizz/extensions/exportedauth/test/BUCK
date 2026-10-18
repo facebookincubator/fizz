@@ -8,6 +8,9 @@ fizz_cpp_unittest(
         "ExportedAuthenticatorTest.cpp",
     ],
     deps = [
+        "fbsource//xplat/folly:string",
+        "fbsource//xplat/folly/portability:gmock",
+        "fbsource//xplat/folly/portability:gtest",
         "//fizz/backend:openssl",
         "//fizz/crypto/test:TestUtil",
         "//fizz/extensions/exportedauth:exported_authenticator",
@@ -15,8 +18,5 @@ fizz_cpp_unittest(
         "//fizz/protocol/test:mocks",
         "//fizz/protocol/test:test_util",
         "//fizz/record:record",
-        "//folly:string",
-        "//folly/portability:gmock",
-        "//folly/portability:gtest",
     ],
 )
