@@ -1,14 +1,14 @@
-load("@fbcode_macros//build_defs:build_file_migration.bzl", "fbcode_target")
-load("@fbcode_macros//build_defs:cpp_unittest.bzl", "cpp_unittest")
+load("@fbsource//tools/build_defs:platform_defs.bzl", "FBCODE")
+load("@fbsource//xplat/fizz:defs.bzl", "fizz_cpp_unittest")
 
 oncall("secure_pipes")
 
-fbcode_target(
-    _kind = cpp_unittest,
+fizz_cpp_unittest(
     name = "ktls_test",
     srcs = [
         "KTLSTest.cpp",
     ],
+    platforms = (FBCODE,),
     deps = [
         "fbsource//xplat/folly/test:test_utils",
         "//fizz/backend:openssl",
@@ -17,12 +17,12 @@ fbcode_target(
     ],
 )
 
-fbcode_target(
-    _kind = cpp_unittest,
+fizz_cpp_unittest(
     name = "async_fizz_base_ktls_test",
     srcs = [
         "AsyncFizzBaseKTLSTest.cpp",
     ],
+    platforms = (FBCODE,),
     deps = [
         "fbsource//xplat/folly:function",
         "fbsource//xplat/folly/futures:core",
@@ -44,12 +44,12 @@ fbcode_target(
     ],
 )
 
-fbcode_target(
-    _kind = cpp_unittest,
+fizz_cpp_unittest(
     name = "async_ktls_socket_test",
     srcs = [
         "AsyncKTLSSocketTest.cpp",
     ],
+    platforms = (FBCODE,),
     deps = [
         "fbsource//xplat/folly/io/async:async_socket",
         "fbsource//xplat/folly/io/async:server_socket",
@@ -61,12 +61,12 @@ fbcode_target(
     ],
 )
 
-fbcode_target(
-    _kind = cpp_unittest,
+fizz_cpp_unittest(
     name = "async_ktls_rx_socket_test",
     srcs = [
         "AsyncKTLSRxSocketTest.cpp",
     ],
+    platforms = (FBCODE,),
     deps = [
         "fbsource//xplat/folly/io/async:async_socket",
         "fbsource//xplat/folly/io/async:server_socket",

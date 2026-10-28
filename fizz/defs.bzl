@@ -4,10 +4,6 @@
 # This source code is licensed under the BSD-style license found in the
 # LICENSE file in the root directory of this source tree.
 
-load("@fbcode_macros//build_defs:cpp_binary.bzl", "cpp_binary")
-load("@fbcode_macros//build_defs:cpp_library.bzl", "cpp_library")
-load("@fbcode_macros//build_defs:cpp_unittest.bzl", "cpp_unittest")
-load("@fbsource//tools/build_defs:cell_defs.bzl", "get_fbsource_cell")
 load("@fbsource//tools/build_defs:fb_xplat_cxx_binary.bzl", "fb_xplat_cxx_binary")
 load("@fbsource//tools/build_defs:fb_xplat_cxx_library.bzl", "fb_xplat_cxx_library")
 load("@fbsource//tools/build_defs:fb_xplat_cxx_test.bzl", "fb_xplat_cxx_test")
@@ -77,18 +73,29 @@ WINDOWS_MSVC_CXXFLAGS = [
     "/EHs",
 ]
 
-WINDOWS_CLANG_CXX_FLAGS_NO_SSE4 = [
+WINDOWS_CLANG_CXX_FLAGS = [
     "-Wno-deprecated-declarations",
     "-Wno-microsoft-cast",
     "-DBOOST_HAS_THREADS",
 ]
 
-WINDOWS_CLANG_CXX_FLAGS = WINDOWS_CLANG_CXX_FLAGS_NO_SSE4 + [
-    "-msse4.2",
-]
+# fizz must not opt into SSE4.2 on its own: it changes folly's F14 intrinsics
+# mode, which has to match across every object in the link.
+WINDOWS_CLANG_SSE4_FLAGS = select({
+    "DEFAULT": [],
+    "ovr_config//os:windows-gcc-or-clang": select({
+        "DEFAULT": [],
+        "ovr_config//cpu/x86:avx2": ["-msse4.2"],
+        "ovr_config//cpu/x86:sse42": ["-msse4.2"],
+    }),
+})
 
 DEFAULT_APPLE_SDKS = (APPLETVOS, IOS, MACOSX)
 DEFAULT_PLATFORMS = (ANDROID, APPLE, CXX, FBCODE, WINDOWS)
+
+# Tests and binaries build for the host only; FBCODE is what the
+# `fbcode//fizz/...` aliases resolve to.
+DEFAULT_TOOL_PLATFORMS = (CXX, FBCODE)
 
 def _compute_include_directories():
     base_path = native.package_name()
@@ -107,7 +114,7 @@ def fizz_cpp_library(
     # cpp_library API
     headers = [],
     private_headers = [],
-    modular_headers = None,
+    modular_headers = None,  # @unused
     deps = None,
     exported_deps = None,
     external_deps = None,
@@ -118,40 +125,25 @@ def fizz_cpp_library(
     platforms = None,
     **kwargs,
 ):
-    """Translate a simpler declartion into the more complete library target"""
-    if get_fbsource_cell() == "fbcode":
-        cpp_library(
-            name = name,
-            headers = headers,
-            private_headers = private_headers,
-            modular_headers = modular_headers,
-            srcs = srcs,
-            deps = deps,
-            exported_deps = exported_deps,
-            external_deps = external_deps,
-            exported_external_deps = exported_external_deps,
-            propagated_pp_flags = propagated_pp_flags,
-            **kwargs,
-        )
-    else:
-        converted_deps = deps_map_utils.convert_all_to_fbsource_deps(
-            deps = deps,
-            exported_deps = exported_deps,
-            external_deps = external_deps,
-            exported_external_deps = exported_external_deps,
-        )
-        fizz_cxx_library(
-            name = name,
-            platforms = platforms,
-            exported_headers = headers,
-            headers = private_headers,
-            srcs = srcs,
-            exported_preprocessor_flags = propagated_pp_flags,
-            deps = converted_deps.deps,
-            exported_deps = converted_deps.exported_deps,
-            enable_static_variant = enable_static_variant,
-            **kwargs,
-        )
+    """Translate a `cpp_library`-style declaration into an `fb_xplat_cxx_library`."""
+    converted_deps = deps_map_utils.convert_all_to_fbsource_deps(
+        deps = deps,
+        exported_deps = exported_deps,
+        external_deps = external_deps,
+        exported_external_deps = exported_external_deps,
+    )
+    fizz_cxx_library(
+        name = name,
+        platforms = platforms,
+        exported_headers = headers,
+        headers = private_headers,
+        srcs = srcs,
+        exported_preprocessor_flags = propagated_pp_flags,
+        deps = converted_deps.deps,
+        exported_deps = converted_deps.exported_deps,
+        enable_static_variant = enable_static_variant,
+        **kwargs,
+    )
 
 def fizz_cxx_library(
     name, platforms = None, apple_sdks = None, headers = [], exported_headers = [], enable_static_variant = False, header_namespace = "", feature = None, srcs = [], **kwargs
@@ -164,7 +156,7 @@ def fizz_cxx_library(
     if feature == None:
         feature = Infra_Networking_Core
 
-    windows_compiler_flags = WINDOWS_CLANG_CXX_FLAGS if read_bool("fizz", "enable_sse4", True) else WINDOWS_CLANG_CXX_FLAGS_NO_SSE4
+    sse4_flags = WINDOWS_CLANG_SSE4_FLAGS if read_bool("fizz", "enable_sse4", True) else []
 
     if headers or exported_headers:
         public_include_directories = []
@@ -176,6 +168,9 @@ def fizz_cxx_library(
     fb_xplat_cxx_library(
         name = name,
         srcs = srcs if srcs else [],
+        # fbcode's `cpp_library` never re-exports `deps`; keep that for the
+        # fbcode build so fizz's private deps stay private to its consumers.
+        fbcode_reexport_all_header_dependencies = False,
         feature = feature,
         enable_static_variant = enable_static_variant,
         platforms = platforms,
@@ -184,8 +179,8 @@ def fizz_cxx_library(
         exported_headers = exported_headers,
         header_namespace = header_namespace,
         public_include_directories = public_include_directories,
-        compiler_flags = kwargs.pop("compiler_flags", []) + CXXFLAGS,
-        windows_compiler_flags = kwargs.pop("windows_compiler_flags", []) + windows_compiler_flags,
+        compiler_flags = kwargs.pop("compiler_flags", []) + CXXFLAGS + sse4_flags,
+        windows_compiler_flags = kwargs.pop("windows_compiler_flags", []) + WINDOWS_CLANG_CXX_FLAGS,
         fbobjc_compiler_flags = kwargs.pop("fbobjc_compiler_flags", []) + FBOBJC_CXXFLAGS,
         fbobjc_exported_preprocessor_flags = kwargs.pop("fbobjc_exported_preprocessor_flags", []),
         fbandroid_compiler_flags = kwargs.pop("fbandroid_compiler_flags", []) + FBANDROID_CXXFLAGS,
@@ -194,32 +189,32 @@ def fizz_cxx_library(
         **kwargs,
     )
 
-def fizz_cpp_binary(name, deps, **kwargs):
-    if get_fbsource_cell() == "fbcode":
-        cpp_binary(name = name, deps = deps, **kwargs)
-    else:
-        converted_deps = deps_map_utils.convert_all_to_fbsource_deps(
-            deps = deps,
-        )
-        fizz_cxx_binary(name = name, deps = converted_deps.deps, **kwargs)
+def fizz_cpp_binary(name, deps, platforms = DEFAULT_TOOL_PLATFORMS, **kwargs):
+    converted_deps = deps_map_utils.convert_all_to_fbsource_deps(
+        deps = deps,
+    )
+    fizz_cxx_binary(name = name, deps = converted_deps.deps, platforms = platforms, **kwargs)
 
-def fizz_cxx_binary(name, **kwargs):
-    fb_xplat_cxx_binary(name = name, platforms = (CXX,), contacts = ["oncall+secure_pipes@xmail.facebook.com"], **kwargs)
+def fizz_cxx_binary(name, platforms = DEFAULT_TOOL_PLATFORMS, **kwargs):
+    fb_xplat_cxx_binary(name = name, platforms = platforms, contacts = ["oncall+secure_pipes@xmail.facebook.com"], **kwargs)
 
-def fizz_cpp_unittest(name, deps, external_deps = (), supports_static_listing = True, source_headers = None, **kwargs):
-    if get_fbsource_cell() == "fbcode":
-        cpp_unittest(
-            name = name, supports_static_listing = supports_static_listing, source_headers = source_headers, deps = deps, external_deps = external_deps, **kwargs
-        )
-    else:
-        converted_deps = deps_map_utils.convert_all_to_fbsource_deps(
-            deps = deps,
-            external_deps = external_deps,
-        )
-        fizz_cxx_test(name = name, deps = converted_deps.deps, **kwargs)
+def fizz_cpp_unittest(
+    name,
+    deps,
+    external_deps = (),
+    platforms = DEFAULT_TOOL_PLATFORMS,
+    supports_static_listing = True,  # @unused
+    source_headers = None,  # @unused
+    **kwargs,
+):
+    converted_deps = deps_map_utils.convert_all_to_fbsource_deps(
+        deps = deps,
+        external_deps = external_deps,
+    )
+    fizz_cxx_test(name = name, deps = converted_deps.deps, platforms = platforms, **kwargs)
 
-def fizz_cxx_test(name, **kwargs):
-    fb_xplat_cxx_test(name = name, platforms = (CXX,), contacts = ["oncall+secure_pipes@xmail.facebook.com"], **kwargs)
+def fizz_cxx_test(name, platforms = DEFAULT_TOOL_PLATFORMS, **kwargs):
+    fb_xplat_cxx_test(name = name, platforms = platforms, contacts = ["oncall+secure_pipes@xmail.facebook.com"], **kwargs)
 
 def fizz_multi_cpp_unittest(name, suffixes_and_constraints, **kwargs):
     if "constraint_overrides" in kwargs:

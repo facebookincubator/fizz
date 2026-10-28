@@ -1,11 +1,9 @@
-load("@fbcode_macros//build_defs:build_file_migration.bzl", "fbcode_target")
-load("@fbcode_macros//build_defs:cpp_binary.bzl", "cpp_binary")
-load("@fbcode_macros//build_defs:cpp_library.bzl", "cpp_library")
+load("@fbsource//tools/build_defs:platform_defs.bzl", "FBCODE")
+load("@fbsource//xplat/fizz:defs.bzl", "fizz_cpp_binary", "fizz_cpp_library")
 
 oncall("secure_pipes")
 
-fbcode_target(
-    _kind = cpp_library,
+fizz_cpp_library(
     name = "tool_lib",
     srcs = [
         "FizzCommandCommon.cpp",
@@ -13,6 +11,7 @@ fbcode_target(
     headers = [
         "FizzCommandCommon.h",
     ],
+    platforms = (FBCODE,),
     deps = [
         "fbsource//xplat/folly:base64",
         "fbsource//xplat/folly:string",
@@ -32,8 +31,7 @@ fbcode_target(
     ],
 )
 
-fbcode_target(
-    _kind = cpp_binary,
+fizz_cpp_binary(
     name = "fizz",
     srcs = [
         "FizzClientCommand.cpp",
@@ -47,6 +45,7 @@ fbcode_target(
         "CertificateVerifiers.h",
         "Commands.h",
     ],
+    platforms = (FBCODE,),
     preprocessor_flags = [
         "-DFIZZ_TOOL_ENABLE_BROTLI",
         "-DFIZZ_TOOL_ENABLE_ZSTD",

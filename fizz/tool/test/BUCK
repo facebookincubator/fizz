@@ -1,14 +1,14 @@
-load("@fbcode_macros//build_defs:build_file_migration.bzl", "fbcode_target")
-load("@fbcode_macros//build_defs:cpp_unittest.bzl", "cpp_unittest")
+load("@fbsource//tools/build_defs:platform_defs.bzl", "FBCODE")
+load("@fbsource//xplat/fizz:defs.bzl", "fizz_cpp_unittest")
 
 oncall("secure_pipes")
 
-fbcode_target(
-    _kind = cpp_unittest,
+fizz_cpp_unittest(
     name = "fizz_command_common",
     srcs = [
         "FizzCommandCommonTest.cpp",
     ],
+    platforms = (FBCODE,),
     deps = [
         "fbsource//xplat/folly/container:array",
         "fbsource//xplat/folly/portability:gmock",

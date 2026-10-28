@@ -7,8 +7,8 @@
 """build mode definitions for fizz"""
 
 load("@fbcode//:BUILD_MODE.bzl", get_parent_modes = "get_empty_modes")
-load("@fbcode//fizz:defs.bzl", "FIZZ_CXX_WARNINGS")
 load("@fbcode_macros//build_defs:create_build_mode.bzl", "extend_build_modes")
+load("@fbsource//xplat/fizz:defs.bzl", "FIZZ_CXX_WARNINGS")
 
 _extra_cflags = []
 
