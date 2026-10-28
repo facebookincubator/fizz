@@ -43,6 +43,8 @@ class AsyncFizzServerTest : public Test {
  public:
   void SetUp() override {
     context_ = std::make_shared<FizzServerContext>();
+    steadyClock_ = std::make_shared<MockSteadyClock>();
+    context_->setSteadyClock(steadyClock_);
     socket_ = new MockAsyncTransport();
     auto transport = AsyncTransportWrapper::UniquePtr(socket_);
     server_.reset(new AsyncFizzServerT<MockServerStateMachineInstance>(
@@ -136,6 +138,7 @@ class AsyncFizzServerTest : public Test {
 
   AsyncFizzServerT<MockServerStateMachineInstance>::UniquePtr server_;
   std::shared_ptr<FizzServerContext> context_;
+  std::shared_ptr<MockSteadyClock> steadyClock_;
   MockAsyncTransport* socket_;
   MockServerStateMachineInstance* machine_;
   AsyncTransportWrapper::ReadCallback* socketReadCallback_;
@@ -270,6 +273,54 @@ TEST_F(AsyncFizzServerTest, TestWriteToSocket) {
   });
   EXPECT_CALL(*socket_, writeChain(_, _, _));
   socketReadCallback_->readBufferAvailable(IOBuf::copyBuffer("ClientHello"));
+}
+
+TEST_F(AsyncFizzServerTest, TestServerHandshakeTraffic) {
+  accept();
+  EXPECT_CALL(*machine_, _processSocketData(_, _, _)).WillOnce([]() {
+    return actions(
+        MutateState(
+            [](State& newState) { newState.clientRandom() = Random(); }),
+        SecretAvailable(DerivedSecret(
+            std::vector<uint8_t>({'c', 'h', 't'}),
+            HandshakeSecrets::ClientHandshakeTraffic)),
+        SecretAvailable(DerivedSecret(
+            std::vector<uint8_t>({'s', 'h', 't'}),
+            HandshakeSecrets::ServerHandshakeTraffic)),
+        SecretAvailable(DerivedSecret(
+            std::vector<uint8_t>({'s', 'a', 't'}),
+            AppTrafficSecrets::ServerAppTraffic)),
+        WaitForData());
+  });
+  auto flightTime =
+      std::chrono::steady_clock::time_point(std::chrono::seconds(3));
+  EXPECT_CALL(*steadyClock_, getCurrentTime()).WillOnce(Return(flightTime));
+  socketReadCallback_->readBufferAvailable(IOBuf::copyBuffer("ClientHello"));
+
+  EXPECT_EQ(server_->getHandshakeLatency().serverHandshakeTraffic, flightTime);
+  EXPECT_FALSE(server_->getHandshakeLatency().clientAppTraffic);
+}
+
+TEST_F(AsyncFizzServerTest, TestClientAppTraffic) {
+  accept();
+  EXPECT_CALL(*machine_, _processSocketData(_, _, _)).WillOnce([]() {
+    return actions(
+        MutateState(
+            [](State& newState) { newState.clientRandom() = Random(); }),
+        SecretAvailable(DerivedSecret(
+            std::vector<uint8_t>({'c', 'a', 't'}),
+            AppTrafficSecrets::ClientAppTraffic)),
+        SecretAvailable(DerivedSecret(
+            std::vector<uint8_t>({'c', 'a', 't', '2'}),
+            AppTrafficSecrets::ClientAppTraffic)),
+        WaitForData());
+  });
+  auto verifiedTime =
+      std::chrono::steady_clock::time_point(std::chrono::seconds(7));
+  EXPECT_CALL(*steadyClock_, getCurrentTime()).WillOnce(Return(verifiedTime));
+  socketReadCallback_->readBufferAvailable(IOBuf::copyBuffer("ClientHello"));
+
+  EXPECT_EQ(server_->getHandshakeLatency().clientAppTraffic, verifiedTime);
 }
 
 TEST_F(AsyncFizzServerTest, TestMutateState) {

@@ -100,6 +100,15 @@ class MockServerStateMachine : public ServerStateMachine {
   }
 };
 
+class MockSteadyClock : public SteadyClock {
+ public:
+  MOCK_METHOD(
+      std::chrono::steady_clock::time_point,
+      getCurrentTime,
+      (),
+      (const));
+};
+
 class MockTicketCipher : public TicketCipher {
  public:
   MOCK_METHOD(

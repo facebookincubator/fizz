@@ -18,6 +18,14 @@
 namespace fizz {
 namespace server {
 
+/**
+ * When each secret became available.
+ */
+struct HandshakeLatency {
+  folly::Optional<std::chrono::steady_clock::time_point> serverHandshakeTraffic;
+  folly::Optional<std::chrono::steady_clock::time_point> clientAppTraffic;
+};
+
 template <typename SM>
 class AsyncFizzServerT : public AsyncFizzBase {
  public:
@@ -80,6 +88,10 @@ class AsyncFizzServerT : public AsyncFizzBase {
    */
   void releaseHandshakeLogging() {
     state_.handshakeLogging().reset();
+  }
+
+  const HandshakeLatency& getHandshakeLatency() const {
+    return handshakeLatency_;
   }
 
   /**
@@ -159,6 +171,8 @@ class AsyncFizzServerT : public AsyncFizzBase {
   std::shared_ptr<ServerExtensions> extensions_;
 
   State state_;
+
+  HandshakeLatency handshakeLatency_;
 
   ActionMoveVisitor visitor_;
 

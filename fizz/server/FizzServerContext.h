@@ -54,6 +54,19 @@ enum class ClientAuthMode { None, Optional, Required };
  */
 enum class AlpnMode { AllowMismatch, Optional, Required };
 
+class SteadyClock {
+ public:
+  virtual ~SteadyClock() = default;
+  virtual std::chrono::steady_clock::time_point getCurrentTime() const = 0;
+};
+
+class SystemSteadyClock : public SteadyClock {
+ public:
+  std::chrono::steady_clock::time_point getCurrentTime() const override {
+    return std::chrono::steady_clock::now();
+  }
+};
+
 class FizzServerContext {
  public:
   FizzServerContext();
@@ -347,6 +360,13 @@ class FizzServerContext {
     return *clock_;
   }
 
+  void setSteadyClock(std::shared_ptr<SteadyClock> clock) {
+    steadyClock_ = std::move(clock);
+  }
+  const SteadyClock& getSteadyClock() const {
+    return *steadyClock_;
+  }
+
   /**
    * Set ALPN enforcement mode.
    * When set to Optional or Required while ALPN fails,
@@ -415,6 +435,8 @@ class FizzServerContext {
   ClockSkewTolerance clockSkewTolerance_;
   std::shared_ptr<ReplayCache> replayCache_;
   std::shared_ptr<Clock> clock_ = std::make_shared<SystemClock>();
+  std::shared_ptr<SteadyClock> steadyClock_ =
+      std::make_shared<SystemSteadyClock>();
 
   std::vector<CertificateCompressionAlgorithm> supportedCompressionAlgos_;
 

@@ -407,6 +407,18 @@ void AsyncFizzServerT<SM>::ActionMoveVisitor::operator()(
 template <typename SM>
 void AsyncFizzServerT<SM>::ActionMoveVisitor::operator()(
     SecretAvailable& secret) {
+  auto& latency = server_.handshakeLatency_;
+  if (secret.secret.type ==
+      SecretType(HandshakeSecrets::ServerHandshakeTraffic)) {
+    latency.serverHandshakeTraffic =
+        server_.fizzContext_->getSteadyClock().getCurrentTime();
+  } else if (
+      !latency.clientAppTraffic &&
+      secret.secret.type == SecretType(AppTrafficSecrets::ClientAppTraffic)) {
+    latency.clientAppTraffic =
+        server_.fizzContext_->getSteadyClock().getCurrentTime();
+  }
+
   fizz_probe_secret_available(
       secret.secret.secret.data(),
       secret.secret.secret.size(),
