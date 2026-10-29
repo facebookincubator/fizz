@@ -62,8 +62,10 @@ class TicketPolicy {
 
  private:
   std::chrono::seconds getValidity(const ResumptionState& resState) const {
+    // subtract first to avoid overflow
     return std::chrono::duration_cast<std::chrono::seconds>(
-        resState.handshakeTime + handshakeValidity_ - clock_->getCurrentTime());
+        (resState.handshakeTime - clock_->getCurrentTime()) +
+        handshakeValidity_);
   }
 
   std::chrono::seconds ticketValidity_{std::chrono::hours(1)};

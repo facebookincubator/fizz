@@ -34,6 +34,28 @@ std::shared_ptr<const Cert> readClientCertificate(
     folly::io::Cursor& cursor,
     const Factory& factory);
 
+template <class Duration>
+Status readTimestamp(
+    size_t& len,
+    Error& err,
+    std::chrono::system_clock::time_point& out,
+    folly::io::Cursor& cursor) {
+  static_assert(std::ratio_less_equal_v<
+                std::chrono::system_clock::period,
+                typename Duration::period>);
+  uint64_t value;
+  FIZZ_RETURN_ON_ERROR(fizz::detail::read(len, err, value, cursor));
+  constexpr uint64_t kMaxValue = std::chrono::duration_cast<Duration>(
+                                     std::chrono::system_clock::duration::max())
+                                     .count();
+  if (value > kMaxValue) {
+    return err.error(
+        "ticket timestamp out of range", AlertDescription::decode_error);
+  }
+  out = std::chrono::system_clock::time_point(Duration(value));
+  return Status::Success;
+}
+
 template <CertificateStorage Storage>
 struct TicketCodec {
   /**

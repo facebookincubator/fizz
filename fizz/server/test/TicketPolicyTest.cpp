@@ -70,6 +70,18 @@ TEST_F(TicketPolicyTest, TestStaleHandshake) {
   EXPECT_FALSE(policy_.shouldAccept(resState));
 }
 
+TEST_F(TicketPolicyTest, TestHandshakeTimeNearMax) {
+  auto now = std::chrono::system_clock::now();
+  EXPECT_CALL(*clock_, getCurrentTime()).WillRepeatedly(Return(now));
+  policy_.setTicketValidity(std::chrono::seconds(5));
+  policy_.setHandshakeValidity(std::chrono::seconds(10));
+
+  ResumptionState resState;
+  resState.handshakeTime = std::chrono::system_clock::time_point::max();
+  EXPECT_EQ(policy_.remainingValidity(resState), std::chrono::seconds(5));
+  EXPECT_TRUE(policy_.shouldAccept(resState));
+}
+
 } // namespace test
 } // namespace server
 } // namespace fizz

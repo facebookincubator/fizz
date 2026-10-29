@@ -83,16 +83,16 @@ ResumptionState TicketCodec<Storage>::decode(
 
   FIZZ_THROW_ON_ERROR(
       fizz::detail::read(len, err, resState.ticketAgeAdd, cursor), err);
-  uint64_t seconds;
-  FIZZ_THROW_ON_ERROR(fizz::detail::read(len, err, seconds, cursor), err);
+  FIZZ_THROW_ON_ERROR(
+      readTimestamp<std::chrono::seconds>(
+          len, err, resState.ticketIssueTime, cursor),
+      err);
   Buf alpnBuf;
   fizz::detail::readBuf<uint8_t>(alpnBuf, cursor);
   if (!alpnBuf->empty()) {
     resState.alpn = alpnBuf->to<std::string>();
   }
 
-  resState.ticketIssueTime = std::chrono::time_point<std::chrono::system_clock>(
-      std::chrono::seconds(seconds));
   // If unset, set handshake timestamp to ticket timestamp
   resState.handshakeTime = resState.ticketIssueTime;
 
@@ -106,9 +106,10 @@ ResumptionState TicketCodec<Storage>::decode(
   if (cursor.isAtEnd()) {
     return resState;
   }
-  FIZZ_THROW_ON_ERROR(fizz::detail::read(len, err, seconds, cursor), err);
-  resState.handshakeTime = std::chrono::time_point<std::chrono::system_clock>(
-      std::chrono::seconds(seconds));
+  FIZZ_THROW_ON_ERROR(
+      readTimestamp<std::chrono::seconds>(
+          len, err, resState.handshakeTime, cursor),
+      err);
 
   return resState;
 }
