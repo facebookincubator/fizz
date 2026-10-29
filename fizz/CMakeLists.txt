@@ -339,6 +339,11 @@ install(EXPORT fizz-exports
         NAMESPACE fizz::
         DESTINATION ${CMAKE_INSTALL_DIR})
 
+# A parent project's BUILD_TESTS is for its own tests. Set before option(),
+# which then adds no BUILD_TESTS to the parent's cache.
+if (NOT CMAKE_SOURCE_DIR STREQUAL PROJECT_SOURCE_DIR)
+  set(BUILD_TESTS OFF)
+endif()
 IF(CMAKE_CROSSCOMPILING)
    option(BUILD_TESTS "BUILD_TESTS" OFF)
 ELSE(CMAKE_CROSSCOMPILING)
@@ -485,6 +490,10 @@ if(BUILD_TESTS)
   add_gtest(test/HandshakeTest.cpp HandshakeTest)
 endif()
 
+# Likewise for a parent project's BUILD_EXAMPLES.
+if (NOT CMAKE_SOURCE_DIR STREQUAL PROJECT_SOURCE_DIR)
+  set(BUILD_EXAMPLES OFF)
+endif()
 option(BUILD_EXAMPLES "BUILD_EXAMPLES" ON)
 
 if(BUILD_EXAMPLES)
