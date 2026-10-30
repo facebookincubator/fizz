@@ -768,7 +768,7 @@ static std::
 
     folly::IOBufQueue chloQueue(folly::IOBufQueue::cacheChainLength());
     chloQueue.append((*chlo.originalEncoding)->clone());
-    size_t binderLength;
+    size_t binderLength = 0;
     FIZZ_THROW_ON_ERROR(getBinderLength(binderLength, err, chlo), err);
     auto chloPrefix = chloQueue.split(chloQueue.chainLength() - binderLength);
     FIZZ_THROW_ON_ERROR(
