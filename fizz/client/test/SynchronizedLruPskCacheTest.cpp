@@ -12,7 +12,6 @@
 
 #include <fizz/client/SynchronizedLruPskCache.h>
 #include <fizz/client/test/Utilities.h>
-#include <folly/Format.h>
 
 using namespace testing;
 

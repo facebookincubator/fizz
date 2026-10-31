@@ -120,7 +120,6 @@ fizz_cpp_unittest(
     ],
     deps = [
         "fbsource//third-party/fmt:fmt",
-        "fbsource//xplat/folly:format",
         "fbsource//xplat/folly/portability:gmock",
         "fbsource//xplat/folly/portability:gtest",
         ":utilities",
