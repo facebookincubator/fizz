@@ -264,7 +264,6 @@ target_link_libraries(fizz
     Folly::folly_io_socket_option_map
     Folly::folly_io_async_password_in_file
     Folly::folly_io_async_ssl_context
-    Folly::folly_format
     Folly::folly_portability_unistd
     Folly::folly_detail_base64_detail_base64_api
     ${OPENSSL_LIBRARIES}
