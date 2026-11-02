@@ -8,8 +8,8 @@ fizz_cpp_unittest(
         "BatchSignatureTypesTest.cpp",
     ],
     deps = [
+        "fbsource//xplat/fizz/experimental/protocol:batch_signature_types",
         "fbsource//xplat/folly/portability:gmock",
         "fbsource//xplat/folly/portability:gtest",
-        "//fizz/experimental/protocol:batch_signature_types",
     ],
 )

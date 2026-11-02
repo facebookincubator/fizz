@@ -14,9 +14,9 @@ fizz_cpp_library(
         "Types-inl.h",
     ],
     exported_deps = [
+        "fbsource//xplat/fizz/crypto/hpke:types",
+        "fbsource//xplat/fizz/record:record",
         "fbsource//xplat/folly/io:iobuf",
-        "//fizz/crypto/hpke:types",
-        "//fizz/record:record",
     ],
 )
 
@@ -29,16 +29,16 @@ fizz_cpp_library(
         "Encryption.h",
     ],
     deps = [
-        "//fizz/crypto:utils",
-        "//fizz/crypto/hpke:utils",
-        "//fizz/protocol:protocol",
-        "//fizz/record:record",
+        "fbsource//xplat/fizz/crypto:utils",
+        "fbsource//xplat/fizz/crypto/hpke:utils",
+        "fbsource//xplat/fizz/protocol:protocol",
+        "fbsource//xplat/fizz/record:record",
     ],
     exported_deps = [
+        "fbsource//xplat/fizz/crypto/exchange:key_exchange",
+        "fbsource//xplat/fizz/crypto/hpke:hpke",
+        "fbsource//xplat/fizz/protocol:factory",
         ":encrypted_client_hello",
-        "//fizz/crypto/exchange:key_exchange",
-        "//fizz/crypto/hpke:hpke",
-        "//fizz/protocol:factory",
     ],
 )
 
@@ -51,9 +51,9 @@ fizz_cpp_library(
         "Decrypter.h",
     ],
     exported_deps = [
+        "fbsource//xplat/fizz/protocol:factory",
         ":encrypted_client_hello",
         ":encryption",
-        "//fizz/protocol:factory",
     ],
 )
 
@@ -63,7 +63,7 @@ fizz_cpp_library(
         "GreaseECHSetting.h",
     ],
     exported_deps = [
-        "//fizz/crypto/hpke:hpke",
+        "fbsource//xplat/fizz/crypto/hpke:hpke",
     ],
 )
 
@@ -76,11 +76,11 @@ fizz_cpp_library(
         "GreaseECH.h",
     ],
     deps = [
-        "//fizz/crypto/hpke:utils",
+        "fbsource//xplat/fizz/crypto/hpke:utils",
     ],
     exported_deps = [
+        "fbsource//xplat/fizz/protocol:factory",
         ":encrypted_client_hello",
         ":grease_ech_setting",
-        "//fizz/protocol:factory",
     ],
 )

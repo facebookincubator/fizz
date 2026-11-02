@@ -11,7 +11,7 @@ fizz_cpp_library(
         "Types.h",
     ],
     exported_deps = [
-        "//fizz/record:record",
+        "fbsource//xplat/fizz/record:record",
     ],
 )
 
@@ -25,6 +25,6 @@ fizz_cpp_library(
     ],
     deps = [":types"],
     exported_deps = [
-        "//fizz/client:client_extensions",
+        "fbsource//xplat/fizz/client:client_extensions",
     ],
 )

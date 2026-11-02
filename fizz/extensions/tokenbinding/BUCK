@@ -17,8 +17,8 @@ fizz_cpp_library(
         "fbsource//xplat/folly/io:iobuf",
     ],
     exported_deps = [
+        "fbsource//xplat/fizz/record:record",
         "fbsource//xplat/folly:optional",
-        "//fizz/record:record",
     ],
 )
 
@@ -29,10 +29,10 @@ fizz_cpp_library(
     ],
     labels = wdls.FIZZ,
     exported_deps = [
+        "fbsource//xplat/fizz/server:negotiator",
+        "fbsource//xplat/fizz/server:server_extensions",
         ":token_binding",
         ":token_binding_context",
-        "//fizz/server:negotiator",
-        "//fizz/server:server_extensions",
     ],
 )
 
@@ -45,13 +45,13 @@ fizz_cpp_library(
         "TokenBindingClientExtension.h",
     ],
     deps = [
-        "//fizz/util:logging",
+        "fbsource//xplat/fizz/util:logging",
     ],
     exported_deps = [
+        "fbsource//xplat/fizz/client:client_extensions",
         "fbsource//xplat/folly:optional",
         ":token_binding",
         ":token_binding_context",
-        "//fizz/client:client_extensions",
     ],
 )
 
@@ -75,13 +75,13 @@ fizz_cpp_library(
         "Validator.h",
     ],
     deps = [
+        "fbsource//xplat/fizz/protocol:default_factory",
         ":utils",
-        "//fizz/protocol:default_factory",
     ],
     exported_deps = [
+        "fbsource//xplat/fizz/backend:openssl",
+        "fbsource//xplat/fizz/record:record",
         ":token_binding",
-        "//fizz/backend:openssl",
-        "//fizz/record:record",
     ],
 )
 
@@ -104,8 +104,8 @@ fizz_cpp_library(
         "TokenBindingConstructor.h",
     ],
     deps = [
-        "fbcode//fizz/backend:openssl",
-        "fbcode//fizz/extensions/tokenbinding:utils",
+        "fbsource//xplat/fizz/backend:openssl",
+        "fbsource//xplat/fizz/extensions/tokenbinding:utils",
     ],
     exported_deps = [
         "fbsource//xplat/folly/ssl:openssl_ptr_types",

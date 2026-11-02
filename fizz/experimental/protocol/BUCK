@@ -8,8 +8,8 @@ fizz_cpp_library(
         "BatchSignatureFactory.h",
     ],
     exported_deps = [
-        "//fizz/experimental/client:batch_signature_peer_cert",
-        "//fizz/protocol:factory",
+        "fbsource//xplat/fizz/experimental/client:batch_signature_peer_cert",
+        "fbsource//xplat/fizz/protocol:factory",
     ],
 )
 
@@ -22,7 +22,7 @@ fizz_cpp_library(
         "BatchSignatureTypes.h",
     ],
     exported_deps = [
-        "//fizz/backend:openssl",
-        "//fizz/record:record",
+        "fbsource//xplat/fizz/backend:openssl",
+        "fbsource//xplat/fizz/record:record",
     ],
 )

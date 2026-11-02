@@ -93,8 +93,7 @@ WINDOWS_CLANG_SSE4_FLAGS = select({
 DEFAULT_APPLE_SDKS = (APPLETVOS, IOS, MACOSX)
 DEFAULT_PLATFORMS = (ANDROID, APPLE, CXX, FBCODE, WINDOWS)
 
-# Tests and binaries build for the host only; FBCODE is what the
-# `fbcode//fizz/...` aliases resolve to.
+# Tests and binaries build for the host only (FBCODE when built from fbcode).
 DEFAULT_TOOL_PLATFORMS = (CXX, FBCODE)
 
 def _compute_include_directories():

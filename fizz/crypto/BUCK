@@ -11,9 +11,9 @@ fizz_cpp_library(
         "Crypto.h",
     ],
     exported_deps = [
+        "fbsource//xplat/fizz/util:status",
         "fbsource//xplat/folly:range",
         "fbsource//xplat/folly/io:iobuf",
-        "//fizz/util:status",
     ],
 )
 
@@ -28,11 +28,11 @@ fizz_cpp_library(
         "Hmac.h",
     ],
     deps = [
-        "//fizz/util:logging",
+        "fbsource//xplat/fizz/util:logging",
     ],
     exported_deps = [
+        "fbsource//xplat/fizz/crypto:crypto",
         "fbsource//xplat/folly/io:iobuf",
-        "//fizz/crypto:crypto",
     ],
 )
 
@@ -45,12 +45,12 @@ fizz_cpp_library(
         "Hkdf.h",
     ],
     deps = [
-        "//fizz/util:logging",
+        "fbsource//xplat/fizz/util:logging",
     ],
     exported_deps = [
+        "fbsource//xplat/fizz/crypto:crypto",
+        "fbsource//xplat/fizz/crypto:hasher",
         "fbsource//xplat/folly/io:iobuf",
-        "//fizz/crypto:crypto",
-        "//fizz/crypto:hasher",
     ],
 )
 
@@ -63,12 +63,12 @@ fizz_cpp_library(
         "KeyDerivation.h",
     ],
     deps = [
-        "//fizz/util:logging",
+        "fbsource//xplat/fizz/util:logging",
     ],
     exported_deps = [
-        "//fizz/crypto:crypto",
-        "//fizz/crypto:hkdf",
-        "//fizz/record:record",
+        "fbsource//xplat/fizz/crypto:crypto",
+        "fbsource//xplat/fizz/crypto:hkdf",
+        "fbsource//xplat/fizz/record:record",
     ],
 )
 
@@ -96,9 +96,9 @@ fizz_cpp_library(
         "Utils.h",
     ],
     exported_deps = [
+        "fbsource//xplat/fizz:config",
+        "fbsource//xplat/fizz/util:status",
         "fbsource//xplat/folly:range",
-        "//fizz:config",
-        "//fizz/util:status",
     ],
     external_deps = select({
         "DEFAULT": [

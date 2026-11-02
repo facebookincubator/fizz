@@ -16,14 +16,14 @@ fizz_cpp_library(
     ],
     labels = wdls.FIZZ,
     exported_deps = [
+        "fbsource//xplat/fizz/protocol:events",
+        "fbsource//xplat/fizz/util:status",
         "fbsource//xplat/folly:conv",
         "fbsource//xplat/folly:optional",
         "fbsource//xplat/folly:string",
         "fbsource//xplat/folly/container:array",
         "fbsource//xplat/folly/io:iobuf",
         ":alerts",
-        "//fizz/protocol:events",
-        "//fizz/util:status",
     ],
 )
 
@@ -37,14 +37,14 @@ fizz_cpp_library(
     ],
     labels = wdls.FIZZ,
     deps = [
-        "//fizz/util:logging",
+        "fbsource//xplat/fizz/util:logging",
     ],
     exported_deps = [
+        "fbsource//xplat/fizz/crypto/aead:aead",
+        "fbsource//xplat/fizz/protocol:params",
         "fbsource//xplat/folly:optional",
         "fbsource//xplat/folly/io:iobuf",
         ":record",
-        "//fizz/crypto/aead:aead",
-        "//fizz/protocol:params",
     ],
 )
 
@@ -74,13 +74,13 @@ fizz_cpp_library(
     ],
     labels = wdls.FIZZ,
     deps = [
-        "//fizz/crypto/aead:iobuf",
+        "fbsource//xplat/fizz/crypto/aead:iobuf",
     ],
     exported_deps = [
+        "fbsource//xplat/fizz/crypto/aead:aead",
+        "fbsource//xplat/fizz/util:logging",
         ":buf_and_padding_policy",
         ":record_layer",
-        "//fizz/crypto/aead:aead",
-        "//fizz/util:logging",
     ],
 )
 

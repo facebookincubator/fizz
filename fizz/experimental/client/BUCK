@@ -11,8 +11,8 @@ fizz_cpp_library(
         "BatchSignaturePeerCert.h",
     ],
     exported_deps = [
-        "//fizz/experimental/crypto:batch_signature",
-        "//fizz/experimental/protocol:batch_signature_types",
-        "//fizz/protocol:certificate",
+        "fbsource//xplat/fizz/experimental/crypto:batch_signature",
+        "fbsource//xplat/fizz/experimental/protocol:batch_signature_types",
+        "fbsource//xplat/fizz/protocol:certificate",
     ],
 )

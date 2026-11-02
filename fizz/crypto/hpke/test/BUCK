@@ -8,12 +8,12 @@ fizz_cpp_unittest(
         "DHKEMTest.cpp",
     ],
     deps = [
+        "fbsource//xplat/fizz/backend:openssl",
+        "fbsource//xplat/fizz/crypto/exchange:key_exchange",
+        "fbsource//xplat/fizz/crypto/hpke:dhkem",
+        "fbsource//xplat/fizz/crypto/test:TestUtil",
+        "fbsource//xplat/fizz/record:record",
         "fbsource//xplat/folly/portability:gtest",
-        "//fizz/backend:openssl",
-        "//fizz/crypto/exchange:key_exchange",
-        "//fizz/crypto/hpke:dhkem",
-        "//fizz/crypto/test:TestUtil",
-        "//fizz/record:record",
     ],
 )
 
@@ -24,12 +24,12 @@ fizz_cpp_unittest(
     ],
     supports_static_listing = False,
     deps = [
-        "//fizz/backend:openssl",
-        "//fizz/crypto/aead/test:test_util",
-        "//fizz/crypto/hpke:context",
-        "//fizz/crypto/hpke:utils",
-        "//fizz/crypto/test:TestUtil",
-        "//fizz/record:record",
+        "fbsource//xplat/fizz/backend:openssl",
+        "fbsource//xplat/fizz/crypto/aead/test:test_util",
+        "fbsource//xplat/fizz/crypto/hpke:context",
+        "fbsource//xplat/fizz/crypto/hpke:utils",
+        "fbsource//xplat/fizz/crypto/test:TestUtil",
+        "fbsource//xplat/fizz/record:record",
     ],
 )
 
@@ -39,10 +39,10 @@ fizz_cpp_library(
         "Mocks.h",
     ],
     exported_deps = [
+        "fbsource//xplat/fizz/backend:libsodium",
+        "fbsource//xplat/fizz/crypto/aead:aead",
+        "fbsource//xplat/fizz/crypto/hpke:context",
         "fbsource//xplat/folly/portability:gmock",
-        "//fizz/backend:libsodium",
-        "//fizz/crypto/aead:aead",
-        "//fizz/crypto/hpke:context",
     ],
 )
 
@@ -52,13 +52,13 @@ fizz_cpp_unittest(
         "HpkeTest.cpp",
     ],
     deps = [
+        "fbsource//xplat/fizz/backend:libsodium",
+        "fbsource//xplat/fizz/backend:openssl",
+        "fbsource//xplat/fizz/crypto/hpke:hpke",
+        "fbsource//xplat/fizz/crypto/hpke:utils",
+        "fbsource//xplat/fizz/crypto/test:TestUtil",
+        "fbsource//xplat/fizz/protocol:default_factory",
+        "fbsource//xplat/fizz/util:logging",
         ":mocks",
-        "//fizz/backend:libsodium",
-        "//fizz/backend:openssl",
-        "//fizz/crypto/hpke:hpke",
-        "//fizz/crypto/hpke:utils",
-        "//fizz/crypto/test:TestUtil",
-        "//fizz/protocol:default_factory",
-        "//fizz/util:logging",
     ],
 )

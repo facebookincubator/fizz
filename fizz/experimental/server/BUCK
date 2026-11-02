@@ -8,10 +8,10 @@ fizz_cpp_library(
         "BatchSignatureAsyncSelfCert.h",
     ],
     exported_deps = [
-        "//fizz/experimental/batcher:batcher",
-        "//fizz/experimental/crypto:batch_signature",
-        "//fizz/experimental/protocol:batch_signature_types",
-        "//fizz/server:async_self_cert",
-        "//fizz/server:protocol",
+        "fbsource//xplat/fizz/experimental/batcher:batcher",
+        "fbsource//xplat/fizz/experimental/crypto:batch_signature",
+        "fbsource//xplat/fizz/experimental/protocol:batch_signature_types",
+        "fbsource//xplat/fizz/server:async_self_cert",
+        "fbsource//xplat/fizz/server:protocol",
     ],
 )

@@ -8,8 +8,8 @@ fizz_cpp_library(
         "Mocks.h",
     ],
     exported_deps = [
+        "fbsource//xplat/fizz/compression:certificate_compressor",
         "fbsource//xplat/folly/portability:gmock",
-        "//fizz/compression:certificate_compressor",
     ],
 )
 
@@ -19,9 +19,9 @@ fizz_cpp_unittest(
         "CertDecompressionManagerTest.cpp",
     ],
     deps = [
+        "fbsource//xplat/fizz/compression:cert_decompression_manager",
         "fbsource//xplat/folly/portability:gtest",
         ":mocks",
-        "//fizz/compression:cert_decompression_manager",
     ],
 )
 
@@ -31,13 +31,13 @@ fizz_cpp_unittest(
         "BrotliCertificateCompressorTest.cpp",
     ],
     deps = [
+        "fbsource//xplat/fizz/compression:brotli_certificate_compressor",
+        "fbsource//xplat/fizz/compression:brotli_certificate_decompressor",
+        "fbsource//xplat/fizz/crypto:utils",
+        "fbsource//xplat/fizz/protocol/test:cert_util",
+        "fbsource//xplat/fizz/protocol/test:matchers",
+        "fbsource//xplat/fizz/record:record",
         "fbsource//xplat/folly/portability:gtest",
-        "//fizz/compression:brotli_certificate_compressor",
-        "//fizz/compression:brotli_certificate_decompressor",
-        "//fizz/crypto:utils",
-        "//fizz/protocol/test:cert_util",
-        "//fizz/protocol/test:matchers",
-        "//fizz/record:record",
     ],
 )
 
@@ -47,12 +47,12 @@ fizz_cpp_unittest(
         "ZlibCertificateCompressorTest.cpp",
     ],
     deps = [
+        "fbsource//xplat/fizz/compression:zlib_certificate_compressor",
+        "fbsource//xplat/fizz/compression:zlib_certificate_decompressor",
+        "fbsource//xplat/fizz/protocol/test:cert_util",
+        "fbsource//xplat/fizz/protocol/test:matchers",
+        "fbsource//xplat/fizz/record:record",
         "fbsource//xplat/folly/portability:gtest",
-        "//fizz/compression:zlib_certificate_compressor",
-        "//fizz/compression:zlib_certificate_decompressor",
-        "//fizz/protocol/test:cert_util",
-        "//fizz/protocol/test:matchers",
-        "//fizz/record:record",
     ],
 )
 
@@ -62,12 +62,12 @@ fizz_cpp_unittest(
         "ZstdCertificateCompressorTest.cpp",
     ],
     deps = [
+        "fbsource//xplat/fizz/compression:zstd_certificate_compressor",
+        "fbsource//xplat/fizz/compression:zstd_certificate_decompressor",
+        "fbsource//xplat/fizz/crypto:utils",
+        "fbsource//xplat/fizz/protocol/test:cert_util",
+        "fbsource//xplat/fizz/protocol/test:matchers",
+        "fbsource//xplat/fizz/record:record",
         "fbsource//xplat/folly/portability:gtest",
-        "//fizz/compression:zstd_certificate_compressor",
-        "//fizz/compression:zstd_certificate_decompressor",
-        "//fizz/crypto:utils",
-        "//fizz/protocol/test:cert_util",
-        "//fizz/protocol/test:matchers",
-        "//fizz/record:record",
     ],
 )

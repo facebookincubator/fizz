@@ -15,21 +15,31 @@ fizz_cpp_library(
         "State.h",
     ],
     deps = [
+        "fbsource//xplat/fizz/crypto:utils",
+        "fbsource//xplat/fizz/crypto/exchange:async_key_exchange",
+        "fbsource//xplat/fizz/protocol:certificate_verifier",
+        "fbsource//xplat/fizz/protocol:protocol",
+        "fbsource//xplat/fizz/protocol:state_machine",
+        "fbsource//xplat/fizz/protocol/ech:decrypter",
+        "fbsource//xplat/fizz/record:plaintext_record_layer",
+        "fbsource//xplat/fizz/util:workarounds",
         "fbsource//xplat/folly:overload",
         "fbsource//xplat/folly/tracing:static_tracepoint",
         ":async_self_cert",
         ":negotiator",
         ":replay_cache",
-        "//fizz/crypto:utils",
-        "//fizz/crypto/exchange:async_key_exchange",
-        "//fizz/protocol:certificate_verifier",
-        "//fizz/protocol:protocol",
-        "//fizz/protocol:state_machine",
-        "//fizz/protocol/ech:decrypter",
-        "//fizz/record:plaintext_record_layer",
-        "//fizz/util:workarounds",
     ],
     exported_deps = [
+        "fbsource//xplat/fizz/protocol:actions",
+        "fbsource//xplat/fizz/protocol:certificate",
+        "fbsource//xplat/fizz/protocol:key_scheduler",
+        "fbsource//xplat/fizz/protocol:params",
+        "fbsource//xplat/fizz/protocol:types",
+        "fbsource//xplat/fizz/protocol/ech:encrypted_client_hello",
+        "fbsource//xplat/fizz/record:record",
+        "fbsource//xplat/fizz/record:record_layer",
+        "fbsource//xplat/fizz/util:status",
+        "fbsource//xplat/fizz/util:variant",
         "fbsource//xplat/folly:optional",
         "fbsource//xplat/folly:small_vector",
         "fbsource//xplat/folly/futures:core",
@@ -37,16 +47,6 @@ fizz_cpp_library(
         ":handshake_logging",
         ":resumption_state",
         ":server_extensions",
-        "//fizz/protocol:actions",
-        "//fizz/protocol:certificate",
-        "//fizz/protocol:key_scheduler",
-        "//fizz/protocol:params",
-        "//fizz/protocol:types",
-        "//fizz/protocol/ech:encrypted_client_hello",
-        "//fizz/record:record",
-        "//fizz/record:record_layer",
-        "//fizz/util:status",
-        "//fizz/util:variant",
     ],
 )
 
@@ -70,19 +70,19 @@ fizz_cpp_library(
     ],
     labels = wdls.FIZZ,
     deps = [
-        "//fizz/protocol:default_factory",
+        "fbsource//xplat/fizz/protocol:default_factory",
     ],
     exported_deps = [
+        "fbsource//xplat/fizz/protocol:certificate",
+        "fbsource//xplat/fizz/protocol:factory",
+        "fbsource//xplat/fizz/protocol/clock:system_clock",
+        "fbsource//xplat/fizz/protocol/ech:decrypter",
+        "fbsource//xplat/fizz/record:record",
         ":cert_manager",
         ":cookie_cipher",
         ":negotiator",
         ":replay_cache",
         ":ticket_cipher",
-        "//fizz/protocol:certificate",
-        "//fizz/protocol:factory",
-        "//fizz/protocol/clock:system_clock",
-        "//fizz/protocol/ech:decrypter",
-        "//fizz/record:record",
     ],
 )
 
@@ -92,9 +92,9 @@ fizz_cpp_library(
         "TicketPolicy.h",
     ],
     exported_deps = [
+        "fbsource//xplat/fizz/protocol:types",
+        "fbsource//xplat/fizz/protocol/clock:system_clock",
         ":resumption_state",
-        "//fizz/protocol:types",
-        "//fizz/protocol/clock:system_clock",
     ],
 )
 
@@ -137,9 +137,9 @@ fizz_cpp_library(
         "fbsource//xplat/folly/ssl:openssl_cert_utils",
     ],
     exported_deps = [
+        "fbsource//xplat/fizz/record:record",
         ":fizz_server_context",
         ":resumption_state",
-        "//fizz/record:record",
     ],
 )
 
@@ -177,17 +177,17 @@ fizz_cpp_library(
         "AeadTokenCipher.h",
     ],
     deps = [
-        "//fizz/crypto:random",
-        "//fizz/crypto:utils",
-        "//fizz/crypto/aead:aead",
+        "fbsource//xplat/fizz/crypto:random",
+        "fbsource//xplat/fizz/crypto:utils",
+        "fbsource//xplat/fizz/crypto/aead:aead",
     ],
     exported_deps = [
+        "fbsource//xplat/fizz/backend:openssl",
+        "fbsource//xplat/fizz/crypto:hkdf",
+        "fbsource//xplat/fizz/record:record",
         "fbsource//xplat/folly:optional",
         "fbsource//xplat/folly/io:iobuf",
         ":token_cipher",
-        "//fizz/backend:openssl",
-        "//fizz/crypto:hkdf",
-        "//fizz/record:record",
     ],
 )
 
@@ -198,11 +198,11 @@ fizz_cpp_library(
     ],
     labels = wdls.FIZZ,
     exported_deps = [
+        "fbsource//xplat/fizz/backend:openssl",
+        "fbsource//xplat/fizz/crypto:hkdf",
+        "fbsource//xplat/fizz/protocol:types",
         ":aead_ticket_cipher",
         ":ticket_codec",
-        "//fizz/backend:openssl",
-        "//fizz/crypto:hkdf",
-        "//fizz/protocol:types",
     ],
 )
 
@@ -212,9 +212,9 @@ fizz_cpp_library(
         "ResumptionState.h",
     ],
     exported_deps = [
-        "//fizz/protocol:certificate",
-        "//fizz/protocol:types",
-        "//fizz/record:record",
+        "fbsource//xplat/fizz/protocol:certificate",
+        "fbsource//xplat/fizz/protocol:types",
+        "fbsource//xplat/fizz/record:record",
     ],
 )
 
@@ -227,13 +227,13 @@ fizz_cpp_library(
         "CookieCipher.h",
     ],
     deps = [
+        "fbsource//xplat/fizz/protocol:handshake_context",
         ":negotiator",
-        "//fizz/protocol:handshake_context",
     ],
     exported_deps = [
-        "//fizz/protocol:factory",
-        "//fizz/protocol/ech:encrypted_client_hello",
-        "//fizz/record:record",
+        "fbsource//xplat/fizz/protocol:factory",
+        "fbsource//xplat/fizz/protocol/ech:encrypted_client_hello",
+        "fbsource//xplat/fizz/record:record",
     ],
 )
 
@@ -246,7 +246,7 @@ fizz_cpp_library(
         "AeadCookieCipher.h",
     ],
     deps = [
-        "//fizz/record:record",
+        "fbsource//xplat/fizz/record:record",
     ],
     exported_deps = [
         ":cookie_cipher",
@@ -261,10 +261,10 @@ fizz_cpp_library(
         "CookieTypes.h",
     ],
     exported_deps = [
+        "fbsource//xplat/fizz/backend:openssl",
+        "fbsource//xplat/fizz/crypto:hkdf",
+        "fbsource//xplat/fizz/protocol:types",
         ":aead_cookie_cipher",
-        "//fizz/backend:openssl",
-        "//fizz/crypto:hkdf",
-        "//fizz/protocol:types",
     ],
 )
 
@@ -277,13 +277,13 @@ fizz_cpp_library(
         "AsyncSelfCert.h",
     ],
     deps = [
-        "//fizz/record:record",
-        "//fizz/util:status",
+        "fbsource//xplat/fizz/record:record",
+        "fbsource//xplat/fizz/util:status",
     ],
     exported_deps = [
+        "fbsource//xplat/fizz/protocol:certificate",
+        "fbsource//xplat/fizz/protocol:handshake_context",
         "fbsource//xplat/folly/futures:core",
-        "//fizz/protocol:certificate",
-        "//fizz/protocol:handshake_context",
     ],
 )
 
@@ -297,11 +297,11 @@ fizz_cpp_library(
         "FizzServer-inl.h",
     ],
     exported_deps = [
+        "fbsource//xplat/fizz/protocol:fizz_base",
+        "fbsource//xplat/fizz/util:workarounds",
         "fbsource//xplat/folly:overload",
         ":fizz_server_context",
         ":protocol",
-        "//fizz/protocol:fizz_base",
-        "//fizz/util:workarounds",
     ],
 )
 
@@ -313,12 +313,12 @@ fizz_cpp_library(
     ],
     labels = wdls.FIZZ,
     exported_deps = [
+        "fbsource//xplat/fizz/protocol:async_fizz_base",
+        "fbsource//xplat/fizz/protocol:exporter",
+        "fbsource//xplat/fizz/util:tracer",
         ":fizz_server",
         ":fizz_server_context",
         ":protocol",
-        "//fizz/protocol:async_fizz_base",
-        "//fizz/protocol:exporter",
-        "//fizz/util:tracer",
     ],
 )
 
@@ -333,11 +333,11 @@ fizz_cpp_library(
     ],
     labels = wdls.FIZZ,
     deps = [
+        "fbsource//xplat/fizz/util:logging",
         "fbsource//xplat/folly:string",
-        "//fizz/util:logging",
     ],
     exported_deps = [
-        "//fizz/protocol:certificate",
+        "fbsource//xplat/fizz/protocol:certificate",
     ],
 )
 
@@ -348,7 +348,7 @@ fizz_cpp_library(
     ],
     labels = wdls.FIZZ,
     exported_deps = [
-        "//fizz/record:record",
+        "fbsource//xplat/fizz/record:record",
     ],
 )
 
@@ -376,11 +376,11 @@ fizz_cpp_library(
         "SlidingBloomReplayCache.h",
     ],
     deps = [
+        "fbsource//xplat/fizz/crypto:random",
+        "fbsource//xplat/fizz/util:logging",
         "fbsource//xplat/folly:range",
         "fbsource//xplat/folly/io:iobuf",
         "fbsource//xplat/folly/portability:unistd",
-        "//fizz/crypto:random",
-        "//fizz/util:logging",
     ],
     exported_deps = [
         "fbsource//xplat/folly/io/async:async_base",
@@ -411,6 +411,6 @@ fizz_cpp_library(
         "HandshakeLogging.h",
     ],
     exported_deps = [
-        "//fizz/record:record",
+        "fbsource//xplat/fizz/record:record",
     ],
 )

@@ -8,9 +8,9 @@ fizz_cpp_unittest(
         "KeySchedulerTest.cpp",
     ],
     deps = [
+        "fbsource//xplat/fizz/crypto/test:mocks",
+        "fbsource//xplat/fizz/protocol:key_scheduler",
         "fbsource//xplat/folly/portability:gtest",
-        "//fizz/crypto/test:mocks",
-        "//fizz/protocol:key_scheduler",
     ],
 )
 
@@ -20,11 +20,11 @@ fizz_cpp_unittest(
         "KeySchedulerTestVectors.cpp",
     ],
     deps = [
+        "fbsource//xplat/fizz/backend:openssl",
+        "fbsource//xplat/fizz/crypto:key_derivation",
+        "fbsource//xplat/fizz/protocol:key_scheduler",
         "fbsource//xplat/folly:string",
         "fbsource//xplat/folly/portability:gtest",
-        "//fizz/backend:openssl",
-        "//fizz/crypto:key_derivation",
-        "//fizz/protocol:key_scheduler",
     ],
 )
 
@@ -34,9 +34,9 @@ fizz_cpp_unittest(
         "CertificateVerifierTest.cpp",
     ],
     deps = [
+        "fbsource//xplat/fizz/protocol:certificate_verifier",
         "fbsource//xplat/folly/portability:gtest",
         ":mocks",
-        "//fizz/protocol:certificate_verifier",
     ],
 )
 
@@ -46,9 +46,9 @@ fizz_cpp_unittest(
         "HandshakeContextTest.cpp",
     ],
     deps = [
+        "fbsource//xplat/fizz/protocol:default_factory",
+        "fbsource//xplat/fizz/protocol:handshake_context",
         "fbsource//xplat/folly/portability:gtest",
-        "//fizz/protocol:default_factory",
-        "//fizz/protocol:handshake_context",
     ],
 )
 
@@ -58,9 +58,9 @@ fizz_cpp_library(
         "CertTestTypes.h",
     ],
     exported_deps = [
+        "fbsource//xplat/fizz/backend:openssl",
+        "fbsource//xplat/fizz/crypto/test:TestUtil",
         "fbsource//xplat/folly/ssl:openssl_ptr_types",
-        "//fizz/backend:openssl",
-        "//fizz/crypto/test:TestUtil",
     ],
 )
 
@@ -70,12 +70,12 @@ fizz_cpp_unittest(
         "CertTest.cpp",
     ],
     deps = [
+        "fbsource//xplat/fizz/backend:openssl",
+        "fbsource//xplat/fizz/crypto/test:TestUtil",
+        "fbsource//xplat/fizz/util:logging",
         "fbsource//xplat/folly:string",
         "fbsource//xplat/folly/portability:gtest",
         ":cert_test_types",
-        "//fizz/backend:openssl",
-        "//fizz/crypto/test:TestUtil",
-        "//fizz/util:logging",
     ],
 )
 
@@ -85,13 +85,13 @@ fizz_cpp_unittest(
         "FizzBaseTest.cpp",
     ],
     deps = [
+        "fbsource//xplat/fizz/protocol:fizz_base",
+        "fbsource//xplat/fizz/util:variant",
         "fbsource//xplat/folly/futures:core",
         "fbsource//xplat/folly/io/async:async_socket_exception",
         "fbsource//xplat/folly/io/async/test:mocks",
         "fbsource//xplat/folly/portability:gmock",
         "fbsource//xplat/folly/portability:gtest",
-        "//fizz/protocol:fizz_base",
-        "//fizz/util:variant",
     ],
 )
 
@@ -101,9 +101,9 @@ fizz_cpp_unittest(
         "ExporterTest.cpp",
     ],
     deps = [
+        "fbsource//xplat/fizz/protocol:default_factory",
+        "fbsource//xplat/fizz/protocol:exporter",
         "fbsource//xplat/folly/portability:gtest",
-        "//fizz/protocol:default_factory",
-        "//fizz/protocol:exporter",
     ],
 )
 
@@ -113,19 +113,19 @@ fizz_cpp_library(
         "Mocks.h",
     ],
     exported_deps = [
+        "fbsource//xplat/fizz/crypto/aead/test:mocks",
+        "fbsource//xplat/fizz/crypto/exchange/test:mocks",
+        "fbsource//xplat/fizz/crypto/test:mocks",
+        "fbsource//xplat/fizz/protocol:async_fizz_base",
+        "fbsource//xplat/fizz/protocol:certificate",
+        "fbsource//xplat/fizz/protocol:certificate_verifier",
+        "fbsource//xplat/fizz/protocol:default_factory",
+        "fbsource//xplat/fizz/protocol:handshake_context",
+        "fbsource//xplat/fizz/protocol:key_scheduler",
+        "fbsource//xplat/fizz/protocol:types",
+        "fbsource//xplat/fizz/protocol/ech:decrypter",
+        "fbsource//xplat/fizz/record/test:mocks",
         "fbsource//xplat/folly/io/async/test:mocks",
-        "//fizz/crypto/aead/test:mocks",
-        "//fizz/crypto/exchange/test:mocks",
-        "//fizz/crypto/test:mocks",
-        "//fizz/protocol:async_fizz_base",
-        "//fizz/protocol:certificate",
-        "//fizz/protocol:certificate_verifier",
-        "//fizz/protocol:default_factory",
-        "//fizz/protocol:handshake_context",
-        "//fizz/protocol:key_scheduler",
-        "//fizz/protocol:types",
-        "//fizz/protocol/ech:decrypter",
-        "//fizz/record/test:mocks",
     ],
 )
 
@@ -135,8 +135,8 @@ fizz_cpp_library(
         "CertUtil.h",
     ],
     exported_deps = [
-        "//fizz/backend:openssl",
-        "//fizz/crypto:crypto",
+        "fbsource//xplat/fizz/backend:openssl",
+        "fbsource//xplat/fizz/crypto:crypto",
     ],
 )
 
@@ -159,8 +159,8 @@ fizz_cpp_unittest(
     ],
     supports_static_listing = False,
     deps = [
-        "//fizz/protocol:multi_backend_factory",
-        "//fizz/test:handshake_test_lib",
+        "fbsource//xplat/fizz/protocol:multi_backend_factory",
+        "fbsource//xplat/fizz/test:handshake_test_lib",
     ],
 )
 
@@ -170,12 +170,12 @@ fizz_cpp_library(
         "ProtocolTest.h",
     ],
     exported_deps = [
+        "fbsource//xplat/fizz/protocol:actions",
+        "fbsource//xplat/fizz/record/test:mocks",
         "fbsource//xplat/folly/portability:gmock",
         "fbsource//xplat/folly/portability:gtest",
         ":matchers",
         ":mocks",
-        "//fizz/protocol:actions",
-        "//fizz/record/test:mocks",
     ],
 )
 
@@ -185,7 +185,7 @@ fizz_cpp_library(
         "TestUtil.h",
     ],
     exported_deps = [
-        "//fizz/protocol:params",
-        "//fizz/record:record",
+        "fbsource//xplat/fizz/protocol:params",
+        "fbsource//xplat/fizz/record:record",
     ],
 )

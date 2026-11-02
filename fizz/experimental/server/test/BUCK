@@ -8,12 +8,12 @@ fizz_cpp_unittest(
         "BatchSignatureAsyncSelfCertTest.cpp",
     ],
     deps = [
+        "fbsource//xplat/fizz/backend:openssl",
+        "fbsource//xplat/fizz/crypto/test:TestUtil",
+        "fbsource//xplat/fizz/experimental/batcher:batcher",
+        "fbsource//xplat/fizz/experimental/server:batch_signature_async_self_cert",
+        "fbsource//xplat/fizz/protocol/test:mocks",
+        "fbsource//xplat/fizz/server/test:mocks",
         "fbsource//xplat/folly/portability:gtest",
-        "//fizz/backend:openssl",
-        "//fizz/crypto/test:TestUtil",
-        "//fizz/experimental/batcher:batcher",
-        "//fizz/experimental/server:batch_signature_async_self_cert",
-        "//fizz/protocol/test:mocks",
-        "//fizz/server/test:mocks",
     ],
 )

@@ -8,10 +8,10 @@ fizz_cpp_library(
         "MerkleTree.h",
     ],
     exported_deps = [
+        "fbsource//xplat/fizz/backend:openssl",
+        "fbsource//xplat/fizz/crypto:random",
+        "fbsource//xplat/fizz/record:record",
         "fbsource//xplat/folly/container:f14_hash",
-        "//fizz/backend:openssl",
-        "//fizz/crypto:random",
-        "//fizz/record:record",
     ],
 )
 
@@ -21,7 +21,7 @@ fizz_cpp_library(
         "BatchSignature.h",
     ],
     exported_deps = [
+        "fbsource//xplat/fizz/record:record",
         ":merkle_tree",
-        "//fizz/record:record",
     ],
 )

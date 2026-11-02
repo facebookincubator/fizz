@@ -8,10 +8,10 @@ fizz_cpp_unittest(
         "ECHTest.cpp",
     ],
     deps = [
+        "fbsource//xplat/fizz/protocol/ech:encrypted_client_hello",
         "fbsource//xplat/folly/portability:gmock",
         "fbsource//xplat/folly/portability:gtest",
         ":test_util",
-        "//fizz/protocol/ech:encrypted_client_hello",
     ],
 )
 
@@ -21,19 +21,19 @@ fizz_cpp_unittest(
         "EncryptionTest.cpp",
     ],
     deps = [
+        "fbsource//xplat/fizz/backend:openssl",
+        "fbsource//xplat/fizz/crypto:crypto",
+        "fbsource//xplat/fizz/crypto/hpke:hpke",
+        "fbsource//xplat/fizz/crypto/hpke:utils",
+        "fbsource//xplat/fizz/crypto/test:TestUtil",
+        "fbsource//xplat/fizz/protocol:default_factory",
+        "fbsource//xplat/fizz/protocol/ech:encryption",
+        "fbsource//xplat/fizz/protocol/test:matchers",
+        "fbsource//xplat/fizz/protocol/test:mocks",
+        "fbsource//xplat/fizz/protocol/test:test_util",
+        "fbsource//xplat/fizz/record:record",
         "fbsource//xplat/folly/lang:bits",
         ":test_util",
-        "//fizz/backend:openssl",
-        "//fizz/crypto:crypto",
-        "//fizz/crypto/hpke:hpke",
-        "//fizz/crypto/hpke:utils",
-        "//fizz/crypto/test:TestUtil",
-        "//fizz/protocol:default_factory",
-        "//fizz/protocol/ech:encryption",
-        "//fizz/protocol/test:matchers",
-        "//fizz/protocol/test:mocks",
-        "//fizz/protocol/test:test_util",
-        "//fizz/record:record",
     ],
 )
 
@@ -46,14 +46,14 @@ fizz_cpp_library(
         "TestUtil.h",
     ],
     deps = [
-        "//fizz/backend:openssl",
-        "//fizz/crypto/test:TestUtil",
-        "//fizz/protocol/ech:encryption",
-        "//fizz/protocol/test:test_util",
+        "fbsource//xplat/fizz/backend:openssl",
+        "fbsource//xplat/fizz/crypto/test:TestUtil",
+        "fbsource//xplat/fizz/protocol/ech:encryption",
+        "fbsource//xplat/fizz/protocol/test:test_util",
     ],
     exported_deps = [
-        "//fizz/crypto/exchange:key_exchange",
-        "//fizz/protocol/ech:encrypted_client_hello",
+        "fbsource//xplat/fizz/crypto/exchange:key_exchange",
+        "fbsource//xplat/fizz/protocol/ech:encrypted_client_hello",
     ],
 )
 
@@ -63,14 +63,14 @@ fizz_cpp_unittest(
         "DecrypterTest.cpp",
     ],
     deps = [
+        "fbsource//xplat/fizz/backend:openssl",
+        "fbsource//xplat/fizz/crypto/test:TestUtil",
+        "fbsource//xplat/fizz/protocol:default_factory",
+        "fbsource//xplat/fizz/protocol/ech:decrypter",
+        "fbsource//xplat/fizz/protocol/test:test_util",
         "fbsource//xplat/folly/portability:gmock",
         "fbsource//xplat/folly/portability:gtest",
         ":test_util",
-        "//fizz/backend:openssl",
-        "//fizz/crypto/test:TestUtil",
-        "//fizz/protocol:default_factory",
-        "//fizz/protocol/ech:decrypter",
-        "//fizz/protocol/test:test_util",
     ],
 )
 
@@ -80,9 +80,9 @@ fizz_cpp_unittest(
         "GreaseECHTest.cpp",
     ],
     deps = [
-        "//fizz/crypto/hpke:utils",
-        "//fizz/protocol/ech:grease_ech",
-        "//fizz/protocol/test:mocks",
-        "//fizz/protocol/test:test_util",
+        "fbsource//xplat/fizz/crypto/hpke:utils",
+        "fbsource//xplat/fizz/protocol/ech:grease_ech",
+        "fbsource//xplat/fizz/protocol/test:mocks",
+        "fbsource//xplat/fizz/protocol/test:test_util",
     ],
 )

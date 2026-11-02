@@ -8,23 +8,23 @@ fizz_cpp_unittest(
         "ClientProtocolTest.cpp",
     ],
     deps = [
+        "fbsource//xplat/fizz/client:fizz_client_context",
+        "fbsource//xplat/fizz/client:protocol",
+        "fbsource//xplat/fizz/compression/test:mocks",
+        "fbsource//xplat/fizz/crypto/hpke:utils",
+        "fbsource//xplat/fizz/crypto/hpke/test:mocks",
+        "fbsource//xplat/fizz/protocol:default_factory",
+        "fbsource//xplat/fizz/protocol/clock/test:mock_clock",
+        "fbsource//xplat/fizz/protocol/ech:encrypted_client_hello",
+        "fbsource//xplat/fizz/protocol/ech/test:test_util",
+        "fbsource//xplat/fizz/protocol/test:matchers",
+        "fbsource//xplat/fizz/protocol/test:protocol_test",
+        "fbsource//xplat/fizz/protocol/test:test_util",
+        "fbsource//xplat/fizz/record/test:mocks",
         "fbsource//xplat/folly/portability:gmock",
         "fbsource//xplat/folly/portability:gtest",
         ":mocks",
         ":utilities",
-        "//fizz/client:fizz_client_context",
-        "//fizz/client:protocol",
-        "//fizz/compression/test:mocks",
-        "//fizz/crypto/hpke:utils",
-        "//fizz/crypto/hpke/test:mocks",
-        "//fizz/protocol:default_factory",
-        "//fizz/protocol/clock/test:mock_clock",
-        "//fizz/protocol/ech:encrypted_client_hello",
-        "//fizz/protocol/ech/test:test_util",
-        "//fizz/protocol/test:matchers",
-        "//fizz/protocol/test:protocol_test",
-        "//fizz/protocol/test:test_util",
-        "//fizz/record/test:mocks",
     ],
 )
 
@@ -34,10 +34,10 @@ fizz_cpp_unittest(
         "CertManagerTest.cpp",
     ],
     deps = [
+        "fbsource//xplat/fizz/client:cert_manager",
+        "fbsource//xplat/fizz/protocol/test:mocks",
         "fbsource//xplat/folly/portability:gmock",
         "fbsource//xplat/folly/portability:gtest",
-        "//fizz/client:cert_manager",
-        "//fizz/protocol/test:mocks",
     ],
 )
 
@@ -47,12 +47,12 @@ fizz_cpp_unittest(
         "FizzClientContextTest.cpp",
     ],
     deps = [
+        "fbsource//xplat/fizz/client:fizz_client_context",
+        "fbsource//xplat/fizz/client:protocol",
+        "fbsource//xplat/fizz/protocol/test:mocks",
+        "fbsource//xplat/fizz/protocol/test:protocol_test",
         "fbsource//xplat/folly/portability:gmock",
         "fbsource//xplat/folly/portability:gtest",
-        "//fizz/client:fizz_client_context",
-        "//fizz/client:protocol",
-        "//fizz/protocol/test:mocks",
-        "//fizz/protocol/test:protocol_test",
     ],
 )
 
@@ -62,11 +62,11 @@ fizz_cpp_library(
         "Mocks.h",
     ],
     exported_deps = [
+        "fbsource//xplat/fizz/client:async_fizz_client",
+        "fbsource//xplat/fizz/client:client_extensions",
+        "fbsource//xplat/fizz/client:ech_policy",
+        "fbsource//xplat/fizz/client:psk_cache",
         "fbsource//xplat/folly/io/async/test:mocks",
-        "//fizz/client:async_fizz_client",
-        "//fizz/client:client_extensions",
-        "//fizz/client:ech_policy",
-        "//fizz/client:psk_cache",
     ],
 )
 
@@ -76,8 +76,8 @@ fizz_cpp_library(
         "Utilities.h",
     ],
     exported_deps = [
+        "fbsource//xplat/fizz/client:psk_cache",
         "fbsource//xplat/folly/portability:gtest",
-        "//fizz/client:psk_cache",
     ],
 )
 
@@ -87,11 +87,11 @@ fizz_cpp_unittest(
         "FizzClientTest.cpp",
     ],
     deps = [
+        "fbsource//xplat/fizz/client:fizz_client",
+        "fbsource//xplat/fizz/client:psk_cache",
         "fbsource//xplat/folly/portability:gmock",
         "fbsource//xplat/folly/portability:gtest",
         ":mocks",
-        "//fizz/client:fizz_client",
-        "//fizz/client:psk_cache",
     ],
 )
 
@@ -101,15 +101,15 @@ fizz_cpp_unittest(
         "AsyncFizzClientTest.cpp",
     ],
     deps = [
+        "fbsource//xplat/fizz/client:async_fizz_client",
+        "fbsource//xplat/fizz/protocol/ech/test:test_util",
+        "fbsource//xplat/fizz/protocol/test:mocks",
         "fbsource//xplat/folly/io:socket_option_map",
         "fbsource//xplat/folly/io/async/test:async_socket_test_lib",
         "fbsource//xplat/folly/io/async/test:mocks",
         "fbsource//xplat/folly/portability:gmock",
         "fbsource//xplat/folly/portability:gtest",
         ":mocks",
-        "//fizz/client:async_fizz_client",
-        "//fizz/protocol/ech/test:test_util",
-        "//fizz/protocol/test:mocks",
     ],
 )
 
@@ -120,10 +120,10 @@ fizz_cpp_unittest(
     ],
     deps = [
         "fbsource//third-party/fmt:fmt",
+        "fbsource//xplat/fizz/client:synchronized_lru_psk_cache",
         "fbsource//xplat/folly/portability:gmock",
         "fbsource//xplat/folly/portability:gtest",
         ":utilities",
-        "//fizz/client:synchronized_lru_psk_cache",
     ],
 )
 
@@ -133,13 +133,13 @@ fizz_cpp_unittest(
         "PskSerializationTest.cpp",
     ],
     deps = [
+        "fbsource//xplat/fizz/backend:openssl",
+        "fbsource//xplat/fizz/client:psk_serialization_utils",
+        "fbsource//xplat/fizz/crypto/test:TestUtil",
+        "fbsource//xplat/fizz/protocol/test:mocks",
         "fbsource//xplat/folly/portability:gmock",
         "fbsource//xplat/folly/portability:gtest",
         ":utilities",
-        "//fizz/backend:openssl",
-        "//fizz/client:psk_serialization_utils",
-        "//fizz/crypto/test:TestUtil",
-        "//fizz/protocol/test:mocks",
     ],
 )
 
@@ -149,8 +149,8 @@ fizz_cpp_unittest(
         "MultiClientExtensionsTest.cpp",
     ],
     deps = [
+        "fbsource//xplat/fizz/client:multi_client_extensions",
         "fbsource//xplat/folly/portability:gmock",
         "fbsource//xplat/folly/portability:gtest",
-        "//fizz/client:multi_client_extensions",
     ],
 )

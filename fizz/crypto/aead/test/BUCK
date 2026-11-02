@@ -8,8 +8,8 @@ fizz_cpp_library(
         "Mocks.h",
     ],
     exported_deps = [
+        "fbsource//xplat/fizz/crypto/aead:aead",
         "fbsource//xplat/folly/portability:gmock",
-        "//fizz/crypto/aead:aead",
     ],
 )
 
@@ -19,7 +19,7 @@ fizz_cpp_library(
         "Data.h",
     ],
     exported_deps = [
-        "//fizz/record:record",
+        "fbsource//xplat/fizz/record:record",
     ],
 )
 
@@ -32,7 +32,7 @@ fizz_cpp_library(
         "TestUtil.h",
     ],
     deps = [
-        "//fizz/crypto/aead:iobuf",
+        "fbsource//xplat/fizz/crypto/aead:iobuf",
     ],
     exported_deps = [
         "fbsource//xplat/folly:memory",
@@ -47,9 +47,9 @@ fizz_cpp_unittest(
         "IOBufUtilTest.cpp",
     ],
     deps = [
+        "fbsource//xplat/fizz/crypto/aead:iobuf",
         "fbsource//xplat/folly/io:iobuf",
         "fbsource//xplat/folly/portability:gtest",
-        "//fizz/crypto/aead:iobuf",
     ],
 )
 
@@ -59,8 +59,8 @@ fizz_cpp_unittest(
         "CryptoUtilTest.cpp",
     ],
     deps = [
+        "fbsource//xplat/fizz/crypto/aead:cryptoutil",
         "fbsource//xplat/folly/portability:gtest",
-        "//fizz/crypto/aead:cryptoutil",
     ],
 )
 
@@ -70,8 +70,8 @@ fizz_cpp_binary(
         "CryptoUtilBench.cpp",
     ],
     deps = [
+        "fbsource//xplat/fizz/crypto/aead:cryptoutil",
         "fbsource//xplat/folly:benchmark",
         "fbsource//xplat/folly/init:init",
-        "//fizz/crypto/aead:cryptoutil",
     ],
 )

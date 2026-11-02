@@ -11,10 +11,10 @@ fizz_cpp_library(
         "Utils.h",
     ],
     exported_deps = [
+        "fbsource//xplat/fizz/crypto:crypto",
+        "fbsource//xplat/fizz/protocol:types",
         "fbsource//xplat/folly:optional",
         ":types",
-        "//fizz/crypto:crypto",
-        "//fizz/protocol:types",
     ],
 )
 
@@ -27,11 +27,11 @@ fizz_cpp_library(
         "Hkdf.h",
     ],
     deps = [
-        "//fizz/record:record",
+        "fbsource//xplat/fizz/record:record",
     ],
     exported_deps = [
-        "//fizz/crypto:hasher",
-        "//fizz/crypto:hkdf",
+        "fbsource//xplat/fizz/crypto:hasher",
+        "fbsource//xplat/fizz/crypto:hkdf",
     ],
 )
 
@@ -47,10 +47,10 @@ fizz_cpp_library(
         "fbsource//xplat/folly/io:iobuf",
     ],
     exported_deps = [
+        "fbsource//xplat/fizz/crypto/exchange:key_exchange",
+        "fbsource//xplat/fizz/record:record",
         ":hkdf",
         ":types",
-        "//fizz/crypto/exchange:key_exchange",
-        "//fizz/record:record",
     ],
 )
 
@@ -76,10 +76,10 @@ fizz_cpp_library(
         ":utils",
     ],
     exported_deps = [
-        "fbcode//fizz/crypto/aead:aead",
-        "fbcode//fizz/crypto/hpke:hkdf",
-        "fbcode//fizz/crypto/hpke:types",
-        "fbcode//fizz/protocol:types",
+        "fbsource//xplat/fizz/crypto/aead:aead",
+        "fbsource//xplat/fizz/crypto/hpke:hkdf",
+        "fbsource//xplat/fizz/crypto/hpke:types",
+        "fbsource//xplat/fizz/protocol:types",
     ],
 )
 
@@ -95,8 +95,8 @@ fizz_cpp_library(
         ":types",
     ],
     exported_deps = [
+        "fbsource//xplat/fizz/crypto/aead:aead",
         ":context",
         ":dhkem",
-        "//fizz/crypto/aead:aead",
     ],
 )

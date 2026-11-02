@@ -10,7 +10,7 @@ fizz_cpp_library(
     ],
     deps = [],
     exported_deps = [
-        "//fizz/client:async_fizz_client",
-        "//fizz/server:async_fizz_server",
+        "fbsource//xplat/fizz/client:async_fizz_client",
+        "fbsource//xplat/fizz/server:async_fizz_server",
     ],
 )

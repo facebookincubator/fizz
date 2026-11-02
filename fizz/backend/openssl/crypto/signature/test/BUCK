@@ -9,10 +9,10 @@ fizz_cpp_unittest(
     ],
     supports_static_listing = False,
     deps = [
+        "fbsource//xplat/fizz/backend:openssl",
+        "fbsource//xplat/fizz/crypto/test:signature",
+        "fbsource//xplat/fizz/crypto/test:signature_test_data",
         "fbsource//xplat/folly/portability:gtest",
-        "//fizz/backend:openssl",
-        "//fizz/crypto/test:signature",
-        "//fizz/crypto/test:signature_test_data",
     ],
 )
 
@@ -23,9 +23,9 @@ fizz_cpp_unittest(
     ],
     supports_static_listing = False,
     deps = [
+        "fbsource//xplat/fizz/backend:openssl",
         "fbsource//xplat/folly:string",
         "fbsource//xplat/folly/portability:gtest",
-        "//fizz/backend:openssl",
     ],
 )
 
@@ -39,12 +39,12 @@ fizz_cpp_unittest(
     ],
     supports_static_listing = False,
     deps = [
+        "fbsource//xplat/fizz/backend:openssl",
+        "fbsource//xplat/fizz/crypto/test:TestUtil",
+        "fbsource//xplat/fizz/util:logging",
         "fbsource//xplat/folly:fixed_string",
         "fbsource//xplat/folly:string",
         "fbsource//xplat/folly/portability:gtest",
-        "//fizz/backend:openssl",
-        "//fizz/crypto/test:TestUtil",
-        "//fizz/util:logging",
     ],
 )
 
@@ -54,7 +54,7 @@ fizz_cpp_unittest(
         "RSAPSSSignatureTest.cpp",
     ],
     deps = [
+        "fbsource//xplat/fizz/backend:openssl",
         "fbsource//xplat/folly/portability:gtest",
-        "//fizz/backend:openssl",
     ],
 )

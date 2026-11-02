@@ -16,8 +16,8 @@ fizz_cpp_library(
         "fbsource//xplat/folly/io:iobuf",
     ],
     exported_deps = [
+        "fbsource//xplat/fizz/record:record",
         "fbsource//xplat/folly:optional",
-        "//fizz/record:record",
     ],
 )
 
@@ -31,8 +31,8 @@ fizz_cpp_library(
     ],
     labels = wdls.FIZZ,
     exported_deps = [
+        "fbsource//xplat/fizz/client:client_extensions",
         ":delegated_credential",
-        "//fizz/client:client_extensions",
     ],
 )
 
@@ -45,15 +45,15 @@ fizz_cpp_library(
         "DelegatedCredentialUtils.h",
     ],
     deps = [
+        "fbsource//xplat/fizz/backend:openssl",
+        "fbsource//xplat/fizz/util:logging",
         "fbsource//xplat/folly/ssl:openssl_cert_utils",
-        "//fizz/backend:openssl",
-        "//fizz/util:logging",
     ],
     exported_deps = [
+        "fbsource//xplat/fizz/protocol:certificate",
+        "fbsource//xplat/fizz/protocol/clock:clock",
         "fbsource//xplat/folly/ssl:openssl_ptr_types",
         ":delegated_credential",
-        "//fizz/protocol:certificate",
-        "//fizz/protocol/clock:clock",
     ],
 )
 
@@ -86,11 +86,11 @@ fizz_cpp_library(
     ],
     labels = wdls.FIZZ,
     exported_deps = [
+        "fbsource//xplat/fizz/backend:openssl",
+        "fbsource//xplat/fizz/protocol/clock:system_clock",
         "fbsource//xplat/folly/ssl:openssl_cert_utils",
         ":delegated_credential",
         ":delegated_credential_utils",
-        "//fizz/backend:openssl",
-        "//fizz/protocol/clock:system_clock",
     ],
 )
 
@@ -101,10 +101,10 @@ fizz_cpp_library(
         "SelfDelegatedCredential-inl.h",
     ],
     exported_deps = [
+        "fbsource//xplat/fizz/backend:openssl",
         "fbsource//xplat/folly/ssl:openssl_cert_utils",
         ":delegated_credential",
         ":delegated_credential_utils",
-        "//fizz/backend:openssl",
     ],
 )
 
@@ -122,8 +122,8 @@ fizz_cpp_library(
         ":peer_delegated_credential",
     ],
     exported_deps = [
+        "fbsource//xplat/fizz/protocol:default_factory",
         ":delegated_credential",
-        "//fizz/protocol:default_factory",
     ],
 )
 
@@ -137,12 +137,12 @@ fizz_cpp_library(
     ],
     labels = wdls.FIZZ,
     deps = [
-        "//fizz/util:logging",
+        "fbsource//xplat/fizz/util:logging",
     ],
     exported_deps = [
+        "fbsource//xplat/fizz/server:cert_manager",
         ":delegated_credential",
         ":self_delegated_credential",
-        "//fizz/server:cert_manager",
     ],
 )
 
@@ -155,10 +155,10 @@ fizz_cpp_library(
         "DelegatedCredentialClientCertManager.h",
     ],
     deps = [
+        "fbsource//xplat/fizz/util:logging",
         ":delegated_credential",
-        "//fizz/util:logging",
     ],
     exported_deps = [
-        "//fizz/client:cert_manager",
+        "fbsource//xplat/fizz/client:cert_manager",
     ],
 )

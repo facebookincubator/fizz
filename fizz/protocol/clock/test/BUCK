@@ -8,7 +8,7 @@ fizz_cpp_library(
         "Mocks.h",
     ],
     exported_deps = [
+        "fbsource//xplat/fizz/protocol/clock:clock",
         "fbsource//xplat/folly/portability:gmock",
-        "//fizz/protocol/clock:clock",
     ],
 )

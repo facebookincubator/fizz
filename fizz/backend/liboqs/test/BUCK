@@ -8,8 +8,8 @@ fizz_cpp_unittest(
         "OQSKeyExchangeTest.cpp",
     ],
     deps = [
+        "fbsource//xplat/fizz/backend:liboqs",
+        "fbsource//xplat/fizz/util:status",
         "fbsource//xplat/folly/portability:gtest",
-        "//fizz/backend:liboqs",
-        "//fizz/util:status",
     ],
 )
