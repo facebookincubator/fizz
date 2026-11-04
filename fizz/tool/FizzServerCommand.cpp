@@ -18,7 +18,6 @@
 #ifdef FIZZ_TOOL_ENABLE_ZSTD
 #include <fizz/compression/ZstdCertificateCompressor.h>
 #endif
-#include <fizz/backend/libsodium/crypto/exchange/X25519.h>
 #include <fizz/backend/openssl/certificate/CertUtils.h>
 #include <fizz/backend/openssl/certificate/OpenSSLSelfCertImpl.h>
 #include <fizz/crypto/RandomGenerator.h>
@@ -616,7 +615,7 @@ std::shared_ptr<ech::Decrypter> setupDefaultDecrypter() {
           "8a07563949fac6232936ed6f36c4fa735930ecdeaef6734e314aeac35a56fd0a"));
 
   auto chosenConfig = getDefaultECHConfigs()[0];
-  auto kex = std::make_unique<libsodium::X25519KeyExchange>();
+  auto kex = std::make_unique<openssl::X25519KeyExchange>();
   Error err;
   FIZZ_THROW_ON_ERROR(
       kex->setPrivateKey(err, std::move(defaultPrivateKey)), err);

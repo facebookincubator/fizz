@@ -8,12 +8,12 @@
 
 #include <fizz/backend/libaegis/LibAEGIS.h>
 #include <fizz/backend/openssl/OpenSSL.h>
+#include <fizz/crypto/Random.h>
 #include <fizz/crypto/test/TestUtil.h>
 #include <fizz/fizz-config.h>
 
 #include <folly/String.h>
 #include <folly/ssl/OpenSSLCertUtils.h>
-#include <sodium/randombytes.h>
 
 using namespace folly;
 using namespace folly::ssl;
@@ -62,16 +62,9 @@ std::unique_ptr<folly::IOBuf> getCertData(folly::StringPiece cert) {
   return OpenSSLCertUtils::derEncode(*getCert(cert));
 }
 
-static struct randombytes_implementation mockRandom = {
-    []() { return "test"; }, // implementation_name
-    []() { return (uint32_t)0x44444444; }, // random
-    nullptr, // stir
-    nullptr, // uniform
-    [](void* const buf, const size_t size) { memset(buf, 0x44, size); }, // buf
-    nullptr}; // close
-
 void useMockRandom() {
-  randombytes_set_implementation(&mockRandom);
+  fizz::detail::setRandomForTesting(
+      [](unsigned char* out, size_t count) { memset(out, 0x44, count); });
 }
 
 std::unique_ptr<Aead> getCipher(CipherSuite suite) {

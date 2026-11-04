@@ -8,12 +8,12 @@
 #include <fizz/server/TicketTypes.h>
 #include <fizz/util/FizzUtil.h>
 
-#include <fizz/backend/libsodium/crypto/exchange/X25519.h>
+#include <fizz/crypto/Random.h>
+#include <fizz/protocol/MultiBackendFactory.h>
 #include <fmt/core.h>
 #include <folly/FileUtil.h>
 #include <folly/io/async/SSLContext.h>
 #include <folly/portability/OpenSSL.h>
-#include <sodium.h>
 
 #include <openssl/bio.h>
 #include <fstream>
@@ -188,13 +188,11 @@ Status FizzUtil::createKeyExchangeFromBuf(
       return Status::Success;
     }
     case hpke::KEMId::x25519: {
-      auto kex = std::make_unique<libsodium::X25519KeyExchange>();
-      FIZZ_RETURN_ON_ERROR(kex->setPrivateKey(
+      return MultiBackendFactory::makeX25519KeyExchange(
+          ret,
           err,
           folly::IOBuf::copyBuffer(
-              folly::unhexlify(folly::StringPiece(privKey)))));
-      ret = std::move(kex);
-      return Status::Success;
+              folly::unhexlify(folly::StringPiece(privKey))));
     }
     default: {
       // We don't support other key exchanges right now.
@@ -225,27 +223,23 @@ std::vector<std::string> FizzUtil::getAlpnsFromNpnList(
 Status FizzUtil::generateKeypairCurve25519(
     std::tuple<std::string, std::string>& ret,
     Error& err) {
-  constexpr static size_t kCurve25519PubBytes = 32;
-  constexpr static size_t kCurve25519PrivBytes = 32;
-  using PrivKey = std::array<uint8_t, kCurve25519PubBytes>;
-  using PubKey = std::array<uint8_t, kCurve25519PrivBytes>;
-  static_assert(
-      PrivKey().size() == crypto_scalarmult_SCALARBYTES,
-      "Incorrect size of the private key");
-  static_assert(
-      PubKey().size() == crypto_scalarmult_BYTES,
-      "Incorrect size of the public key");
-  auto privKey = PrivKey();
-  auto pubKey = PubKey();
-  auto result = crypto_box_curve25519xsalsa20poly1305_keypair(
-      pubKey.data(), privKey.data());
-  if (result != 0) {
-    return err.error(
-        folly::to<std::string>("Could not generate keys ", result));
+  // An X25519 private key is any 32 random bytes.
+  std::array<unsigned char, 32> privKey;
+  FIZZ_RETURN_ON_ERROR(fizz::random(err, privKey.data(), privKey.size()));
+  std::unique_ptr<KeyExchange> kex;
+  FIZZ_RETURN_ON_ERROR(
+      MultiBackendFactory::makeX25519KeyExchange(
+          kex, err, folly::IOBuf::copyBuffer(privKey.data(), privKey.size())));
+  if (!kex) {
+    return err.error("Could not create X25519 key exchange");
+  }
+  std::unique_ptr<folly::IOBuf> pubKey;
+  FIZZ_RETURN_ON_ERROR(kex->getKeyShare(pubKey, err));
+  if (!pubKey) {
+    return err.error("Could not get X25519 public key");
   }
 
-  std::string pubKeyHex =
-      folly::hexlify(std::string_view((char*)pubKey.data(), pubKey.size()));
+  std::string pubKeyHex = folly::hexlify(pubKey->coalesce());
   std::string privKeyHex =
       folly::hexlify(std::string_view((char*)privKey.data(), privKey.size()));
 

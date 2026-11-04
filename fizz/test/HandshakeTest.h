@@ -10,7 +10,6 @@
 #include <folly/portability/GMock.h>
 #include <folly/portability/GTest.h>
 
-#include <fizz/backend/libsodium/crypto/exchange/X25519.h>
 #include <fizz/backend/openssl/OpenSSL.h>
 #include <fizz/backend/openssl/certificate/OpenSSLSelfCertImpl.h>
 #include <fizz/client/AsyncFizzClient.h>
@@ -543,7 +542,7 @@ class HandshakeTest : public Test {
   }
 
   void setupECH() {
-    auto kex = std::make_unique<libsodium::X25519KeyExchange>();
+    auto kex = std::make_unique<openssl::X25519KeyExchange>();
     Error err;
     FIZZ_THROW_ON_ERROR(kex->generateKeyPair(err), err);
     std::unique_ptr<folly::IOBuf> echPublicKey;

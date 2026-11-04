@@ -16,6 +16,7 @@ set(
         backend/openssl/crypto/Sha.cpp
         backend/openssl/crypto/aead/OpenSSLEVPCipher.cpp
         backend/openssl/crypto/exchange/OpenSSLKeyExchange.cpp
+        backend/openssl/crypto/exchange/X25519.cpp
         backend/openssl/crypto/signature/Signature.cpp
         client/CertManager.cpp
         client/ClientProtocol.cpp
@@ -35,6 +36,7 @@ set(
         crypto/Hkdf.cpp
         crypto/Hmac.cpp
         crypto/KeyDerivation.cpp
+        crypto/Random.cpp
         crypto/Utils.cpp
         crypto/aead/IOBufUtil.cpp
         crypto/exchange/HybridKeyExchange.cpp
@@ -127,6 +129,7 @@ set(
         backend/openssl/crypto/aead/OpenSSLEVPCipher-inl.h
         backend/openssl/crypto/aead/OpenSSLEVPCipher.h
         backend/openssl/crypto/exchange/OpenSSLKeyExchange.h
+        backend/openssl/crypto/exchange/X25519.h
         backend/openssl/crypto/signature/Signature-inl.h
         backend/openssl/crypto/signature/Signature.h
         client/Actions.h
@@ -156,6 +159,7 @@ set(
         crypto/Hkdf.h
         crypto/Hmac.h
         crypto/KeyDerivation.h
+        crypto/Random.h
         crypto/RandomGenerator.h
         crypto/Utils.h
         crypto/aead/Aead.h

@@ -20,7 +20,9 @@ fizz_cpp_unittest(
         "X25519KeyExchangeTest.cpp",
     ],
     deps = [
+        "fbsource//xplat/fizz:config",
         "fbsource//xplat/fizz/backend:libsodium",
+        "fbsource//xplat/fizz/backend:openssl",
         "fbsource//xplat/fizz/util:status",
         "fbsource//xplat/folly:range",
         "fbsource//xplat/folly:string",

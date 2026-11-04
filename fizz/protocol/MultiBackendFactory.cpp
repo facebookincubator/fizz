@@ -12,12 +12,23 @@
 
 #include <fizz/backend/libaegis/LibAEGIS.h>
 #include <fizz/backend/liboqs/LibOQS.h>
+#if FIZZ_HAVE_SODIUM
 #include <fizz/backend/libsodium/LibSodium.h>
+#endif
 #include <fizz/backend/openssl/OpenSSL.h>
 #include <fizz/backend/openssl/certificate/CertUtils.h>
+#include <fizz/crypto/Random.h>
 #include <fizz/crypto/exchange/HybridKeyExchange.h>
 
 namespace fizz {
+
+namespace {
+#if FIZZ_HAVE_SODIUM
+using X25519KeyExchangeImpl = libsodium::X25519KeyExchange;
+#else
+using X25519KeyExchangeImpl = openssl::X25519KeyExchange;
+#endif
+} // namespace
 
 Status MultiBackendFactory::makeKeyExchange(
     std::unique_ptr<KeyExchange>& ret,
@@ -36,7 +47,7 @@ Status MultiBackendFactory::makeKeyExchange(
       ret = fizz::openssl::makeKeyExchange<fizz::P521>();
       return Status::Success;
     case NamedGroup::x25519:
-      ret = fizz::libsodium::makeKeyExchange<fizz::X25519>();
+      ret = std::make_unique<X25519KeyExchangeImpl>();
       return Status::Success;
 #if FIZZ_HAVE_OQS
     case NamedGroup::X25519MLKEM768: {
@@ -49,7 +60,7 @@ Status MultiBackendFactory::makeKeyExchange(
               hybridKex,
               err,
               std::move(oqsKex),
-              fizz::libsodium::makeKeyExchange<fizz::X25519>()));
+              std::make_unique<X25519KeyExchangeImpl>()));
       ret = std::move(hybridKex);
       return Status::Success;
     }
@@ -64,7 +75,7 @@ Status MultiBackendFactory::makeKeyExchange(
               hybridKex,
               err,
               std::move(oqsKex),
-              fizz::libsodium::makeKeyExchange<fizz::X25519>()));
+              std::make_unique<X25519KeyExchangeImpl>()));
       ret = std::move(hybridKex);
       return Status::Success;
     }
@@ -126,12 +137,21 @@ Status MultiBackendFactory::makeHasherFactory(
   }
 }
 
+Status MultiBackendFactory::makeX25519KeyExchange(
+    std::unique_ptr<KeyExchange>& ret,
+    Error& err,
+    std::unique_ptr<folly::IOBuf> privateKey) {
+  auto kex = std::make_unique<X25519KeyExchangeImpl>();
+  FIZZ_RETURN_ON_ERROR(kex->setPrivateKey(err, std::move(privateKey)));
+  ret = std::move(kex);
+  return Status::Success;
+}
+
 Status MultiBackendFactory::makeRandomBytes(
-    Error& /*err*/,
+    Error& err,
     unsigned char* out,
     size_t count) const {
-  libsodium::random(out, count);
-  return Status::Success;
+  return fizz::random(err, out, count);
 }
 
 Status MultiBackendFactory::makePeerCert(

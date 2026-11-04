@@ -6,7 +6,6 @@
  *  LICENSE file in the root directory of this source tree.
  */
 
-#include <fizz/backend/libsodium/crypto/exchange/X25519.h>
 #include <fizz/backend/openssl/OpenSSL.h>
 #include <fizz/protocol/ech/Types.h>
 #include <fizz/tool/FizzCommandCommon.h>

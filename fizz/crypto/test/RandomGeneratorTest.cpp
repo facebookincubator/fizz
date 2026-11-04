@@ -8,6 +8,7 @@
 
 #include <folly/portability/GTest.h>
 
+#include <fizz/crypto/Random.h>
 #include <fizz/crypto/RandomGenerator.h>
 
 #include <fizz/crypto/test/TestUtil.h>
@@ -38,6 +39,25 @@ TEST(RandomGeneratorTest, TestRandomBuf) {
   memset(expected->writableData(), 0x44, 32);
   expected->append(32);
   EXPECT_TRUE(folly::IOBufEqualTo()(random, expected));
+}
+
+TEST(RandomTest, DefaultSource) {
+  fizz::detail::setRandomForTesting(nullptr);
+  std::array<unsigned char, 32> a{};
+  std::array<unsigned char, 32> b{};
+  Error err;
+  ASSERT_EQ(random(err, a.data(), a.size()), Status::Success);
+  ASSERT_EQ(random(err, b.data(), b.size()), Status::Success);
+  EXPECT_NE(a, b);
+}
+
+TEST(RandomTest, Override) {
+  useMockRandom();
+  std::array<unsigned char, 4> out{};
+  Error err;
+  ASSERT_EQ(random(err, out.data(), out.size()), Status::Success);
+  EXPECT_EQ(out, (std::array<unsigned char, 4>{0x44, 0x44, 0x44, 0x44}));
+  fizz::detail::setRandomForTesting(nullptr);
 }
 } // namespace test
 } // namespace fizz

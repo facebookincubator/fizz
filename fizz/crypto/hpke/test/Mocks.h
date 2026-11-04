@@ -8,7 +8,6 @@
 
 #pragma once
 
-#include <fizz/backend/libsodium/crypto/exchange/X25519.h>
 #include <fizz/crypto/aead/Aead.h>
 #include <fizz/crypto/hpke/Context.h>
 #include <folly/portability/GMock.h>

@@ -177,7 +177,7 @@ TEST(UtilTest, createKeyExchangeFromBuf) {
     // Test X25519 KEM
     std::tuple<std::string, std::string> keys;
     EXPECT_EQ(FizzUtil::generateKeypairCurve25519(keys, err), Status::Success);
-    auto privKey = std::get<0>(keys);
+    auto [pubKey, privKey] = keys;
     folly::ByteRange privKeyBuf((folly::StringPiece(privKey)));
     std::unique_ptr<KeyExchange> kex;
     EXPECT_EQ(
@@ -187,7 +187,7 @@ TEST(UtilTest, createKeyExchangeFromBuf) {
     EXPECT_TRUE(kex != nullptr);
     std::unique_ptr<folly::IOBuf> keyShare;
     EXPECT_EQ(kex->getKeyShare(keyShare, err), Status::Success);
-    EXPECT_EQ(keyShare->computeChainDataLength(), 32);
+    EXPECT_EQ(folly::hexlify(keyShare->coalesce()), pubKey);
   }
 
   {

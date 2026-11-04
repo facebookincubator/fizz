@@ -113,6 +113,7 @@ fizz_cpp_library(
         "fbsource//xplat/fizz:config",
         "fbsource//xplat/fizz/backend:libaegis",
         "fbsource//xplat/fizz/backend:openssl",
+        "fbsource//xplat/fizz/crypto:random",
         "fbsource//xplat/folly/ssl:openssl_cert_utils",
     ],
     exported_deps = [
@@ -122,9 +123,6 @@ fizz_cpp_library(
         "fbsource//xplat/folly/io:iobuf",
         "fbsource//xplat/folly/ssl:openssl_ptr_types",
         ":TestKeys",
-    ],
-    external_deps = [
-        ("libsodium", None, "sodium"),
     ],
 )
 

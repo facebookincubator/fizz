@@ -76,7 +76,8 @@ endif()
 
 include(CheckAtomic)
 
-find_package(Sodium REQUIRED)
+# Without libsodium, Fizz uses OpenSSL for X25519 and random bytes.
+find_package(Sodium)
 set(FIZZ_HAVE_SODIUM ${Sodium_FOUND})
 
 SET(FIZZ_SHINY_DEPENDENCIES "")
@@ -126,6 +127,10 @@ if(aegis_FOUND)
 endif()
 
 include(FizzSources)
+if (NOT FIZZ_HAVE_SODIUM)
+  list(REMOVE_ITEM FIZZ_LIBRARY_SOURCES
+    backend/libsodium/crypto/exchange/X25519.cpp)
+endif()
 
 configure_file(fizz-config.h.in ${CMAKE_CURRENT_BINARY_DIR}/generated/fizz/fizz-config.h)
 install(FILES ${CMAKE_CURRENT_BINARY_DIR}/generated/fizz/fizz-config.h DESTINATION ${INCLUDE_INSTALL_DIR}/fizz/)
@@ -216,7 +221,6 @@ target_include_directories(
     $<INSTALL_INTERFACE:${INCLUDE_INSTALL_DIR}>
     ${FOLLY_INCLUDE_DIR}
     ${OPENSSL_INCLUDE_DIR}
-    ${sodium_INCLUDE_DIR}
     ${ZSTD_INCLUDE_DIR}
   PRIVATE
     ${FIZZ_INCLUDE_DIRECTORIES}
@@ -267,7 +271,6 @@ target_link_libraries(fizz
     Folly::folly_portability_unistd
     Folly::folly_detail_base64_detail_base64_api
     ${OPENSSL_LIBRARIES}
-    sodium
     Threads::Threads
     ZLIB::ZLIB
     ${ZSTD_LIBRARY}
@@ -284,6 +287,11 @@ if(FIZZ_LOGGING_BACKEND STREQUAL "XLOG")
   target_link_libraries(fizz PUBLIC Folly::folly_logging_logging)
 elseif(FIZZ_LOGGING_BACKEND STREQUAL "GLOG")
   target_link_libraries(fizz PRIVATE ${GLOG_LIBRARIES})
+endif()
+
+if (FIZZ_HAVE_SODIUM)
+  target_include_directories(fizz PUBLIC ${sodium_INCLUDE_DIR})
+  target_link_libraries(fizz PUBLIC sodium)
 endif()
 
 if (liboqs_FOUND)
@@ -312,11 +320,15 @@ install(
 # We unfortunately cannot install fizz's headers with the install()
 # statement above.  install(TARGETS) appears to only support installing
 # PUBLIC_HEADER in a flat include directory, and not a deeper tree.
+set(FIZZ_HEADER_EXCLUDES PATTERN "test" EXCLUDE)
+if (NOT FIZZ_HAVE_SODIUM)
+  list(APPEND FIZZ_HEADER_EXCLUDES PATTERN "libsodium" EXCLUDE)
+endif()
 foreach(dir ${FIZZ_HEADER_DIRS})
   get_filename_component(PARENT_DIR "/${dir}" DIRECTORY)
   install(DIRECTORY ${dir} DESTINATION "${INCLUDE_INSTALL_DIR}/fizz${PARENT_DIR}"
           FILES_MATCHING PATTERN "*.h"
-          PATTERN "test" EXCLUDE)
+          ${FIZZ_HEADER_EXCLUDES})
 endforeach()
 
 # Install CMake package configuration files for fizz

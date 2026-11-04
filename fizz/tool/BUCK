@@ -13,7 +13,6 @@ fizz_cpp_library(
     ],
     platforms = (FBCODE,),
     deps = [
-        "fbsource//xplat/fizz/backend:libsodium",
         "fbsource//xplat/fizz/backend:openssl",
         "fbsource//xplat/fizz/util:logging",
         "fbsource//xplat/folly:base64",
@@ -52,7 +51,6 @@ fizz_cpp_binary(
     ],
     deps = [
         "fbsource//third-party/fmt:fmt",
-        "fbsource//xplat/fizz/backend:libsodium",
         "fbsource//xplat/fizz/backend:openssl",
         "fbsource//xplat/fizz/client:async_fizz_client",
         "fbsource//xplat/fizz/client:multi_client_extensions",

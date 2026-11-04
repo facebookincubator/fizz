@@ -39,5 +39,16 @@ class MultiBackendFactory : public Factory {
 
   Status makeRandomBytes(Error& err, unsigned char* out, size_t count)
       const override;
+
+  // TODO: Move this out of MultiBackendFactory once Fizz has a home for the
+  // default crypto implementations, such as fizz/crypto/DefaultCrypto.h.
+  /**
+   * Creates the X25519 key exchange that makeKeyExchange() uses, with the given
+   * private key.
+   */
+  static Status makeX25519KeyExchange(
+      std::unique_ptr<KeyExchange>& ret,
+      Error& err,
+      std::unique_ptr<folly::IOBuf> privateKey);
 };
 } // namespace fizz

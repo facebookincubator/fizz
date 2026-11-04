@@ -39,7 +39,6 @@ fizz_cpp_library(
         "Mocks.h",
     ],
     exported_deps = [
-        "fbsource//xplat/fizz/backend:libsodium",
         "fbsource//xplat/fizz/crypto/aead:aead",
         "fbsource//xplat/fizz/crypto/hpke:context",
         "fbsource//xplat/folly/portability:gmock",
@@ -52,7 +51,6 @@ fizz_cpp_unittest(
         "HpkeTest.cpp",
     ],
     deps = [
-        "fbsource//xplat/fizz/backend:libsodium",
         "fbsource//xplat/fizz/backend:openssl",
         "fbsource//xplat/fizz/crypto/hpke:hpke",
         "fbsource//xplat/fizz/crypto/hpke:utils",

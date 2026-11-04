@@ -17,8 +17,10 @@ More background and details are available on the
 
 ## Dependencies
 
-Fizz largely depends on three libraries: [folly](https://www.github.com/facebook/folly),
-[OpenSSL](https://www.openssl.org/), and [libsodium](https://github.com/jedisct1/libsodium).
+Fizz largely depends on two libraries: [folly](https://www.github.com/facebook/folly)
+and [OpenSSL](https://www.openssl.org/). When
+[libsodium](https://github.com/jedisct1/libsodium) is installed, Fizz uses it
+for X25519 and random bytes; otherwise it uses OpenSSL for them.
 
 ## Source Layout
 - `fizz/crypto`:   Cryptographic primitive implementations (most are wrapping

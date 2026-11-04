@@ -197,6 +197,7 @@ fizz_cpp_library(
         "fbsource//xplat/fizz/backend:libsodium",
         "fbsource//xplat/fizz/backend:openssl",
         "fbsource//xplat/fizz/crypto:hkdf",
+        "fbsource//xplat/fizz/crypto:random",
         "fbsource//xplat/fizz/crypto/exchange:hybrid_key_exchange",
     ],
     exported_deps = [

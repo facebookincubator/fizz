@@ -9,11 +9,20 @@
 // TODO: Deprecate this.
 #pragma once
 
+#include <fizz/crypto/Random.h>
+#include <fizz/util/Status.h>
 #include <folly/io/IOBuf.h>
-#include <sodium/randombytes.h>
 #include <array>
 
 namespace fizz {
+
+namespace detail {
+inline void randomBytes(void* out, size_t len) {
+  Error err;
+  FIZZ_THROW_ON_ERROR(
+      fizz::random(err, static_cast<unsigned char*>(out), len), err);
+}
+} // namespace detail
 
 template <size_t Size>
 struct RandomGenerator {
@@ -22,7 +31,7 @@ struct RandomGenerator {
    */
   std::array<uint8_t, Size> generateRandom() {
     std::array<uint8_t, Size> random;
-    randombytes_buf(random.data(), Size);
+    detail::randomBytes(random.data(), Size);
     return random;
   }
 };
@@ -34,7 +43,7 @@ struct RandomNumGenerator {
    */
   T generateRandom() {
     T random;
-    randombytes_buf(&random, sizeof(random));
+    detail::randomBytes(&random, sizeof(random));
     return random;
   }
 };
@@ -44,7 +53,7 @@ struct RandomBufGenerator {
   std::unique_ptr<folly::IOBuf> generateRandom() {
     auto random = folly::IOBuf::create(count);
     if (count > 0) {
-      randombytes_buf(random->writableData(), count);
+      detail::randomBytes(random->writableData(), count);
       random->append(count);
     }
     return random;

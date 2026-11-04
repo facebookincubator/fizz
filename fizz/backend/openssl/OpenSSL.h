@@ -20,6 +20,7 @@ Include this file to use openssl features.
 #include <fizz/backend/openssl/crypto/OpenSSLKeyUtils.h>
 #include <fizz/backend/openssl/crypto/aead/OpenSSLEVPCipher.h>
 #include <fizz/backend/openssl/crypto/exchange/OpenSSLKeyExchange.h>
+#include <fizz/backend/openssl/crypto/exchange/X25519.h>
 #include <fizz/backend/openssl/crypto/signature/Signature.h>
 #include <fizz/crypto/Hkdf.h>
 #include <folly/io/IOBuf.h>

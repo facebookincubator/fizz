@@ -32,7 +32,9 @@ set(FIZZ_LIBRARIES fizz::fizz)
 
 include(CMakeFindDependencyMacro)
 
-find_dependency(Sodium)
+if(FIZZ_HAVE_SODIUM)
+    find_dependency(Sodium)
+endif()
 find_dependency(folly CONFIG)
 find_dependency(ZLIB)
 if(FIZZ_HAVE_OQS)

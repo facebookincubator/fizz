@@ -25,8 +25,4 @@ inline std::unique_ptr<KeyExchange> makeKeyExchange<X25519>() {
   return std::make_unique<X25519KeyExchange>();
 }
 
-inline void random(unsigned char* out, size_t len) {
-  return randombytes_buf(out, len);
-}
-
 } // namespace fizz::libsodium

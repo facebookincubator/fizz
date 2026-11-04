@@ -75,10 +75,18 @@ fizz_cpp_library(
 fizz_cpp_library(
     # @autodeps-skip
     name = "random",
+    srcs = [
+        "Random.cpp",
+    ],
     headers = [
+        "Random.h",
         "RandomGenerator.h",
     ],
+    deps = [
+        "fbsource//xplat/fizz:config",
+    ],
     exported_deps = [
+        "fbsource//xplat/fizz/util:status",
         "fbsource//xplat/folly/io:iobuf",
     ],
     exported_external_deps = [
