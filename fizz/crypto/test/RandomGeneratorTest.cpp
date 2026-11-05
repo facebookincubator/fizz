@@ -56,7 +56,7 @@ TEST(RandomTest, Override) {
   std::array<unsigned char, 4> out{};
   Error err;
   ASSERT_EQ(random(err, out.data(), out.size()), Status::Success);
-  EXPECT_EQ(out, (std::array<unsigned char, 4>{0x44, 0x44, 0x44, 0x44}));
+  EXPECT_EQ(out, (std::array<unsigned char, 4>{{0x44, 0x44, 0x44, 0x44}}));
   fizz::detail::setRandomForTesting(nullptr);
 }
 } // namespace test
