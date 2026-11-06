@@ -345,6 +345,15 @@ install(
   FILES ${CMAKE_CURRENT_BINARY_DIR}/fizz-config.cmake
   DESTINATION ${CMAKE_INSTALL_DIR}
 )
+if (FIZZ_HAVE_SODIUM AND NOT Sodium_CONFIG)
+  # fizz-config.cmake finds Sodium through the same module as this build.
+  foreach(dir IN LISTS CMAKE_MODULE_PATH)
+    if (EXISTS "${dir}/FindSodium.cmake")
+      install(FILES "${dir}/FindSodium.cmake" DESTINATION ${CMAKE_INSTALL_DIR})
+      break()
+    endif()
+  endforeach()
+endif()
 install(EXPORT fizz-exports
         FILE fizz-targets.cmake
         NAMESPACE fizz::
