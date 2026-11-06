@@ -6,6 +6,8 @@
  *  LICENSE file in the root directory of this source tree.
  */
 
+#include <string_view>
+
 #include <folly/portability/GTest.h>
 
 #include <fizz/crypto/test/TestUtil.h>
@@ -115,7 +117,9 @@ TEST(UtilTest, ReadPKey) {
   Error err;
   {
     folly::test::TemporaryFile testFile("test");
-    folly::writeFileAtomic(testFile.path().string(), kP256Key);
+    folly::writeFileAtomic(
+        testFile.path().string(),
+        std::string_view(kP256Key.data(), kP256Key.size()));
     folly::ssl::EvpPkeyUniquePtr pkey;
     EXPECT_EQ(
         FizzUtil::readPrivateKey(pkey, err, testFile.path().string(), ""),
@@ -123,8 +127,7 @@ TEST(UtilTest, ReadPKey) {
   }
   {
     folly::test::TemporaryFile testFile("test");
-    folly::writeFileAtomic(
-        testFile.path().string(), folly::StringPiece("test"));
+    folly::writeFileAtomic(testFile.path().string(), std::string_view("test"));
     EXPECT_THROW(
         {
           folly::ssl::EvpPkeyUniquePtr pkey;
@@ -140,7 +143,9 @@ TEST(UtilTest, ReadChainFile) {
   Error err;
   {
     folly::test::TemporaryFile testFile("test");
-    folly::writeFileAtomic(testFile.path().string(), kP256Certificate);
+    folly::writeFileAtomic(
+        testFile.path().string(),
+        std::string_view(kP256Certificate.data(), kP256Certificate.size()));
     std::vector<folly::ssl::X509UniquePtr> certs;
     EXPECT_EQ(
         FizzUtil::readChainFile(certs, err, testFile.path().string()),
@@ -149,7 +154,9 @@ TEST(UtilTest, ReadChainFile) {
   }
   {
     folly::test::TemporaryFile testFile("test");
-    folly::writeFileAtomic(testFile.path().string(), kP384Key);
+    folly::writeFileAtomic(
+        testFile.path().string(),
+        std::string_view(kP384Key.data(), kP384Key.size()));
     EXPECT_THROW(
         {
           std::vector<folly::ssl::X509UniquePtr> certs;
