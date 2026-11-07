@@ -51,7 +51,7 @@ folly::AsyncSocket::ReadResult AsyncKTLSSocket::performReadMsg(
   }
 
   struct cmsghdr* cmsg = CMSG_FIRSTHDR(&msg);
-  if (FOLLY_UNLIKELY(!cmsg)) {
+  if (!cmsg) [[unlikely]] {
     // This should never happen. If we reach here, this indicates that kTLS
     // changed on the kernel side.
     return ReadResult(
@@ -63,7 +63,7 @@ folly::AsyncSocket::ReadResult AsyncKTLSSocket::performReadMsg(
 
   // The only cmsg we know how to handle right now (and that is implemented
   // in kTLS) is the record type.
-  if (FOLLY_UNLIKELY(cmsg->cmsg_type != TLS_GET_RECORD_TYPE)) {
+  if (cmsg->cmsg_type != TLS_GET_RECORD_TYPE) [[unlikely]] {
     return ReadResult(
         READ_ERROR,
         std::make_unique<folly::AsyncSocketException>(
@@ -72,10 +72,9 @@ folly::AsyncSocket::ReadResult AsyncKTLSSocket::performReadMsg(
   }
 
   uint8_t content_type = *(CMSG_DATA(cmsg));
-  if (FOLLY_LIKELY(
-          content_type ==
-          static_cast<uint8_t>(fizz::ContentType::application_data))) {
-    if (FOLLY_UNLIKELY(unparsedHandshakeData_ != nullptr)) {
+  if (content_type == static_cast<uint8_t>(fizz::ContentType::application_data))
+      [[likely]] {
+    if (unparsedHandshakeData_ != nullptr) [[unlikely]] {
       return ReadResult(
           READ_ERROR,
           std::make_unique<folly::AsyncSocketException>(
@@ -210,7 +209,7 @@ folly::AsyncSocket::ReadResult AsyncKTLSSocket::processHandshakeData(
   // TODO: This can probably be simplified
   try {
     Error err;
-    if (FOLLY_LIKELY(unparsedHandshakeData_ == nullptr)) {
+    if (unparsedHandshakeData_ == nullptr) [[likely]] {
       if (fizz::ReadRecordLayer::decodeHandshakeMessage(
               handshakeMessage, err, payload) == Status::Fail) {
         return getReadErrorResult(err.msg());
