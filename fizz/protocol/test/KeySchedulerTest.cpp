@@ -248,8 +248,12 @@ TEST_F(KeySchedulerTest, TestTrafficKeyWithLabel) {
   EXPECT_CALL(*kd_, _expandLabel(_, _, _, _))
       .WillOnce(
           Invoke([&](auto secret, auto label, const auto&, const auto& len) {
-            EXPECT_EQ(folly::hexlify(trafficSecret), folly::hexlify(secret));
-            EXPECT_EQ(folly::hexlify(label), folly::hexlify(keyLabel));
+            EXPECT_EQ(
+                folly::hexlify(ByteRange{trafficSecret}),
+                folly::hexlify(secret));
+            EXPECT_EQ(
+                folly::hexlify(ByteRange{label}),
+                folly::hexlify(ByteRange{keyLabel}));
             auto res = IOBuf::create(len);
             res->append(len);
             return res;
@@ -257,8 +261,12 @@ TEST_F(KeySchedulerTest, TestTrafficKeyWithLabel) {
   EXPECT_CALL(*kd_, _expandLabel(_, _, _, _))
       .WillOnce(
           Invoke([&](auto secret, auto label, const auto&, const auto& len) {
-            EXPECT_EQ(folly::hexlify(trafficSecret), folly::hexlify(secret));
-            EXPECT_EQ(folly::hexlify(label), folly::hexlify(ivLabel));
+            EXPECT_EQ(
+                folly::hexlify(ByteRange{trafficSecret}),
+                folly::hexlify(secret));
+            EXPECT_EQ(
+                folly::hexlify(ByteRange{label}),
+                folly::hexlify(ByteRange{ivLabel}));
             auto res = IOBuf::create(len);
             res->append(len);
             return res;
