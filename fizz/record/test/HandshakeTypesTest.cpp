@@ -10,51 +10,10 @@
 #include <folly/portability/GTest.h>
 
 #include <fizz/record/Extensions.h>
+#include <fizz/record/test/ClientHelloTestData.h>
 #include <folly/String.h>
 
 using namespace folly;
-
-// Real client hello captured from
-// firefox nightly
-static const std::string chlo =
-    "0304383cd7adc8587"
-    "e3b608ef98f8b47e5f29dd6124a1f258549"
-    "34ad85157dd5a7a400001ac02bc02fcca9c"
-    "ca8c02cc030c00ac009c013c014002f0035"
-    "000a010001d000000014001200000f74726"
-    "9732e66696c6970706f2e696f00170000ff"
-    "01000100000a00080006001700180019000"
-    "b0002010000230000337400000010001700"
-    "1502683208737064792f332e31086874747"
-    "02f312e31000500050100000000ff020002"
-    "000d0033014b014900170041048d5e897c8"
-    "96b17e1679766c14c785dd2c328c3eecc7d"
-    "bfd2e2e817cd35c786aceea79bf1286ab8a"
-    "5c3c464c46f5ba06338b24ea96ce442a4d1"
-    "3356902dfcd1e90100010032c84b9fc5e4f"
-    "12bf1b10da62506105f26d6913eb6a6ca34"
-    "c454963b85d3bbbd9360994db2baa28c217"
-    "e98cb6c40ed5a51246867910b5586dab299"
-    "5cb2c7c6298ab6606906911c08913adabe2"
-    "5901b7907b915b5962ad9e4639475292b18"
-    "0b651929e53b7fb38e7150bae3360aa3a30"
-    "b5a22facff2dd8716ef3239887f1f781757"
-    "b5ef4c68e7ed31e5bfbcb0ebb5d86794322"
-    "c01bd5d456292e8c0276efb05296cd24c10"
-    "cd388cf51ee798cf7e18638c17e44874bc3"
-    "bd1f697424511051f686db6a84b604d1bb4"
-    "0f6041c0c0e28be2a98829c78c7baea2dd3"
-    "49f0219443007e88fb3406dc4d9756e1076"
-    "1ef0eef675b4c4625f5d0aab3d6c7f57747"
-    "f4008d5a5000d0018001604010501060102"
-    "010403050306030203050204020202";
-
-static const std::string ssl3chlo =
-    "03005880ff04e8d5e0af70a2fe55fd90a5380a184f78c213aa8a4142010cac742e3600004cc014c00a0039003800880087c00fc00500350084c013c00900330032009a009900450044c00ec004002f00960041c012c00800160013c00dc003000a0007c011c007c00cc0020005000400ff0100";
-
-// From https://martinthomson.github.io/tls13-vectors/
-static const std::string chloPsk =
-    "03034e2d3805200a9433ebdb4f1bf85d0a773c65a7430aa904c13966e49ab96efe2500003e130113031302c02bc02fcca9cca8c00ac009c013c023c027c014009eccaa00330032006700390038006b00160013009c002f003c0035003d000a00050004010001950015003b00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000b0009000006736572766572ff01000100000a00140012001d00170018001901000101010201030104000b00020100002800260024001d0020621bb90eca697f96d7ddc2966218ae0e7961268d8def400f8d7805172501932f002a0000002b000706030403030302000d0020001e040305030603020308040805080604010501060102010402050206020202002d00020101002900bd009800924e535321db0251332a66d4efd3b0285509fd8a26b801211c72f5f9012b8a6f35005069950156fc02abe56744e7c7d2798675e8372cbba2a93e2436bcd3dbac7662e64e187379bec081051957c0da819d44fafb13d833752c7340a32df5e133e3717566ac66b4cc417a4d0afaa64493997dba0cd6e601bc11a4ce5506236c2c4094d1ea2329d1756ac32783ef158e91a92c44d0a8dc290021202deccf4db1a231fa7359797967c09aa4ea69c29ecd781b41cbae9b1d7e4c0ff9";
 
 static const std::string encodedShlo =
     "03039f2bfbe752cb49bc82303dd32a80cf60483a38e44bfb695ebd0280bcc1c70c5b00130100002e00330024001d00208db235a330ee184b953a981ecfb23b05380768ed12050ec2f0ec62b74ef8f835002b00020304";
@@ -86,7 +45,7 @@ namespace test {
 class HandshakeTypesTest : public testing::Test {
  protected:
   template <class T>
-  T decodeHex(const std::string& hex) {
+  T decodeHex(std::string_view hex) {
     auto data = unhexlify(hex);
     auto buf = IOBuf::copyBuffer(data.data(), data.size());
     T decoded;
@@ -106,7 +65,7 @@ class HandshakeTypesTest : public testing::Test {
 };
 
 TEST_F(HandshakeTypesTest, ChloEncodeDecode) {
-  auto clientHello = decodeHex<ClientHello>(chlo);
+  auto clientHello = decodeHex<ClientHello>(kFirefoxClientHello);
 
   folly::Optional<SignatureAlgorithms> sigAlgs;
   Error err;
@@ -148,16 +107,16 @@ TEST_F(HandshakeTypesTest, ChloEncodeDecode) {
   ASSERT_FALSE(cookie);
 
   auto reencoded = encodeHex(std::move(clientHello));
-  EXPECT_EQ(chlo, reencoded);
+  EXPECT_EQ(kFirefoxClientHello, reencoded);
 }
 
 TEST_F(HandshakeTypesTest, SSL3ChloDecode) {
-  auto clientHello = decodeHex<ClientHello>(ssl3chlo);
+  auto clientHello = decodeHex<ClientHello>(kSsl3ClientHello);
   EXPECT_TRUE(clientHello.extensions.empty());
 }
 
 TEST_F(HandshakeTypesTest, ChloDecidePsk) {
-  auto clientHello = decodeHex<ClientHello>(chloPsk);
+  auto clientHello = decodeHex<ClientHello>(kPskClientHello);
 
   size_t binderLength;
   Error err;
@@ -166,9 +125,9 @@ TEST_F(HandshakeTypesTest, ChloDecidePsk) {
 }
 
 TEST_F(HandshakeTypesTest, ChloEncodeCopy) {
-  auto clientHello = decodeHex<ClientHello>(chlo);
-  EXPECT_EQ(encodeHex(clientHello), chlo);
-  EXPECT_EQ(encodeHex(clientHello), chlo);
+  auto clientHello = decodeHex<ClientHello>(kFirefoxClientHello);
+  EXPECT_EQ(encodeHex(clientHello), kFirefoxClientHello);
+  EXPECT_EQ(encodeHex(clientHello), kFirefoxClientHello);
 }
 
 TEST_F(HandshakeTypesTest, NstEncodeDecode) {
@@ -192,7 +151,7 @@ bool extensionsMatch(const Extension& expected, const Extension& actual) {
 }
 
 TEST_F(HandshakeTypesTest, EncodeAndDecodeSigAlgs) {
-  auto clientHello = decodeHex<ClientHello>(chlo);
+  auto clientHello = decodeHex<ClientHello>(kFirefoxClientHello);
   folly::Optional<SignatureAlgorithms> sigAlgs;
   Error err;
   EXPECT_EQ(
@@ -206,7 +165,7 @@ TEST_F(HandshakeTypesTest, EncodeAndDecodeSigAlgs) {
 }
 
 TEST_F(HandshakeTypesTest, EncodeAndDecodeClientKeyShare) {
-  auto clientHello = decodeHex<ClientHello>(chlo);
+  auto clientHello = decodeHex<ClientHello>(kFirefoxClientHello);
   folly::Optional<ClientKeyShare> share;
   Error err;
   EXPECT_EQ(getExtension(share, err, clientHello.extensions), Status::Success);

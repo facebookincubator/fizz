@@ -28,6 +28,13 @@ fizz_cpp_library(
     ],
 )
 
+fizz_cpp_library(
+    name = "client_hello_test_data",
+    headers = [
+        "ClientHelloTestData.h",
+    ],
+)
+
 fizz_cpp_unittest(
     name = "handshake_types_test",
     srcs = [
@@ -38,6 +45,7 @@ fizz_cpp_unittest(
         "fbsource//xplat/folly:string",
         "fbsource//xplat/folly/portability:gmock",
         "fbsource//xplat/folly/portability:gtest",
+        ":client_hello_test_data",
     ],
 )
 
@@ -135,5 +143,20 @@ fizz_cpp_binary(
         "fbsource//xplat/folly:benchmark",
         "fbsource//xplat/folly:random",
         "fbsource//xplat/folly/init:init",
+    ],
+)
+
+fizz_cpp_binary(
+    name = "client_hello_decode_bench",
+    srcs = [
+        "ClientHelloDecodeBench.cpp",
+    ],
+    deps = [
+        "fbsource//xplat/fizz/record:record",
+        "fbsource//xplat/folly:benchmark",
+        "fbsource//xplat/folly:string",
+        "fbsource//xplat/folly/init:init",
+        "fbsource//xplat/folly/io:iobuf",
+        ":client_hello_test_data",
     ],
 )
