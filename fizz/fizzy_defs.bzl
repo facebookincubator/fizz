@@ -114,3 +114,26 @@ def fizzy_library(name):
             "fbsource//xplat/fizz/facebook/protocol:mnscrypto_factory",
         ],
     )
+
+    fb_xplat_cxx_library(
+        name = name + "_zstd_cert_decompression",
+        raw_headers = FIZZY_INTERNAL_HEADERS
+        + [
+            "facebook/fizzy/include/fizzy/zstd_cert_decompression.h",
+        ],
+        public_include_directories = ["facebook/fizzy/include"],
+        include_directories = [
+            "facebook/fizzy/src",
+        ],
+        compiler_flags = CXXFLAGS + FIZZY_CXXFLAGS,
+        srcs = [
+            "facebook/fizzy/src/zstd_cert_decompression.cpp",
+        ],
+        preprocessor_flags = COMMON_FLAGS,
+        visibility = ["PUBLIC"],
+        deps = [
+            ":" + name,
+            "fbsource//xplat/fizz/compression:cert_decompression_manager",
+            "fbsource//xplat/fizz/compression:zstd_certificate_decompressor",
+        ],
+    )
