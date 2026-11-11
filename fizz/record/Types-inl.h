@@ -19,14 +19,15 @@ struct bits24 {
   static constexpr size_t size = 3;
 };
 
+template <class T>
+concept FixedSize = (std::is_unsigned_v<T> && !std::is_same_v<T, bool>) ||
+    (std::is_enum_v<T> && std::is_unsigned_v<std::underlying_type_t<T>>);
+
 template <class U>
 struct Sizer {
   template <class T>
-  size_t getSize(
-      const typename std::enable_if<
-          (std::is_enum<T>::value || std::is_unsigned<T>::value) &&
-              std::is_same<U, T>::value,
-          T>::type&) {
+    requires(FixedSize<T> && std::is_same_v<U, T>)
+  size_t getSize(const T&) {
     return sizeof(T);
   }
 };
@@ -330,6 +331,10 @@ struct ReadVector {
     auto len = cursor.readBE<N>();
     if (cursor.totalLength() < len) {
       return err.error("Not enough data");
+    }
+
+    if constexpr (FixedSize<T>) {
+      out.reserve(len / sizeof(T));
     }
 
     size_t consumed = 0;
