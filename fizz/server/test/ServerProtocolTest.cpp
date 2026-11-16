@@ -6655,6 +6655,38 @@ TEST_F(ServerProtocolTest, TestFinishedPskNotSupported) {
   EXPECT_EQ(state_.state(), StateEnum::AcceptingData);
 }
 
+TEST_F(ServerProtocolTest, TestFinishedPskModesDisabled) {
+  setUpExpectingFinished();
+  context_->setSupportedPskModes({});
+  state_.pskType() = PskType::Rejected;
+
+  EXPECT_CALL(*mockTicketCipher_, _encrypt(_)).Times(0);
+  EXPECT_CALL(*mockWrite_, _write(_, _)).Times(0);
+
+  fizz::Param param = TestMessages::finished();
+  auto actions = getActions(detail::processEvent(state_, param));
+  expectActions<MutateState, ReportHandshakeSuccess, SecretAvailable>(actions);
+  processStateMutations(actions);
+  EXPECT_EQ(state_.state(), StateEnum::AcceptingData);
+}
+
+TEST_F(ServerProtocolTest, TestFinishedRejectedPsk) {
+  setUpExpectingFinished();
+  state_.pskType() = PskType::Rejected;
+
+  EXPECT_CALL(*mockTicketCipher_, _encrypt(_)).Times(1);
+
+  fizz::Param param = TestMessages::finished();
+  auto actions = getActions(detail::processEvent(state_, param));
+  expectActions<
+      MutateState,
+      ReportHandshakeSuccess,
+      WriteToSocket,
+      SecretAvailable>(actions);
+  processStateMutations(actions);
+  EXPECT_EQ(state_.state(), StateEnum::AcceptingData);
+}
+
 TEST_F(ServerProtocolTest, TestFinishedNoAutomaticNewSessionTicket) {
   setUpExpectingFinished();
   context_->setSendNewSessionTicket(false);
@@ -6900,6 +6932,20 @@ TEST_F(ServerProtocolTest, TestWriteNewSessionTicketPskNotSupported) {
   setUpAcceptingData();
   context_->setSendNewSessionTicket(false);
   state_.pskType() = PskType::NotSupported;
+
+  fizz::Param param = WriteNewSessionTicket();
+  auto actions = getActions(detail::processEvent(state_, param));
+  EXPECT_TRUE(actions.empty());
+}
+
+TEST_F(ServerProtocolTest, TestWriteNewSessionTicketPskModesDisabled) {
+  setUpAcceptingData();
+  context_->setSendNewSessionTicket(false);
+  context_->setSupportedPskModes({});
+  state_.pskType() = PskType::Rejected;
+
+  EXPECT_CALL(*mockTicketCipher_, _encrypt(_)).Times(0);
+  EXPECT_CALL(*appWrite_, _write(_, _)).Times(0);
 
   fizz::Param param = WriteNewSessionTicket();
   auto actions = getActions(detail::processEvent(state_, param));

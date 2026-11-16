@@ -2535,7 +2535,8 @@ static SemiFuture<Optional<WriteToSocket>> generateTicket(
     Buf appToken = nullptr) {
   auto ticketCipher = state.context()->getTicketCipher();
 
-  if (!ticketCipher || *state.pskType() == PskType::NotSupported) {
+  if (!ticketCipher || *state.pskType() == PskType::NotSupported ||
+      state.context()->getSupportedPskModes().empty()) {
     return folly::none;
   }
 
