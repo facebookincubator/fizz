@@ -209,6 +209,16 @@ Status Validator::constructEcKeyFromBuf(
   if (keyLen != TokenBindingUtils::kP256EcKeySize) {
     return err.error(folly::to<std::string>("incorrect key size: ", keyLen));
   }
+  const auto remainingBytes = keyReader.totalLength();
+  if (remainingBytes != keyLen) {
+    return err.error(
+        folly::to<std::string>(
+            "Key buffer size mismatch: expected ",
+            keyLen,
+            " bytes after size prefix, got ",
+            remainingBytes,
+            " bytes"));
+  }
   keyAppender.push(keyReader, keyLen);
   auto combinedRange = combinedKey->coalesce();
 

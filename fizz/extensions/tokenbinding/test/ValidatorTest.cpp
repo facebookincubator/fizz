@@ -99,6 +99,44 @@ TEST_F(ValidatorTest, TestChromeSignature) {
           .has_value());
 }
 
+TEST_F(ValidatorTest, TestECDSAKeyWithTrailingBytes) {
+  auto binding = setUpWithKeyParameters(TokenBindingKeyParameters::ecdsap256);
+  binding.tokenbindingid.key = getBuf(chrome_session_key.str() + "00");
+  EXPECT_FALSE(
+      Validator::validateTokenBinding(
+          std::move(binding), ekm_, TokenBindingKeyParameters::ecdsap256)
+          .has_value());
+}
+
+TEST_F(ValidatorTest, TestECDSAKeyWithTrailingBuffer) {
+  auto binding = setUpWithKeyParameters(TokenBindingKeyParameters::ecdsap256);
+  binding.tokenbindingid.key->appendChain(getBuf("00"));
+  EXPECT_FALSE(
+      Validator::validateTokenBinding(
+          std::move(binding), ekm_, TokenBindingKeyParameters::ecdsap256)
+          .has_value());
+}
+
+TEST_F(ValidatorTest, TestTruncatedECDSAKey) {
+  auto binding = setUpWithKeyParameters(TokenBindingKeyParameters::ecdsap256);
+  binding.tokenbindingid.key->trimEnd(1);
+  EXPECT_FALSE(
+      Validator::validateTokenBinding(
+          std::move(binding), ekm_, TokenBindingKeyParameters::ecdsap256)
+          .has_value());
+}
+
+TEST_F(ValidatorTest, TestChainedECDSAKey) {
+  auto binding = setUpWithKeyParameters(TokenBindingKeyParameters::ecdsap256);
+  binding.tokenbindingid.key = getBuf(chrome_session_key.subpiece(0, 2));
+  binding.tokenbindingid.key->appendChain(
+      getBuf(chrome_session_key.subpiece(2)));
+  EXPECT_TRUE(
+      Validator::validateTokenBinding(
+          std::move(binding), ekm_, TokenBindingKeyParameters::ecdsap256)
+          .has_value());
+}
+
 TEST_F(ValidatorTest, TestInvalidSignature) {
   auto binding = setUpWithKeyParameters(TokenBindingKeyParameters::ecdsap256);
   *binding.signature->writableData() ^= 0x04;
