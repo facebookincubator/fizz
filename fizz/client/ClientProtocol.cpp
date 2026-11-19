@@ -158,6 +158,12 @@ FIZZ_DECLARE_EVENT_HANDLER(
 
 FIZZ_DECLARE_EVENT_HANDLER(
     ClientTypes,
+    StateEnum::Established,
+    Event::AppClose,
+    StateEnum::WriteSideClosed);
+
+FIZZ_DECLARE_EVENT_HANDLER(
+    ClientTypes,
     StateEnum::WriteSideClosed,
     Event::AppData,
     StateEnum::Error);
@@ -276,19 +282,11 @@ Actions ClientStateMachine::processEarlyAppWrite(
 }
 
 Actions ClientStateMachine::processAppClose(const State& state) {
-  Actions acts;
-  Error err;
-  // TODO: handleAppClose can be potentially unwound due to an
-  // exception from the record layer. Need try catch block to catch it
-  if (detail::handleAppClose(acts, err, state) == Status::Success) {
-    return acts;
+  if (state.state() != StateEnum::Established) {
+    return ClientStateMachine::processAppCloseImmediate(state);
   }
-  folly::Optional<AlertDescription> alert = AlertDescription::decode_error;
-  if (err.hasAlert()) {
-    alert = err.alert();
-  }
-  acts = detail::handleError(state, ReportError(err.toException()), alert);
-  return acts;
+  fizz::Param p = AppClose(AppClose::WAIT);
+  return detail::processEvent(state, p);
 }
 
 Actions ClientStateMachine::processAppCloseImmediate(const State& state) {
@@ -393,30 +391,6 @@ Status handleAppCloseImmediate(Actions& ret, Error& err, const State& state) {
     write.contents.emplace_back(std::move(content));
     ret = actions(std::move(transition), std::move(write));
   } else {
-    ret = actions(std::move(transition));
-  }
-  return Status::Success;
-}
-
-Status handleAppClose(Actions& ret, Error& err, const State& state) {
-  if (state.writeRecordLayer()) {
-    MutateState transition([](State& newState) {
-      newState.state() = StateEnum::WriteSideClosed;
-      newState.writeRecordLayer() = nullptr;
-    });
-
-    Alert alert(AlertDescription::close_notify);
-    TLSContent content;
-    WriteToSocket write;
-    TRY(state.writeRecordLayer()->writeAlert(content, err, std::move(alert)));
-    write.contents.emplace_back(std::move(content));
-    ret = actions(std::move(transition), std::move(write));
-  } else {
-    MutateState transition([](State& newState) {
-      newState.state() = StateEnum::Closed;
-      newState.writeRecordLayer() = nullptr;
-      newState.readRecordLayer() = nullptr;
-    });
     ret = actions(std::move(transition));
   }
   return Status::Success;
@@ -3285,6 +3259,25 @@ EventHandler<ClientTypes, StateEnum::WriteSideClosed, Event::CloseNotify>::
       std::move(clearRecordLayers),
       MutateState(&Transition<StateEnum::Closed>),
       std::move(eod));
+  return Status::Success;
+}
+
+Status
+EventHandler<ClientTypes, StateEnum::Established, Event::AppClose>::handle(
+    Actions& ret,
+    InvocationContext& ctx,
+    const State& state,
+    Param& /*param*/) {
+  TLSContent content;
+  TRY(state.writeRecordLayer()->writeAlert(
+      content, ctx.err, Alert(AlertDescription::close_notify)));
+  WriteToSocket write;
+  write.contents.emplace_back(std::move(content));
+  MutateState closeWriteSide([](State& newState) {
+    Transition<StateEnum::WriteSideClosed>(newState);
+    newState.writeRecordLayer() = nullptr;
+  });
+  ret = actions(std::move(closeWriteSide), std::move(write));
   return Status::Success;
 }
 

@@ -69,7 +69,6 @@ Actions handleError(
     folly::Optional<AlertDescription> alertDesc);
 
 Status handleAppCloseImmediate(Actions& ret, Error& err, const State& state);
-Status handleAppClose(Actions& ret, Error& err, const State& state);
 
 Status handleInvalidEvent(
     Actions& ret,

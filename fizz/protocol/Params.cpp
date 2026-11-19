@@ -53,6 +53,8 @@ Event EventVisitor::operator()(const Param& param) const {
       return WriteNewSessionTicket::event;
     case Param::Type::KeyUpdateInitiation_E:
       return KeyUpdateInitiation::event;
+    case Param::Type::AppClose_E:
+      return AppClose::event;
   }
   folly::assume_unreachable();
 }

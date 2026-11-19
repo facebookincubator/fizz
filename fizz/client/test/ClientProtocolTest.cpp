@@ -305,6 +305,21 @@ class ClientProtocolTest : public ProtocolTest<ClientTypes, Actions> {
 
   void doFinishedFlow(ClientAuthType authType);
 
+  void expectAppCloseFullyClosesBeforeEstablished() {
+    auto actions = ClientStateMachine().processAppClose(state_);
+    expectActions<MutateState, WriteToSocket>(actions);
+    auto write = expectAction<WriteToSocket>(actions);
+    EXPECT_EQ(write.contents[0].contentType, ContentType::alert);
+    processStateMutations(actions);
+    EXPECT_EQ(state_.state(), StateEnum::Closed);
+    EXPECT_EQ(state_.readRecordLayer().get(), nullptr);
+    EXPECT_EQ(state_.writeRecordLayer().get(), nullptr);
+
+    fizz::Param appData(TestMessages::appData());
+    actions = detail::processEvent(state_, appData);
+    expectError<FizzException>(actions, folly::none, "invalid event");
+  }
+
   void maybeExpectValidate() {
 #if FIZZ_ENABLE_CONTEXT_COMPATIBILITY_CHECKS
     EXPECT_CALL(*context_, _validate()).Times(1);
@@ -6527,6 +6542,51 @@ TEST_F(ClientProtocolTest, TestEstablishedAppCloseImmediate) {
   EXPECT_EQ(state_.state(), StateEnum::Closed);
   EXPECT_EQ(state_.readRecordLayer().get(), nullptr);
   EXPECT_EQ(state_.writeRecordLayer().get(), nullptr);
+}
+
+TEST_F(ClientProtocolTest, TestUninitializedAppClose) {
+  auto actions = ClientStateMachine().processAppClose(state_);
+  expectActions<MutateState>(actions);
+  processStateMutations(actions);
+  EXPECT_EQ(state_.state(), StateEnum::Closed);
+}
+
+TEST_F(ClientProtocolTest, TestExpectingServerHelloAppClose) {
+  setupExpectingServerHello();
+  expectAppCloseFullyClosesBeforeEstablished();
+}
+
+TEST_F(ClientProtocolTest, TestExpectingEncryptedExtensionsAppClose) {
+  setupExpectingEncryptedExtensions();
+  expectAppCloseFullyClosesBeforeEstablished();
+}
+
+TEST_F(ClientProtocolTest, TestExpectingCertificateAppClose) {
+  setupExpectingCertificate();
+  expectAppCloseFullyClosesBeforeEstablished();
+}
+
+TEST_F(ClientProtocolTest, TestExpectingCertificateVerifyAppClose) {
+  setupExpectingCertificateVerify();
+  expectAppCloseFullyClosesBeforeEstablished();
+}
+
+TEST_F(ClientProtocolTest, TestExpectingFinishedAppClose) {
+  setupExpectingFinished();
+  expectAppCloseFullyClosesBeforeEstablished();
+}
+
+TEST_F(ClientProtocolTest, TestWriteSideClosedAppClose) {
+  setupAcceptingData();
+  auto actions = ClientStateMachine().processAppClose(state_);
+  processStateMutations(actions);
+  ASSERT_EQ(state_.state(), StateEnum::WriteSideClosed);
+
+  actions = ClientStateMachine().processAppClose(state_);
+  expectActions<MutateState>(actions);
+  processStateMutations(actions);
+  EXPECT_EQ(state_.state(), StateEnum::Closed);
+  EXPECT_EQ(state_.readRecordLayer().get(), nullptr);
 }
 
 TEST_F(ClientProtocolTest, TestDecodeErrorAlert) {

@@ -78,6 +78,14 @@ struct WriteNewSessionTicket : EventType<Event::WriteNewSessionTicket> {
   Buf appToken;
 };
 
+struct AppClose : EventType<Event::AppClose> {
+  enum ClosePolicy { IMMEDIATE, WAIT };
+
+  /*implicit */ constexpr AppClose(ClosePolicy pol) : policy(pol) {}
+
+  ClosePolicy policy;
+};
+
 /**
  * Parameters for each event that will be processed by the state machine.
  */
@@ -102,7 +110,8 @@ struct WriteNewSessionTicket : EventType<Event::WriteNewSessionTicket> {
   F(AppData, __VA_ARGS__)               \
   F(AppWrite, __VA_ARGS__)              \
   F(EarlyAppWrite, __VA_ARGS__)         \
-  F(WriteNewSessionTicket, __VA_ARGS__)
+  F(WriteNewSessionTicket, __VA_ARGS__) \
+  F(AppClose, __VA_ARGS__)
 
 FIZZ_DECLARE_VARIANT_TYPE(Param, FIZZ_PARAM)
 
@@ -110,15 +119,6 @@ FIZZ_DECLARE_VARIANT_TYPE(Param, FIZZ_PARAM)
 class EventVisitor {
  public:
   Event operator()(const Param& param) const;
-};
-
-// App closes bypass the state machine so aren't in the Param variant.
-struct AppClose {
-  enum ClosePolicy { IMMEDIATE, WAIT };
-
-  /*implicit */ constexpr AppClose(ClosePolicy pol) : policy(pol) {}
-
-  ClosePolicy policy;
 };
 
 } // namespace fizz
