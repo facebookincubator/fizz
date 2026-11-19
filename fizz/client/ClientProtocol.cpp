@@ -2377,7 +2377,7 @@ static Status handleCertMsg(
 
   if (serverCerts.empty()) {
     return ctx.err.error(
-        "no certificates received", AlertDescription::illegal_parameter);
+        "no certificates received", AlertDescription::decode_error);
   }
 
   ClientAuthType authType =

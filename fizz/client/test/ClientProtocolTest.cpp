@@ -4616,7 +4616,7 @@ TEST_F(ClientProtocolTest, TestCertificateEmpty) {
   fizz::Param param = std::move(certificate);
   auto actions = detail::processEvent(state_, param);
   expectError<FizzException>(
-      actions, AlertDescription::illegal_parameter, "no cert");
+      actions, AlertDescription::decode_error, "no cert");
 }
 
 TEST_F(ClientProtocolTest, TestCertificateExtensions) {
@@ -4854,7 +4854,7 @@ TEST_F(ClientProtocolTest, TestCompressedCertificateEmpty) {
   fizz::Param param = std::move(compressedCert);
   auto actions = detail::processEvent(state_, param);
   expectError<FizzException>(
-      actions, AlertDescription::illegal_parameter, "no cert");
+      actions, AlertDescription::decode_error, "no cert");
 }
 
 TEST_F(ClientProtocolTest, TestUnexpectedCompressedCertificate) {
