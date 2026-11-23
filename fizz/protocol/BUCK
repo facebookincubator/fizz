@@ -261,6 +261,8 @@ fizz_cpp_library(
         "fbsource//xplat/fizz/util:variant",
         "fbsource//xplat/folly/io/async:async_socket_exception",
         "fbsource//xplat/folly/io/async:delayed_destruction",
+        "fbsource//xplat/folly/lang:assume",
+        "fbsource//xplat/folly/lang:switch",
         ":exporter",
         ":factory",
         ":params",

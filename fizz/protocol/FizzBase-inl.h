@@ -7,6 +7,8 @@
  */
 
 #include <fizz/protocol/Exporter.h>
+#include <folly/lang/Assume.h>
+#include <folly/lang/Switch.h>
 
 namespace fizz {
 template <typename Derived, typename ActionMoveVisitor, typename StateMachine>
@@ -162,48 +164,50 @@ void FizzBase<Derived, ActionMoveVisitor, StateMachine>::
     inProcessPendingEvents_ = false;
   };
 
+  auto* self = static_cast<Derived*>(this);
+  // Every branch passes the state machine's result to startActions as a
+  // prvalue, so it is constructed directly in startActions' by-value parameter.
   while (!actionGuard_ && !inTerminalState() && !paused_) {
-    folly::Optional<typename StateMachine::ProcessingActions> actions;
     actionGuard_ = folly::DelayedDestruction::DestructorGuard(owner_);
     if (!waitForData_) {
-      actions.emplace(machine_.processSocketData(
+      self->startActions(machine_.processSocketData(
           state_, transportReadBuf_, readAeadOptions_));
     } else if (!pendingEvents_.empty()) {
       auto event = std::move(pendingEvents_.front());
       pendingEvents_.pop_front();
-      switch (event.type()) {
-        case detail::PendingEvent::Type::WriteNewSessionTicket_E:
-          actions.emplace(machine_.processWriteNewSessionTicket(
-              state_, std::move(*event.asWriteNewSessionTicket())));
-          break;
-        case detail::PendingEvent::Type::AppWrite_E:
-          actions.emplace(
-              machine_.processAppWrite(state_, std::move(*event.asAppWrite())));
-          break;
-        case detail::PendingEvent::Type::EarlyAppWrite_E:
-          actions.emplace(machine_.processEarlyAppWrite(
-              state_, std::move(*event.asEarlyAppWrite())));
-          break;
-        case detail::PendingEvent::Type::AppClose_E:
-          if (event.asAppClose()->policy == AppClose::WAIT) {
-            actions.emplace(machine_.processAppClose(state_));
-          } else {
-            actions.emplace(machine_.processAppCloseImmediate(state_));
-          }
-          break;
-        case detail::PendingEvent::Type::KeyUpdateInitiation_E:
-          actions.emplace(machine_.processKeyUpdateInitiation(
-              state_, std::move(*event.asKeyUpdateInitiation())));
-          break;
-        default:
-          break;
-      }
+      FOLLY_EXHAUSTIVE_SWITCH({
+        switch (event.type()) {
+          case detail::PendingEvent::Type::WriteNewSessionTicket_E:
+            self->startActions(machine_.processWriteNewSessionTicket(
+                state_, std::move(*event.asWriteNewSessionTicket())));
+            break;
+          case detail::PendingEvent::Type::AppWrite_E:
+            self->startActions(machine_.processAppWrite(
+                state_, std::move(*event.asAppWrite())));
+            break;
+          case detail::PendingEvent::Type::EarlyAppWrite_E:
+            self->startActions(machine_.processEarlyAppWrite(
+                state_, std::move(*event.asEarlyAppWrite())));
+            break;
+          case detail::PendingEvent::Type::AppClose_E:
+            if (event.asAppClose()->policy == AppClose::WAIT) {
+              self->startActions(machine_.processAppClose(state_));
+            } else {
+              self->startActions(machine_.processAppCloseImmediate(state_));
+            }
+            break;
+          case detail::PendingEvent::Type::KeyUpdateInitiation_E:
+            self->startActions(machine_.processKeyUpdateInitiation(
+                state_, std::move(*event.asKeyUpdateInitiation())));
+            break;
+          default:
+            folly::assume_unreachable();
+        }
+      });
     } else {
       actionGuard_.reset();
       return;
     }
-
-    static_cast<Derived*>(this)->startActions(std::move(*actions));
   }
 }
 
