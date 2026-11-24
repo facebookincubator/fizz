@@ -89,7 +89,7 @@ fizz_cpp_unittest(
         "fbsource//xplat/fizz/util:variant",
         "fbsource//xplat/folly/futures:core",
         "fbsource//xplat/folly/io/async:async_socket_exception",
-        "fbsource//xplat/folly/io/async/test:mocks",
+        "fbsource//xplat/folly/io/async/testing:mocks",
         "fbsource//xplat/folly/portability:gmock",
         "fbsource//xplat/folly/portability:gtest",
     ],
@@ -125,7 +125,7 @@ fizz_cpp_library(
         "fbsource//xplat/fizz/protocol:types",
         "fbsource//xplat/fizz/protocol/ech:decrypter",
         "fbsource//xplat/fizz/record/test:mocks",
-        "fbsource//xplat/folly/io/async/test:mocks",
+        "fbsource//xplat/folly/io/async/testing:mocks",
     ],
 )
 

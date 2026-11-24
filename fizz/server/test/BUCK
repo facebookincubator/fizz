@@ -210,7 +210,7 @@ fizz_cpp_unittest(
         "fbsource//xplat/fizz/extensions/tokenbinding:token_binding",
         "fbsource//xplat/fizz/protocol/test:test_util",
         "fbsource//xplat/fizz/server:async_fizz_server",
-        "fbsource//xplat/folly/io/async/test:mocks",
+        "fbsource//xplat/folly/io/async/testing:mocks",
         "fbsource//xplat/folly/portability:gmock",
         "fbsource//xplat/folly/portability:gtest",
         ":mocks",

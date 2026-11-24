@@ -56,7 +56,7 @@ fizz_cpp_unittest(
         "fbsource//xplat/fizz/record:encrypted_record_layer",
         "fbsource//xplat/folly/io/async:async_socket",
         "fbsource//xplat/folly/io/async:server_socket",
-        "fbsource//xplat/folly/io/async/test:mocks",
+        "fbsource//xplat/folly/io/async/testing:mocks",
         "fbsource//xplat/folly/test:test_utils",
     ],
 )
@@ -73,7 +73,7 @@ fizz_cpp_unittest(
         "fbsource//xplat/fizz/record:encrypted_record_layer",
         "fbsource//xplat/folly/io/async:async_socket",
         "fbsource//xplat/folly/io/async:server_socket",
-        "fbsource//xplat/folly/io/async/test:mocks",
+        "fbsource//xplat/folly/io/async/testing:mocks",
         "fbsource//xplat/folly/test:test_utils",
     ],
 )

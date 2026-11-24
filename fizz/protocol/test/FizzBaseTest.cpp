@@ -13,7 +13,7 @@
 #include <fizz/util/Variant.h>
 #include <folly/futures/Future.h>
 #include <folly/io/async/AsyncSocketException.h>
-#include <folly/io/async/test/MockAsyncTransport.h>
+#include <folly/io/async/testing/MockAsyncTransport.h>
 
 namespace fizz {
 namespace test {

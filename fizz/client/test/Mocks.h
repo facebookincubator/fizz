@@ -12,7 +12,7 @@
 #include <fizz/client/ClientExtensions.h>
 #include <fizz/client/ECHPolicy.h>
 #include <fizz/client/PskCache.h>
-#include <folly/io/async/test/MockAsyncTransport.h>
+#include <folly/io/async/testing/MockAsyncTransport.h>
 
 namespace fizz {
 namespace client {

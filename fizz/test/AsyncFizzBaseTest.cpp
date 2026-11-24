@@ -11,8 +11,8 @@
 
 #include <fizz/protocol/AsyncFizzBase.h>
 
-#include <folly/io/async/test/MockAsyncTransport.h>
-#include <folly/io/async/test/MockTimeoutManager.h>
+#include <folly/io/async/testing/MockAsyncTransport.h>
+#include <folly/io/async/testing/MockTimeoutManager.h>
 
 namespace fizz {
 namespace test {

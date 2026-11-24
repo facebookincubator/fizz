@@ -21,7 +21,7 @@
 #include <fizz/protocol/ech/Decrypter.h>
 #include <fizz/record/test/Mocks.h>
 
-#include <folly/io/async/test/MockAsyncTransport.h>
+#include <folly/io/async/testing/MockAsyncTransport.h>
 
 namespace fizz {
 namespace test {

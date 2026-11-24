@@ -20,7 +20,7 @@
 #include <fizz/record/EncryptedRecordLayer.h>
 #include <folly/io/async/AsyncServerSocket.h>
 #include <folly/io/async/AsyncSocket.h>
-#include <folly/io/async/test/MockAsyncTransport.h>
+#include <folly/io/async/testing/MockAsyncTransport.h>
 #include <folly/test/TestUtils.h>
 
 using namespace ::testing;

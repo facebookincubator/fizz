@@ -14,7 +14,7 @@
 #include <fizz/extensions/tokenbinding/Types.h>
 #include <fizz/protocol/test/TestUtil.h>
 #include <fizz/server/test/Mocks.h>
-#include <folly/io/async/test/MockAsyncTransport.h>
+#include <folly/io/async/testing/MockAsyncTransport.h>
 
 namespace fizz {
 namespace server {

@@ -133,7 +133,7 @@ fizz_cpp_library(
     ],
     exported_deps = [
         "fbsource//xplat/fizz/extensions/delegatedcred:self_delegated_credential",
-        "fbsource//xplat/folly/io/async/test:mocks",
+        "fbsource//xplat/folly/io/async/testing:mocks",
     ],
 )
 

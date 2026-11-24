@@ -9,7 +9,7 @@ fizz_cpp_unittest(
     ],
     deps = [
         "fbsource//xplat/fizz/protocol:async_fizz_base",
-        "fbsource//xplat/folly/io/async/test:mocks",
+        "fbsource//xplat/folly/io/async/testing:mocks",
         "fbsource//xplat/folly/portability:gmock",
         "fbsource//xplat/folly/portability:gtest",
     ],

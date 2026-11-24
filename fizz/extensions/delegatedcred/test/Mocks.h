@@ -10,7 +10,7 @@
 
 #include <fizz/extensions/delegatedcred/SelfDelegatedCredential.h>
 
-#include <folly/io/async/test/MockAsyncTransport.h>
+#include <folly/io/async/testing/MockAsyncTransport.h>
 
 namespace fizz {
 namespace extensions {

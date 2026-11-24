@@ -16,8 +16,8 @@
 #include <fizz/protocol/test/Mocks.h>
 #include <folly/io/SocketOptionMap.h>
 #include <folly/io/async/test/AsyncSocketTest.h>
-#include <folly/io/async/test/MockAsyncSocket.h>
-#include <folly/io/async/test/MockAsyncTransport.h>
+#include <folly/io/async/testing/MockAsyncSocket.h>
+#include <folly/io/async/testing/MockAsyncTransport.h>
 
 namespace fizz {
 namespace client {
